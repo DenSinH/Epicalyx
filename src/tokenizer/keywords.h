@@ -5,7 +5,7 @@
 #include <map>
 #include <string>
 
-static const std::map<const std::string, const Punctuator> Keywords = {
+static const std::map<const std::string, const Keyword> Keywords = {
         { "auto",         Keyword(TokenType::Auto) },
         { "break",        Keyword(TokenType::Break) },
         { "case",         Keyword(TokenType::Case) },
