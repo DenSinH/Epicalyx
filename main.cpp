@@ -7,7 +7,7 @@ int main() {
 
     auto t = new Tokenizer();
 
-    t->Tokenize("examples/hello_world.c");
+    t->Tokenize("examples/numerical_constants.c");
 
     return 0;
 }

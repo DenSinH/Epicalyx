@@ -10,4 +10,4 @@ include_directories(
 set_target_properties(Tokenizer PROPERTIES LINKER_LANGUAGE CXX)
 
 
-target_include_directories(Tokenizer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(Tokenizer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/include)

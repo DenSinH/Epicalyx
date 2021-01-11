@@ -8,30 +8,24 @@
 class Token {
 public:
     explicit Token(TokenClass cls, TokenType type) {
-        this->Class  = cls;
+        this->Class = cls;
         this->Type = type;
+    }
+
+    static Token Punctuator(TokenType type) {
+        return Token(TokenClass::Punctuator, type);
+    }
+
+    static Token Keyword(TokenType type) {
+        return Token(TokenClass::Keyword, type);
     }
 
     TokenClass Class;
     TokenType Type;
 };
 
-class Punctuator : Token {
-public:
-    explicit Punctuator(TokenType type) : Token(TokenClass::Punctuator, type) {
-
-    }
-};
-
-class Keyword : Token {
-public:
-    explicit Keyword(TokenType type) : Token(TokenClass::Keyword, type) {
-
-    }
-};
-
 template<typename T>
-class Number : Token {
+class Number : public Token {
 public:
     Number(TokenClass cls, TokenType type, T value) : Token(cls, Type) {
         this->Value = value;

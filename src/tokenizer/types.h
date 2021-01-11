@@ -2,6 +2,14 @@
 #define EPICALYX_TYPES_H
 
 
+enum class NumberType {
+    Decimal,
+    Octal,
+    Hex,
+    DecimalFloat,
+    HexFloat,
+};
+
 enum class TokenClass {
     Keyword,
     Punctuator,

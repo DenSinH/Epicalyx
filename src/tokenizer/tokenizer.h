@@ -5,7 +5,7 @@
 
 #include <string>
 #include <vector>
-#include <memory>
+#include <variant>
 
 
 class Tokenizer {
@@ -15,10 +15,26 @@ public:
 
     void Tokenize(const std::string& file_name);
 
-    std::vector<std::unique_ptr<Token>> Tokens;
+    /*
+     * later:
+       std::variant<Parent, Child> var;
+       var = Parent{...};
+       auto parent = std::get<Parent>(var);
+       var = Child{...};
+       auto child = std::get<Child>(var);
+       // This will throw an exception
+       auto invalid = std::get<Parent>(var);
+       // You can check if the variant holds an specific type like this:
+       if (std::holds_alternative<Parent>(var)) {
+         // Safe to do this here
+         std::get<Parent>(var);
+       }
+     * */
+    std::vector<std::variant<Token>> Tokens;
 
 private:
     void TokenizeLine(std::ifstream& file, const std::string& line);
+    static void ReadNumericConstant(std::string::const_iterator& current, std::string::const_iterator end, std::string& dest);
 };
 
 #endif //EPICALYX_TOKENIZER_H
