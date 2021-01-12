@@ -3,6 +3,7 @@
 #include "punctuators.h"
 #include "keywords.h"
 
+#include "variant_util.h"
 #include "log.h"
 
 #include <fstream>
@@ -38,14 +39,14 @@ void Tokenizer::TokenizeLine(std::ifstream& file, const std::string& line) {
                     if (*next == '\"' || (*next == '8' && next + 1 != line.end() && *(next + 1) == '\"')) {
                         // string literal with encoding
                         ReadCharStringConstant(current, line.end(), current_token, '\"');
-                        Tokens.emplace_back(Constant<std::string>(TokenType::ConstString, current_token));
+                        Tokens.emplace_back(StringConstant(current_token));
                         log_debug("Prefixed string literal: %s", current_token.c_str());
                         continue;
                     }
                     else if (*next == '\'') {
                         // char literal with encoding
                         ReadCharStringConstant(current, line.end(), current_token, '\"');
-                        Tokens.emplace_back(Constant<std::string>(TokenType::ConstCharSequence, current_token));
+                        Tokens.emplace_back(CharStringConstant(current_token));
                         log_debug("Prefixed char literal: %s", current_token.c_str());
                         continue;
                     }
@@ -67,7 +68,8 @@ void Tokenizer::TokenizeLine(std::ifstream& file, const std::string& line) {
         }
         else if (std::isdigit(*current)) {
 numeric_constant:
-            ReadNumericConstant(current, line.end(), current_token);
+            auto constant = ReadNumericConstant(current, line.end(), current_token);
+            Tokens.emplace_back(variant_cast(constant));
             log_debug("Numerical constant: %s", current_token.c_str());
         }
         else if (std::isspace(*current)) {
@@ -78,13 +80,13 @@ numeric_constant:
             if (*current == '"') {
                 // string literal
                 ReadCharStringConstant(current, line.end(), current_token, '\"');
-                Tokens.emplace_back(Constant<std::string>(TokenType::ConstString, current_token));
+                Tokens.emplace_back(StringConstant(current_token));
                 log_debug("String literal: %s", current_token.c_str());
             }
             else if (*current == '\'') {
                 // char literal
                 ReadCharStringConstant(current, line.end(), current_token, '\'');
-                Tokens.emplace_back(Constant<std::string>(TokenType::ConstCharSequence, current_token));
+                Tokens.emplace_back(CharStringConstant(current_token));
                 log_debug("Char literal: %s", current_token.c_str());
             }
             else {

@@ -5,7 +5,9 @@ enum class TokenClass {
     Identifier,
     Keyword,
     Punctuator,
-    Constant,
+    StringConstant,
+    CharStringConstant,
+    NumericalConstant,
 };
 
 enum class TokenType {
@@ -20,7 +22,7 @@ enum class TokenType {
     ConstUnsignedLong,
     ConstLongLong,
     ConstUnsignedLongLong,
-    ConstCharSequence,
+    ConstCharString,
     ConstString,
 
     // Keywords

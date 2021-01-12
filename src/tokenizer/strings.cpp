@@ -101,18 +101,21 @@ void Tokenizer::ReadCharStringConstant(std::string::const_iterator& current, std
                 case '4': case '5': case '6': case '7':
                 {
                     unsigned char oct = (*current) - '0';
+                    current++;
                     if (current != end && std::isdigit(*current) && *current < '8') {
-                        current++;
                         // double oct digit escape
                         oct <<= 3;
                         oct |= (*current) - '0';
+                        current++;
                         if (current != end && std::isdigit(*current) && *current < '8') {
-                            current++;
                             // triple oct digit escape
                             oct <<= 3;
                             oct |= (*current) - '0';
+                            current++;
                         }
                     }
+                    // we always go one too far
+                    current--;
                     dest.push_back(oct);
                     break;
                 }

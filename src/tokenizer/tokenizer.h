@@ -30,11 +30,18 @@ public:
          std::get<Parent>(var);
        }
      * */
-    std::vector<std::variant<Token, Identifier, Constant<std::string>>> Tokens;
+    std::vector<std::variant<
+        Token,
+        Identifier,
+        StringConstant,
+        CharStringConstant,
+        NumericalConstant<double>,
+        NumericalConstant<unsigned long long>
+    >> Tokens;
 
 private:
     void TokenizeLine(std::ifstream& file, const std::string& line);
-    static void ReadNumericConstant(std::string::const_iterator& current, std::string::const_iterator end, std::string& dest);
+    static std::variant<NumericalConstant<double>, NumericalConstant<unsigned long long>> ReadNumericConstant(std::string::const_iterator& current, std::string::const_iterator end, std::string& dest);
     static void ReadCharStringConstant(std::string::const_iterator& current, std::string::const_iterator end, std::string& dest, const char terminator);
 };
 

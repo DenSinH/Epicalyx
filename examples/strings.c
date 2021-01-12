@@ -10,6 +10,8 @@ int test() {
 
     int multiple_hex_escape = '\x11\xab\xAB';
     int multiple_oct_escape = '\1\12\123';
+    multiple_oct_escape = '\6\34\153';
+    multiple_oct_escape = '\7\38\177';
 
     const char* string = "hello world!";
     const char* escape_string = "hello\nworld!\t\a\b\?\\\test\"\"\'";

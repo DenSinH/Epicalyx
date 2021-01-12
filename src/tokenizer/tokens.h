@@ -25,10 +25,28 @@ public:
     TokenType Type;
 };
 
-template<typename T>
-class Constant : public Token {
+class StringConstant : public Token {
 public:
-    Constant(TokenType type, const T& value) : Token(TokenClass::Constant, type) {
+    StringConstant(const std::string& value) : Token(TokenClass::StringConstant, TokenType::ConstString) {
+        this->Value = value;
+    }
+
+    std::string Value;
+};
+
+class CharStringConstant : public Token {
+public:
+    CharStringConstant(const std::string& value) : Token(TokenClass::CharStringConstant, TokenType::ConstCharString) {
+        this->Value = value;
+    }
+
+    std::string Value;
+};
+
+template<typename T>
+class NumericalConstant : public Token {
+public:
+    NumericalConstant(TokenType type, const T& value) : Token(TokenClass::NumericalConstant, type){
         this->Value = value;
     }
 
