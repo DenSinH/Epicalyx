@@ -1,5 +1,5 @@
 #include "tokenizer.h"
-
+#include <climits>
 
 enum class NumberType {
     Decimal,
@@ -9,7 +9,11 @@ enum class NumberType {
     HexFloat,
 };
 
-void Tokenizer::ReadNumericConstant(std::string::const_iterator& current, std::string::const_iterator end, std::string& dest) {
+void Tokenizer::ReadNumericConstant(
+        std::string::const_iterator& current,
+        std::string::const_iterator end,
+        std::string& dest
+) {
     NumberType type = NumberType::Decimal;
     bool dot      = false;
     bool exponent = false;
@@ -117,27 +121,37 @@ void Tokenizer::ReadNumericConstant(std::string::const_iterator& current, std::s
         }
     }
 
+    char is_long = 0;
+    // only allow long/unsigned suffix once
+    bool is_unsigned = false;
     if (current != end) {
-        if (is_float) {
-            // float suffixes
-            if (std::tolower(*current) == 'f') {
-                dest.push_back(*current);
-                current++;
-            } else if (std::tolower(*current) == 'l') {
-                dest.push_back(*current);
-                current++;
+        // float suffixes
+        if (type != NumberType::Octal && std::tolower(*current) == 'f') {
+            dest.push_back(*current);
+            current++;
+            switch (type) {
+                case NumberType::Decimal:
+                    type = NumberType::DecimalFloat;
+                    break;
+                case NumberType::Hex:
+                    type = NumberType::HexFloat;
+                    break;
+                default:
+                    break;
             }
+            is_float = true;
+        } else if (is_float && std::tolower(*current) == 'l') {
+            dest.push_back(*current);
+            is_long = true;
+            current++;
         }
-        else {
-            // only allow long/unsigned suffix once
-            bool is_long     = false;
-            bool is_unsigned = false;
+        else if (!is_float) {
 
             // order does not matter, so we loop this twice
             for (int i = 0; i < 2; i++) {
                 if (!is_long && (std::tolower(*current) == 'l')) {
                     // long suffix
-                    is_long = true;
+                    is_long = 1;
 
                     char _current = *current;
                     dest.push_back(*current);
@@ -148,6 +162,7 @@ void Tokenizer::ReadNumericConstant(std::string::const_iterator& current, std::s
                         if (*current == _current) {
                             dest.push_back(*current);
                             current++;
+                            is_long = 2;
                         }
                     }
                 }
@@ -161,4 +176,38 @@ void Tokenizer::ReadNumericConstant(std::string::const_iterator& current, std::s
             }
         }
     }
+
+
+//    if (is_float) {
+//        if (is_long) {
+//            return Constant<double>(TokenType::ConstDouble, std::stod(dest));
+//        }
+//        return Constant<float>(TokenType::ConstFloat, std::stof(dest));
+//    }
+//    else {
+//        if (is_unsigned) {
+//            unsigned long long value = std::stoull(dest);
+//            if (is_long == 2 || value >= ULONG_MAX) {
+//                return Constant<unsigned long long>(TokenType::ConstUnsignedLongLong, value);
+//            }
+//            else if (is_long == 1 || value >= UINT_MAX) {
+//                return Constant<unsigned long>(TokenType::ConstUnsignedLong, value);
+//            }
+//            else {
+//                return Constant<unsigned int>(TokenType::ConstUnsignedInt, value);
+//            }
+//        }
+//        else {
+//            long long value = std::stoll(dest);
+//            if (is_long == 2 || value >= LONG_MAX) {
+//                return Constant<long long>(TokenType::ConstLongLong, value);
+//            }
+//            else if (is_long == 1 || value >= INT_MAX) {
+//                return Constant<long>(TokenType::ConstLong, value);
+//            }
+//            else {
+//                return Constant<int>(TokenType::ConstInt, value);
+//            }
+//        }
+//    }
 }

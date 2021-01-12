@@ -14,8 +14,12 @@ enum class TokenType {
     // constants
     ConstFloat,
     ConstDouble,
+    ConstInt,
     ConstUnsignedInt,
-    ConstSignedInt,
+    ConstLong,
+    ConstUnsignedLong,
+    ConstLongLong,
+    ConstUnsignedLongLong,
     ConstCharSequence,
     ConstString,
 

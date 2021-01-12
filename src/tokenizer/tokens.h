@@ -35,6 +35,7 @@ public:
     T Value;
 };
 
+
 class Identifier : public Token {
 public:
     explicit Identifier(std::string& name) : Token(TokenClass::Identifier, TokenType::Identifier) {
