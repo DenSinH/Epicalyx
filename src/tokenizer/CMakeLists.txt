@@ -1,7 +1,7 @@
 add_library(Tokenizer STATIC
         tokenizer.h
         tokenizer.cpp
-        tokens.h punctuators.h keywords.h types.h)
+        tokens.h punctuators.h keywords.h types.h strings.cpp numerical.cpp)
 
 include_directories(
         ${PROJECT_SOURCE_DIR}/include

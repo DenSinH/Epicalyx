@@ -19,6 +19,25 @@ int main() {
     float sign_exp_suffixed_hex_float = 0x123p12f;
     sign_exp_suffixed_hex_float = 0x123p+12f;
     sign_exp_suffixed_hex_float = 0x123p-12f;
+    float float_end_dot = 1231.;
+    float float_end_dot_suffix = 132123.f;
+    float_end_dot_suffix = 132123.l;
+    float_end_dot_suffix = 132123.F;
+    float_end_dot_suffix = 132123.l;
+
+    float float_dot_start = .123123;
+    float suffix_float_dot_start = .123123f;
+    suffix_float_dot_start = .123123F;
+    suffix_float_dot_start = .123123l;
+    suffix_float_dot_start = .123123L;
+
+    float exp_float_dot_start = .1123123e123;
+    double sign_exp_float_dot_start = .1123123e+123;
+    sign_exp_float_dot_start = .1123123e-123;
+    double sign_exp_float_dot_start_suffix = .1123123e+123f;
+    sign_exp_float_dot_start_suffix = .1123123e+123l;
+    sign_exp_float_dot_start_suffix = .1123123e+123L;
+    sign_exp_float_dot_start_suffix = .1123123e+123F;
 
     int normal_int = 123556;
     int suffixed_int = 2309ULL;

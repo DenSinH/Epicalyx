@@ -2,6 +2,7 @@
 #define EPICALYX_TOKENS_H
 
 #include <type_traits>
+#include <string>
 
 #include "types.h"
 
@@ -25,13 +26,22 @@ public:
 };
 
 template<typename T>
-class Number : public Token {
+class Constant : public Token {
 public:
-    Number(TokenClass cls, TokenType type, T value) : Token(cls, Type) {
+    Constant(TokenType type, const T& value) : Token(TokenClass::Constant, type) {
         this->Value = value;
     }
 
     T Value;
+};
+
+class Identifier : public Token {
+public:
+    explicit Identifier(std::string& name) : Token(TokenClass::Identifier, TokenType::Identifier) {
+        this->Name = name;
+    }
+
+    std::string Name;
 };
 
 #endif //EPICALYX_TOKENS_H

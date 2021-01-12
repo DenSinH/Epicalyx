@@ -1,21 +1,24 @@
 #ifndef EPICALYX_TYPES_H
 #define EPICALYX_TYPES_H
 
-
-enum class NumberType {
-    Decimal,
-    Octal,
-    Hex,
-    DecimalFloat,
-    HexFloat,
-};
-
 enum class TokenClass {
+    Identifier,
     Keyword,
     Punctuator,
+    Constant,
 };
 
 enum class TokenType {
+    Identifier,
+
+    // constants
+    ConstFloat,
+    ConstDouble,
+    ConstUnsignedInt,
+    ConstSignedInt,
+    ConstCharSequence,
+    ConstString,
+
     // Keywords
     Auto,
     Break,
