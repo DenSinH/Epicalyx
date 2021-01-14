@@ -2,10 +2,11 @@
 #define EPICALYX_PRIMARY_EXPRESSION_H
 
 #include "../AST.h"
+#include "postfix_expression.h"
 
-class PrimaryExpression : public Node {
+class PrimaryExpression : public PostfixExpression {
 public:
-    enum class PEType {
+    enum class PrimExprType {
         Identifier,
         Constant,
         StringLiteral,
@@ -13,29 +14,39 @@ public:
         // todo: generic selection
     };
 
-    explicit PrimaryExpression(PrimaryExpression::PEType type) {
+    explicit PrimaryExpression(PrimaryExpression::PrimExprType type) : PostfixExpression(PostExprType::PrimaryExpression) {
         this->Type = type;
     }
 
-    PrimaryExpression::PEType Type;
+    PrimaryExpression::PrimExprType Type;
 };
 
 class PrimaryExpressionIdentifier : public PrimaryExpression {
 public:
-    explicit PrimaryExpressionIdentifier(std::string& id) : PrimaryExpression(PEType::Identifier) {
+    explicit PrimaryExpressionIdentifier(std::string& id) : PrimaryExpression(PrimExprType::Identifier) {
         this->ID = id;
     }
 
     std::string ID;
 };
 
-class PrimaryExpressionIdentifier : public PrimaryExpression {
+template<typename T>
+class PrimaryExpressionConstant : public PrimaryExpression {
 public:
-    explicit PrimaryExpressionIdentifier(std::string& id) : PrimaryExpression(PEType::Identifier) {
-        this->ID = id;
+    explicit PrimaryExpressionConstant(T& value) : PrimaryExpression(PrimExprType::Constant) {
+        this->Value = value;
     }
 
-    std::string ID;
+    T Value;
+};
+
+class PrimaryStringLiteral : public PrimaryExpression {
+public:
+    explicit PrimaryStringLiteral(std::string& value) : PrimaryExpression(PrimExprType::StringLiteral) {
+        this->Value = value;
+    }
+
+    std::string Value;
 };
 
 #endif //EPICALYX_PRIMARY_EXPRESSION_H

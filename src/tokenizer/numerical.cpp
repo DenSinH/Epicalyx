@@ -9,7 +9,7 @@ enum class NumberType {
     HexFloat,
 };
 
-std::variant<NumericalConstant<double>, NumericalConstant<unsigned long long>> Tokenizer::ReadNumericConstant(
+std::variant<NUMERICAL_CONSTANTS> Tokenizer::ReadNumericConstant(
         std::string::const_iterator& current,
         std::string::const_iterator end,
         std::string& dest
@@ -179,10 +179,12 @@ std::variant<NumericalConstant<double>, NumericalConstant<unsigned long long>> T
 
 
     if (is_float) {
-        if (is_long) {
-            return NumericalConstant<double>(TokenType::ConstDouble, std::stod(dest));
+        double value = std::stod(dest);
+        auto fvalue = (float)value;
+        if (is_long || ((double)fvalue != value)) {
+            return NumericalConstant<double>(TokenType::ConstDouble, value);
         }
-        return NumericalConstant<double>(TokenType::ConstFloat, std::stof(dest));
+        return NumericalConstant<float>(TokenType::ConstFloat, fvalue);
     }
     else {
         if (is_unsigned) {
@@ -191,22 +193,22 @@ std::variant<NumericalConstant<double>, NumericalConstant<unsigned long long>> T
                 return NumericalConstant<unsigned long long>(TokenType::ConstUnsignedLongLong, value);
             }
             else if (is_long == 1 || value >= UINT_MAX) {
-                return NumericalConstant<unsigned long long>(TokenType::ConstUnsignedLong, value);
+                return NumericalConstant<unsigned long>(TokenType::ConstUnsignedLong, value);
             }
             else {
-                return NumericalConstant<unsigned long long>(TokenType::ConstUnsignedInt, value);
+                return NumericalConstant<unsigned int>(TokenType::ConstUnsignedInt, value);
             }
         }
         else {
             long long value = std::stoll(dest);
             if (is_long == 2 || value >= LONG_MAX) {
-                return NumericalConstant<unsigned long long>(TokenType::ConstLongLong, value);
+                return NumericalConstant<long long>(TokenType::ConstLongLong, value);
             }
             else if (is_long == 1 || value >= INT_MAX) {
-                return NumericalConstant<unsigned long long>(TokenType::ConstLong, value);
+                return NumericalConstant<long>(TokenType::ConstLong, value);
             }
             else {
-                return NumericalConstant<unsigned long long>(TokenType::ConstInt, value);
+                return NumericalConstant<int>(TokenType::ConstInt, value);
             }
         }
     }

@@ -9,6 +9,17 @@ enum class TokenClass {
     NumericalConstant,
 };
 
+
+enum PunctuatorFlags : unsigned {
+    None         = 0x0,
+    UnOp         = 0x1,
+    BinOp        = 0x2,
+    PostFix      = 0x4,
+    MemberAccess = 0x8,
+    Relational   = 0x10,
+    Assignment   = 0x20,
+};
+
 enum class TokenType {
     Identifier,
 

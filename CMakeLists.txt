@@ -7,7 +7,7 @@ add_executable(
         epicalyx
         main.cpp
         src/include/flags.h
-        src/include/log.h)
+        src/include/log.h examples/struct_def.c)
 
 #if (MSVC)
 #    add_compile_options(/EHa)

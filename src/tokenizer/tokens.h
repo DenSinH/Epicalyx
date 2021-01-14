@@ -13,16 +13,21 @@ public:
         this->Type = type;
     }
 
-    static Token Punctuator(TokenType type) {
-        return Token(TokenClass::Punctuator, type);
-    }
-
     static Token Keyword(TokenType type) {
         return Token(TokenClass::Keyword, type);
     }
 
     TokenClass Class;
     TokenType Type;
+};
+
+class Punctuator : public Token {
+public:
+    explicit Punctuator(TokenType type, unsigned flags) : Token(TokenClass::Punctuator, type) {
+        this->Flags = flags;
+    }
+
+    unsigned Flags;
 };
 
 class StringConstant : public Token {

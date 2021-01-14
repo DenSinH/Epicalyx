@@ -7,6 +7,16 @@
 #include <vector>
 #include <variant>
 
+#define NUMERICAL_CONSTANTS \
+NumericalConstant<int> \
+, NumericalConstant<unsigned int>     \
+, NumericalConstant<long> \
+, NumericalConstant<unsigned long> \
+, NumericalConstant<long long> \
+, NumericalConstant<unsigned long long> \
+, NumericalConstant<float> \
+, NumericalConstant<double> \
+
 
 class Tokenizer {
 
@@ -34,13 +44,12 @@ public:
         Token,
         Identifier,
         StringConstant,
-        NumericalConstant<double>,
-        NumericalConstant<unsigned long long>
+        NUMERICAL_CONSTANTS
     >> Tokens;
 
 private:
     void TokenizeLine(std::ifstream& file, const std::string& line);
-    static std::variant<NumericalConstant<double>, NumericalConstant<unsigned long long>> ReadNumericConstant(std::string::const_iterator& current, std::string::const_iterator end, std::string& dest);
+    static std::variant<NUMERICAL_CONSTANTS> ReadNumericConstant(std::string::const_iterator& current, std::string::const_iterator end, std::string& dest);
     static void ReadStringConstant(std::string::const_iterator& current, std::string::const_iterator end, std::string& dest);
     static NumericalConstant<unsigned long long> ReadCharSequenceConstant(std::string::const_iterator& current, std::string::const_iterator end);
     static unsigned char ReadCChar(std::string::const_iterator& current, std::string::const_iterator end);
