@@ -34,7 +34,6 @@ public:
         Token,
         Identifier,
         StringConstant,
-        CharStringConstant,
         NumericalConstant<double>,
         NumericalConstant<unsigned long long>
     >> Tokens;
@@ -42,7 +41,9 @@ public:
 private:
     void TokenizeLine(std::ifstream& file, const std::string& line);
     static std::variant<NumericalConstant<double>, NumericalConstant<unsigned long long>> ReadNumericConstant(std::string::const_iterator& current, std::string::const_iterator end, std::string& dest);
-    static void ReadCharStringConstant(std::string::const_iterator& current, std::string::const_iterator end, std::string& dest, const char terminator);
+    static void ReadStringConstant(std::string::const_iterator& current, std::string::const_iterator end, std::string& dest);
+    static NumericalConstant<unsigned long long> ReadCharSequenceConstant(std::string::const_iterator& current, std::string::const_iterator end);
+    static unsigned char ReadCChar(std::string::const_iterator& current, std::string::const_iterator end);
 };
 
 #endif //EPICALYX_TOKENIZER_H

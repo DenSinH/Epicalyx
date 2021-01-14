@@ -34,15 +34,6 @@ public:
     std::string Value;
 };
 
-class CharStringConstant : public Token {
-public:
-    CharStringConstant(const std::string& value) : Token(TokenClass::CharStringConstant, TokenType::ConstCharString) {
-        this->Value = value;
-    }
-
-    std::string Value;
-};
-
 template<typename T>
 class NumericalConstant : public Token {
 public:

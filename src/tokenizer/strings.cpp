@@ -8,7 +8,7 @@ static constexpr int ASCIIHexToInt[] =
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, -1, -1, -1, -1, -1,
+     0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
     -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -16,126 +16,169 @@ static constexpr int ASCIIHexToInt[] =
 };
 
 
-void Tokenizer::ReadCharStringConstant(std::string::const_iterator& current, std::string::const_iterator end, std::string& dest, const char terminator) {
-    // terminator is either ' or ""
-    if (terminator == '\'' && std::tolower(*current) == 'l' || std::tolower(*current) == 'u') {
-        // char encoding
+void Tokenizer::ReadStringConstant(std::string::const_iterator& current, std::string::const_iterator end, std::string& dest) {
+    // string encoding
+    if (*current == 'L' || *current == 'U') {
         current++;
     }
-    else if (terminator == '"') {
-        // string encoding
-        if (*current == 'L' || *current == 'U') {
+    else if (*current == 'u') {
+        current++;
+        if (current != end && *current == '8') {
             current++;
-        }
-        else if (*current == 'u') {
-            current++;
-            if (current != end && *current == '8') {
-                current++;
-            }
         }
     }
 
-    if (*current != terminator) {
-        log_fatal("Invalid char constant read started: %c", *current);
+    if (*current != '"') {
+        log_fatal("Invalid string constant read started: %c", *current);
     }
     current++;
-    while (current != end && *current != terminator) {
-        if (*current == '\\') {
-            // escape sequence
-            current++;
-            if (current == end) {
-                log_fatal("End of line while scanning escape sequence");
-            }
-
-            switch (*current) {
-                case '\'':
-                case '"':
-                case '\\':
-                    dest.push_back(*current);
-                    break;
-                case 'a':
-                    dest.push_back('\a');
-                    break;
-                case 'b':
-                    dest.push_back('\b');
-                    break;
-                case 'f':
-                    dest.push_back('\f');
-                    break;
-                case 'n':
-                    dest.push_back('\n');
-                    break;
-                case 'r':
-                    dest.push_back('\r');
-                    break;
-                case 't':
-                    dest.push_back('\t');
-                    break;
-                case 'v':
-                    dest.push_back('\v');
-                    break;
-                case '?':
-                    dest.push_back('\?');
-                    break;
-                case 'x':
-                {
-                    current++;
-                    if (current == end) {
-                        log_fatal("End of line while scanning escape sequence");
-                    }
-
-                    if (!std::isxdigit(*current)) {
-                        log_fatal("Invalid hex char escape sequence");
-                    }
-                    unsigned char hex = ASCIIHexToInt[*current];
-                    if (current != end && std::isxdigit(*current)) {
-                        current++;
-                        // double hex digit char escape
-                        hex <<= 4;
-                        hex |= ASCIIHexToInt[*current];
-                    }
-                    dest.push_back(hex);
-                    break;
-                }
-                case '0': case '1': case '2': case '3':
-                case '4': case '5': case '6': case '7':
-                {
-                    unsigned char oct = (*current) - '0';
-                    current++;
-                    if (current != end && std::isdigit(*current) && *current < '8') {
-                        // double oct digit escape
-                        oct <<= 3;
-                        oct |= (*current) - '0';
-                        current++;
-                        if (current != end && std::isdigit(*current) && *current < '8') {
-                            // triple oct digit escape
-                            oct <<= 3;
-                            oct |= (*current) - '0';
-                            current++;
-                        }
-                    }
-                    // we always go one too far
-                    current--;
-                    dest.push_back(oct);
-                    break;
-                }
-                default:
-                    log_fatal("Invalid escape sequence: '%c'", *current);
-            }
-            current++;
-        }
-        else {
-            dest.push_back(*current);
-            current++;
-        }
+    while (current != end && *current != '"') {
+        dest.push_back(ReadCChar(current, end));
     }
 
     if (current == end) {
         log_fatal("End of line while scanning string literal");
     }
-    else if (*current != terminator) {
-        log_fatal("Error while scanning string literal: ended on '%c' instead of %c", *current, terminator);
+    else if (*current != '"') {
+        log_fatal("Error while scanning string literal: ended on '%c' instead of \"", *current);
     }
     // skip last char
     current++;
+}
+
+NumericalConstant<unsigned long long> Tokenizer::ReadCharSequenceConstant(std::string::const_iterator& current, std::string::const_iterator end) {
+    bool is_long = false;
+    bool is_unsigned = false;
+    if (std::tolower(*current) == 'l') {
+        // char encoding
+        is_long = true;
+        current++;
+    } else if (std::tolower(*current) == 'u') {
+        is_unsigned = true;
+        current++;
+    }
+
+    if (*current != '\'') {
+        log_fatal("Invalid char sequence constant read started: %c", *current);
+    }
+    current++;
+    unsigned long long value = 0;
+    while (current != end && *current != '\'') {
+        value <<= 8;
+        value |= ReadCChar(current, end);
+    }
+
+    if (current == end) {
+        log_fatal("End of line while scanning string literal");
+    }
+    else if (*current != '\'') {
+        log_fatal("Error while scanning char sequence literal: ended on '%c' instead of '", *current);
+    }
+    // skip last char
+    current++;
+
+    if (is_unsigned) {
+        return NumericalConstant<unsigned long long>(TokenType::ConstUnsignedInt, value);
+    }
+    else if (is_long) {
+        return NumericalConstant<unsigned long long>(TokenType::ConstLongLong, value);
+    }
+    else {
+        return NumericalConstant<unsigned long long>(TokenType::ConstInt, value);
+    }
+}
+
+unsigned char Tokenizer::ReadCChar(std::string::const_iterator& current, std::string::const_iterator end) {
+    unsigned char value;
+    if (*current == '\\') {
+        // escape sequence
+        current++;
+        if (current == end) {
+            log_fatal("End of line while scanning escape sequence");
+        }
+
+        switch (*current) {
+            case '\'':
+            case '"':
+            case '\\':
+                value = *current;
+                break;
+            case 'a':
+                value = '\a';
+                break;
+            case 'b':
+                value = '\b';
+                break;
+            case 'f':
+                value = '\f';
+                break;
+            case 'n':
+                value = '\n';
+                break;
+            case 'r':
+                value = '\r';
+                break;
+            case 't':
+                value = '\t';
+                break;
+            case 'v':
+                value = '\v';
+                break;
+            case '?':
+                value = '\?';
+                break;
+            case 'x':
+            {
+                current++;
+                if (current == end) {
+                    log_fatal("End of line while scanning escape sequence");
+                }
+
+                if (!std::isxdigit(*current)) {
+                    log_fatal("Invalid hex char escape sequence");
+                }
+                value = ASCIIHexToInt[*current];
+                current++;
+                if (current != end && std::isxdigit(*current)) {
+                    // double hex digit char escape
+                    value <<= 4;
+                    value |= ASCIIHexToInt[*current];
+                }
+                else {
+                    // overscan
+                    current--;
+                }
+                break;
+            }
+            case '0': case '1': case '2': case '3':
+            case '4': case '5': case '6': case '7':
+            {
+                value = (*current) - '0';
+                current++;
+                if (current != end && std::isdigit(*current) && *current < '8') {
+                    // double oct digit escape
+                    value <<= 3;
+                    value |= (*current) - '0';
+                    current++;
+                    if (current != end && std::isdigit(*current) && *current < '8') {
+                        // triple oct digit escape
+                        value <<= 3;
+                        value |= (*current) - '0';
+                        current++;
+                    }
+                }
+                // we always go one too far
+                current--;
+                break;
+            }
+            default:
+                log_fatal("Invalid escape sequence: '%c'", *current);
+        }
+        current++;
+    }
+    else {
+        value = *current;
+        current++;
+    }
+    return value;
 }

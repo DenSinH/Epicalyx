@@ -6,7 +6,6 @@ enum class TokenClass {
     Keyword,
     Punctuator,
     StringConstant,
-    CharStringConstant,
     NumericalConstant,
 };
 
@@ -22,7 +21,6 @@ enum class TokenType {
     ConstUnsignedLong,
     ConstLongLong,
     ConstUnsignedLongLong,
-    ConstCharString,
     ConstString,
 
     // Keywords

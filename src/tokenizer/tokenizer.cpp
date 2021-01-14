@@ -38,16 +38,17 @@ void Tokenizer::TokenizeLine(std::ifstream& file, const std::string& line) {
                 if (next != line.end()) {
                     if (*next == '\"' || (*next == '8' && next + 1 != line.end() && *(next + 1) == '\"')) {
                         // string literal with encoding
-                        ReadCharStringConstant(current, line.end(), current_token, '\"');
+                        ReadStringConstant(current, line.end(), current_token);
                         Tokens.emplace_back(StringConstant(current_token));
                         log_debug("Prefixed string literal: %s", current_token.c_str());
                         continue;
                     }
                     else if (*next == '\'') {
                         // char literal with encoding
-                        ReadCharStringConstant(current, line.end(), current_token, '\"');
-                        Tokens.emplace_back(CharStringConstant(current_token));
-                        log_debug("Prefixed char literal: %s", current_token.c_str());
+                        // char strings are actually constant int's
+                        auto value = ReadCharSequenceConstant(current, line.end());
+                        Tokens.emplace_back(value);
+                        log_debug("Prefixed char literal: %llx", value.Value);
                         continue;
                     }
                 }
@@ -79,15 +80,15 @@ numeric_constant:
         else {
             if (*current == '"') {
                 // string literal
-                ReadCharStringConstant(current, line.end(), current_token, '\"');
+                ReadStringConstant(current, line.end(), current_token);
                 Tokens.emplace_back(StringConstant(current_token));
                 log_debug("String literal: %s", current_token.c_str());
             }
             else if (*current == '\'') {
                 // char literal
-                ReadCharStringConstant(current, line.end(), current_token, '\'');
-                Tokens.emplace_back(CharStringConstant(current_token));
-                log_debug("Char literal: %s", current_token.c_str());
+                auto value = ReadCharSequenceConstant(current, line.end());
+                Tokens.emplace_back(value);
+                log_debug("Char literal: %llx", value.Value);
             }
             else {
                 // punctuator
