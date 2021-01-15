@@ -5,15 +5,17 @@
 #include <memory>
 #include <utility>
 #include "../AST.h"
+#include "binop_expression.h"
 
-class CastExpression : public Node {
+// CondExpr can also just be a CastExpression
+class CastExpression : public CondExpr {
 public:
-    CastExpression() {
+    CastExpression() : CondExpr() {
         this->TypeName = "";
         this->Expr = nullptr;
     }
 
-    CastExpression(std::string& type_name, std::unique_ptr<CastExpression> expr) {
+    CastExpression(std::string& type_name, std::unique_ptr<CastExpression> expr) : CondExpr() {
         this->TypeName = type_name;
         this->Expr = std::move(expr);
     }

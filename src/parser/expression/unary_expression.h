@@ -9,6 +9,7 @@
 #include "cast_expression.h"
 
 
+// a cast expression can just be a unary expression
 class UnaryExpression : public CastExpression {
 public:
     enum class UnExprType {
@@ -27,8 +28,8 @@ public:
 class UnaryOpExpression : public UnaryExpression {
 public:
     enum class UnOpType {
-        Increment,
-        Decrement,
+        PreIncrement,
+        PreDecrement,
         Reference,
         Dereference,
         Positive,
