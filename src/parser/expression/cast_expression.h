@@ -5,23 +5,17 @@
 #include <memory>
 #include <utility>
 #include "../AST.h"
-#include "binop_expression.h"
 
 // CondExpr can also just be a CastExpression
-class CastExpression : public CondExpr {
+class CastExpression : public Expr {
 public:
-    CastExpression() : CondExpr() {
-        this->TypeName = "";
-        this->Expr = nullptr;
-    }
-
-    CastExpression(std::string& type_name, std::unique_ptr<CastExpression> expr) : CondExpr() {
+    CastExpression(std::string& type_name, std::unique_ptr<Expr> expr) {
         this->TypeName = type_name;
         this->Expr = std::move(expr);
     }
 
     std::string TypeName;
-    std::unique_ptr<CastExpression> Expr;
+    std::unique_ptr<Expr> Expr;
 };
 
 #endif //EPICALYX_CAST_EXPRESSION_H

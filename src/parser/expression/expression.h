@@ -9,24 +9,18 @@ class UnaryExpression;
 class BinOpExpression;
 class AssignmentExpression;
 
-class Expression : public Node {
+class Expression : public Expr {
 public:
-    Expression() {
-        this->Left = nullptr;
-        this->Right = nullptr;
-    }
-
-    Expression(std::unique_ptr<Expression> left, std::unique_ptr<AssignmentExpression> right) {
+    Expression(std::unique_ptr<Expr> left, std::unique_ptr<Expr> right) {
         this->Left = std::move(left);
         this->Right = std::move(right);
     }
 
-    std::unique_ptr<Expression> Left;
-    std::unique_ptr<AssignmentExpression> Right;
+    std::unique_ptr<Expr> Left;
+    std::unique_ptr<Expr> Right;
 };
 
-// Expression can just be an AssignmentExpression
-class AssignmentExpression : public Expression {
+class AssignmentExpression : public Expr {
 public:
     enum class AssignOp {
         Eq,
@@ -42,24 +36,18 @@ public:
         OrEq,
     };
 
-    AssignmentExpression() {
-        this->Left = nullptr;
-        this->Op = AssignOp::Eq;
-        this->Right = nullptr;
-    }
-
     AssignmentExpression(
-            std::unique_ptr<UnaryExpression> left,
+            std::unique_ptr<Expr> left,
             AssignOp op,
-            std::unique_ptr<BinOpExpression> right) {
+            std::unique_ptr<Expr> right) {
         this->Left = std::move(left);
         this->Op = op;
         this->Right = std::move(right);
     }
 
-    std::unique_ptr<UnaryExpression> Left;
+    std::unique_ptr<Expr> Left;
     AssignOp Op;
-    std::unique_ptr<BinOpExpression> Right;  // can also be a CondExpr
+    std::unique_ptr<Expr> Right;  // can also be a CondExpr
 };
 
 #endif //EPICALYX_EXPRESSION_H

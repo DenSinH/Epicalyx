@@ -6,11 +6,10 @@
 #include <utility>
 #include <vector>
 #include "../AST.h"
-#include "cast_expression.h"
 
 
 // a cast expression can just be a unary expression
-class UnaryExpression : public CastExpression {
+class UnaryExpression : public Expr {
 public:
     enum class UnExprType {
         PostFix,
@@ -18,7 +17,7 @@ public:
         SizeOf,
     };
 
-    explicit UnaryExpression(UnExprType type) : CastExpression() {
+    explicit UnaryExpression(UnExprType type) {
         this->Type = type;
     }
 
@@ -38,22 +37,22 @@ public:
         LogicalNot,
     };
 
-    explicit UnaryOpExpression(UnOpType type, std::unique_ptr<CastExpression> expr) : UnaryExpression(UnExprType::UnOp) {
+    explicit UnaryOpExpression(UnOpType type, std::unique_ptr<Expr> right) : UnaryExpression(UnExprType::UnOp) {
         this->Type = type;
-        this->Expr = std::move(expr);
+        this->Right = std::move(right);
     }
 
     UnOpType Type;
-    std::unique_ptr<CastExpression> Expr;
+    std::unique_ptr<Expr> Right;
 };
 
 class SizeOfExpression : public UnaryExpression {
 
-    explicit SizeOfExpression(std::unique_ptr<UnaryExpression> expr) : UnaryExpression(UnExprType::SizeOf) {
-        this->Expr = std::move(expr);
+    explicit SizeOfExpression(std::unique_ptr<Expr> right) : UnaryExpression(UnExprType::SizeOf) {
+        this->Right = std::move(right);
     }
 
-    std::unique_ptr<UnaryExpression> Expr;
+    std::unique_ptr<Expr> Right;
 };
 
 #endif //EPICALYX_UNARY_EXPRESSION_H

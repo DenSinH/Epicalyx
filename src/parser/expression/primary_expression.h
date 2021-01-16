@@ -2,9 +2,8 @@
 #define EPICALYX_PRIMARY_EXPRESSION_H
 
 #include "../AST.h"
-#include "postfix_expression.h"
 
-class PrimaryExpression : public PostfixExpression {
+class PrimaryExpression : public Expr {
 public:
     enum class PrimExprType {
         Identifier,
@@ -14,7 +13,7 @@ public:
         // todo: generic selection
     };
 
-    explicit PrimaryExpression(PrimaryExpression::PrimExprType type) : PostfixExpression(PostExprType::PrimaryExpression) {
+    explicit PrimaryExpression(PrimaryExpression::PrimExprType type) {
         this->Type = type;
     }
 

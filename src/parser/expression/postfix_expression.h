@@ -5,14 +5,8 @@
 #include <utility>
 #include <vector>
 #include "../AST.h"
-#include "unary_expression.h"
 
-class Expression;
-class ArgumentExpressionList;
-class AssignmentExpression;
-
-
-class PostfixExpression : public UnaryExpression {
+class PostfixExpression : public Expr {
 public:
     enum class PostExprType {
         PrimaryExpression,
@@ -23,7 +17,7 @@ public:
         TypeInitializer,
     };
 
-    explicit PostfixExpression(PostExprType type) : UnaryExpression(UnExprType::PostFix) {
+    explicit PostfixExpression(PostExprType type) {
         this->Type = type;
     }
 
@@ -33,29 +27,29 @@ public:
 class ArrayAccessExpression : public PostfixExpression {
 public:
     explicit ArrayAccessExpression(
-            std::unique_ptr<PostfixExpression> left,
-            std::unique_ptr<Expression> right
+            std::unique_ptr<Expr> left,
+            std::unique_ptr<Expr> right
             ) : PostfixExpression(PostExprType::ArrayAccess) {
         this->Left = std::move(left);
         this->Right = std::move(right);
     }
 
-    std::unique_ptr<PostfixExpression> Left;
-    std::unique_ptr<Expression> Right;
+    std::unique_ptr<Expr> Left;
+    std::unique_ptr<Expr> Right;
 };
 
 class FunctionCallExpression : public PostfixExpression {
 public:
     explicit FunctionCallExpression(
-            std::unique_ptr<PostfixExpression> func,
-            std::unique_ptr<ArgumentExpressionList> args
+            std::unique_ptr<Expr> func,
+            std::unique_ptr<Expr> args
             ) : PostfixExpression(PostExprType::FunctionCall) {
         this->Func = std::move(func);
         this->Args = std::move(args);
     }
 
-    std::unique_ptr<PostfixExpression> Func;
-    std::unique_ptr<ArgumentExpressionList> Args;
+    std::unique_ptr<Expr> Func;
+    std::unique_ptr<Expr> Args;
 };
 
 class MemberAccessExpression : public PostfixExpression {
@@ -66,7 +60,7 @@ public:
     };
 
     explicit MemberAccessExpression(
-            std::unique_ptr<PostfixExpression> left,
+            std::unique_ptr<Expr> left,
             std::string& member,
             MemberAccessType access_type
             ) : PostfixExpression(PostExprType::MemberAccess) {
@@ -75,28 +69,28 @@ public:
         this-> AccessType = access_type;
     }
 
-    std::unique_ptr<PostfixExpression> Left;
+    std::unique_ptr<Expr> Left;
     std::string Member;
     MemberAccessType AccessType;
 };
 
 
-class CrementExpression : public PostfixExpression {
+class PostCrementExpression : public PostfixExpression {
 public:
     enum class CrementType {
         Increment,
         Decrement,
     };
 
-    explicit CrementExpression(
-            std::unique_ptr<PostfixExpression> left,
+    explicit PostCrementExpression(
+            std::unique_ptr<Expr> left,
             CrementType crement_type
             ) : PostfixExpression(PostExprType::Crement) {
         this->Left = std::move(left);
         this-> CrementType = crement_type;
     }
 
-    std::unique_ptr<PostfixExpression> Left;
+    std::unique_ptr<Expr> Left;
     CrementType CrementType;
 };
 
@@ -105,12 +99,12 @@ class TypeInitializerExpression : public PostfixExpression {
 public:
 
     explicit TypeInitializerExpression(
-            std::vector<AssignmentExpression> args
+            std::vector<Expr> args
     ) : PostfixExpression(PostExprType::TypeInitializer) {
         this->Args = std::move(args);
     }
 
-    std::vector<AssignmentExpression> Args;
+    std::vector<Expr> Args;
 };
 
 
