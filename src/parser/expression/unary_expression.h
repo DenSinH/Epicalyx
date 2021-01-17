@@ -44,6 +44,36 @@ public:
 
     UnOpType Type;
     std::unique_ptr<Expr> Right;
+
+    std::vector<std::string> Repr() override {
+        std::vector<std::string> repr = { "UnaryExpression: " + Operation() };
+        for (auto& s : Right->Repr()) {
+            repr.emplace_back("    " + s);
+        }
+        return repr;
+    }
+
+private:
+    std::string Operation() {
+        switch(Type) {
+            case UnOpType::PreIncrement:
+                return "++";
+            case UnOpType::PreDecrement:
+                return "--";
+            case UnOpType::Reference:
+                return "&";
+            case UnOpType::Dereference:
+                return "*";
+            case UnOpType::Positive:
+                return "+";
+            case UnOpType::Negative:
+                return "-";
+            case UnOpType::BinaryNot:
+                return "~";
+            case UnOpType::LogicalNot:
+                return "!";
+        }
+    }
 };
 
 class SizeOfExpression : public UnaryExpression {
@@ -53,6 +83,14 @@ class SizeOfExpression : public UnaryExpression {
     }
 
     std::unique_ptr<Expr> Right;
+
+    std::vector<std::string> Repr() override {
+        std::vector<std::string> repr = { "SizeOfExpression: " };
+        for (auto& s : Right->Repr()) {
+            repr.emplace_back("    " + s);
+        }
+        return repr;
+    }
 };
 
 #endif //EPICALYX_UNARY_EXPRESSION_H

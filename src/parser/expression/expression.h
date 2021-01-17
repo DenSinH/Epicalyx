@@ -18,6 +18,18 @@ public:
 
     std::unique_ptr<Expr> Left;
     std::unique_ptr<Expr> Right;
+
+    std::vector<std::string> Repr() override {
+        std::vector<std::string> repr = { "Expr:" };
+        for (auto& s : Left->Repr()) {
+            repr.emplace_back(s);
+        }
+        repr.emplace_back("Expr:");
+        for (auto& s : Right->Repr()) {
+            repr.emplace_back(s);
+        }
+        return repr;
+    }
 };
 
 class AssignmentExpression : public Expr {
@@ -48,6 +60,47 @@ public:
     std::unique_ptr<Expr> Left;
     AssignOp Op;
     std::unique_ptr<Expr> Right;  // can also be a CondExpr
+
+    std::vector<std::string> Repr() override {
+        std::vector<std::string> repr = { "AssignExpr:" };
+        for (auto& s : Left->Repr()) {
+            repr.emplace_back("    " + s);
+        }
+        repr.emplace_back(Operation());
+        for (auto& s : Right->Repr()) {
+            repr.emplace_back("    " + s);
+        }
+        return repr;
+    }
+
+private:
+
+    std::string Operation() {
+        switch(Op) {
+            case AssignOp::Eq:
+                return "=";
+            case AssignOp::MulEq:
+                return "*=";
+            case AssignOp::DivEq:
+                return "/=";
+            case AssignOp::ModEq:
+                return "%=";
+            case AssignOp::AddEq:
+                return "+=";
+            case AssignOp::SubEq:
+                return "-=";
+            case AssignOp::LShiftEq:
+                return "<<=";
+            case AssignOp::RShiftEq:
+                return ">>=";
+            case AssignOp::AndEq:
+                return "&=";
+            case AssignOp::XorEq:
+                return "^=";
+            case AssignOp::OrEq:
+                return "|=";
+        }
+    }
 };
 
 #endif //EPICALYX_EXPRESSION_H

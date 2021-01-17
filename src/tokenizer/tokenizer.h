@@ -18,6 +18,13 @@ NumericalConstant<int> \
 , NumericalConstant<double> \
 
 
+typedef std::vector<std::variant<
+        Token,
+        Identifier,
+        StringConstant,
+        NUMERICAL_CONSTANTS
+>> TokenVector;
+
 class Tokenizer {
 
 public:
@@ -40,12 +47,7 @@ public:
          std::get<Parent>(var);
        }
      * */
-    std::vector<std::variant<
-        Token,
-        Identifier,
-        StringConstant,
-        NUMERICAL_CONSTANTS
-    >> Tokens;
+    TokenVector Tokens;
 
 private:
     void TokenizeLine(std::ifstream& file, const std::string& line);

@@ -3,17 +3,19 @@
 
 #include "../tokenizer/tokenizer.h"
 
+
 class Parser {
 public:
+    explicit Parser(TokenVector& tokens) {
+        this->Tokens = tokens;
+    }
 
+    explicit Parser(Tokenizer& tokenizer) {
+        this->Tokens = tokenizer.Tokens;
+    }
 
 private:
-    std::vector<std::variant<
-            Token,
-            Identifier,
-            StringConstant,
-            NUMERICAL_CONSTANTS
-    >> Tokens;
+    TokenVector Tokens;
 };
 
 #endif //EPICALYX_PARSER_H

@@ -9,13 +9,21 @@
 // CondExpr can also just be a CastExpression
 class CastExpression : public Expr {
 public:
-    CastExpression(std::string& type_name, std::unique_ptr<Expr> expr) {
+    CastExpression(std::string& type_name, std::unique_ptr<Expr> right) {
         this->TypeName = type_name;
-        this->Expr = std::move(expr);
+        this->Right = std::move(right);
     }
 
     std::string TypeName;
-    std::unique_ptr<Expr> Expr;
+    std::unique_ptr<Expr> Right;
+
+    std::vector<std::string> Repr() override {
+        std::vector<std::string> repr = { "CastExpr: (" + TypeName + ")" };
+        for (auto& s : Right->Repr()) {
+            repr.emplace_back("    " + s);
+        }
+        return repr;
+    }
 };
 
 #endif //EPICALYX_CAST_EXPRESSION_H

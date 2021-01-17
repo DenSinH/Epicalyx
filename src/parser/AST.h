@@ -1,11 +1,18 @@
 #ifndef EPICALYX_AST_H
 #define EPICALYX_AST_H
 
+#include <vector>
 #include <string>
 
 class Node {
+public:
+    virtual std::vector<std::string> Repr() { return {}; }
 
-    virtual std::string Repr() { return ""; }
+    void Print() {
+        for (auto& s : Repr()) {
+            printf("%s\n", s.c_str());
+        }
+    }
 };
 
 class Expr : public Node {

@@ -36,6 +36,18 @@ public:
 
     std::unique_ptr<Expr> Left;
     std::unique_ptr<Expr> Right;
+
+    std::vector<std::string> Repr() override {
+        std::vector<std::string> repr = { "ArrayAccessExpr:" };
+        for (auto& s : Left->Repr()) {
+            repr.emplace_back("    " + s);
+        }
+        repr.emplace_back("Element");
+        for (auto& s : Right->Repr()) {
+            repr.emplace_back("    " + s);
+        }
+        return repr;
+    }
 };
 
 class FunctionCallExpression : public PostfixExpression {
@@ -50,6 +62,18 @@ public:
 
     std::unique_ptr<Expr> Func;
     std::unique_ptr<Expr> Args;
+
+    std::vector<std::string> Repr() override {
+        std::vector<std::string> repr = { "FunctionCallExpr:" };
+        for (auto& s : Func->Repr()) {
+            repr.emplace_back("    " + s);
+        }
+        repr.emplace_back("Args");
+        for (auto& s : Args->Repr()) {
+            repr.emplace_back("    " + s);
+        }
+        return repr;
+    }
 };
 
 class MemberAccessExpression : public PostfixExpression {
@@ -72,6 +96,14 @@ public:
     std::unique_ptr<Expr> Left;
     std::string Member;
     MemberAccessType AccessType;
+
+    std::vector<std::string> Repr() override {
+        std::vector<std::string> repr = { std::string("PostfixExpression:") + (AccessType == MemberAccessType::Direct ? "." : "->") + Member};
+        for (auto& s : Left->Repr()) {
+            repr.emplace_back("    " + s);
+        }
+        return repr;
+    }
 };
 
 
@@ -84,28 +116,44 @@ public:
 
     explicit PostCrementExpression(
             std::unique_ptr<Expr> left,
-            CrementType crement_type
+            CrementType type
             ) : PostfixExpression(PostExprType::Crement) {
         this->Left = std::move(left);
-        this-> CrementType = crement_type;
+        this-> Type = type;
     }
 
     std::unique_ptr<Expr> Left;
-    CrementType CrementType;
-};
+    CrementType Type;
 
-
-class TypeInitializerExpression : public PostfixExpression {
-public:
-
-    explicit TypeInitializerExpression(
-            std::vector<Expr> args
-    ) : PostfixExpression(PostExprType::TypeInitializer) {
-        this->Args = std::move(args);
+    std::vector<std::string> Repr() override {
+        std::vector<std::string> repr = { std::string("PostCrementExpression:") + (Type == CrementType::Increment ? "++" : "--") };
+        for (auto& s : Left->Repr()) {
+            repr.emplace_back("    " + s);
+        }
+        return repr;
     }
-
-    std::vector<Expr> Args;
 };
+
+
+//class TypeInitializerExpression : public PostfixExpression {
+//public:
+//
+//    explicit TypeInitializerExpression(
+//            std::vector<Expr> args
+//    ) : PostfixExpression(PostExprType::TypeInitializer) {
+//        this->Args = std::move(args);
+//    }
+//
+//    std::vector<Expr> Args;
+//
+//    std::vector<std::string> Repr() override {
+//        std::vector<std::string> repr = { "TypeInitializerExpr:" };
+//        for (auto& s : Args->Repr()) {
+//            repr.emplace_back("    " + s);
+//        }
+//        return repr;
+//    }
+//};
 
 
 #endif //EPICALYX_POSTFIX_EXPRESSION_H
