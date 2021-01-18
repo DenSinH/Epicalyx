@@ -2,6 +2,8 @@
 
 #include "log.h"
 
+#include <stdexcept>
+
 static constexpr int ASCIIHexToInt[] =
 {
     // ASCII
@@ -30,7 +32,7 @@ std::shared_ptr<Token> Tokenizer::ReadStringConstant(std::string::const_iterator
     }
 
     if (*current != '"') {
-        log_fatal("Invalid string constant read started: %c", *current);
+        throw std::runtime_error("Invalid string constant read started: " + std::to_string(*current));
     }
     current++;
     while (current != end && *current != '"') {
@@ -38,10 +40,10 @@ std::shared_ptr<Token> Tokenizer::ReadStringConstant(std::string::const_iterator
     }
 
     if (current == end) {
-        log_fatal("End of line while scanning string literal");
+        throw std::runtime_error("End of line while scanning string literal");
     }
     else if (*current != '"') {
-        log_fatal("Error while scanning string literal: ended on '%c' instead of \"", *current);
+        throw std::runtime_error("Error while scanning string literal: ended on '"+ std::to_string(*current) +"' instead of \"");
     }
     // skip last char
     current++;
@@ -61,7 +63,7 @@ std::shared_ptr<Token> Tokenizer::ReadCharSequenceConstant(std::string::const_it
     }
 
     if (*current != '\'') {
-        log_fatal("Invalid char sequence constant read started: %c", *current);
+        throw std::runtime_error("Invalid char sequence constant read started: " + std::to_string(*current));
     }
     current++;
     unsigned long long value = 0;
@@ -71,10 +73,10 @@ std::shared_ptr<Token> Tokenizer::ReadCharSequenceConstant(std::string::const_it
     }
 
     if (current == end) {
-        log_fatal("End of line while scanning string literal");
+        throw std::runtime_error("End of line while scanning string literal");
     }
     else if (*current != '\'') {
-        log_fatal("Error while scanning char sequence literal: ended on '%c' instead of '", *current);
+        throw std::runtime_error("Error while scanning char sequence literal: ended on '" + std::to_string(*current) + "' instead of '");
     }
     // skip last char
     current++;
@@ -96,7 +98,7 @@ unsigned char Tokenizer::ReadCChar(std::string::const_iterator& current, std::st
         // escape sequence
         current++;
         if (current == end) {
-            log_fatal("End of line while scanning escape sequence");
+            throw std::runtime_error("End of line while scanning escape sequence");
         }
 
         switch (*current) {
@@ -174,7 +176,7 @@ unsigned char Tokenizer::ReadCChar(std::string::const_iterator& current, std::st
                 break;
             }
             default:
-                log_fatal("Invalid escape sequence: '%c'", *current);
+                throw std::runtime_error("Invalid escape sequence: '" + std::to_string(*current) + "'");
         }
         current++;
     }

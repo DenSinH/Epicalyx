@@ -13,7 +13,7 @@
 void Tokenizer::Tokenize(const std::string& file_name) {
     std::ifstream file(file_name);
     if (!file.good()) {
-        log_fatal("Could not open file!");
+        throw std::runtime_error("Could not open file!");
     }
 
     std::string line;
@@ -111,7 +111,7 @@ numeric_constant:
                 }
 
                 if (!current_token.length()) {
-                    log_fatal("Invalid token: %c", *current);
+                    throw std::runtime_error("Invalid token: " + std::to_string(*current));
                 }
                 log_tokenizer("Punctuator: %s", current_token.c_str());
                 Tokens.emplace_back(std::make_shared<Token>(Punctuators.at(current_token)));

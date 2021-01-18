@@ -6,6 +6,8 @@
 #include "expression/primary_expression.h"
 #include "expression/unary_expression.h"
 
+#include <stdexcept>
+
 
 std::unique_ptr<Node> Parser::Parse() {
     return nullptr;
@@ -38,7 +40,7 @@ std::unique_ptr<Expr> Parser::ExpectPrimaryExpression() {
                 case TokenType::ConstDouble:
                     return std::make_unique<PrimaryExpressionConstant<double>>(std::static_pointer_cast<NumericalConstant<double>>(current)->Value);
                 default:
-                    log_fatal("Invalid token: numerical constant of unknown type");
+                    throw std::runtime_error("Invalid token: numerical constant of unknown type");
             }
         }
         case TokenClass::StringConstant: {
@@ -51,7 +53,7 @@ std::unique_ptr<Expr> Parser::ExpectPrimaryExpression() {
             // todo: expression
         }
         default:
-            log_fatal("Invalid syntax: expected primary expression, got keyword");
+            throw std::runtime_error("Invalid syntax: expected primary expression, got keyword");
     }
 }
 
@@ -69,7 +71,7 @@ std::unique_ptr<Expr> Parser::ExpectPostfixExpression() {
                 // array access
                 // todo: normal expression in parentheses, instead of postfix expression
                 EatType(TokenType::LBracket);
-                auto right = ExpectPostfixExpression();
+                auto right = ExpectUnaryExpression();
                 EatType(TokenType::RBracket);
                 node = std::make_unique<ArrayAccessExpression>(node, right);
                 break;
@@ -104,4 +106,65 @@ std::unique_ptr<Expr> Parser::ExpectPostfixExpression() {
         }
     }
     return node;
+}
+
+std::unique_ptr<Expr> Parser::ExpectUnaryExpression() {
+    auto current = Current();
+    switch(current->Type) {
+        case TokenType::Incr: {
+            EatType(TokenType::Incr);
+            auto right = ExpectUnaryExpression();
+            return std::make_unique<UnaryOpExpression>(UnaryOpExpression::UnOpType::PreIncrement, right);
+        }
+        case TokenType::Decr: {
+            EatType(TokenType::Decr);
+            auto right = ExpectUnaryExpression();
+            return std::make_unique<UnaryOpExpression>(UnaryOpExpression::UnOpType::PreDecrement, right);
+        }
+        case TokenType::Ampersand: {
+            EatType(TokenType::Ampersand);
+            auto right = ExpectUnaryExpression();
+            return std::make_unique<UnaryOpExpression>(UnaryOpExpression::UnOpType::Reference, right);
+        }
+        case TokenType::Asterisk: {
+            EatType(TokenType::Asterisk);
+            auto right = ExpectUnaryExpression();
+            return std::make_unique<UnaryOpExpression>(UnaryOpExpression::UnOpType::Dereference, right);
+        }
+        case TokenType::Plus: {
+            EatType(TokenType::Plus);
+            auto right = ExpectUnaryExpression();
+            return std::make_unique<UnaryOpExpression>(UnaryOpExpression::UnOpType::Positive, right);
+        }
+        case TokenType::Minus: {
+            EatType(TokenType::Minus);
+            auto right = ExpectUnaryExpression();
+            return std::make_unique<UnaryOpExpression>(UnaryOpExpression::UnOpType::Negative, right);
+        }
+        case TokenType::Tilde: {
+            EatType(TokenType::Tilde);
+            auto right = ExpectUnaryExpression();
+            return std::make_unique<UnaryOpExpression>(UnaryOpExpression::UnOpType::BinaryNot, right);
+        }
+        case TokenType::Exclamation: {
+            EatType(TokenType::Exclamation);
+            auto right = ExpectUnaryExpression();
+            return std::make_unique<UnaryOpExpression>(UnaryOpExpression::UnOpType::LogicalNot, right);
+        }
+        case TokenType::Sizeof: {
+            EatType(TokenType::Sizeof);
+            // todo
+            // check if next is paren and one after is type specifier/qualifier: sizeof type expression
+            // otherwise, sizeof expression expression);
+            log_fatal("Unimplemented: sizeof unary expression");
+        }
+        case TokenType::Alignof: {
+            // todo
+            log_fatal("Unimplemented: alignof unary expression");
+        }
+        default: {
+            // normal postfix expression
+            return ExpectPostfixExpression();
+        }
+    }
 }

@@ -8,11 +8,11 @@ int main() {
 
     auto t = new Tokenizer();
 
-    t->Tokenize("examples/parsing/postfix/combined.expr");
+    t->Tokenize("examples/parsing/unary/combined.expr");
 
     auto p = new Parser(t);
 
-    auto n = std::move(p->ExpectPostfixExpression());
+    auto n = std::move(p->ExpectUnaryExpression());
 
     n->Print();
 

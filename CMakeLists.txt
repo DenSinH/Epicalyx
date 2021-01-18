@@ -11,9 +11,9 @@ add_executable(
 )
 
 if (MSVC)
-    # add_compile_options(/EHa)
+    add_compile_options(/EHa)
 else()
-    # add_compile_options(-fexception)
+    add_compile_options(-fexceptions)
 endif()
 
 # add_compile_options(-fstack-protector)

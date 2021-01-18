@@ -45,10 +45,17 @@ public:
         return Tokens[Index + 1];
     }
 
+    std::shared_ptr<Token> LookAhead(int amount) {
+        if (Index + amount < Tokens.size()) {
+            return Tokens[Index + amount];
+        }
+        return nullptr;
+    }
+
     std::shared_ptr<Token> ExpectType(enum TokenType type) {
         auto current = Current();
         if (current->Type != type) {
-            log_fatal("Unexpected token");
+            throw std::exception("Unexpected token");
         }
         return current;
     }
@@ -66,6 +73,7 @@ private:
 
     std::unique_ptr<Expr> ExpectPrimaryExpression();
     std::unique_ptr<Expr> ExpectPostfixExpression();
+    std::unique_ptr<Expr> ExpectUnaryExpression();
 };
 
 #endif //EPICALYX_PARSER_H
