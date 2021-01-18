@@ -3,7 +3,6 @@
 #include "punctuators.h"
 #include "keywords.h"
 
-#include "variant_util.h"
 #include "log.h"
 
 #include <fstream>
@@ -38,9 +37,9 @@ void Tokenizer::TokenizeLine(std::ifstream& file, const std::string& line) {
                 if (next != line.end()) {
                     if (*next == '\"' || (*next == '8' && next + 1 != line.end() && *(next + 1) == '\"')) {
                         // string literal with encoding
-                        ReadStringConstant(current, line.end(), current_token);
-                        Tokens.emplace_back(StringConstant(current_token));
-                        log_debug("Prefixed string literal: %s", current_token.c_str());
+                        auto value = ReadStringConstant(current, line.end());
+                        Tokens.emplace_back(value);
+                        log_tokenizer("Prefixed string literal: %s", std::static_pointer_cast<StringConstant>(value)->Value.c_str());
                         continue;
                     }
                     else if (*next == '\'') {
@@ -48,7 +47,7 @@ void Tokenizer::TokenizeLine(std::ifstream& file, const std::string& line) {
                         // char strings are actually constant int's
                         auto value = ReadCharSequenceConstant(current, line.end());
                         Tokens.emplace_back(value);
-                        log_debug("Prefixed char literal: %llx", value.Value);
+                        log_tokenizer("Prefixed char literal");
                         continue;
                     }
                 }
@@ -59,19 +58,19 @@ void Tokenizer::TokenizeLine(std::ifstream& file, const std::string& line) {
             }
 
             if (Keywords.find(current_token) != Keywords.end()) {
-                Tokens.emplace_back(Keywords.at(current_token));
-                log_debug("Keyword: %s", current_token.c_str());
+                Tokens.emplace_back(std::make_shared<Token>(Keywords.at(current_token)));
+                log_tokenizer("Keyword: %s", current_token.c_str());
             }
             else {
-                Tokens.emplace_back(Identifier(current_token));
-                log_debug("Identifier: %s", current_token.c_str());
+                Tokens.emplace_back(std::make_shared<Identifier>(current_token));
+                log_tokenizer("Identifier: %s", current_token.c_str());
             }
         }
         else if (std::isdigit(*current)) {
 numeric_constant:
-            auto constant = ReadNumericConstant(current, line.end(), current_token);
-            Tokens.emplace_back(variant_cast(constant));
-            log_debug("Numerical constant: %s", current_token.c_str());
+            auto constant = ReadNumericConstant(current, line.end());
+            Tokens.emplace_back(constant);
+            log_tokenizer("Numerical constant");
         }
         else if (std::isspace(*current)) {
             // skip whitespace
@@ -80,15 +79,15 @@ numeric_constant:
         else {
             if (*current == '"') {
                 // string literal
-                ReadStringConstant(current, line.end(), current_token);
-                Tokens.emplace_back(StringConstant(current_token));
-                log_debug("String literal: %s", current_token.c_str());
+                auto value = ReadStringConstant(current, line.end());
+                Tokens.emplace_back(value);
+                log_tokenizer("String literal: %s", std::static_pointer_cast<StringConstant>(value)->Value.c_str());
             }
             else if (*current == '\'') {
                 // char literal
                 auto value = ReadCharSequenceConstant(current, line.end());
                 Tokens.emplace_back(value);
-                log_debug("Char literal: %llx", value.Value);
+                log_tokenizer("Char literal");
             }
             else {
                 // punctuator
@@ -114,8 +113,8 @@ numeric_constant:
                 if (!current_token.length()) {
                     log_fatal("Invalid token: %c", *current);
                 }
-                log_debug("Punctuator: %s", current_token.c_str());
-                Tokens.emplace_back(Punctuators.at(current_token));
+                log_tokenizer("Punctuator: %s", current_token.c_str());
+                Tokens.emplace_back(std::make_shared<Token>(Punctuators.at(current_token)));
             }
         }
     }

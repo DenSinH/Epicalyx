@@ -9,11 +9,11 @@ enum class NumberType {
     HexFloat,
 };
 
-std::variant<NUMERICAL_CONSTANTS> Tokenizer::ReadNumericConstant(
+std::shared_ptr<Token> Tokenizer::ReadNumericConstant(
         std::string::const_iterator& current,
-        std::string::const_iterator end,
-        std::string& dest
+        std::string::const_iterator end
 ) {
+    std::string value;
     NumberType type = NumberType::Decimal;
     bool dot      = false;
     bool exponent = false;
@@ -22,13 +22,13 @@ std::variant<NUMERICAL_CONSTANTS> Tokenizer::ReadNumericConstant(
 
     auto next = current + 1;
     // we already know that we are starting with a digit
-    dest.push_back(*current);
+    value.push_back(*current);
 
     if (*current == '0') {
         if ((current != end) && (*next == 'x' || *next == 'X')) {
             // hex-prefex
             type = NumberType::Hex;
-            dest.push_back('x');
+            value.push_back('x');
             hex = true;
             current++;
         }
@@ -38,7 +38,7 @@ std::variant<NUMERICAL_CONSTANTS> Tokenizer::ReadNumericConstant(
         }
     }
     else if (*current == '.') {
-        dest.push_back(*current);
+        value.push_back(*current);
         current++;
         dot = true;
         type = NumberType::DecimalFloat;
@@ -50,7 +50,7 @@ std::variant<NUMERICAL_CONSTANTS> Tokenizer::ReadNumericConstant(
         // keep reading digits
         while (current != end
                && ((!hex && std::isdigit(*current)) || (hex && std::isxdigit(*current)))) {
-            dest.push_back(*current);
+            value.push_back(*current);
             current++;
         }
 
@@ -60,7 +60,7 @@ std::variant<NUMERICAL_CONSTANTS> Tokenizer::ReadNumericConstant(
                 // (first) dot, number is a decimal float, other types of floats may not contain dots
                 if (hex) { break; } // dots not allowed in hex float
 
-                dest.push_back(*current);
+                value.push_back(*current);
                 current++;
 
                 is_float = true;
@@ -76,7 +76,7 @@ std::variant<NUMERICAL_CONSTANTS> Tokenizer::ReadNumericConstant(
                 // exponent, number is a decimal float
                 if (hex) { break; } // exponents not allowed in hex floats
 
-                dest.push_back(*current);
+                value.push_back(*current);
                 current++;
 
                 // don't allow more dots
@@ -88,7 +88,7 @@ std::variant<NUMERICAL_CONSTANTS> Tokenizer::ReadNumericConstant(
 
                 // exponent sign
                 if (current != end && (*current == '+' || *current == '-')) {
-                    dest.push_back(*current);
+                    value.push_back(*current);
                     current++;
                 }
             }
@@ -100,13 +100,13 @@ std::variant<NUMERICAL_CONSTANTS> Tokenizer::ReadNumericConstant(
                 exponent = true;
                 is_float = true;
 
-                dest.push_back(*current);
+                value.push_back(*current);
                 current++;
                 type = NumberType::HexFloat;
 
                 // exponent sign
                 if (current != end && (*current == '+' || *current == '-')) {
-                    dest.push_back(*current);
+                    value.push_back(*current);
                     current++;
                 }
             }
@@ -127,7 +127,7 @@ std::variant<NUMERICAL_CONSTANTS> Tokenizer::ReadNumericConstant(
     if (current != end) {
         // float suffixes
         if (type != NumberType::Octal && std::tolower(*current) == 'f') {
-            dest.push_back(*current);
+            value.push_back(*current);
             current++;
             switch (type) {
                 case NumberType::Decimal:
@@ -141,7 +141,7 @@ std::variant<NUMERICAL_CONSTANTS> Tokenizer::ReadNumericConstant(
             }
             is_float = true;
         } else if (is_float && std::tolower(*current) == 'l') {
-            dest.push_back(*current);
+            value.push_back(*current);
             is_long = true;
             current++;
         }
@@ -154,13 +154,13 @@ std::variant<NUMERICAL_CONSTANTS> Tokenizer::ReadNumericConstant(
                     is_long = 1;
 
                     char _current = *current;
-                    dest.push_back(*current);
+                    value.push_back(*current);
                     current++;
 
                     // long long (has to be same char)
                     if (current != end) {
                         if (*current == _current) {
-                            dest.push_back(*current);
+                            value.push_back(*current);
                             current++;
                             is_long = 2;
                         }
@@ -170,7 +170,7 @@ std::variant<NUMERICAL_CONSTANTS> Tokenizer::ReadNumericConstant(
                 // unsigned
                 if (!is_unsigned && (std::tolower(*current) == 'u')) {
                     is_unsigned = true;
-                    dest.push_back(*current);
+                    value.push_back(*current);
                     current++;
                 }
             }
@@ -179,36 +179,36 @@ std::variant<NUMERICAL_CONSTANTS> Tokenizer::ReadNumericConstant(
 
 
     if (is_float) {
-        double value = std::stod(dest);
-        auto fvalue = (float)value;
-        if (is_long || ((double)fvalue != value)) {
-            return NumericalConstant<double>(TokenType::ConstDouble, value);
+        double val = std::stod(value);
+        auto fval = (float)val;
+        if (is_long || ((double)fval != val)) {
+            return std::make_shared<NumericalConstant<double>>(TokenType::ConstDouble, val);
         }
-        return NumericalConstant<float>(TokenType::ConstFloat, fvalue);
+        return std::make_shared<NumericalConstant<float>>(TokenType::ConstFloat, fval);
     }
     else {
         if (is_unsigned) {
-            unsigned long long value = std::stoull(dest);
-            if (is_long == 2 || value >= ULONG_MAX) {
-                return NumericalConstant<unsigned long long>(TokenType::ConstUnsignedLongLong, value);
+            unsigned long long val = std::stoull(value);
+            if (is_long == 2 || val >= ULONG_MAX) {
+                return std::make_shared<NumericalConstant<unsigned long long>>(TokenType::ConstUnsignedLongLong, val);
             }
-            else if (is_long == 1 || value >= UINT_MAX) {
-                return NumericalConstant<unsigned long>(TokenType::ConstUnsignedLong, value);
+            else if (is_long == 1 || val >= UINT_MAX) {
+                return std::make_shared<NumericalConstant<unsigned long>>(TokenType::ConstUnsignedLong, val);
             }
             else {
-                return NumericalConstant<unsigned int>(TokenType::ConstUnsignedInt, value);
+                return std::make_shared<NumericalConstant<unsigned int>>(TokenType::ConstUnsignedInt, val);
             }
         }
         else {
-            long long value = std::stoll(dest);
-            if (is_long == 2 || value >= LONG_MAX) {
-                return NumericalConstant<long long>(TokenType::ConstLongLong, value);
+            long long val = std::stoll(value);
+            if (is_long == 2 || val >= LONG_MAX) {
+                return std::make_shared<NumericalConstant<long long>>(TokenType::ConstLongLong, val);
             }
-            else if (is_long == 1 || value >= INT_MAX) {
-                return NumericalConstant<long>(TokenType::ConstLong, value);
+            else if (is_long == 1 || val >= INT_MAX) {
+                return std::make_shared<NumericalConstant<long>>(TokenType::ConstLong, val);
             }
             else {
-                return NumericalConstant<int>(TokenType::ConstInt, value);
+                return std::make_shared<NumericalConstant<int>>(TokenType::ConstInt, val);
             }
         }
     }

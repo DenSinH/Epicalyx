@@ -34,6 +34,28 @@
 
 #endif
 
+#if COMPONENT_FLAGS & COMPONENT_TOKENIZER
+#define log_tokenizer(message, ...) do {                        \
+        CONSOLE_BLUE();                                \
+        fprintf(stdout, "[TOKENIZER]: "); \
+        fprintf(stdout, message "\n",  ##__VA_ARGS__); \
+        CONSOLE_RESTORE();                             \
+    } while(0)
+#else
+#define log_tokenizer(message, ...) do { } while(0)
+#endif
+
+#if COMPONENT_FLAGS & COMPONENT_PARSER
+#define log_parser(message, ...) do {                        \
+        CONSOLE_PINK();                                \
+        fprintf(stdout, "[PARSER]: "); \
+        fprintf(stdout, message "\n",  ##__VA_ARGS__); \
+        CONSOLE_RESTORE();                             \
+    } while(0)
+#else
+#define log_parser(message, ...) do { } while(0)
+#endif
+
 
 #if VERBOSITY <= VERBOSITY_ALL
 #define log_any(message, ...) do {                        \

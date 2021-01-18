@@ -16,7 +16,8 @@ static constexpr int ASCIIHexToInt[] =
 };
 
 
-void Tokenizer::ReadStringConstant(std::string::const_iterator& current, std::string::const_iterator end, std::string& dest) {
+std::shared_ptr<Token> Tokenizer::ReadStringConstant(std::string::const_iterator& current, std::string::const_iterator end) {
+    std::string value;
     // string encoding
     if (*current == 'L' || *current == 'U') {
         current++;
@@ -33,7 +34,7 @@ void Tokenizer::ReadStringConstant(std::string::const_iterator& current, std::st
     }
     current++;
     while (current != end && *current != '"') {
-        dest.push_back(ReadCChar(current, end));
+        value.push_back(ReadCChar(current, end));
     }
 
     if (current == end) {
@@ -44,9 +45,10 @@ void Tokenizer::ReadStringConstant(std::string::const_iterator& current, std::st
     }
     // skip last char
     current++;
+    return std::make_shared<StringConstant>(value);
 }
 
-NumericalConstant<unsigned long long> Tokenizer::ReadCharSequenceConstant(std::string::const_iterator& current, std::string::const_iterator end) {
+std::shared_ptr<Token> Tokenizer::ReadCharSequenceConstant(std::string::const_iterator& current, std::string::const_iterator end) {
     bool is_long = false;
     bool is_unsigned = false;
     if (std::tolower(*current) == 'l') {
@@ -78,13 +80,13 @@ NumericalConstant<unsigned long long> Tokenizer::ReadCharSequenceConstant(std::s
     current++;
 
     if (is_unsigned) {
-        return NumericalConstant<unsigned long long>(TokenType::ConstUnsignedInt, value);
+        return std::make_shared<NumericalConstant<unsigned long long>>(TokenType::ConstUnsignedInt, value);
     }
     else if (is_long) {
-        return NumericalConstant<unsigned long long>(TokenType::ConstLongLong, value);
+        return std::make_shared<NumericalConstant<unsigned long long>>(TokenType::ConstLongLong, value);
     }
     else {
-        return NumericalConstant<unsigned long long>(TokenType::ConstInt, value);
+        return std::make_shared<NumericalConstant<unsigned long long>>(TokenType::ConstInt, value);
     }
 }
 

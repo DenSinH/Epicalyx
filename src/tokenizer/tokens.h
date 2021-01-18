@@ -3,6 +3,7 @@
 
 #include <type_traits>
 #include <string>
+#include <vector>
 
 #include "types.h"
 

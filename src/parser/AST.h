@@ -3,6 +3,9 @@
 
 #include <vector>
 #include <string>
+#include <memory>
+
+class Parser;
 
 class Node {
 public:
@@ -13,6 +16,7 @@ public:
             printf("%s\n", s.c_str());
         }
     }
+
 };
 
 class Expr : public Node {
