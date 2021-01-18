@@ -20,7 +20,7 @@ public:
         this->Tokens = tokenizer->Tokens;
     }
 
-    std::shared_ptr<Node> Parse();
+    std::unique_ptr<Node> Parse();
 
     std::shared_ptr<Token> Current() {
         if (Index < Tokens.size()) {
@@ -64,8 +64,8 @@ private:
     std::vector<std::shared_ptr<Token>> Tokens;
     unsigned long long Index = 0;
 
-    std::shared_ptr<Expr> ExpectPrimaryExpression();
-    std::shared_ptr<Expr> ExpectPostfixExpression();
+    std::unique_ptr<Expr> ExpectPrimaryExpression();
+    std::unique_ptr<Expr> ExpectPostfixExpression();
 };
 
 #endif //EPICALYX_PARSER_H

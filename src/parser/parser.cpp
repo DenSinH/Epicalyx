@@ -7,11 +7,11 @@
 #include "expression/unary_expression.h"
 
 
-std::shared_ptr<Node> Parser::Parse() {
+std::unique_ptr<Node> Parser::Parse() {
     return nullptr;
 }
 
-std::shared_ptr<Expr> Parser::ExpectPrimaryExpression() {
+std::unique_ptr<Expr> Parser::ExpectPrimaryExpression() {
     auto current = Current();
     switch (current->Class) {
         case TokenClass::Identifier: {
@@ -55,7 +55,7 @@ std::shared_ptr<Expr> Parser::ExpectPrimaryExpression() {
     }
 }
 
-std::shared_ptr<Expr> Parser::ExpectPostfixExpression() {
+std::unique_ptr<Expr> Parser::ExpectPostfixExpression() {
     auto current = Current();
     if (current->Type == TokenType::LParen) {
         log_fatal("Unimplemented: expect either primary expression or type initializer");
@@ -71,7 +71,7 @@ std::shared_ptr<Expr> Parser::ExpectPostfixExpression() {
                 EatType(TokenType::LBracket);
                 auto right = ExpectPostfixExpression();
                 EatType(TokenType::RBracket);
-                node = std::make_shared<ArrayAccessExpression>(node, right);
+                node = std::make_unique<ArrayAccessExpression>(node, right);
                 break;
             }
             case TokenType::LParen: {
@@ -86,7 +86,7 @@ std::shared_ptr<Expr> Parser::ExpectPostfixExpression() {
                         MemberAccessExpression::MemberAccessType::Pointer;
                 Advance();
                 auto field = EatType(TokenType::Identifier);
-                node = std::make_shared<MemberAccessExpression>(node, std::static_pointer_cast<Identifier>(field)->Name, type);
+                node = std::make_unique<MemberAccessExpression>(node, std::static_pointer_cast<Identifier>(field)->Name, type);
                 break;
             }
             case TokenType::Incr:
@@ -96,7 +96,7 @@ std::shared_ptr<Expr> Parser::ExpectPostfixExpression() {
                         PostCrementExpression::CrementType::Increment :
                         PostCrementExpression::CrementType::Decrement;
                 Advance();
-                node = std::make_shared<PostCrementExpression>(node, type);
+                node = std::make_unique<PostCrementExpression>(node, type);
                 break;
             }
             default:

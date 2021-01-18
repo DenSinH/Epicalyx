@@ -8,17 +8,17 @@
 
 class CondExpr : public Expr {
 public:
-    CondExpr(std::shared_ptr<Expr> left,
-             std::shared_ptr<Expr> t,
-             std::shared_ptr<Expr> f) {
+    CondExpr(std::unique_ptr<Expr>& left,
+             std::unique_ptr<Expr>& t,
+             std::unique_ptr<Expr>& f) {
         this->Left = std::move(left);
         this->True = std::move(t);
         this->False = std::move(f);
     }
 
-    std::shared_ptr<Expr> Left;
-    std::shared_ptr<Expr> True;
-    std::shared_ptr<Expr> False;
+    std::unique_ptr<Expr> Left;
+    std::unique_ptr<Expr> True;
+    std::unique_ptr<Expr> False;
 
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "CondExpr: Cond:" };
@@ -61,15 +61,15 @@ public:
         LogicOr,
     };
 
-    BinOpExpression(BinOp op, std::shared_ptr<Expr> left, std::shared_ptr<Expr> right) {
+    BinOpExpression(BinOp op, std::unique_ptr<Expr>& left, std::unique_ptr<Expr>& right) {
         this->Op = op;
         this->Left = std::move(left);
         this->Right = std::move(right);
     }
 
     BinOp Op;
-    std::shared_ptr<Expr> Left;
-    std::shared_ptr<Expr> Right;
+    std::unique_ptr<Expr> Left;
+    std::unique_ptr<Expr> Right;
 
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "BinOp: " + Operation() };
