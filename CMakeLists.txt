@@ -10,12 +10,13 @@ add_executable(
         src/include/log.h
 )
 
-#if (MSVC)
-#    add_compile_options(/EHa)
-#else()
-#    add_compile_options(-fexception)
-#endif()
+if (MSVC)
+    # add_compile_options(/EHa)
+else()
+    # add_compile_options(-fexception)
+endif()
 
+# add_compile_options(-fstack-protector)
 add_subdirectory(src/tokenizer)
 add_subdirectory(src/parser)
 

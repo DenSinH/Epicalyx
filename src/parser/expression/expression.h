@@ -11,13 +11,13 @@ class AssignmentExpression;
 
 class Expression : public Expr {
 public:
-    Expression(std::unique_ptr<Expr> left, std::unique_ptr<Expr> right) {
+    Expression(std::shared_ptr<Expr> left, std::shared_ptr<Expr> right) {
         this->Left = std::move(left);
         this->Right = std::move(right);
     }
 
-    std::unique_ptr<Expr> Left;
-    std::unique_ptr<Expr> Right;
+    std::shared_ptr<Expr> Left;
+    std::shared_ptr<Expr> Right;
 
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "Expr:" };
@@ -49,17 +49,17 @@ public:
     };
 
     AssignmentExpression(
-            std::unique_ptr<Expr> left,
+            std::shared_ptr<Expr> left,
             AssignOp op,
-            std::unique_ptr<Expr> right) {
+            std::shared_ptr<Expr> right) {
         this->Left = std::move(left);
         this->Op = op;
         this->Right = std::move(right);
     }
 
-    std::unique_ptr<Expr> Left;
+    std::shared_ptr<Expr> Left;
     AssignOp Op;
-    std::unique_ptr<Expr> Right;  // can also be a CondExpr
+    std::shared_ptr<Expr> Right;  // can also be a CondExpr
 
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "AssignExpr:" };

@@ -20,33 +20,43 @@ public:
         this->Tokens = tokenizer->Tokens;
     }
 
-    std::unique_ptr<Node> Parse();
+    std::shared_ptr<Node> Parse();
 
     std::shared_ptr<Token> Current() {
-        return Tokens[Index];
+        if (Index < Tokens.size()) {
+            return Tokens[Index];
+        }
+        log_fatal("Unexpected end of program");
     }
 
     void Advance() {
         Index++;
     }
 
+    bool EndOfStream() {
+        return Index >= Tokens.size();
+    }
+
     bool HasNext() {
-        return Index < Tokens.size() - 1;
+        return Index < (Tokens.size() - 1);
     }
 
     std::shared_ptr<Token> Next() {
         return Tokens[Index + 1];
     }
 
-    void ExpectType(enum TokenType type) {
-        if (Current()->Type != type) {
+    std::shared_ptr<Token> ExpectType(enum TokenType type) {
+        auto current = Current();
+        if (current->Type != type) {
             log_fatal("Unexpected token");
         }
+        return current;
     }
 
-    void EatType(enum TokenType type) {
-        ExpectType(type);
+    std::shared_ptr<Token> EatType(enum TokenType type) {
+        auto eaten = ExpectType(type);
         Advance();
+        return eaten;
     }
     
 private:
@@ -54,7 +64,8 @@ private:
     std::vector<std::shared_ptr<Token>> Tokens;
     unsigned long long Index = 0;
 
-    std::unique_ptr<Node> ExpectPrimaryExpression();
+    std::shared_ptr<Expr> ExpectPrimaryExpression();
+    std::shared_ptr<Expr> ExpectPostfixExpression();
 };
 
 #endif //EPICALYX_PARSER_H

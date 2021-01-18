@@ -37,13 +37,13 @@ public:
         LogicalNot,
     };
 
-    explicit UnaryOpExpression(UnOpType type, std::unique_ptr<Expr> right) : UnaryExpression(UnExprType::UnOp) {
+    explicit UnaryOpExpression(UnOpType type, std::shared_ptr<Expr> right) : UnaryExpression(UnExprType::UnOp) {
         this->Type = type;
         this->Right = std::move(right);
     }
 
     UnOpType Type;
-    std::unique_ptr<Expr> Right;
+    std::shared_ptr<Expr> Right;
 
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "UnaryExpression: " + Operation() };
@@ -78,11 +78,11 @@ private:
 
 class SizeOfExpression : public UnaryExpression {
 
-    explicit SizeOfExpression(std::unique_ptr<Expr> right) : UnaryExpression(UnExprType::SizeOf) {
+    explicit SizeOfExpression(std::shared_ptr<Expr> right) : UnaryExpression(UnExprType::SizeOf) {
         this->Right = std::move(right);
     }
 
-    std::unique_ptr<Expr> Right;
+    std::shared_ptr<Expr> Right;
 
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "SizeOfExpression: " };

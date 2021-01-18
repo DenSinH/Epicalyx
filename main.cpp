@@ -8,11 +8,11 @@ int main() {
 
     auto t = new Tokenizer();
 
-    t->Tokenize("examples/parsing/primary/identifier.expr");
+    t->Tokenize("examples/parsing/postfix/combined.expr");
 
     auto p = new Parser(t);
 
-    auto n = std::move(p->ExpectPrimaryExpression());
+    auto n = std::move(p->ExpectPostfixExpression());
 
     n->Print();
 

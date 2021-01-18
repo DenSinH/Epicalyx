@@ -27,15 +27,15 @@ public:
 class ArrayAccessExpression : public PostfixExpression {
 public:
     explicit ArrayAccessExpression(
-            std::unique_ptr<Expr> left,
-            std::unique_ptr<Expr> right
+            std::shared_ptr<Expr> left,
+            std::shared_ptr<Expr> right
             ) : PostfixExpression(PostExprType::ArrayAccess) {
         this->Left = std::move(left);
         this->Right = std::move(right);
     }
 
-    std::unique_ptr<Expr> Left;
-    std::unique_ptr<Expr> Right;
+    std::shared_ptr<Expr> Left;
+    std::shared_ptr<Expr> Right;
 
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "ArrayAccessExpr:" };
@@ -53,15 +53,15 @@ public:
 class FunctionCallExpression : public PostfixExpression {
 public:
     explicit FunctionCallExpression(
-            std::unique_ptr<Expr> func,
-            std::unique_ptr<Expr> args
+            std::shared_ptr<Expr> func,
+            std::shared_ptr<Expr> args
             ) : PostfixExpression(PostExprType::FunctionCall) {
         this->Func = std::move(func);
         this->Args = std::move(args);
     }
 
-    std::unique_ptr<Expr> Func;
-    std::unique_ptr<Expr> Args;
+    std::shared_ptr<Expr> Func;
+    std::shared_ptr<Expr> Args;
 
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "FunctionCallExpr:" };
@@ -84,7 +84,7 @@ public:
     };
 
     explicit MemberAccessExpression(
-            std::unique_ptr<Expr> left,
+            std::shared_ptr<Expr> left,
             std::string& member,
             MemberAccessType access_type
             ) : PostfixExpression(PostExprType::MemberAccess) {
@@ -93,12 +93,12 @@ public:
         this-> AccessType = access_type;
     }
 
-    std::unique_ptr<Expr> Left;
+    std::shared_ptr<Expr> Left;
     std::string Member;
     MemberAccessType AccessType;
 
     std::vector<std::string> Repr() override {
-        std::vector<std::string> repr = { std::string("PostfixExpression:") + (AccessType == MemberAccessType::Direct ? "." : "->") + Member};
+        std::vector<std::string> repr = { std::string("MemberAccessExpr:") + (AccessType == MemberAccessType::Direct ? "." : "->") + Member};
         for (auto& s : Left->Repr()) {
             repr.emplace_back("    " + s);
         }
@@ -115,14 +115,14 @@ public:
     };
 
     explicit PostCrementExpression(
-            std::unique_ptr<Expr> left,
+            std::shared_ptr<Expr> left,
             CrementType type
             ) : PostfixExpression(PostExprType::Crement) {
         this->Left = std::move(left);
         this-> Type = type;
     }
 
-    std::unique_ptr<Expr> Left;
+    std::shared_ptr<Expr> Left;
     CrementType Type;
 
     std::vector<std::string> Repr() override {
