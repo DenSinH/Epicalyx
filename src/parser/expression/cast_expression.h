@@ -20,7 +20,7 @@ public:
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "CastExpr: (" + TypeName + ")" };
         for (auto& s : Right->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         return repr;
     }

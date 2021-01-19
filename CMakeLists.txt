@@ -8,7 +8,7 @@ add_executable(
         main.cpp
         src/include/flags.h
         src/include/log.h
-)
+        src/utils.h)
 
 if (MSVC)
     add_compile_options(/EHa)

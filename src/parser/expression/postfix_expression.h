@@ -40,11 +40,11 @@ public:
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "ArrayAccessExpr:" };
         for (auto& s : Left->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         repr.emplace_back("Element");
         for (auto& s : Right->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         return repr;
     }
@@ -66,11 +66,11 @@ public:
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "FunctionCallExpr:" };
         for (auto& s : Func->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         repr.emplace_back("Args");
         for (auto& s : Args->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         return repr;
     }
@@ -100,7 +100,7 @@ public:
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { std::string("MemberAccessExpr:") + (AccessType == MemberAccessType::Direct ? "." : "->") + Member};
         for (auto& s : Left->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         return repr;
     }
@@ -128,7 +128,7 @@ public:
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { std::string("PostCrementExpression:") + (Type == CrementType::Increment ? "++" : "--") };
         for (auto& s : Left->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         return repr;
     }
@@ -149,7 +149,7 @@ public:
 //    std::vector<std::string> Repr() override {
 //        std::vector<std::string> repr = { "TypeInitializerExpr:" };
 //        for (auto& s : Args->Repr()) {
-//            repr.emplace_back("    " + s);
+//            repr.emplace_back(REPR_PADDING + s);
 //        }
 //        return repr;
 //    }

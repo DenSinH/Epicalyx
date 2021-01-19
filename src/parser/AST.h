@@ -5,6 +5,8 @@
 #include <string>
 #include <memory>
 
+#define REPR_PADDING "|   "
+
 class Parser;
 
 class Node {

@@ -1,11 +1,12 @@
 #include "expression/binop_expression.h"
+#include "utils.h"
 
 template<
         NODE(Expr) (Parser::*SubNode)(),
         enum TokenType... types
 > NODE(Expr) Parser::ExpectBinOpExpression() {
     NODE(Expr) node = (this->*SubNode)();
-    while (!EndOfStream() && IsAny<enum TokenType, types...>(Current()->Type)) {
+    while (!EndOfStream() && Is(Current()->Type).AnyOf<types...>()) {
         auto current = Current()->Type;
         EatType(current);
         auto right = (this->*SubNode)();

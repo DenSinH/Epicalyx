@@ -64,11 +64,11 @@ public:
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "AssignExpr:" };
         for (auto& s : Left->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         repr.emplace_back(Operation());
         for (auto& s : Right->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         return repr;
     }

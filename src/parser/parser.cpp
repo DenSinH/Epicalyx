@@ -71,7 +71,7 @@ std::unique_ptr<Expr> Parser::ExpectPostfixExpression() {
                 // array access
                 // todo: normal expression in parentheses, instead of postfix expression
                 EatType(TokenType::LBracket);
-                auto right = ExpectUnaryExpression();
+                auto right = ExpectLogicOrExpression();
                 EatType(TokenType::RBracket);
                 node = std::make_unique<ArrayAccessExpression>(node, right);
                 break;

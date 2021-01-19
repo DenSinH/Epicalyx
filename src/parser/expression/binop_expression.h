@@ -24,15 +24,15 @@ public:
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "CondExpr: Cond:" };
         for (auto& s : Left->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         repr.emplace_back("True:");
         for (auto& s : True->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         repr.emplace_back("False:");
         for (auto& s : False->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         return repr;
     }
@@ -118,10 +118,10 @@ public:
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "BinOp: " + Operation() };
         for (auto& s : Left->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         for (auto& s : Right->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         return repr;
     }

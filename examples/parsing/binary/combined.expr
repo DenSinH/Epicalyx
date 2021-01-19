@@ -1,1 +1,1 @@
-my_struct_array[-index]->field++ * ++another_var - 123123 == '\x01\x02\x03'
+my_struct_array[a + - - - - -index]->field++ * ++another_var - 123123 == '\x01\x02\x03'

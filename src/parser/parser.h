@@ -94,14 +94,6 @@ private:
             NODE(Expr) (Parser::*SubNode)(),
             enum TokenType... type
     > NODE(Expr) ExpectBinOpExpression();
-
-    template<typename T> static bool IsAny(T value) {
-        return false;
-    }
-
-    template<typename T, T Value, T... Values> static bool IsAny(T value) {
-        return (value == Value) || IsAny<T, Values...>(value);
-    }
 };
 
 #include "ExpectBinOp.inl"

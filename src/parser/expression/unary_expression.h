@@ -48,7 +48,7 @@ public:
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "UnaryExpression: " + Operation() };
         for (auto& s : Right->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         return repr;
     }
@@ -87,7 +87,7 @@ class SizeOfExpression : public UnaryExpression {
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "SizeOfExpression: " };
         for (auto& s : Right->Repr()) {
-            repr.emplace_back("    " + s);
+            repr.emplace_back(REPR_PADDING + s);
         }
         return repr;
     }
