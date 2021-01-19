@@ -1,9 +1,6 @@
 #ifndef EPICALYX_POSTFIX_EXPRESSION_H
 #define EPICALYX_POSTFIX_EXPRESSION_H
 
-#include <memory>
-#include <utility>
-#include <vector>
 #include "../AST.h"
 
 class PostfixExpression : public Expr {

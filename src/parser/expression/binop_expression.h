@@ -1,8 +1,6 @@
 #ifndef EPICALYX_BINOP_EXPRESSION_H
 #define EPICALYX_BINOP_EXPRESSION_H
 
-#include <memory>
-#include <utility>
 #include <stdexcept>
 #include "log.h"
 #include "../AST.h"

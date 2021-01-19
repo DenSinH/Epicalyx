@@ -4,8 +4,11 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <utility>
 
 #define REPR_PADDING "|   "
+#define NODE(_type) std::unique_ptr<_type>
+#define MAKE_NODE(_type) std::make_unique<_type>
 
 class Parser;
 
@@ -22,6 +25,10 @@ public:
 };
 
 class Expr : public Node {
+
+};
+
+class Decl : public Node {
 
 };
 

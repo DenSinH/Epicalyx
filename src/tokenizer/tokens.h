@@ -26,7 +26,6 @@ public:
     TokenClass Class;
     TokenType Type;
 
-private:
     static std::string ClassString(TokenClass cls) {
         switch(cls) {
             case TokenClass::StringConstant:
@@ -250,7 +249,6 @@ private:
                 return "##";
         }
     }
-
 };
 
 class Punctuator : public Token {

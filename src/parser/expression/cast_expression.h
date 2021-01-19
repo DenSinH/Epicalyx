@@ -1,9 +1,6 @@
 #ifndef EPICALYX_CAST_EXPRESSION_H
 #define EPICALYX_CAST_EXPRESSION_H
 
-
-#include <memory>
-#include <utility>
 #include "../AST.h"
 
 // CondExpr can also just be a CastExpression

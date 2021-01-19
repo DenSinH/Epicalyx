@@ -1,10 +1,6 @@
 #ifndef EPICALYX_UNARY_EXPRESSION_H
 #define EPICALYX_UNARY_EXPRESSION_H
 
-
-#include <memory>
-#include <utility>
-#include <vector>
 #include "../AST.h"
 
 

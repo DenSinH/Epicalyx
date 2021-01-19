@@ -1,8 +1,6 @@
 #ifndef EPICALYX_ASSIGN_EXPRESSION_H
 #define EPICALYX_ASSIGN_EXPRESSION_H
 
-#include <memory>
-#include <utility>
 #include "../AST.h"
 #include "../../tokenizer/types.h"
 

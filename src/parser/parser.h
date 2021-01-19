@@ -9,9 +9,6 @@
 #include <set>
 #include <stdexcept>
 
-#define NODE(_type) std::unique_ptr<_type>
-#define MAKE_NODE(_type) std::make_unique<_type>
-
 class Parser {
 public:
     explicit Parser(std::vector<TOKEN>& tokens) {
@@ -26,7 +23,7 @@ public:
         this->Tokens = tokenizer->Tokens;
     }
 
-    NODE(Node) Parse();
+    NODE(Node) Parse() { return nullptr };
 
     TOKEN Current() {
         if (Index < Tokens.size()) {
@@ -65,7 +62,7 @@ public:
     TOKEN ExpectType(enum TokenType type) {
         auto current = Current();
         if (current->Type != type) {
-            throw std::runtime_error("Unexpected token, got " + current->Repr());
+            throw std::runtime_error("Unexpected token, got " + current->Repr() + ", expected: " + Token::TypeString(current->Type));
         }
         return current;
     }

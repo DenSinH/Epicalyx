@@ -1,8 +1,6 @@
 #ifndef EPICALYX_COND_EXPRESSION_H
 #define EPICALYX_COND_EXPRESSION_H
 
-#include <memory>
-#include <utility>
 #include "../AST.h"
 
 class CondExpr : public Expr {

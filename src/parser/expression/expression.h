@@ -1,8 +1,6 @@
 #ifndef EPICALYX_EXPRESSION_H
 #define EPICALYX_EXPRESSION_H
 
-#include <memory>
-#include <utility>
 #include "../AST.h"
 
 class Expression : public Expr {
