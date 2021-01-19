@@ -1,0 +1,1 @@
+nested_function(my_function(a = 123, 1, 123123) + 1 * 2, array[121].field++)

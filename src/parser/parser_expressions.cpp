@@ -10,12 +10,7 @@
 
 #include <stdexcept>
 
-
-std::unique_ptr<Node> Parser::Parse() {
-    return nullptr;
-}
-
-std::unique_ptr<Expr> Parser::ExpectPrimaryExpression() {
+NODE(Expr) Parser::ExpectPrimaryExpression() {
     auto current = Current();
     switch (current->Class) {
         case TokenClass::Identifier: {
@@ -64,7 +59,10 @@ std::unique_ptr<Expr> Parser::ExpectPrimaryExpression() {
 std::unique_ptr<Expr> Parser::ExpectPostfixExpression() {
     auto current = Current();
     if (current->Type == TokenType::LParen) {
-        log_warn("not properly implemented: expect either primary expression or type initializer");
+        if (IsTypeName(1)) {
+            // todo:
+            log_fatal("Unimplemented: type names");
+        }
         return ExpectPrimaryExpression();
     }
 
@@ -82,7 +80,14 @@ std::unique_ptr<Expr> Parser::ExpectPostfixExpression() {
             }
             case TokenType::LParen: {
                 // function call
-                log_fatal("Unimplemented: function call expression");
+                EatType(TokenType::LParen);
+                if (Current()->Type == TokenType::RParen) {
+                    EatType(TokenType::RParen);
+                    return MAKE_NODE(FunctionCallExpression)(node);
+                }
+                auto args = ExpectArgumentListExpression();
+                EatType(TokenType::RParen);
+                return MAKE_NODE(FunctionCallExpression)(node, args);
             }
             case TokenType::Dot:
             case TokenType::Arrow: {
@@ -157,14 +162,18 @@ std::unique_ptr<Expr> Parser::ExpectUnaryExpression() {
         }
         case TokenType::Sizeof: {
             EatType(TokenType::Sizeof);
-            // todo
-            // check if next is paren and one after is type specifier/qualifier: sizeof type expression
-            // otherwise, sizeof expression expression);
-            log_fatal("Unimplemented: sizeof unary expression");
+            if (Current()->Type == TokenType::LParen) {
+                // check if type_name
+                if (IsTypeName(1)) {
+                    // todo:
+                    log_fatal("Unimplemented: type names");
+                }
+                return ExpectUnaryExpression();
+            }
         }
         case TokenType::Alignof: {
             // todo
-            log_fatal("Unimplemented: alignof unary expression");
+            log_fatal("Unimplemented: alignof type name");
         }
         default: {
             // normal postfix expression
@@ -176,7 +185,11 @@ std::unique_ptr<Expr> Parser::ExpectUnaryExpression() {
 NODE(Expr) Parser::ExpectCastExpression() {
     if (Current()->Type == TokenType::LParen) {
         // check if type_name
-        // todo
+        if (IsTypeName(1)) {
+            // todo
+            log_fatal("Unimplemented: type names");
+        }
+        return ExpectUnaryExpression();
     }
     return ExpectUnaryExpression();
 }
@@ -276,4 +289,9 @@ NODE(Expr) Parser::ExpectExpression() {
         node = MAKE_NODE(Expression)(node, next);
     }
     return node;
+}
+
+NODE(Expr) Parser::ExpectArgumentListExpression() {
+    // same grammar:
+    return ExpectExpression();
 }

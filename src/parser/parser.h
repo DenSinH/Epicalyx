@@ -6,6 +6,7 @@
 #include "AST.h"
 #include "log.h"
 
+#include <set>
 #include <stdexcept>
 
 #define NODE(_type) std::unique_ptr<_type>
@@ -42,6 +43,10 @@ public:
         return Index >= Tokens.size();
     }
 
+    bool HasAfter(size_t offset) {
+        return (Index + offset) < (Tokens.size() - 1);
+    }
+
     bool HasNext() {
         return Index < (Tokens.size() - 1);
     }
@@ -76,8 +81,12 @@ private:
     std::vector<TOKEN> Tokens;
     unsigned long long Index = 0;
 
+    std::set<std::string> TypedefNames = {};
+    bool IsTypeName(size_t after);
+
     NODE(Expr) ExpectPrimaryExpression();
     NODE(Expr) ExpectPostfixExpression();
+    NODE(Expr) ExpectArgumentListExpression();
     NODE(Expr) ExpectUnaryExpression();
     NODE(Expr) ExpectCastExpression();
     NODE(Expr) ExpectMultExpression();

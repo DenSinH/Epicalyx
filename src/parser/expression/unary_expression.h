@@ -76,6 +76,23 @@ private:
     }
 };
 
+class SizeOfTypeExpression : public UnaryExpression {
+
+    explicit SizeOfTypeExpression(NODE(Expr)& right) : UnaryExpression(UnExprType::SizeOf) {
+        this->Right = std::move(right);
+    }
+
+    NODE(Expr) Right;
+
+    std::vector<std::string> Repr() override {
+        std::vector<std::string> repr = { "SizeOfTypeExpression: " };
+        for (auto& s : Right->Repr()) {
+            repr.emplace_back(REPR_PADDING + s);
+        }
+        return repr;
+    }
+};
+
 class SizeOfExpression : public UnaryExpression {
 
     explicit SizeOfExpression(NODE(Expr)& right) : UnaryExpression(UnExprType::SizeOf) {

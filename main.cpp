@@ -8,7 +8,7 @@ int main() {
 
     auto t = new Tokenizer();
 
-    t->Tokenize("examples/parsing/expression/combined.expr");
+    t->Tokenize("examples/parsing/expressions/function_call/combined.expr");
 
     auto p = new Parser(t);
 

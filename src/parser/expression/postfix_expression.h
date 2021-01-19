@@ -53,6 +53,13 @@ public:
 class FunctionCallExpression : public PostfixExpression {
 public:
     explicit FunctionCallExpression(
+            NODE(Expr)& func
+            ) : PostfixExpression(PostExprType::FunctionCall) {
+        this->Func = std::move(func);
+        this->Args = nullptr;
+    }
+
+    explicit FunctionCallExpression(
             NODE(Expr)& func,
             NODE(Expr)& args
             ) : PostfixExpression(PostExprType::FunctionCall) {
