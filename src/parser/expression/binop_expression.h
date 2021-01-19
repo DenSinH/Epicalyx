@@ -3,22 +3,23 @@
 
 #include <memory>
 #include <utility>
+#include <stdexcept>
 #include "log.h"
 #include "../AST.h"
 
 class CondExpr : public Expr {
 public:
-    CondExpr(std::unique_ptr<Expr>& left,
-             std::unique_ptr<Expr>& t,
-             std::unique_ptr<Expr>& f) {
+    CondExpr(NODE(Expr)& left,
+             NODE(Expr)& t,
+             NODE(Expr)& f) {
         this->Left = std::move(left);
         this->True = std::move(t);
         this->False = std::move(f);
     }
 
-    std::unique_ptr<Expr> Left;
-    std::unique_ptr<Expr> True;
-    std::unique_ptr<Expr> False;
+    NODE(Expr) Left;
+    NODE(Expr) True;
+    NODE(Expr) False;
 
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "CondExpr: Cond:" };
@@ -55,21 +56,64 @@ public:
         Eq,
         Ne,
         BinAnd,
-        BinXOr,
+        BinXor,
         BinOr,
         LogicAnd,
         LogicOr,
     };
 
-    BinOpExpression(BinOp op, std::unique_ptr<Expr>& left, std::unique_ptr<Expr>& right) {
+    BinOpExpression(BinOp op, NODE(Expr)& left, NODE(Expr)& right) {
         this->Op = op;
         this->Left = std::move(left);
         this->Right = std::move(right);
     }
 
     BinOp Op;
-    std::unique_ptr<Expr> Left;
-    std::unique_ptr<Expr> Right;
+    NODE(Expr) Left;
+    NODE(Expr) Right;
+
+    static constexpr BinOp TokenTypeToBinOp(const enum TokenType type) {
+        switch(type) {
+            case TokenType::Asterisk:
+                return BinOp::Mul;
+            case TokenType::Div:
+                return BinOp::Div;
+            case TokenType::Mod:
+                return BinOp::Mod;
+            case TokenType::Plus:
+                return BinOp::Add;
+            case TokenType::Minus:
+                return BinOp::Sub;
+            case TokenType::LShift:
+                return BinOp::LShift;
+            case TokenType::RShift:
+                return BinOp::RShift;
+            case TokenType::LessEqual:
+                return BinOp::Leq;
+            case TokenType::GreaterEqual:
+                return BinOp::Geq;
+            case TokenType::Less:
+                return BinOp::Lt;
+            case TokenType::Greater:
+                return BinOp::Gt;
+            case TokenType::Equal:
+                return BinOp::Eq;
+            case TokenType::NotEqual:
+                return BinOp::Ne;
+            case TokenType::Ampersand:
+                return BinOp::BinAnd;
+            case TokenType::BinOr:
+                return BinOp::BinOr;
+            case TokenType::BinXor:
+                return BinOp::BinXor;
+            case TokenType::LogicalAnd:
+                return BinOp::LogicAnd;
+            case TokenType::LogicalOr:
+                return BinOp::LogicOr;
+            default:
+                throw std::runtime_error("Invalid BinOp token");
+        }
+    }
 
     std::vector<std::string> Repr() override {
         std::vector<std::string> repr = { "BinOp: " + Operation() };
@@ -113,7 +157,7 @@ private:
                 return "!=";
             case BinOp::BinAnd:
                 return "&";
-            case BinOp::BinXOr:
+            case BinOp::BinXor:
                 return "^";
             case BinOp::BinOr:
                 return "|";
@@ -122,7 +166,7 @@ private:
             case BinOp::LogicOr:
                 return "||";
             default:
-                log_fatal("Invalid Binop operation");
+                throw std::runtime_error("Invalid Binop operation");
         }
     }
 

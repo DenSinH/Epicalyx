@@ -39,7 +39,7 @@ void Tokenizer::TokenizeLine(std::ifstream& file, const std::string& line) {
                         // string literal with encoding
                         auto value = ReadStringConstant(current, line.end());
                         Tokens.emplace_back(value);
-                        log_tokenizer("Prefixed string literal: %s", std::static_pointer_cast<StringConstant>(value)->Value.c_str());
+                        log_tokenizer("Prefixed string literal: %s", value->Repr().c_str());
                         continue;
                     }
                     else if (*next == '\'') {
@@ -47,7 +47,7 @@ void Tokenizer::TokenizeLine(std::ifstream& file, const std::string& line) {
                         // char strings are actually constant int's
                         auto value = ReadCharSequenceConstant(current, line.end());
                         Tokens.emplace_back(value);
-                        log_tokenizer("Prefixed char literal");
+                        log_tokenizer("Prefixed char literal: %s", value->Repr().c_str());
                         continue;
                     }
                 }
@@ -70,7 +70,7 @@ void Tokenizer::TokenizeLine(std::ifstream& file, const std::string& line) {
 numeric_constant:
             auto constant = ReadNumericConstant(current, line.end());
             Tokens.emplace_back(constant);
-            log_tokenizer("Numerical constant");
+            log_tokenizer("%s", constant->Repr().c_str());
         }
         else if (std::isspace(*current)) {
             // skip whitespace
@@ -81,13 +81,13 @@ numeric_constant:
                 // string literal
                 auto value = ReadStringConstant(current, line.end());
                 Tokens.emplace_back(value);
-                log_tokenizer("String literal: %s", std::static_pointer_cast<StringConstant>(value)->Value.c_str());
+                log_tokenizer("String literal: %s", value->Repr().c_str());
             }
             else if (*current == '\'') {
                 // char literal
                 auto value = ReadCharSequenceConstant(current, line.end());
                 Tokens.emplace_back(value);
-                log_tokenizer("Char literal");
+                log_tokenizer("Char literal: %s", value->Repr().c_str());
             }
             else {
                 // punctuator

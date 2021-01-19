@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "types.h"
+#define TOKEN std::shared_ptr<Token>
 
 class Token {
 public:
@@ -267,6 +268,9 @@ public:
     }
 
     std::string Value;
+    std::string Repr() override {
+        return "String literal: " + Value;
+    }
 };
 
 template<typename T>
@@ -277,6 +281,9 @@ public:
     }
 
     T Value;
+    std::string Repr() override {
+        return "Constant: " + std::to_string(Value);
+    }
 };
 
 
@@ -287,6 +294,9 @@ public:
     }
 
     std::string Name;
+    std::string Repr() override {
+        return "Identifier: " + Name;
+    }
 };
 
 #endif //EPICALYX_TOKENS_H

@@ -168,3 +168,56 @@ std::unique_ptr<Expr> Parser::ExpectUnaryExpression() {
         }
     }
 }
+
+NODE(Expr) Parser::ExpectCastExpression() {
+    if (Current()->Type == TokenType::LParen) {
+        // check if type_name
+        // todo
+    }
+    return ExpectUnaryExpression();
+}
+
+NODE(Expr) Parser::ExpectMultExpression() {
+    return ExpectBinOpExpression<&Parser::ExpectCastExpression, TokenType::Asterisk, TokenType::Div, TokenType::Mod>();
+}
+
+NODE(Expr) Parser::ExpectAddExpression() {
+    return ExpectBinOpExpression<&Parser::ExpectMultExpression, TokenType::Plus, TokenType::Minus>();
+}
+
+NODE(Expr) Parser::ExpectShiftExpression() {
+    return ExpectBinOpExpression<&Parser::ExpectAddExpression, TokenType::LShift, TokenType::RShift>();
+}
+
+NODE(Expr) Parser::ExpectRelationalExpression() {
+    return ExpectBinOpExpression<
+            &Parser::ExpectShiftExpression,
+            TokenType::LessEqual,
+            TokenType::Less,
+            TokenType::GreaterEqual,
+            TokenType::Greater>();
+}
+
+NODE(Expr) Parser::ExpectEqualityExpression() {
+    return ExpectBinOpExpression<&Parser::ExpectRelationalExpression, TokenType::Equal, TokenType::NotEqual>();
+}
+
+NODE(Expr) Parser::ExpectBinAndExpression() {
+    return ExpectBinOpExpression<&Parser::ExpectEqualityExpression, TokenType::Ampersand>();
+}
+
+NODE(Expr) Parser::ExpectBinXorExpression() {
+    return ExpectBinOpExpression<&Parser::ExpectBinAndExpression, TokenType::BinXor>();
+}
+
+NODE(Expr) Parser::ExpectBinOrExpression() {
+    return ExpectBinOpExpression<&Parser::ExpectBinXorExpression, TokenType::BinOr>();
+}
+
+NODE(Expr) Parser::ExpectLogicAndExpression() {
+    return ExpectBinOpExpression<&Parser::ExpectBinOrExpression, TokenType::LogicalAnd>();
+}
+
+NODE(Expr) Parser::ExpectLogicOrExpression() {
+    return ExpectBinOpExpression<&Parser::ExpectLogicAndExpression, TokenType::LogicalOr>();
+}

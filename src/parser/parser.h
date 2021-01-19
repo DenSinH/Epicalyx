@@ -6,9 +6,13 @@
 #include "AST.h"
 #include "log.h"
 
+#include <stdexcept>
+
+#define NODE(_type) std::unique_ptr<_type>
+
 class Parser {
 public:
-    explicit Parser(std::vector<std::shared_ptr<Token>>& tokens) {
+    explicit Parser(std::vector<TOKEN>& tokens) {
         this->Tokens = tokens;
     }
 
@@ -20,13 +24,13 @@ public:
         this->Tokens = tokenizer->Tokens;
     }
 
-    std::unique_ptr<Node> Parse();
+    NODE(Node) Parse();
 
-    std::shared_ptr<Token> Current() {
+    TOKEN Current() {
         if (Index < Tokens.size()) {
             return Tokens[Index];
         }
-        log_fatal("Unexpected end of program");
+        throw std::runtime_error("Unexpected end of program");
     }
 
     void Advance() {
@@ -41,18 +45,18 @@ public:
         return Index < (Tokens.size() - 1);
     }
 
-    std::shared_ptr<Token> Next() {
+    TOKEN Next() {
         return Tokens[Index + 1];
     }
 
-    std::shared_ptr<Token> LookAhead(int amount) {
+    TOKEN LookAhead(int amount) {
         if (Index + amount < Tokens.size()) {
             return Tokens[Index + amount];
         }
         return nullptr;
     }
 
-    std::shared_ptr<Token> ExpectType(enum TokenType type) {
+    TOKEN ExpectType(enum TokenType type) {
         auto current = Current();
         if (current->Type != type) {
             throw std::exception("Unexpected token");
@@ -60,7 +64,7 @@ public:
         return current;
     }
 
-    std::shared_ptr<Token> EatType(enum TokenType type) {
+    TOKEN EatType(enum TokenType type) {
         auto eaten = ExpectType(type);
         Advance();
         return eaten;
@@ -68,12 +72,38 @@ public:
     
 private:
     friend int main();
-    std::vector<std::shared_ptr<Token>> Tokens;
+    std::vector<TOKEN> Tokens;
     unsigned long long Index = 0;
 
-    std::unique_ptr<Expr> ExpectPrimaryExpression();
-    std::unique_ptr<Expr> ExpectPostfixExpression();
-    std::unique_ptr<Expr> ExpectUnaryExpression();
+    NODE(Expr) ExpectPrimaryExpression();
+    NODE(Expr) ExpectPostfixExpression();
+    NODE(Expr) ExpectUnaryExpression();
+    NODE(Expr) ExpectCastExpression();
+    NODE(Expr) ExpectMultExpression();
+    NODE(Expr) ExpectAddExpression();
+    NODE(Expr) ExpectShiftExpression();
+    NODE(Expr) ExpectRelationalExpression();
+    NODE(Expr) ExpectEqualityExpression();
+    NODE(Expr) ExpectBinAndExpression();
+    NODE(Expr) ExpectBinXorExpression();
+    NODE(Expr) ExpectBinOrExpression();
+    NODE(Expr) ExpectLogicAndExpression();
+    NODE(Expr) ExpectLogicOrExpression();
+
+    template<
+            NODE(Expr) (Parser::*SubNode)(),
+            enum TokenType... type
+    > NODE(Expr) ExpectBinOpExpression();
+
+    template<typename T> static bool IsAny(T value) {
+        return false;
+    }
+
+    template<typename T, T Value, T... Values> static bool IsAny(T value) {
+        return (value == Value) || IsAny<T, Values...>(value);
+    }
 };
+
+#include "ExpectBinOp.inl"
 
 #endif //EPICALYX_PARSER_H

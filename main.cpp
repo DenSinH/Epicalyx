@@ -8,11 +8,11 @@ int main() {
 
     auto t = new Tokenizer();
 
-    t->Tokenize("examples/parsing/unary/combined.expr");
+    t->Tokenize("examples/parsing/binary/combined.expr");
 
     auto p = new Parser(t);
 
-    auto n = std::move(p->ExpectUnaryExpression());
+    auto n = std::move(p->ExpectLogicOrExpression());
 
     n->Print();
 

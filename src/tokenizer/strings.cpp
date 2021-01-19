@@ -18,7 +18,7 @@ static constexpr int ASCIIHexToInt[] =
 };
 
 
-std::shared_ptr<Token> Tokenizer::ReadStringConstant(std::string::const_iterator& current, std::string::const_iterator end) {
+TOKEN Tokenizer::ReadStringConstant(std::string::const_iterator& current, std::string::const_iterator end) {
     std::string value;
     // string encoding
     if (*current == 'L' || *current == 'U') {
@@ -50,7 +50,7 @@ std::shared_ptr<Token> Tokenizer::ReadStringConstant(std::string::const_iterator
     return std::make_shared<StringConstant>(value);
 }
 
-std::shared_ptr<Token> Tokenizer::ReadCharSequenceConstant(std::string::const_iterator& current, std::string::const_iterator end) {
+TOKEN Tokenizer::ReadCharSequenceConstant(std::string::const_iterator& current, std::string::const_iterator end) {
     bool is_long = false;
     bool is_unsigned = false;
     if (std::tolower(*current) == 'l') {
@@ -85,10 +85,10 @@ std::shared_ptr<Token> Tokenizer::ReadCharSequenceConstant(std::string::const_it
         return std::make_shared<NumericalConstant<unsigned long long>>(TokenType::ConstUnsignedInt, value);
     }
     else if (is_long) {
-        return std::make_shared<NumericalConstant<unsigned long long>>(TokenType::ConstLongLong, value);
+        return std::make_shared<NumericalConstant<long long>>(TokenType::ConstLongLong, value);
     }
     else {
-        return std::make_shared<NumericalConstant<unsigned long long>>(TokenType::ConstInt, value);
+        return std::make_shared<NumericalConstant<int>>(TokenType::ConstInt, value);
     }
 }
 

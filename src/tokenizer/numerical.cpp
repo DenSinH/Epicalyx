@@ -9,7 +9,7 @@ enum class NumberType {
     HexFloat,
 };
 
-std::shared_ptr<Token> Tokenizer::ReadNumericConstant(
+TOKEN Tokenizer::ReadNumericConstant(
         std::string::const_iterator& current,
         std::string::const_iterator end
 ) {

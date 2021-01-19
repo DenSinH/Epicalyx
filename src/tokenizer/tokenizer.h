@@ -14,13 +14,13 @@ public:
 
     void Tokenize(const std::string& file_name);
 
-    std::vector<std::shared_ptr<Token>> Tokens;
+    std::vector<TOKEN> Tokens;
 
 private:
     void TokenizeLine(std::ifstream& file, const std::string& line);
-    static std::shared_ptr<Token> ReadNumericConstant(std::string::const_iterator& current, std::string::const_iterator end);
-    static std::shared_ptr<Token> ReadStringConstant(std::string::const_iterator& current, std::string::const_iterator end);
-    static std::shared_ptr<Token> ReadCharSequenceConstant(std::string::const_iterator& current, std::string::const_iterator end);
+    static TOKEN ReadNumericConstant(std::string::const_iterator& current, std::string::const_iterator end);
+    static TOKEN ReadStringConstant(std::string::const_iterator& current, std::string::const_iterator end);
+    static TOKEN ReadCharSequenceConstant(std::string::const_iterator& current, std::string::const_iterator end);
     static unsigned char ReadCChar(std::string::const_iterator& current, std::string::const_iterator end);
 };
 
