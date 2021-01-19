@@ -58,11 +58,11 @@ void Tokenizer::TokenizeLine(std::ifstream& file, const std::string& line) {
             }
 
             if (Keywords.find(current_token) != Keywords.end()) {
-                Tokens.emplace_back(std::make_shared<Token>(Keywords.at(current_token)));
+                Tokens.emplace_back(MAKE_TOKEN(Token)(Keywords.at(current_token)));
                 log_tokenizer("Keyword: %s", current_token.c_str());
             }
             else {
-                Tokens.emplace_back(std::make_shared<Identifier>(current_token));
+                Tokens.emplace_back(MAKE_TOKEN(Identifier)(current_token));
                 log_tokenizer("Identifier: %s", current_token.c_str());
             }
         }
@@ -114,7 +114,7 @@ numeric_constant:
                     throw std::runtime_error("Invalid token: " + std::to_string(*current));
                 }
                 log_tokenizer("Punctuator: %s", current_token.c_str());
-                Tokens.emplace_back(std::make_shared<Token>(Punctuators.at(current_token)));
+                Tokens.emplace_back(MAKE_TOKEN(Token)(Punctuators.at(current_token)));
             }
         }
     }

@@ -8,13 +8,17 @@ int main() {
 
     auto t = new Tokenizer();
 
-    t->Tokenize("examples/parsing/binary/combined.expr");
+    t->Tokenize("examples/parsing/expression/combined.expr");
 
     auto p = new Parser(t);
 
-    auto n = std::move(p->ExpectLogicOrExpression());
-
-    n->Print();
+//    try {
+        auto n = std::move(p->ExpectExpression());
+        n->Print();
+//    }
+//    catch (const std::exception& exc) {
+//        log_fatal("%s", exc.what());
+//    }
 
     return 0;
 }

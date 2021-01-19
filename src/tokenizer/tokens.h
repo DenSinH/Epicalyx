@@ -7,6 +7,7 @@
 
 #include "types.h"
 #define TOKEN std::shared_ptr<Token>
+#define MAKE_TOKEN(_type) std::make_shared<_type>
 
 class Token {
 public:

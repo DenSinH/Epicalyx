@@ -182,33 +182,33 @@ TOKEN Tokenizer::ReadNumericConstant(
         double val = std::stod(value);
         auto fval = (float)val;
         if (is_long || ((double)fval != val)) {
-            return std::make_shared<NumericalConstant<double>>(TokenType::ConstDouble, val);
+            return MAKE_TOKEN(NumericalConstant<double>)(TokenType::ConstDouble, val);
         }
-        return std::make_shared<NumericalConstant<float>>(TokenType::ConstFloat, fval);
+        return MAKE_TOKEN(NumericalConstant<float>)(TokenType::ConstFloat, fval);
     }
     else {
         if (is_unsigned) {
             unsigned long long val = std::stoull(value);
             if (is_long == 2 || val >= ULONG_MAX) {
-                return std::make_shared<NumericalConstant<unsigned long long>>(TokenType::ConstUnsignedLongLong, val);
+                return MAKE_TOKEN(NumericalConstant<unsigned long long>)(TokenType::ConstUnsignedLongLong, val);
             }
             else if (is_long == 1 || val >= UINT_MAX) {
-                return std::make_shared<NumericalConstant<unsigned long>>(TokenType::ConstUnsignedLong, val);
+                return MAKE_TOKEN(NumericalConstant<unsigned long>)(TokenType::ConstUnsignedLong, val);
             }
             else {
-                return std::make_shared<NumericalConstant<unsigned int>>(TokenType::ConstUnsignedInt, val);
+                return MAKE_TOKEN(NumericalConstant<unsigned int>)(TokenType::ConstUnsignedInt, val);
             }
         }
         else {
             long long val = std::stoll(value);
             if (is_long == 2 || val >= LONG_MAX) {
-                return std::make_shared<NumericalConstant<long long>>(TokenType::ConstLongLong, val);
+                return MAKE_TOKEN(NumericalConstant<long long>)(TokenType::ConstLongLong, val);
             }
             else if (is_long == 1 || val >= INT_MAX) {
-                return std::make_shared<NumericalConstant<long>>(TokenType::ConstLong, val);
+                return MAKE_TOKEN(NumericalConstant<long>)(TokenType::ConstLong, val);
             }
             else {
-                return std::make_shared<NumericalConstant<int>>(TokenType::ConstInt, val);
+                return MAKE_TOKEN(NumericalConstant<int>)(TokenType::ConstInt, val);
             }
         }
     }

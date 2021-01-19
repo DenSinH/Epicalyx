@@ -9,6 +9,7 @@
 #include <stdexcept>
 
 #define NODE(_type) std::unique_ptr<_type>
+#define MAKE_NODE(_type) std::make_unique<_type>
 
 class Parser {
 public:
@@ -59,7 +60,7 @@ public:
     TOKEN ExpectType(enum TokenType type) {
         auto current = Current();
         if (current->Type != type) {
-            throw std::exception("Unexpected token");
+            throw std::runtime_error("Unexpected token, got " + current->Repr());
         }
         return current;
     }
@@ -89,6 +90,9 @@ private:
     NODE(Expr) ExpectBinOrExpression();
     NODE(Expr) ExpectLogicAndExpression();
     NODE(Expr) ExpectLogicOrExpression();
+    NODE(Expr) ExpectConditionalExpression();
+    NODE(Expr) ExpectAssignmentExpression();
+    NODE(Expr) ExpectExpression();
 
     template<
             NODE(Expr) (Parser::*SubNode)(),
