@@ -2,7 +2,10 @@
 #define EPICALYX_ASSIGN_EXPRESSION_H
 
 #include "../AST.h"
-#include "../../tokenizer/types.h"
+#include "../../tokenizer/tokens.h"
+
+#include <map>
+#include <stdexcept>
 
 class AssignmentExpression : public Expr {
 public:
@@ -45,63 +48,20 @@ public:
         return repr;
     }
 
-    static constexpr AssignOp TokenTypeToAssignOp(enum TokenType type) {
-        switch(type) {
-            case TokenType::Assign:
-                return AssignOp::Eq;
-            case TokenType::IMul:
-                return AssignOp::MulEq;
-            case TokenType::IDiv:
-                return AssignOp::DivEq;
-            case TokenType::IMod:
-                return AssignOp::ModEq;
-            case TokenType::IPlus:
-                return AssignOp::AddEq;
-            case TokenType::IMinus:
-                return AssignOp::SubEq;
-            case TokenType::ILShift:
-                return AssignOp::LShiftEq;
-            case TokenType::IRShift:
-                return AssignOp::RShiftEq;
-            case TokenType::IAnd:
-                return AssignOp::AndEq;
-            case TokenType::IXor:
-                return AssignOp::XorEq;
-            case TokenType::IOr:
-                return AssignOp::OrEq;
-            default:
-                throw std::runtime_error("Invalid assignment token type");
+    static AssignOp TokenTypeToAssignOp(enum TokenType type) {
+        if (TokenMap.contains(type)) {
+            return TokenMap.at(type);
         }
+        throw std::runtime_error("Invalid assignment token type: " + Token::TypeString(type));
     }
 
 private:
+    static const std::map<enum TokenType, AssignOp> TokenMap;
+    static const std::map<AssignOp, std::string> OpString;
+    
     std::string Operation() {
-        switch(Op) {
-            case AssignOp::Eq:
-                return "=";
-            case AssignOp::MulEq:
-                return "*=";
-            case AssignOp::DivEq:
-                return "/=";
-            case AssignOp::ModEq:
-                return "%=";
-            case AssignOp::AddEq:
-                return "+=";
-            case AssignOp::SubEq:
-                return "-=";
-            case AssignOp::LShiftEq:
-                return "<<=";
-            case AssignOp::RShiftEq:
-                return ">>=";
-            case AssignOp::AndEq:
-                return "&=";
-            case AssignOp::XorEq:
-                return "^=";
-            case AssignOp::OrEq:
-                return "|=";
-        }
+        return OpString.at(Op);
     }
 };
-
 
 #endif //EPICALYX_ASSIGN_EXPRESSION_H

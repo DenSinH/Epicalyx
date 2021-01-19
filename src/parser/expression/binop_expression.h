@@ -5,6 +5,8 @@
 #include "log.h"
 #include "../AST.h"
 
+#include <map>
+
 class BinOpExpression : public Expr {
 public:
     enum class BinOp {
@@ -38,47 +40,11 @@ public:
     NODE(Expr) Left;
     NODE(Expr) Right;
 
-    static constexpr BinOp TokenTypeToBinOp(const enum TokenType type) {
-        switch(type) {
-            case TokenType::Asterisk:
-                return BinOp::Mul;
-            case TokenType::Div:
-                return BinOp::Div;
-            case TokenType::Mod:
-                return BinOp::Mod;
-            case TokenType::Plus:
-                return BinOp::Add;
-            case TokenType::Minus:
-                return BinOp::Sub;
-            case TokenType::LShift:
-                return BinOp::LShift;
-            case TokenType::RShift:
-                return BinOp::RShift;
-            case TokenType::LessEqual:
-                return BinOp::Leq;
-            case TokenType::GreaterEqual:
-                return BinOp::Geq;
-            case TokenType::Less:
-                return BinOp::Lt;
-            case TokenType::Greater:
-                return BinOp::Gt;
-            case TokenType::Equal:
-                return BinOp::Eq;
-            case TokenType::NotEqual:
-                return BinOp::Ne;
-            case TokenType::Ampersand:
-                return BinOp::BinAnd;
-            case TokenType::BinOr:
-                return BinOp::BinOr;
-            case TokenType::BinXor:
-                return BinOp::BinXor;
-            case TokenType::LogicalAnd:
-                return BinOp::LogicAnd;
-            case TokenType::LogicalOr:
-                return BinOp::LogicOr;
-            default:
-                throw std::runtime_error("Invalid BinOp token");
+    static BinOp TokenTypeToBinOp(const enum TokenType type) {
+        if (TokenMap.contains(type)) {
+            return TokenMap.at(type);
         }
+        throw std::runtime_error("Invalid BinOp token: " + Token::TypeString(type));
     }
 
     std::vector<std::string> Repr() override {
@@ -92,48 +58,16 @@ public:
         return repr;
     }
 
+    bool IsConstant() override {
+        return Left->IsConstant() && Right->IsConstant();
+    }
+
 private:
-    std::string Operation() {
-        switch(Op) {
-            case BinOp::Add:
-                return "+";
-            case BinOp::Mul:
-                return "*";
-            case BinOp::Div:
-                return "/";
-            case BinOp::Mod:
-                return "%";
-            case BinOp::Sub:
-                return "-";
-            case BinOp::LShift:
-                return "<<";
-            case BinOp::RShift:
-                return ">>";
-            case BinOp::Leq:
-                return "<=";
-            case BinOp::Geq:
-                return ">=";
-            case BinOp::Lt:
-                return "<";
-            case BinOp::Gt:
-                return ">";
-            case BinOp::Eq:
-                return "==";
-            case BinOp::Ne:
-                return "!=";
-            case BinOp::BinAnd:
-                return "&";
-            case BinOp::BinXor:
-                return "^";
-            case BinOp::BinOr:
-                return "|";
-            case BinOp::LogicAnd:
-                return "&&";
-            case BinOp::LogicOr:
-                return "||";
-            default:
-                throw std::runtime_error("Invalid Binop operation");
-        }
+    static const std::map<BinOp, std::string> OpString;
+    static const std::map<enum TokenType, BinOp> TokenMap;
+
+    std::string Operation() const {
+        return OpString.at(Op);
     }
 };
 

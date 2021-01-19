@@ -32,6 +32,16 @@ public:
         }
         return repr;
     }
+
+    bool IsConstant() override {
+        if (!Left->IsConstant()) {
+            return false;
+        }
+
+        // todo:
+        // if Left->Eval() / return True->IsConstant() / False->IsConstant()
+        return True->IsConstant() && False->IsConstant();
+    }
 };
 
 #endif //EPICALYX_COND_EXPRESSION_H

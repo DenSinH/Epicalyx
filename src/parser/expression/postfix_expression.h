@@ -45,6 +45,10 @@ public:
         }
         return repr;
     }
+
+    bool IsConstant() override {
+        return Left->IsConstant() && Right->IsConstant();
+    }
 };
 
 class FunctionCallExpression : public PostfixExpression {
@@ -107,6 +111,10 @@ public:
             repr.emplace_back(REPR_PADDING + s);
         }
         return repr;
+    }
+
+    bool IsConstant() override {
+        return Left->IsConstant();
     }
 };
 

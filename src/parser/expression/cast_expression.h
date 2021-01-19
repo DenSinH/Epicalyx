@@ -21,6 +21,10 @@ public:
         }
         return repr;
     }
+
+    bool IsConstant() override {
+        return Right->IsConstant();
+    }
 };
 
 #endif //EPICALYX_CAST_EXPRESSION_H

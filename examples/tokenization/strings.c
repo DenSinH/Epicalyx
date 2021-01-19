@@ -16,4 +16,10 @@ int test() {
     const char* string = "hello world!";
     const char* escape_string = "hello\nworld!\t\a\b\?\\\test\"\"\'";
     const char* hex_escape_string = "hello\x12\x31\xAB\xbcworld!";
+
+    const int a = 123;
+    switch(multiple_escape) {
+        case a == 123 ? 1 : multiple_escape:
+            return 0;
+    }
 }

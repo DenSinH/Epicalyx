@@ -23,7 +23,7 @@ public:
         this->Tokens = tokenizer->Tokens;
     }
 
-    NODE(Node) Parse() { return nullptr };
+    NODE(Node) Parse() { return nullptr; };
 
     TOKEN Current() {
         if (Index < Tokens.size()) {

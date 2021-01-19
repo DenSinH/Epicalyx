@@ -4,6 +4,7 @@
 #include "../AST.h"
 #include "../../tokenizer/tokens.h"
 #include <stdexcept>
+#include <map>
 
 class StorageClassSpecifier : public Decl {
 public:
@@ -22,27 +23,18 @@ public:
 
     StorageClass Class;
 
-    static constexpr StorageClass TokenTypeToStorageClass(enum TokenType type) {
-        switch(type) {
-            case TokenType::Typedef:
-                return StorageClass::Typedef;
-            case TokenType::Extern:
-                return StorageClass::Extern;
-            case TokenType::Static:
-                return StorageClass::Static;
-            case TokenType::ThreadLocal:
-                return StorageClass::ThreadLocal;
-            case TokenType::Auto:
-                return StorageClass::Auto;
-            case TokenType::Register:
-                return StorageClass::Register;
-            default:
-                throw std::runtime_error("Invalid storage class specifier: " + Token::TypeString(type));
+    static StorageClass TokenTypeToStorageClass(enum TokenType type) {
+        if (TokenMap.contains(type)) {
+            return TokenMap.at(type);
         }
+        throw std::runtime_error("Invalid storage class specifier: " + Token::TypeString(type));
     }
+private:
+    static const std::map<enum TokenType, StorageClass> TokenMap;
 };
 
 class TypeSpecifier : public Decl {
+public:
     enum class TypeSpecifierType {
         Void,
         Char,
@@ -62,6 +54,83 @@ class TypeSpecifier : public Decl {
         Enum,
         TypedefName,
     };
+
+    explicit TypeSpecifier(TypeSpecifierType type) {
+        this->Type = type;
+    }
+
+    TypeSpecifierType Type;
+
+    static TypeSpecifierType TokenTypeToTypeSpecifierType(enum TokenType type) {
+        if (TokenMap.contains(type)) {
+            return TokenMap.at(type);
+        }
+        throw std::runtime_error("Invalid type specifier: " + Token::TypeString(type));
+    }
+    
+private:
+    static const std::map<enum TokenType, TypeSpecifierType> TokenMap;
+};
+
+class AtomicTypeSpecifier : public TypeSpecifier {
+public:
+    AtomicTypeSpecifier(NODE(Decl)& type_name) : TypeSpecifier(TypeSpecifierType::AtomicType) {
+        this->TypeName = std::move(type_name);
+    }
+
+    NODE(Decl) TypeName;
+};
+
+template<TypeSpecifier::TypeSpecifierType T>
+class StructUnionSpecifier : public TypeSpecifier {
+public:
+    static_assert(T == TypeSpecifierType::Struct || T == TypeSpecifierType::Union, "Invalid struct or union specifier");
+
+    explicit StructUnionSpecifier(std::string& id, NODE(Decl)& declaration_list) : TypeSpecifier(T) {
+        this->ID = id;
+        this->DeclarationList = std::move(declaration_list);
+    }
+
+    explicit StructUnionSpecifier(std::string& id) : TypeSpecifier(T) {
+        this->ID = id;
+    }
+
+    explicit StructUnionSpecifier(NODE(Decl)& declaration_list) : StructUnionSpecifier("", declaration_list) {
+
+    }
+
+    std::string ID = "";
+    NODE(Decl) DeclarationList = nullptr;
+};
+
+
+class EnumSpecifier : public TypeSpecifier {
+public:
+    explicit EnumSpecifier(std::string& id, NODE(Decl)& declaration_list) : TypeSpecifier(TypeSpecifierType::Enum) {
+        this->ID = id;
+        this->DeclarationList = std::move(declaration_list);
+    }
+
+    explicit EnumSpecifier(std::string& id) : TypeSpecifier(TypeSpecifierType::Enum) {
+        this->ID = id;
+    }
+
+    explicit EnumSpecifier(NODE(Decl)& declaration_list) : TypeSpecifier(TypeSpecifierType::Enum) {
+        this->DeclarationList = std::move(declaration_list);
+    }
+
+    std::string ID = "";
+    NODE(Decl) DeclarationList = nullptr;
+};
+
+class TypedefName : public TypeSpecifier {
+public:
+    explicit TypedefName(std::string& name) : TypeSpecifier(TypeSpecifierType::TypedefName) {
+        this->Name = name;
+    }
+
+
+    std::string Name;
 };
 
 #endif //EPICALYX_DECLARATION_SPECIFIER_H

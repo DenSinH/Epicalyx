@@ -9,7 +9,6 @@ public:
         Identifier,
         Constant,
         StringLiteral,
-        Expression,
         // todo: generic selection
     };
 
@@ -31,6 +30,11 @@ public:
     std::vector<std::string> Repr() override {
         return { std::string("Identifier: ") + ID };
     }
+
+    bool IsConstant() override {
+        // todo: We don't know this yet?
+        return false;
+    }
 };
 
 template<typename T>
@@ -45,6 +49,10 @@ public:
     std::vector<std::string> Repr() override {
         return { std::string("Constant: ") + std::to_string(Value) };
     }
+
+    bool IsConstant() override {
+        return true;
+    }
 };
 
 class PrimaryStringLiteral : public PrimaryExpression {
@@ -57,6 +65,10 @@ public:
 
     std::vector<std::string> Repr() override {
         return { std::string("Constant String: ") + Value };
+    }
+
+    bool IsConstant() override {
+        return true;
     }
 };
 

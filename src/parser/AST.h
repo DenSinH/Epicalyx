@@ -25,7 +25,10 @@ public:
 };
 
 class Expr : public Node {
-
+public:
+    virtual bool IsConstant() {
+        return false;
+    }
 };
 
 class Decl : public Node {
