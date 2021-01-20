@@ -1,45 +1,35 @@
 #ifndef EPICALYX_STRUCT_H
 #define EPICALYX_STRUCT_H
 
-#include "../AST.h"
+#include "AST.h"
+#include "specifiers.h"
 #include <stdexcept>
-
-
-class StructDeclarationList : public Decl {
-public:
-    explicit StructDeclarationList(NODE(Decl)& list, NODE(Decl)& head) {
-        this->List = std::move(list);
-        this->Head = std::move(head);
-    }
-
-    NODE(Decl) List;  // struct-declaration-list
-    NODE(Decl) Head;  // struct-declaration
-};
 
 class StructDeclaration : public Decl {
 public:
-    explicit StructDeclaration(NODE(Decl)& specifiers_qualifiers, NODE(Decl)& declarators) {
-        this->SpecifiersQualifies = std::move(specifiers_qualifiers);
+    explicit StructDeclaration() {
+        Declarators = nullptr;
+    }
+
+    explicit StructDeclaration(NODE(Decl)& declarators) {
         this->Declarators = std::move(declarators);
     }
 
-    explicit StructDeclaration(NODE(Decl)& specifiers_qualifiers) {
-        this->SpecifiersQualifies = std::move(specifiers_qualifiers);
+    template<typename T>
+    void AddSpecifierQualifier(NODE(T)&);
+
+    void  AddSpecifierQualifier(NODE(TypeSpecifier)& specifier) {
+        Specifiers.push_back(std::move(specifier));
     }
 
-    NODE(Decl) SpecifiersQualifies;    // specifier-qualifier-list
+    void  AddSpecifierQualifier(NODE(TypeQualifier)& qualifier) {
+        Qualifiers.push_back(std::move(qualifier));
+    }
+
+    std::vector<NODE(TypeSpecifier)> Specifiers;
+    std::vector<NODE(TypeQualifier)> Qualifiers;
+
     NODE(Decl) Declarators = nullptr;  // struct-declarator-list, opt
-};
-
-class StructDeclaratorList : public Decl {
-public:
-    explicit StructDeclaratorList(NODE(Decl)& list, NODE(Decl)& head) {
-        this->List = std::move(list);
-        this->Head = std::move(head);
-    }
-
-    NODE(Decl) List;  // struct-declarator-list
-    NODE(Decl) Head;  // struct-declarator
 };
 
 class StructDeclarator : public Decl {
@@ -67,6 +57,28 @@ public:
 
     NODE(Decl) Name = nullptr;  // declarator, opt
     NODE(Expr) Size = nullptr;  // constant-expression, opt
+};
+
+
+template<TypeSpecifier::TypeSpecifierType T>
+class StructUnionSpecifier : public TypeSpecifier {
+public:
+    static_assert(T == TypeSpecifierType::Struct || T == TypeSpecifierType::Union, "Invalid struct or union specifier");
+
+    explicit StructUnionSpecifier(std::string& id) : TypeSpecifier(T) {
+        this->ID = id;
+    }
+
+    explicit StructUnionSpecifier() : StructUnionSpecifier("") {
+
+    }
+
+    void AddDeclaration(NODE(StructDeclaration)& declaration) {
+        DeclarationList.push_back(std::move(declaration));
+    }
+
+    std::string ID = "";
+    std::vector<NODE(StructDeclaration)> DeclarationList = {};
 };
 
 #endif //EPICALYX_STRUCT_H

@@ -1,4 +1,4 @@
-#include "declaration_specifier.h"
+#include "specifiers.h"
 
 const std::map<enum TokenType, TypeSpecifier::TypeSpecifierType> TypeSpecifier::TokenMap = {
         { TokenType::Void, TypeSpecifierType::Void },

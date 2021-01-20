@@ -3,17 +3,7 @@
 
 #include "../AST.h"
 #include <stdexcept>
-
-class EnumeratorList : public Decl {
-public:
-    explicit EnumeratorList(NODE(Decl)& list, NODE(Decl)& value) {
-        this->List = std::move(list);
-        this->Value = std::move(value);
-    }
-
-    NODE(Decl) List;   // enumerator-list
-    NODE(Decl) Value;  // enumerator
-};
+#include "specifiers.h"
 
 class Enumerator : public Decl {
 public:
@@ -32,6 +22,20 @@ public:
 
     std::string Name;
     NODE(Expr) Value = nullptr;  // constant-expression / nullptr for default value
+};
+
+class EnumSpecifier : public TypeSpecifier {
+public:
+    explicit EnumSpecifier(std::string& id) : TypeSpecifier(TypeSpecifierType::Enum) {
+        this->ID = id;
+    }
+
+    void AddEnumerator(NODE(Enumerator)& enumerator) {
+        EnumeratorList.push_back(std::move(enumerator));
+    }
+
+    std::string ID = "";
+    std::vector<NODE(Enumerator)> EnumeratorList = {};
 };
 
 #endif //EPICALYX_ENUM_H
