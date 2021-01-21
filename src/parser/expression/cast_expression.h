@@ -14,8 +14,8 @@ public:
     std::string TypeName;
     NODE(Expr) Right;
 
-    std::vector<std::string> Repr() override {
-        std::vector<std::string> repr = { "CastExpr: (" + TypeName + ")" };
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "CastExpr: (" + TypeName + ")" };
         for (auto& s : Right->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
         }

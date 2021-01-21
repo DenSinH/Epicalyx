@@ -9,6 +9,9 @@
 #include <set>
 #include <stdexcept>
 
+class StaticAssertDecl;
+class Initializer;
+
 class Parser {
 public:
     explicit Parser(std::vector<TOKEN>& tokens) {
@@ -97,8 +100,12 @@ private:
     NODE(Expr) ExpectLogicAndExpression();
     NODE(Expr) ExpectLogicOrExpression();
     NODE(Expr) ExpectConditionalExpression();
+    NODE(Expr) ExpectConstantExpression() { return ExpectConditionalExpression(); }
     NODE(Expr) ExpectAssignmentExpression();
     NODE(Expr) ExpectExpression();
+
+    NODE(StaticAssertDecl) ExpectStaticAssert();
+    NODE(Initializer) ExpectInitializer();
 
     template<
             NODE(Expr) (Parser::*SubNode)(),

@@ -19,6 +19,15 @@ public:
     }
 
     NODE(Expr) Member;  // must be constant
+
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "ArrayMemberDesignator: [" };
+        for (auto& s : Member->Repr()) {
+            repr.push_back(REPR_PADDING + s);
+        }
+        repr.emplace_back("]");
+        return repr;
+    }
 };
 
 class StructFieldDesignator : public Designator {
@@ -28,6 +37,10 @@ public:
     }
 
     std::string Name;
+
+    std::list<std::string> Repr() override {
+        return { "." + Name };
+    }
 };
 
 #endif //EPICALYX_DESIGNATION_H

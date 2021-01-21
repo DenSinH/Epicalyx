@@ -4,8 +4,7 @@
 #include "AST.h"
 #include "specifiers.h"
 #include "initializer.h"
-
-class Declarator;
+#include "declarator.h"
 
 class InitDeclarator : public Decl {
 public:
@@ -21,6 +20,19 @@ public:
 
     NODE(Declarator) Declar;
     NODE(Initializer) Init;
+
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "InitDeclarator: "};
+        for (auto& s : Declar->Repr()) {
+            repr.push_back(REPR_PADDING + s);
+        }
+        if (Init) {
+            for (auto& s : Init->Repr()) {
+                repr.push_back(REPR_PADDING + s);
+            }
+        }
+        return repr;
+    }
 };
 
 class Declaration : public Decl {
@@ -35,6 +47,19 @@ public:
 
     NODE(DeclarationSpecifiers) Specifiers;
     std::vector<NODE(InitDeclarator)> InitDeclarators;
+
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "Declaration: "};
+        for (auto& s : Specifiers->Repr()) {
+            repr.push_back(REPR_PADDING + s);
+        }
+        for (auto& id : InitDeclarators) {
+            for (auto& s : id->Repr()) {
+                repr.push_back(REPR_PADDING + s);
+            }
+        }
+        return repr;
+    }
 };
 
 

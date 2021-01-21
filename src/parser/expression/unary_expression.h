@@ -41,8 +41,8 @@ public:
     UnOpType Type;
     NODE(Expr) Right;
 
-    std::vector<std::string> Repr() override {
-        std::vector<std::string> repr = { "UnaryExpression: " + Operation() };
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "UnaryExpression: " + Operation() };
         for (auto& s : Right->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
         }
@@ -80,8 +80,8 @@ class SizeOfTypeExpression : public UnaryExpression {
 
     NODE(Expr) Right;
 
-    std::vector<std::string> Repr() override {
-        std::vector<std::string> repr = { "SizeOfTypeExpression: " };
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "SizeOfTypeExpression: " };
         for (auto& s : Right->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
         }
@@ -97,8 +97,8 @@ class SizeOfExpression : public UnaryExpression {
 
     NODE(Expr) Right;
 
-    std::vector<std::string> Repr() override {
-        std::vector<std::string> repr = { "SizeOfExpression: " };
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "SizeOfExpression: " };
         for (auto& s : Right->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
         }

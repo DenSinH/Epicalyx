@@ -30,7 +30,7 @@ void Tokenizer::TokenizeLine(std::ifstream& file, const std::string& line) {
         current_token = "";
         auto next = current + 1;
 
-        if (std::isalpha(*current)) {
+        if (std::isalpha(*current) || (*current == '_')) {
             // identifier or keyword
             if (*current == 'L' || std::tolower(*current) == 'u') {
                 // might be character sequence

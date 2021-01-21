@@ -9,7 +9,16 @@
 
 class TypeName;
 
-class StorageClassSpecifier : public Decl {
+class SpecifierQualifier : public Decl {
+public:
+    virtual std::string String() { return ""; }
+
+    std::list<std::string> Repr() override {
+        return { String() };
+    }
+};
+
+class StorageClassSpecifier : public SpecifierQualifier {
 public:
     enum class StorageClass {
         Typedef,
@@ -32,11 +41,17 @@ public:
         }
         throw std::runtime_error("Invalid storage class specifier: " + Token::TypeString(type));
     }
+
+    std::string String() override {
+        return StringMap.at(Class);
+    }
+
 private:
     static const std::map<enum TokenType, StorageClass> TokenMap;
+    static const std::map<StorageClassSpecifier::StorageClass, const std::string> StringMap;
 };
 
-class TypeSpecifier : public Decl {
+class TypeSpecifier : public SpecifierQualifier {
 public:
     enum class TypeSpecifierType {
         Void,
@@ -70,18 +85,14 @@ public:
         }
         throw std::runtime_error("Invalid type specifier: " + Token::TypeString(type));
     }
-    
-private:
-    static const std::map<enum TokenType, TypeSpecifierType> TokenMap;
-};
 
-class AtomicTypeSpecifier : public TypeSpecifier {
-public:
-    AtomicTypeSpecifier(NODE(TypeName)& type_name) : TypeSpecifier(TypeSpecifierType::AtomicType) {
-        this->Type = std::move(type_name);
+    std::string String() override {
+        return StringMap.at(Type);
     }
 
-    NODE(TypeName) Type;  // type-name
+private:
+    static const std::map<enum TokenType, TypeSpecifierType> TokenMap;
+    static const std::map<TypeSpecifier::TypeSpecifierType, const std::string> StringMap;
 };
 
 class TypedefName : public TypeSpecifier {
@@ -91,9 +102,13 @@ public:
     }
 
     std::string Name;
+
+    std::string String() override {
+        return "TypedefName(" + Name + ")";
+    }
 };
 
-class TypeQualifier : public Decl {
+class TypeQualifier : public SpecifierQualifier {
 public:
     enum class TypeQualifierType {
         Const,
@@ -106,7 +121,7 @@ public:
         Qualifier = qualifier;
     }
 
-    explicit TypeQualifier(TokenType qualifier) {
+    explicit TypeQualifier(enum TokenType qualifier) {
         switch(qualifier) {
             case TokenType::Const:
                 Qualifier = TypeQualifierType::Const;
@@ -125,17 +140,27 @@ public:
         }
     }
 
+    std::string String() override {
+        static const std::map<TypeQualifierType, std::string> StringMap = {
+                { TypeQualifierType::Const, "const" },
+                { TypeQualifierType::Restrict, "restrict" },
+                { TypeQualifierType::Volatile, "volatile" },
+                { TypeQualifierType::Atomic, "_Atomic" },
+        };
+        return StringMap.at(Qualifier);
+    }
+
     TypeQualifierType Qualifier;
 };
 
-class FunctionSpecifier : public Decl {
+class FunctionSpecifier : public SpecifierQualifier {
 public:
     enum class FunctionSpecifierType {
         Inline,
         Noreturn,
     };
 
-    explicit FunctionSpecifier(TokenType type) {
+    explicit FunctionSpecifier(enum TokenType type) {
         if (type == TokenType::Inline) {
             Type = FunctionSpecifierType::Inline;
         }
@@ -151,10 +176,14 @@ public:
         Type = type;
     }
 
+    std::string String() override {
+        return Type == FunctionSpecifierType::Inline ? "inline" : "_Noreturn";
+    }
+
     FunctionSpecifierType Type;
 };
 
-class AlignmentSpecifier : public Decl {
+class AlignmentSpecifier : public SpecifierQualifier {
 
 };
 
@@ -169,16 +198,18 @@ public:
     }
 
     NODE(Expr) Expression;
-};
 
-class AlignmentSpecifierTypeName : public AlignmentSpecifier {
-public:
-
-    explicit AlignmentSpecifierTypeName(NODE(Decl)& type_name) {
-        Type = std::move(type_name);
+    std::string String() override {
+        return "_AlignOf";
     }
 
-    NODE(Decl) Type;
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "AlignmentSpecifier (expression):" };
+        for (auto& s : Expression->Repr()) {
+            repr.push_back(REPR_PADDING + s);
+        }
+        return repr;
+    }
 };
 
 class DeclarationSpecifiers : public Decl {
@@ -214,6 +245,43 @@ public:
     std::vector<NODE(TypeQualifier)> TypeQualifiers = {};
     std::vector<NODE(FunctionSpecifier)> FunctionSpecifiers = {};
     std::vector<NODE(AlignmentSpecifier)> AlignmentSpecifiers = {};
+
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "DeclarationSpecifiers: " };
+        std::string specifiers_qualifiers;
+        for (auto& sc : StorageClassSpecifiers) {
+            specifiers_qualifiers += sc->String() + " ";
+//            for (auto& s : sc->Repr()) {
+//                repr.push_back(REPR_PADDING + s);
+//            }
+        }
+        for (auto& ts : TypeSpecifiers) {
+            specifiers_qualifiers += ts->String() + " ";
+//            for (auto& s : ts->Repr()) {
+//                repr.push_back(REPR_PADDING + s);
+//            }
+        }
+        for (auto& tq : TypeQualifiers) {
+            specifiers_qualifiers += tq->String() + " ";
+//            for (auto& s : tq->Repr()) {
+//                repr.push_back(REPR_PADDING + s);
+//            }
+        }
+        for (auto& fs : FunctionSpecifiers) {
+            specifiers_qualifiers += fs->String() + " ";
+//            for (auto& s : fs->Repr()) {
+//                repr.push_back(REPR_PADDING + s);
+//            }
+        }
+        for (auto& as : AlignmentSpecifiers) {
+            specifiers_qualifiers += as->String() + " ";
+//            for (auto& s : as->Repr()) {
+//                repr.push_back(REPR_PADDING + s);
+//            }
+        }
+        repr.push_back(specifiers_qualifiers);
+        return repr;
+    }
 };
 
 #endif //EPICALYX_SPECIFIERS_H

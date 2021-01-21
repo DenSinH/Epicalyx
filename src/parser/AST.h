@@ -2,6 +2,7 @@
 #define EPICALYX_AST_H
 
 #include <vector>
+#include <list>
 #include <string>
 #include <memory>
 #include <utility>
@@ -14,7 +15,7 @@ class Parser;
 
 class Node {
 public:
-    virtual std::vector<std::string> Repr() { return {}; }
+    virtual std::list<std::string> Repr() { return {}; }
 
     void Print() {
         for (auto& s : Repr()) {

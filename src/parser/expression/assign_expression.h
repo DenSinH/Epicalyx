@@ -36,8 +36,8 @@ public:
     AssignOp Op;
     NODE(Expr) Right;  // can also be a CondExpr
 
-    std::vector<std::string> Repr() override {
-        std::vector<std::string> repr = { "AssignExpr:" };
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "AssignExpr:" };
         for (auto& s : Left->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
         }

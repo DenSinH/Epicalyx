@@ -34,8 +34,8 @@ public:
     NODE(Expr) Left;
     NODE(Expr) Right;
 
-    std::vector<std::string> Repr() override {
-        std::vector<std::string> repr = { "ArrayAccessExpr:" };
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "ArrayAccessExpr:" };
         for (auto& s : Left->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
         }
@@ -71,8 +71,8 @@ public:
     NODE(Expr) Func;
     NODE(Expr) Args;
 
-    std::vector<std::string> Repr() override {
-        std::vector<std::string> repr = { "FunctionCallExpr:" };
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "FunctionCallExpr:" };
         for (auto& s : Func->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
         }
@@ -105,8 +105,8 @@ public:
     std::string Member;
     MemberAccessType AccessType;
 
-    std::vector<std::string> Repr() override {
-        std::vector<std::string> repr = { std::string("MemberAccessExpr:") + (AccessType == MemberAccessType::Direct ? "." : "->") + Member};
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { std::string("MemberAccessExpr:") + (AccessType == MemberAccessType::Direct ? "." : "->") + Member};
         for (auto& s : Left->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
         }
@@ -137,8 +137,8 @@ public:
     NODE(Expr) Left;
     CrementType Type;
 
-    std::vector<std::string> Repr() override {
-        std::vector<std::string> repr = { std::string("PostCrementExpression:") + (Type == CrementType::Increment ? "++" : "--") };
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { std::string("PostCrementExpression:") + (Type == CrementType::Increment ? "++" : "--") };
         for (auto& s : Left->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
         }

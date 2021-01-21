@@ -22,6 +22,16 @@ public:
 
     std::string Name;
     NODE(Expr) Value = nullptr;  // constant-expression / nullptr for default value
+
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "Enumerator: " + Name };
+        if (Value) {
+            for (auto& s : Value->Repr()) {
+                repr.push_back(REPR_PADDING + s);
+            }
+        }
+        return repr;
+    }
 };
 
 class EnumSpecifier : public TypeSpecifier {
@@ -36,6 +46,16 @@ public:
 
     std::string ID = "";
     std::vector<NODE(Enumerator)> EnumeratorList = {};
+
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "EnumSpecifier: " + ID };
+        for (auto& enumerator : EnumeratorList) {
+            for (auto& s : enumerator->Repr()) {
+                repr.push_back(REPR_PADDING + s);
+            }
+        }
+        return repr;
+    }
 };
 
 #endif //EPICALYX_ENUM_H

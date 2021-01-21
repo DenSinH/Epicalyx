@@ -47,8 +47,8 @@ public:
         throw std::runtime_error("Invalid BinOp token: " + Token::TypeString(type));
     }
 
-    std::vector<std::string> Repr() override {
-        std::vector<std::string> repr = { "BinOp: " + Operation() };
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "BinOp: " + Operation() };
         for (auto& s : Left->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
         }

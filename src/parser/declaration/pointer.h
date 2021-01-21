@@ -4,7 +4,7 @@
 #include "AST.h"
 #include "specifiers.h"
 
-class Pointer : public Decl {
+class Pointer : public SpecifierQualifier {
 public:
     Pointer() = default;
 
@@ -13,6 +13,15 @@ public:
     }
 
     std::vector<NODE(TypeQualifier)> QualifierList;
+
+    std::string String() override {
+        std::string qualifiers;
+
+        for (auto& q : QualifierList) {
+            qualifiers += q->String() + " ";
+        }
+        return qualifiers + "*";
+    }
 };
 
 #endif //EPICALYX_POINTER_H

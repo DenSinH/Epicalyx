@@ -2,23 +2,18 @@
 
 #include <tokenizer.h>
 #include <parser.h>
+#include <declaration_nodes.h>
 
 
 int main() {
-
     auto t = new Tokenizer();
 
-    t->Tokenize("examples/parsing/expressions/function_call/combined.expr");
+    t->Tokenize("examples/parsing/declarations/static_assert.decl");
 
     auto p = new Parser(t);
 
-//    try {
-        auto n = std::move(p->ExpectExpression());
-        n->Print();
-//    }
-//    catch (const std::exception& exc) {
-//        log_fatal("%s", exc.what());
-//    }
+    auto n = p->ExpectStaticAssert();
+    n->Print();
 
     return 0;
 }

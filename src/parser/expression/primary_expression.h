@@ -27,7 +27,7 @@ public:
 
     std::string ID;
 
-    std::vector<std::string> Repr() override {
+    std::list<std::string> Repr() override {
         return { std::string("Identifier: ") + ID };
     }
 
@@ -46,7 +46,7 @@ public:
 
     T Value;
 
-    std::vector<std::string> Repr() override {
+    std::list<std::string> Repr() override {
         return { std::string("Constant: ") + std::to_string(Value) };
     }
 
@@ -63,7 +63,7 @@ public:
 
     std::string Value;
 
-    std::vector<std::string> Repr() override {
+    std::list<std::string> Repr() override {
         return { std::string("Constant String: ") + Value };
     }
 

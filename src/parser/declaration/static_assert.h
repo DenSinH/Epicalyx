@@ -19,6 +19,15 @@ public:
 
     NODE(Expr) Expression;  // must be constant
     std::string Message;
+
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "StaticAssert: " };
+        for (auto& s : Expression->Repr()) {
+            repr.push_back(REPR_PADDING + s);
+        }
+        repr.push_back("Message: " + Message);
+        return repr;
+    }
 };
 
 #endif //EPICALYX_STATIC_ASSERT_H

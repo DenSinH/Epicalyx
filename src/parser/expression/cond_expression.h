@@ -17,8 +17,8 @@ public:
     NODE(Expr) True;
     NODE(Expr) False;
 
-    std::vector<std::string> Repr() override {
-        std::vector<std::string> repr = { "CondExpr: Cond:" };
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "CondExpr: Cond:" };
         for (auto& s : Left->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
         }
