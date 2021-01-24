@@ -33,6 +33,10 @@ public:
         this->Class = cls;
     };
 
+    explicit StorageClassSpecifier(enum TokenType type) : StorageClassSpecifier(TokenTypeToStorageClass(type)) {
+
+    };
+
     StorageClass Class;
 
     static StorageClass TokenTypeToStorageClass(enum TokenType type) {
@@ -44,6 +48,10 @@ public:
 
     std::string String() override {
         return StringMap.at(Class);
+    }
+
+    static bool Is(enum TokenType type) {
+        return TokenMap.contains(type);
     }
 
 private:
@@ -77,6 +85,10 @@ public:
         this->Type = type;
     }
 
+    explicit TypeSpecifier(enum TokenType type) : TypeSpecifier(TokenTypeToTypeSpecifierType(type)) {
+
+    }
+
     TypeSpecifierType Type;
 
     static TypeSpecifierType TokenTypeToTypeSpecifierType(enum TokenType type) {
@@ -88,6 +100,13 @@ public:
 
     std::string String() override {
         return StringMap.at(Type);
+    }
+
+    static bool Is(enum TokenType type) {
+        if (TokenMap.contains(type)) {
+            return true;
+        }
+        return false;
     }
 
 private:
@@ -122,22 +141,16 @@ public:
     }
 
     explicit TypeQualifier(enum TokenType qualifier) {
-        switch(qualifier) {
-            case TokenType::Const:
-                Qualifier = TypeQualifierType::Const;
-                break;
-            case TokenType::Restrict:
-                Qualifier = TypeQualifierType::Restrict;
-                break;
-            case TokenType::Volatile:
-                Qualifier = TypeQualifierType::Volatile;
-                break;
-            case TokenType::Atomic:
-                Qualifier = TypeQualifierType::Atomic;
-                break;
-            default:
-                throw std::runtime_error("Invalid type qualifier: " + Token::TypeString(qualifier));
+        if (TokenMap.contains(qualifier)) {
+            Qualifier = TokenMap.at(qualifier);
         }
+        else {
+            throw std::runtime_error("Invalid type qualifier: " + Token::TypeString(qualifier));
+        }
+    }
+
+    static bool Is(enum TokenType type) {
+        return TokenMap.contains(type);
     }
 
     std::string String() override {
@@ -149,6 +162,8 @@ public:
         };
         return StringMap.at(Qualifier);
     }
+
+    static const std::map<enum TokenType, TypeQualifierType> TokenMap;
 
     TypeQualifierType Qualifier;
 };
@@ -180,11 +195,18 @@ public:
         return Type == FunctionSpecifierType::Inline ? "inline" : "_Noreturn";
     }
 
+    static bool Is(enum TokenType type) {
+        return (type == TokenType::Inline) || (type == TokenType::Noreturn);
+    }
+
     FunctionSpecifierType Type;
 };
 
 class AlignmentSpecifier : public SpecifierQualifier {
-
+public:
+    static bool Is(enum TokenType type) {
+        return type == TokenType::Alignas;
+    }
 };
 
 class AlignmentSpecifierExpr : public AlignmentSpecifier {
@@ -246,6 +268,10 @@ public:
     std::vector<NODE(FunctionSpecifier)> FunctionSpecifiers = {};
     std::vector<NODE(AlignmentSpecifier)> AlignmentSpecifiers = {};
 
+    bool Empty() const noexcept {
+        return StorageClassSpecifiers.empty() && TypeSpecifiers.empty() && TypeQualifiers.empty() && FunctionSpecifiers.empty() && AlignmentSpecifiers.empty();
+    }
+
     std::list<std::string> Repr() override {
         std::list<std::string> repr = { "DeclarationSpecifiers: " };
         std::string specifiers_qualifiers;
@@ -279,7 +305,7 @@ public:
 //                repr.push_back(REPR_PADDING + s);
 //            }
         }
-        repr.push_back(specifiers_qualifiers);
+        repr.push_back(REPR_PADDING + specifiers_qualifiers);
         return repr;
     }
 };

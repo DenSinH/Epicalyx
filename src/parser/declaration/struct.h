@@ -8,8 +8,8 @@
 
 class StructDeclarator : public Decl {
 public:
-    explicit StructDeclarator(NODE(Declarator)& name, NODE(Expr)& size) {
-        this->Name = std::move(name);
+    explicit StructDeclarator(NODE(AbstractDeclarator)& field, NODE(Expr)& size) {
+        this->Field = std::move(field);
         this->Size = std::move(size);
 
         if (Size && !Size->IsConstant()) {
@@ -25,25 +25,26 @@ public:
         }
     }
 
-    explicit StructDeclarator(NODE(Declarator)& name) {
-        this->Name = std::move(name);
+    explicit StructDeclarator(NODE(AbstractDeclarator)& field) {
+        this->Field = std::move(field);
     }
 
-    NODE(Declarator) Name = nullptr;  // declarator, opt
+    NODE(AbstractDeclarator) Field = nullptr;  // declarator, opt
     NODE(Expr) Size = nullptr;  // constant-expression, opt
 
     std::list<std::string> Repr() override {
-        std::list<std::string> repr = { "StructDeclarator:" };
+        // std::list<std::string> repr = { "StructDeclarator:" };
+        std::list<std::string> repr = { };
 
-        if (Name) {
+        if (Field) {
             repr.emplace_back("Declarator:");
-            for (auto& s : Name->Repr()) {
+            for (auto& s : Field->Repr()) {
                 repr.push_back(REPR_PADDING + s);
             }
         }
         if (Size) {
             repr.emplace_back("Size:");
-            for (auto& s : Name->Repr()) {
+            for (auto& s : Size->Repr()) {
                 repr.push_back(REPR_PADDING + s);
             }
         }
@@ -96,16 +97,9 @@ public:
     }
 };
 
-template<TypeSpecifier::TypeSpecifierType T>
 class StructUnionSpecifier : public TypeSpecifier {
 public:
-    static_assert(T == TypeSpecifierType::Struct || T == TypeSpecifierType::Union, "Invalid struct or union specifier");
-
-    explicit StructUnionSpecifier(std::string& id) : TypeSpecifier(T) {
-        this->ID = id;
-    }
-
-    explicit StructUnionSpecifier() : StructUnionSpecifier("") {
+    explicit StructUnionSpecifier(TypeSpecifierType type) : TypeSpecifier(type) {
 
     }
 
@@ -118,15 +112,7 @@ public:
 
     std::list<std::string> Repr() override {
         std::list<std::string> repr = {};
-        std::string name;
-        if constexpr(T == TypeSpecifierType::Struct) {
-            name = "struct ";
-        }
-        else {
-            name = "enum ";
-        }
-        name += ID;
-        repr.push_back(name);
+        repr.push_back(Keyword() + " " + ID);
 
         for (auto& decl : DeclarationList) {
             for (auto& s : decl->Repr()) {
@@ -134,6 +120,51 @@ public:
             }
         }
         return repr;
+    }
+
+protected:
+    virtual std::string Keyword() {
+        return "";
+    }
+};
+
+class StructSpecifier : public StructUnionSpecifier {
+public:
+    explicit StructSpecifier(std::string& id) : StructUnionSpecifier(TypeSpecifierType::Struct) {
+        this->ID = id;
+    }
+
+    explicit StructSpecifier() : StructUnionSpecifier(TypeSpecifierType::Struct) {
+
+    }
+
+    static bool Is(enum TokenType type) {
+        return type == TokenType::Struct;
+    }
+
+protected:
+    std::string Keyword() override {
+        return "struct";
+    }
+};
+
+class UnionSpecifier : public StructUnionSpecifier {
+public:
+    explicit UnionSpecifier(std::string& id) : StructUnionSpecifier(TypeSpecifierType::Union) {
+        this->ID = id;
+    }
+
+    explicit UnionSpecifier() : StructUnionSpecifier(TypeSpecifierType::Union) {
+
+    }
+
+    static bool Is(enum TokenType type) {
+        return type == TokenType::Union;
+    }
+
+protected:
+    std::string Keyword() override {
+        return "union";
     }
 };
 

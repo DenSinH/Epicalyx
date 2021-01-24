@@ -1,4 +1,8 @@
 #include "parser.h"
+#include "declaration/specifiers.h"
+#include "declaration/struct.h"
+#include "declaration/enum.h"
+#include "declaration/typename.h"
 
 #include <set>
 
@@ -22,6 +26,24 @@ static const std::set<enum TokenType> TypeNameIndicators = {
         TokenType::Union,
         TokenType::Enum,
 };
+
+bool Parser::IsTypedefName(const TOKEN& token) {
+    if (token->Class == TokenClass::Identifier) {
+        if (TypedefNames.contains(std::static_pointer_cast<Identifier>(token)->Name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Parser::IsTypeSpecifier(const TOKEN& token) {
+    return TypeSpecifier::Is(token->Type)
+           || AtomicTypeSpecifier::Is(token->Type)
+           || StructSpecifier::Is(token->Type)
+           || UnionSpecifier::Is(token->Type)
+           || EnumSpecifier::Is(token->Type)
+           || IsTypedefName(token);
+}
 
 bool Parser::IsTypeName(size_t offset) {
     /*
@@ -56,11 +78,17 @@ bool Parser::IsTypeName(size_t offset) {
         return true;
     }
 
-    if (start->Class == TokenClass::Identifier) {
-        if (TypedefNames.contains(std::static_pointer_cast<Identifier>(start)->Name)) {
-            return true;
-        }
+    if (IsTypedefName(start)) {
+        return true;
     }
 
     return false;
+}
+
+bool Parser::IsDeclarationSpecifier(const TOKEN& token) {
+    return StorageClassSpecifier::Is(token->Type)
+           || IsTypeSpecifier(token)
+           || TypeQualifier::Is(token->Type)
+           || FunctionSpecifier::Is(token->Type)
+           || AlignmentSpecifier::Is(token->Type);
 }

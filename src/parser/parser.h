@@ -8,9 +8,19 @@
 
 #include <set>
 #include <stdexcept>
+#include <variant>
 
 class StaticAssertDecl;
 class Initializer;
+class AbstractDeclarator;
+class Declarator;
+class Pointer;
+class DeclarationSpecifiers;
+class TypeSpecifier;
+class ParameterDeclaration;
+class DirectDeclaratorParameterListPostfix;
+class StructUnionSpecifier;
+
 
 class Parser {
 public:
@@ -82,6 +92,10 @@ private:
     unsigned long long Index = 0;
 
     std::set<std::string> TypedefNames = {};
+    bool IsTypedefName(const TOKEN& token);
+    bool IsTypeSpecifier(const TOKEN& token);
+    bool IsDeclarationSpecifier(const TOKEN& token);
+    NODE(TypeSpecifier) ExpectTypeSpecifier();
     bool IsTypeName(size_t after);
 
     NODE(Expr) ExpectPrimaryExpression();
@@ -106,6 +120,23 @@ private:
 
     NODE(StaticAssertDecl) ExpectStaticAssert();
     NODE(Initializer) ExpectInitializer();
+    NODE(Pointer) ExpectOptPointer();
+    NODE(DeclarationSpecifiers) ExpectDeclarationSpecifiers();
+    NODE(AbstractDeclarator) ExpectDeclaratorOrAbstractDeclarator();
+    NODE(DirectDeclaratorParameterListPostfix) ExpectParameterListPostfix();
+    NODE(StructUnionSpecifier) ExpectStructUnionSpecifier();
+
+    template<typename T>
+    std::vector<NODE(T)> ExpectListGreedy() {
+        std::vector<NODE(T)> list = {};
+        auto current = Current();
+        while (T::Is(current->Type)) {
+            list.push_back(MAKE_NODE(T)(current->Type));
+            Advance();
+            current = Current();
+        }
+        return list;
+    }
 
     template<
             NODE(Expr) (Parser::*SubNode)(),

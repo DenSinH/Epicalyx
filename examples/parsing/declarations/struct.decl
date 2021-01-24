@@ -1,0 +1,8 @@
+
+struct hello_world {
+    _Static_assert(1 == 1, "a fun message here");
+    volatile int a, b, c;
+    void (*something)(int);
+    int sized_field: 12;
+    unsigned long long int x: 1, y: 2, z: 4;
+}

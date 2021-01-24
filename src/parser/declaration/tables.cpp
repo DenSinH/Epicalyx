@@ -45,3 +45,10 @@ const std::map<StorageClassSpecifier::StorageClass, const std::string> StorageCl
         { StorageClass::Auto, "auto" },
         { StorageClass::Register, "register" },
 };
+
+const std::map<enum TokenType, TypeQualifier::TypeQualifierType> TypeQualifier::TokenMap = {
+        { TokenType::Const, TypeQualifierType::Const },
+        { TokenType::Restrict, TypeQualifierType::Restrict },
+        { TokenType::Volatile, TypeQualifierType::Volatile },
+        { TokenType::Atomic, TypeQualifierType::Atomic },
+};

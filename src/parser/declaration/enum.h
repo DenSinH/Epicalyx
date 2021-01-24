@@ -56,6 +56,10 @@ public:
         }
         return repr;
     }
+
+    static bool Is(enum TokenType type) {
+        return type == TokenType::Enum;
+    }
 };
 
 #endif //EPICALYX_ENUM_H

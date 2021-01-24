@@ -20,7 +20,7 @@ public:
         for (auto& q : QualifierList) {
             qualifiers += q->String() + " ";
         }
-        return qualifiers + "*";
+        return "* " + qualifiers;
     }
 };
 

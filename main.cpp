@@ -8,11 +8,11 @@
 int main() {
     auto t = new Tokenizer();
 
-    t->Tokenize("examples/parsing/declarations/static_assert.decl");
+    t->Tokenize("examples/parsing/declarations/struct.decl");
 
     auto p = new Parser(t);
 
-    auto n = p->ExpectStaticAssert();
+    auto n = p->ExpectStructUnionSpecifier();
     n->Print();
 
     return 0;
