@@ -20,7 +20,7 @@ public:
     NODE(ExprNode) Expression;  // must be constant
     std::string Message;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "StaticAssert: " };
         for (auto& s : Expression->Repr()) {
             repr.push_back(REPR_PADDING + s);

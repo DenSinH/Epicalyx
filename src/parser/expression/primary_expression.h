@@ -29,11 +29,11 @@ public:
 
     const std::string ID;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         return { std::string("Identifier: ") + ID };
     }
 
-    bool IsConstant() override {
+    bool IsConstant() const override {
         // todo: We don't know this yet?
         return false;
     }
@@ -50,11 +50,11 @@ public:
 
     const T Value;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         return { std::string("Constant: ") + std::to_string(Value) };
     }
 
-    bool IsConstant() override {
+    bool IsConstant() const override {
         return true;
     }
 };
@@ -68,11 +68,11 @@ public:
 
     const std::string Value;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         return { std::string("Constant String: ") + Value };
     }
 
-    bool IsConstant() override {
+    bool IsConstant() const override {
         return true;
     }
 };

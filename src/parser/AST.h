@@ -15,9 +15,9 @@ class Parser;
 
 class Node {
 public:
-    virtual std::list<std::string> Repr() { return {}; }
+    [[nodiscard]] virtual std::list<std::string> Repr() const { return {}; }
 
-    void Print() {
+    void Print() const {
         for (auto& s : Repr()) {
             printf("%s\n", s.c_str());
         }
@@ -27,16 +27,16 @@ public:
 
 class ExprNode : public Node {
 public:
-    virtual bool IsConstant() {
+    virtual bool IsConstant() const {
         return false;
     }
 };
 
 class SpecifierQualifier : public Node {
 public:
-    virtual std::string String() { return ""; }
+    [[nodiscard]] virtual std::string String() const { return ""; }
 
-    std::list<std::string> Repr() override {
+    [[nodiscard]] std::list<std::string> Repr() const override {
         return { String() };
     }
 };

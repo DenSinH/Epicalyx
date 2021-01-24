@@ -42,11 +42,11 @@ public:
     UnOpType Type;
     NODE(ExprNode) Right;
 
-    bool IsConstant() override {
+    bool IsConstant() const override {
         return Right->IsConstant();
     }
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "UnaryExpression: " + Operation() };
         for (auto& s : Right->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
@@ -55,7 +55,7 @@ public:
     }
 
 private:
-    std::string Operation() {
+    std::string Operation() const {
         switch(Type) {
             case UnOpType::PreIncrement:
                 return "++";
@@ -85,11 +85,11 @@ public:
 
     NODE(TypeName) Right;
 
-    bool IsConstant() override {
+    bool IsConstant() const override {
         return true;
     }
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "SizeOfTypeExpression: " };
         for (auto& s : Right->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
@@ -105,11 +105,11 @@ public:
     }
 
     NODE(ExprNode) Right;
-    bool IsConstant() override {
+    bool IsConstant() const override {
         return true;
     }
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "SizeOfExpression: " };
         for (auto& s : Right->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
@@ -126,11 +126,11 @@ public:
 
     NODE(TypeName) Right;
 
-    bool IsConstant() override {
+    bool IsConstant() const override {
         return true;
     }
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "AlignOf: " };
         for (auto& s : Right->Repr()) {
             repr.emplace_back(REPR_PADDING + s);

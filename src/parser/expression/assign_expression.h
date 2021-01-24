@@ -36,7 +36,7 @@ public:
     AssignOp Op;
     NODE(ExprNode) Right;  // can also be a CondExpr
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "AssignExpr:" };
         for (auto& s : Left->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
@@ -59,7 +59,7 @@ private:
     static const std::map<enum TokenType, AssignOp> TokenMap;
     static const std::map<AssignOp, std::string> OpString;
     
-    std::string Operation() {
+    std::string Operation() const {
         return OpString.at(Op);
     }
 };

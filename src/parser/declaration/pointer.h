@@ -14,7 +14,7 @@ public:
 
     std::vector<NODE(TypeQualifier)> QualifierList;
 
-    std::string String() override {
+    std::string String() const override {
         std::string qualifiers;
 
         for (auto& q : QualifierList) {

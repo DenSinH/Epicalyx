@@ -23,7 +23,7 @@ public:
     std::string Name;
     NODE(ExprNode) Value = nullptr;  // constant-expression / nullptr for default value
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "Enumerator: " + Name };
         if (Value) {
             for (auto& s : Value->Repr()) {
@@ -40,18 +40,20 @@ public:
 
     }
 
-    explicit EnumSpecifier(std::string& id) : TypeSpecifier(TypeSpecifierType::Enum) {
-        this->ID = id;
+    explicit EnumSpecifier(const std::string& id) :
+        TypeSpecifier(TypeSpecifierType::Enum),
+        ID(id) {
+
     }
 
     void AddEnumerator(NODE(Enumerator)& enumerator) {
         EnumeratorList.push_back(std::move(enumerator));
     }
 
-    std::string ID = "";
+    const std::string ID;
     std::vector<NODE(Enumerator)> EnumeratorList = {};
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "EnumSpecifier: " + ID };
         for (auto& enumerator : EnumeratorList) {
             for (auto& s : enumerator->Repr()) {

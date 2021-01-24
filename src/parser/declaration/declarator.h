@@ -32,7 +32,7 @@ public:
         Pointers.push_back(std::move(postfix));
     }
 
-    virtual bool IsAbstract() {
+    virtual bool IsAbstract() const {
         if (Nested) {
             return Nested->IsAbstract();
         }
@@ -43,7 +43,7 @@ public:
     NODE(AbstractDeclarator) Nested = nullptr;
     std::vector<NODE(DirectDeclaratorPostfix)> Postfixes = {};
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "AbstractDeclarator: " };
         for (auto& ptr : Pointers) {
             for (auto& s : ptr->Repr()) {
@@ -90,7 +90,7 @@ public:
     bool Pointer = false;
     std::vector<NODE(TypeQualifier)> Qualifiers = {};
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "ArrayPostfix: " };
         std::string qualifiers;
         if (Static) {
@@ -132,7 +132,7 @@ public:
     NODE(DeclarationSpecifiers) Specifiers;
     NODE(AbstractDeclarator) Declar;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "ParameterDeclaration: " };
 
         for (auto& s : Specifiers->Repr()) {
@@ -162,7 +162,7 @@ public:
     bool Variadic = false;
     std::vector<NODE(ParameterDeclaration)> ParameterTypeList = {};
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "DirectDeclaratorParameterListPostfix: " };
 
         for (auto& param : ParameterTypeList) {
@@ -190,7 +190,7 @@ public:
 
     std::vector<std::string> IdentifierList = {};
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "DirectDeclaratorIdentifierListPostfix: " };
 
         for (auto& s : IdentifierList) {
@@ -212,14 +212,14 @@ public:
 
     const std::string Name;
 
-    bool IsAbstract() override {
+    bool IsAbstract() const override {
         if (Nested) {
             return Nested->IsAbstract();
         }
         return false;
     }
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "Declarator: " };
         for (auto& ptr : Pointers) {
             for (auto& s : ptr->Repr()) {

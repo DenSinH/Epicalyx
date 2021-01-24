@@ -15,7 +15,7 @@ public:
     NODE(TypeName) Type;
     NODE(ExprNode) Right;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "CastExpr:" };
         for (auto& s : Type->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
@@ -28,7 +28,7 @@ public:
         return repr;
     }
 
-    bool IsConstant() override {
+    bool IsConstant() const override {
         return Right->IsConstant();
     }
 };

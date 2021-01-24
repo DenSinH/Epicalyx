@@ -17,7 +17,7 @@ public:
     NODE(ExprNode) True;
     NODE(ExprNode) False;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "CondExpr: Cond:" };
         for (auto& s : Left->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
@@ -33,7 +33,7 @@ public:
         return repr;
     }
 
-    bool IsConstant() override {
+    bool IsConstant() const override {
         if (!Left->IsConstant()) {
             return false;
         }

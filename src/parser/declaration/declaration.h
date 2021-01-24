@@ -21,7 +21,7 @@ public:
     NODE(Declarator) Declar;
     NODE(Initializer) Init = nullptr;  // optional
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "InitDeclarator: "};
         for (auto& s : Declar->Repr()) {
             repr.push_back(REPR_PADDING + s);
@@ -48,7 +48,7 @@ public:
     NODE(DeclarationSpecifiers) Specifiers;
     std::vector<NODE(InitDeclarator)> InitDeclarators;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "Declaration: "};
         for (auto& s : Specifiers->Repr()) {
             repr.push_back(REPR_PADDING + s);

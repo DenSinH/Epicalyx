@@ -32,7 +32,7 @@ public:
     NODE(AbstractDeclarator) Field = nullptr;  // declarator, opt
     NODE(ExprNode) Size = nullptr;  // constant-expression, opt
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         // std::list<std::string> repr = { "StructDeclarator:" };
         std::list<std::string> repr = { };
 
@@ -76,7 +76,7 @@ public:
     std::vector<NODE(TypeSpecifier)> Specifiers;
     std::vector<NODE(StructDeclarator)> Declarators;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = {};
         std::string qualifiers;
         for (auto& q : Qualifiers) {
@@ -99,7 +99,9 @@ public:
 
 class StructUnionSpecifier : public TypeSpecifier {
 public:
-    explicit StructUnionSpecifier(TypeSpecifierType type) : TypeSpecifier(type) {
+    explicit StructUnionSpecifier(const std::string& id, TypeSpecifierType type) :
+        TypeSpecifier(type),
+        ID(id) {
 
     }
 
@@ -107,10 +109,10 @@ public:
         DeclarationList.push_back(std::move(declaration));
     }
 
-    std::string ID = "";
+    const std::string ID;
     std::vector<NODE(StructDeclaration)> DeclarationList = {};
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = {};
         repr.push_back(Keyword() + " " + ID);
 
@@ -123,18 +125,18 @@ public:
     }
 
 protected:
-    virtual std::string Keyword() {
+    virtual std::string Keyword() const {
         return "";
     }
 };
 
 class StructSpecifier : public StructUnionSpecifier {
 public:
-    explicit StructSpecifier(std::string& id) : StructUnionSpecifier(TypeSpecifierType::Struct) {
-        this->ID = id;
+    explicit StructSpecifier(const std::string& id) : StructUnionSpecifier(id, TypeSpecifierType::Struct) {
+
     }
 
-    explicit StructSpecifier() : StructUnionSpecifier(TypeSpecifierType::Struct) {
+    explicit StructSpecifier() : StructUnionSpecifier("", TypeSpecifierType::Struct) {
 
     }
 
@@ -143,18 +145,18 @@ public:
     }
 
 protected:
-    std::string Keyword() override {
+    std::string Keyword() const override {
         return "struct";
     }
 };
 
 class UnionSpecifier : public StructUnionSpecifier {
 public:
-    explicit UnionSpecifier(std::string& id) : StructUnionSpecifier(TypeSpecifierType::Union) {
-        this->ID = id;
+    explicit UnionSpecifier(const std::string& id) : StructUnionSpecifier(id, TypeSpecifierType::Union) {
+
     }
 
-    explicit UnionSpecifier() : StructUnionSpecifier(TypeSpecifierType::Union) {
+    explicit UnionSpecifier() : StructUnionSpecifier("", TypeSpecifierType::Union) {
 
     }
 
@@ -163,7 +165,7 @@ public:
     }
 
 protected:
-    std::string Keyword() override {
+    std::string Keyword() const override {
         return "union";
     }
 };

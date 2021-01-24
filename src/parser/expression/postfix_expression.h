@@ -36,7 +36,7 @@ public:
     NODE(ExprNode) Left;
     NODE(ExprNode) Right;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "ArrayAccessExpr:" };
         for (auto& s : Left->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
@@ -48,7 +48,7 @@ public:
         return repr;
     }
 
-    bool IsConstant() override {
+    bool IsConstant() const override {
         return Left->IsConstant() && Right->IsConstant();
     }
 };
@@ -73,7 +73,7 @@ public:
     NODE(ExprNode) Func;
     NODE(ExprNode) Args;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "FunctionCallExpr:" };
         for (auto& s : Func->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
@@ -109,7 +109,7 @@ public:
     const std::string Member;
     const MemberAccessType AccessType;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { std::string("MemberAccessExpr:") + (AccessType == MemberAccessType::Direct ? "." : "->") + Member};
         for (auto& s : Left->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
@@ -117,7 +117,7 @@ public:
         return repr;
     }
 
-    bool IsConstant() override {
+    bool IsConstant() const override {
         return Left->IsConstant();
     }
 };
@@ -141,7 +141,7 @@ public:
     NODE(ExprNode) Left;
     CrementType Type;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { std::string("PostCrementExpression:") + (Type == CrementType::Increment ? "++" : "--") };
         for (auto& s : Left->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
@@ -165,7 +165,7 @@ public:
     NODE(TypeName) Type;
     NODE(InitializerList) Initializers = {};
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "TypeInitializerExpr:" };
 
         for (auto& s : Type->Repr()) {

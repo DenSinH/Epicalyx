@@ -13,7 +13,7 @@ public:
     NODE(ExprNode) Left;
     NODE(ExprNode) Right;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = {};
         for (auto& s : Left->Repr()) {
             repr.emplace_back(s);

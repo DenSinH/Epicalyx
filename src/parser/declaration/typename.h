@@ -27,7 +27,7 @@ public:
     std::vector<NODE(TypeSpecifier)> TypeSpecifiers = {};
     std::vector<NODE(TypeQualifier)> TypeQualifiers = {};
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "TypeName: "};
         for (auto& tq : TypeQualifiers) {
             for (auto& s : tq->Repr()) {
@@ -58,7 +58,7 @@ public:
 
     NODE(TypeName) Type;  // type-name
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "AtomicTypeSpecifier: "};
         for (auto& s : Type->Repr()) {
             repr.push_back(REPR_PADDING + s);
@@ -76,7 +76,7 @@ public:
 
     NODE(TypeName) Type;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "AlignmentSpecifierTypeName: "};
         for (auto& s : Type->Repr()) {
             repr.push_back(REPR_PADDING + s);

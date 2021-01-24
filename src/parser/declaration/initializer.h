@@ -24,7 +24,7 @@ public:
 
     std::vector<std::pair<std::vector<NODE(Designator)>, NODE(Initializer)>> List = {};
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "InitializerList: " };
         for (auto& di : List) {
             for (auto& des : di.first) {
@@ -48,7 +48,7 @@ public:
 
     NODE(ExprNode) Expression;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "AssignmentInitializer: " };
         for (auto& s : Expression->Repr()) {
             repr.push_back(REPR_PADDING + s);

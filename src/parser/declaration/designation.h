@@ -20,7 +20,7 @@ public:
 
     NODE(ExprNode) Member;  // must be constant
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "ArrayMemberDesignator: [" };
         for (auto& s : Member->Repr()) {
             repr.push_back(REPR_PADDING + s);
@@ -38,7 +38,7 @@ public:
 
     std::string Name;
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         return { "." + Name };
     }
 };

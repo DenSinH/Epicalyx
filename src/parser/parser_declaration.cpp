@@ -349,11 +349,17 @@ NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
 
     NODE(StructUnionSpecifier) struct_specifier = nullptr;
 
+    // there has to be a next, since struct / union has to be followed by either an identifier or a declaration list
+    std::string name;
+    if (Next()->Type == TokenType::Identifier) {
+        name = std::static_pointer_cast<Identifier>(Current())->Name;
+    }
+
     if (Current()->Type == TokenType::Struct) {
-        struct_specifier = MAKE_NODE(StructSpecifier)();
+        struct_specifier = MAKE_NODE(StructSpecifier)(name);
     }
     else if (Current()->Type == TokenType::Union) {
-        struct_specifier = MAKE_NODE(UnionSpecifier)();
+        struct_specifier = MAKE_NODE(UnionSpecifier)(name);
     }
     else {
         log_fatal("Invalid call to ExpectUnionSpecifier: token not of type 'struct' or 'union': %s", Current()->Repr().c_str());
@@ -362,8 +368,6 @@ NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
 
     bool has_name = false;
     if (Current()->Type == TokenType::Identifier) {
-        // there has to be a next, since struct / union has to be followed by either an identifier or a declaration list
-        struct_specifier->ID = std::static_pointer_cast<Identifier>(Current())->Name;
         has_name = true;
         Advance();
     }
@@ -450,14 +454,17 @@ NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
 
 NODE(EnumSpecifier) Parser::ExpectEnumSpecifier() {
     EatType(TokenType::Enum);
-    auto enum_specifier = MAKE_NODE(EnumSpecifier)();
+    NODE(EnumSpecifier) enum_specifier;
 
     // enum identifier(opt)
     bool has_name = false;
     if (Current()->Type == TokenType::Identifier) {
-        enum_specifier->ID = std::static_pointer_cast<Identifier>(Current())->Name;
+        enum_specifier = MAKE_NODE(EnumSpecifier)(std::static_pointer_cast<Identifier>(Current())->Name);
         has_name = true;
         Advance();
+    }
+    else {
+        enum_specifier = MAKE_NODE(EnumSpecifier)();
     }
 
     // if enum has no name, it must have an explicit enumeration list

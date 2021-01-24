@@ -47,7 +47,7 @@ public:
         throw std::runtime_error("Invalid BinOp token: " + Token::TypeString(type));
     }
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "BinOp: " + Operation() };
         for (auto& s : Left->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
@@ -58,7 +58,7 @@ public:
         return repr;
     }
 
-    bool IsConstant() override {
+    bool IsConstant() const override {
         return Left->IsConstant() && Right->IsConstant();
     }
 

@@ -37,7 +37,7 @@ public:
         throw std::runtime_error("Invalid storage class specifier: " + Token::TypeString(type));
     }
 
-    std::string String() override {
+    std::string String() const override {
         return StringMap.at(Class);
     }
 
@@ -89,7 +89,7 @@ public:
         throw std::runtime_error("Invalid type specifier: " + Token::TypeString(type));
     }
 
-    std::string String() override {
+    std::string String() const override {
         return StringMap.at(Type);
     }
 
@@ -110,12 +110,12 @@ public:
     explicit TypedefName(const std::string& name) :
         TypeSpecifier(TypeSpecifierType::TypedefName),
         Name(name) {
-        
+
     }
 
     const std::string Name;
 
-    std::string String() override {
+    std::string String() const override {
         return "TypedefName(" + Name + ")";
     }
 };
@@ -146,7 +146,7 @@ public:
         return TokenMap.contains(type);
     }
 
-    std::string String() override {
+    std::string String() const override {
         static const std::map<TypeQualifierType, std::string> StringMap = {
                 { TypeQualifierType::Const, "const" },
                 { TypeQualifierType::Restrict, "restrict" },
@@ -184,7 +184,7 @@ public:
         Type = type;
     }
 
-    std::string String() override {
+    std::string String() const override {
         return Type == FunctionSpecifierType::Inline ? "inline" : "_Noreturn";
     }
 
@@ -214,11 +214,11 @@ public:
 
     NODE(ExprNode) Expression;
 
-    std::string String() override {
+    std::string String() const override {
         return "_AlignOf";
     }
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "AlignmentSpecifier (expression):" };
         for (auto& s : Expression->Repr()) {
             repr.push_back(REPR_PADDING + s);
@@ -265,7 +265,7 @@ public:
         return StorageClassSpecifiers.empty() && TypeSpecifiers.empty() && TypeQualifiers.empty() && FunctionSpecifiers.empty() && AlignmentSpecifiers.empty();
     }
 
-    std::list<std::string> Repr() override {
+    std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "DeclarationSpecifiers: " };
         std::string specifiers_qualifiers;
         for (auto& sc : StorageClassSpecifiers) {
