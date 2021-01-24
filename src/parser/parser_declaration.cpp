@@ -345,6 +345,8 @@ NODE(AbstractDeclarator) Parser::ExpectDeclarator() {
 }
 
 NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
+    auto ctx = context("parsing struct / union definition");
+
     NODE(StructUnionSpecifier) struct_specifier = nullptr;
 
     if (Current()->Type == TokenType::Struct) {
@@ -516,4 +518,31 @@ NODE(TypeName) Parser::ExpectTypeName() {
     }
 
     return type_name;
+}
+
+NODE(Declaration) Parser::ExpectDeclaration() {
+    auto specifiers = ExpectDeclarationSpecifiers();
+    auto declaration = MAKE_NODE(Declaration)(specifiers);
+    do {
+        // init-declarator-list
+        auto declarator = ExpectDeclarator();
+        if (Current()->Type == TokenType::Assign) {
+            Advance();
+            auto initializer = ExpectInitializer();
+            // todo: declarator instead of abstract declarator
+            // declaration->AddDeclarator(MAKE_NODE(InitDeclarator)(declarator, initializer));
+        }
+        else {
+            // declaration->AddDeclarator(MAKE_NODE(InitDeclarator)(declarator));
+        }
+
+        if (Current()->Type != TokenType::SemiColon) {
+            EatType(TokenType::Comma);
+        }
+        else {
+            break;
+        }
+    } while (true);
+    EatType(TokenType::SemiColon);
+    return declaration;
 }

@@ -107,11 +107,13 @@ private:
 
 class TypedefName : public TypeSpecifier {
 public:
-    explicit TypedefName(std::string& name) : TypeSpecifier(TypeSpecifierType::TypedefName) {
-        this->Name = name;
+    explicit TypedefName(const std::string& name) :
+        TypeSpecifier(TypeSpecifierType::TypedefName),
+        Name(name) {
+        
     }
 
-    std::string Name;
+    const std::string Name;
 
     std::string String() override {
         return "TypedefName(" + Name + ")";

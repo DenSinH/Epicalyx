@@ -19,7 +19,7 @@ public:
     }
 
     NODE(Declarator) Declar;
-    NODE(Initializer) Init;
+    NODE(Initializer) Init = nullptr;  // optional
 
     std::list<std::string> Repr() override {
         std::list<std::string> repr = { "InitDeclarator: "};

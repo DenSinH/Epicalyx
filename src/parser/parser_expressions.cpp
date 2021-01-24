@@ -287,6 +287,10 @@ NODE(ExprNode) Parser::ExpectAssignmentExpression() {
 }
 
 NODE(ExprNode) Parser::ExpectExpression() {
+    auto ctx = context("parsing expression");
+
+    Dump();
+
     auto node = ExpectAssignmentExpression();
     while (!EndOfStream() && Current()->Type == TokenType::Comma) {
         EatType(TokenType::Comma);

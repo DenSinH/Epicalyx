@@ -184,7 +184,7 @@ public:
 
     }
 
-    void AddIdentifier(std::string& identifier) {
+    void AddIdentifier(const std::string& identifier) {
         IdentifierList.push_back(identifier);
     }
 

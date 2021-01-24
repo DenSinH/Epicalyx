@@ -21,11 +21,13 @@ public:
 
 class PrimaryExpressionIdentifier : public PrimaryExpression {
 public:
-    explicit PrimaryExpressionIdentifier(std::string& id) : PrimaryExpression(PrimExprType::Identifier) {
-        this->ID = id;
+    explicit PrimaryExpressionIdentifier(const std::string& id) :
+        PrimaryExpression(PrimExprType::Identifier),
+        ID(id) {
+
     }
 
-    std::string ID;
+    const std::string ID;
 
     std::list<std::string> Repr() override {
         return { std::string("Identifier: ") + ID };
@@ -40,11 +42,13 @@ public:
 template<typename T>
 class PrimaryExpressionConstant : public PrimaryExpression {
 public:
-    explicit PrimaryExpressionConstant(T& value) : PrimaryExpression(PrimExprType::Constant) {
-        this->Value = value;
+    explicit PrimaryExpressionConstant(const T& value) :
+        PrimaryExpression(PrimExprType::Constant),
+        Value(value) {
+
     }
 
-    T Value;
+    const T Value;
 
     std::list<std::string> Repr() override {
         return { std::string("Constant: ") + std::to_string(Value) };
@@ -57,11 +61,12 @@ public:
 
 class PrimaryStringLiteral : public PrimaryExpression {
 public:
-    explicit PrimaryStringLiteral(std::string& value) : PrimaryExpression(PrimExprType::StringLiteral) {
-        this->Value = value;
+    explicit PrimaryStringLiteral(const std::string& value) :
+        PrimaryExpression(PrimExprType::StringLiteral),
+        Value(value) {
     }
 
-    std::string Value;
+    const std::string Value;
 
     std::list<std::string> Repr() override {
         return { std::string("Constant String: ") + Value };

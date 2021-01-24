@@ -95,17 +95,19 @@ public:
 
     explicit MemberAccessExpression(
             NODE(ExprNode)& left,
-            std::string& member,
+            const std::string& member,
             MemberAccessType access_type
-            ) : PostfixExpression(PostExprType::MemberAccess) {
-        this->Left = std::move(left);
-        this->Member = member;
-        this-> AccessType = access_type;
+            ) :
+            PostfixExpression(PostExprType::MemberAccess),
+            Left(std::move(left)),
+            Member(member),
+            AccessType(access_type) {
+
     }
 
-    NODE(ExprNode) Left;
-    std::string Member;
-    MemberAccessType AccessType;
+    const NODE(ExprNode) Left;
+    const std::string Member;
+    const MemberAccessType AccessType;
 
     std::list<std::string> Repr() override {
         std::list<std::string> repr = { std::string("MemberAccessExpr:") + (AccessType == MemberAccessType::Direct ? "." : "->") + Member};

@@ -3,6 +3,7 @@
 
 #include "../tokenizer/tokenizer.h"
 #include "../tokenizer/tokens.h"
+#include "../state/state.h"
 #include "AST.h"
 #include "log.h"
 
@@ -23,9 +24,10 @@ class DirectDeclaratorParameterListPostfix;
 class StructUnionSpecifier;
 class EnumSpecifier;
 class TypeName;
+class Declaration;
 
 
-class Parser {
+class Parser : public Stateful {
 public:
     explicit Parser(std::vector<TOKEN>& tokens) {
         this->Tokens = tokens;
@@ -132,6 +134,7 @@ private:
     NODE(StructUnionSpecifier) ExpectStructUnionSpecifier();
     NODE(EnumSpecifier) ExpectEnumSpecifier();
     NODE(TypeName) ExpectTypeName();
+    NODE(Declaration) ExpectDeclaration();
 
     template<typename T>
     std::vector<NODE(T)> ExpectListGreedy() {

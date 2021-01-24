@@ -7,25 +7,28 @@
 #include <map>
 
 #include "types.h"
+#include "../state/state.h"
 #define TOKEN std::shared_ptr<Token>
 #define MAKE_TOKEN(_type) std::make_shared<_type>
 
-class Token {
+class Token : public InFile {
 public:
-    explicit Token(TokenClass cls, TokenType type) {
-        this->Class = cls;
-        this->Type = type;
+    explicit Token(INFILE_ARGS, TokenClass cls, TokenType type) :
+        INFILE_CONSTRUCTOR,
+        Class(cls),
+        Type(type) {
+
     }
 
-    static Token Keyword(TokenType type) {
-        return Token(TokenClass::Keyword, type);
+    static Token Keyword(INFILE_ARGS, TokenType type) {
+        return Token(INFILE_VALUES, TokenClass::Keyword, type);
     }
 
     virtual std::string Repr() {
         return ClassString(Class) + " : " + TypeString(Type);
     }
-    TokenClass Class;
-    TokenType Type;
+    const TokenClass Class;
+    const TokenType Type;
 
     static std::string ClassString(TokenClass cls) {
         return ClassMap.at(cls);
@@ -41,20 +44,24 @@ private:
 
 class Punctuator : public Token {
 public:
-    explicit Punctuator(TokenType type, unsigned flags) : Token(TokenClass::Punctuator, type) {
-        this->Flags = flags;
+    explicit Punctuator(INFILE_ARGS, TokenType type, unsigned flags) :
+        Token(INFILE_VALUES, TokenClass::Punctuator, type) ,
+        Flags(flags) {
+
     }
 
-    unsigned Flags;
+    const unsigned Flags;
 };
 
 class StringConstant : public Token {
 public:
-    StringConstant(const std::string& value) : Token(TokenClass::StringConstant, TokenType::ConstString) {
-        this->Value = value;
+    StringConstant(INFILE_ARGS, const std::string& value) :
+        Token(INFILE_VALUES, TokenClass::StringConstant, TokenType::ConstString),
+        Value(value) {
+
     }
 
-    std::string Value;
+    const std::string Value;
     std::string Repr() override {
         return "String literal: " + Value;
     }
@@ -63,11 +70,13 @@ public:
 template<typename T>
 class NumericalConstant : public Token {
 public:
-    NumericalConstant(TokenType type, const T& value) : Token(TokenClass::NumericalConstant, type){
-        this->Value = value;
+    NumericalConstant(INFILE_ARGS, TokenType type, const T& value) :
+        Token(INFILE_VALUES, TokenClass::NumericalConstant, type),
+        Value(value) {
+
     }
 
-    T Value;
+    const T Value;
     std::string Repr() override {
         return "Constant: " + std::to_string(Value);
     }
@@ -76,11 +85,13 @@ public:
 
 class Identifier : public Token {
 public:
-    explicit Identifier(std::string& name) : Token(TokenClass::Identifier, TokenType::Identifier) {
-        this->Name = name;
+    explicit Identifier(INFILE_ARGS, const std::string& name) :
+        Token(INFILE_VALUES, TokenClass::Identifier, TokenType::Identifier),
+        Name(name) {
+
     }
 
-    std::string Name;
+    const std::string Name;
     std::string Repr() override {
         return "Identifier: " + Name;
     }

@@ -11,8 +11,10 @@ enum class NumberType {
 
 TOKEN Tokenizer::ReadNumericConstant(
         std::string::const_iterator& current,
-        std::string::const_iterator end
+        const std::string::const_iterator& end
 ) {
+    auto ctx = context("scanning numerical constant");
+
     std::string value;
     NumberType type = NumberType::Decimal;
     bool dot      = false;
@@ -182,33 +184,33 @@ TOKEN Tokenizer::ReadNumericConstant(
         double val = std::stod(value);
         auto fval = (float)val;
         if (is_long || ((double)fval != val)) {
-            return MAKE_TOKEN(NumericalConstant<double>)(TokenType::ConstDouble, val);
+            return MakeToken<NumericalConstant<double>>(TokenType::ConstDouble, val);
         }
-        return MAKE_TOKEN(NumericalConstant<float>)(TokenType::ConstFloat, fval);
+        return MakeToken<NumericalConstant<float>>(TokenType::ConstFloat, fval);
     }
     else {
         if (is_unsigned) {
             unsigned long long val = std::stoull(value);
             if (is_long == 2 || val >= ULONG_MAX) {
-                return MAKE_TOKEN(NumericalConstant<unsigned long long>)(TokenType::ConstUnsignedLongLong, val);
+                return MakeToken<NumericalConstant<unsigned long long>>(TokenType::ConstUnsignedLongLong, val);
             }
             else if (is_long == 1 || val >= UINT_MAX) {
-                return MAKE_TOKEN(NumericalConstant<unsigned long>)(TokenType::ConstUnsignedLong, val);
+                return MakeToken<NumericalConstant<unsigned long>>(TokenType::ConstUnsignedLong, val);
             }
             else {
-                return MAKE_TOKEN(NumericalConstant<unsigned int>)(TokenType::ConstUnsignedInt, val);
+                return MakeToken<NumericalConstant<unsigned int>>(TokenType::ConstUnsignedInt, val);
             }
         }
         else {
             long long val = std::stoll(value);
             if (is_long == 2 || val >= LONG_MAX) {
-                return MAKE_TOKEN(NumericalConstant<long long>)(TokenType::ConstLongLong, val);
+                return MakeToken<NumericalConstant<long long>>(TokenType::ConstLongLong, val);
             }
             else if (is_long == 1 || val >= INT_MAX) {
-                return MAKE_TOKEN(NumericalConstant<long>)(TokenType::ConstLong, val);
+                return MakeToken<NumericalConstant<long>>(TokenType::ConstLong, val);
             }
             else {
-                return MAKE_TOKEN(NumericalConstant<int>)(TokenType::ConstInt, val);
+                return MakeToken<NumericalConstant<int>>(TokenType::ConstInt, val);
             }
         }
     }

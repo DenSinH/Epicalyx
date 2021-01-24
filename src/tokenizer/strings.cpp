@@ -18,7 +18,9 @@ static constexpr int ASCIIHexToInt[] =
 };
 
 
-TOKEN Tokenizer::ReadStringConstant(std::string::const_iterator& current, std::string::const_iterator end) {
+TOKEN Tokenizer::ReadStringConstant(std::string::const_iterator& current, const std::string::const_iterator& end) {
+    auto ctx = context("scanning string literal");
+
     std::string value;
     // string encoding
     if (*current == 'L' || *current == 'U') {
@@ -47,10 +49,12 @@ TOKEN Tokenizer::ReadStringConstant(std::string::const_iterator& current, std::s
     }
     // skip last char
     current++;
-    return MAKE_TOKEN(StringConstant)(value);
+    return MakeToken<StringConstant>(value);
 }
 
-TOKEN Tokenizer::ReadCharSequenceConstant(std::string::const_iterator& current, std::string::const_iterator end) {
+TOKEN Tokenizer::ReadCharSequenceConstant(std::string::const_iterator& current, const std::string::const_iterator& end) {
+    auto ctx = context("scanning char literal");
+
     bool is_long = false;
     bool is_unsigned = false;
     if (std::tolower(*current) == 'l') {
@@ -82,17 +86,17 @@ TOKEN Tokenizer::ReadCharSequenceConstant(std::string::const_iterator& current, 
     current++;
 
     if (is_unsigned) {
-        return MAKE_TOKEN(NumericalConstant<unsigned long long>)(TokenType::ConstUnsignedInt, value);
+        return MakeToken<NumericalConstant<unsigned long long>>(TokenType::ConstUnsignedInt, value);
     }
     else if (is_long) {
-        return MAKE_TOKEN(NumericalConstant<long long>)(TokenType::ConstLongLong, value);
+        return MakeToken<NumericalConstant<long long>>(TokenType::ConstLongLong, value);
     }
     else {
-        return MAKE_TOKEN(NumericalConstant<int>)(TokenType::ConstInt, value);
+        return MakeToken<NumericalConstant<int>>(TokenType::ConstInt, value);
     }
 }
 
-unsigned char Tokenizer::ReadCChar(std::string::const_iterator& current, std::string::const_iterator end) {
+unsigned char Tokenizer::ReadCChar(std::string::const_iterator& current, const std::string::const_iterator& end) {
     unsigned char value;
     if (*current == '\\') {
         // escape sequence
