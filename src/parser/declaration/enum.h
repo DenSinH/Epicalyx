@@ -5,9 +5,9 @@
 #include <stdexcept>
 #include "specifiers.h"
 
-class Enumerator : public Decl {
+class Enumerator : public DeclNode {
 public:
-    explicit Enumerator(std::string& name, NODE(Expr)& value) {
+    explicit Enumerator(std::string& name, NODE(ExprNode)& value) {
         this->Name = name;
         this->Value = std::move(value);
 
@@ -21,7 +21,7 @@ public:
     }
 
     std::string Name;
-    NODE(Expr) Value = nullptr;  // constant-expression / nullptr for default value
+    NODE(ExprNode) Value = nullptr;  // constant-expression / nullptr for default value
 
     std::list<std::string> Repr() override {
         std::list<std::string> repr = { "Enumerator: " + Name };
@@ -36,6 +36,10 @@ public:
 
 class EnumSpecifier : public TypeSpecifier {
 public:
+    explicit EnumSpecifier() : TypeSpecifier(TypeSpecifierType::Enum) {
+
+    }
+
     explicit EnumSpecifier(std::string& id) : TypeSpecifier(TypeSpecifierType::Enum) {
         this->ID = id;
     }

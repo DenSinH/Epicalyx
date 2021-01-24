@@ -3,19 +3,19 @@
 
 #include "../AST.h"
 
-class CondExpr : public Expr {
+class CondExpression : public ExprNode {
 public:
-    CondExpr(NODE(Expr)& left,
-    NODE(Expr)& t,
-    NODE(Expr)& f) {
+    CondExpression(NODE(ExprNode)& left,
+                   NODE(ExprNode)& t,
+                   NODE(ExprNode)& f) {
         this->Left = std::move(left);
         this->True = std::move(t);
         this->False = std::move(f);
     }
 
-    NODE(Expr) Left;
-    NODE(Expr) True;
-    NODE(Expr) False;
+    NODE(ExprNode) Left;
+    NODE(ExprNode) True;
+    NODE(ExprNode) False;
 
     std::list<std::string> Repr() override {
         std::list<std::string> repr = { "CondExpr: Cond:" };
@@ -43,5 +43,6 @@ public:
         return True->IsConstant() && False->IsConstant();
     }
 };
+
 
 #endif //EPICALYX_COND_EXPRESSION_H

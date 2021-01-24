@@ -4,7 +4,7 @@
 #include "../AST.h"
 #include "designation.h"
 
-class Initializer : public Decl {
+class Initializer : public DeclNode {
 
 };
 
@@ -42,11 +42,11 @@ public:
 
 class AssignmentInitializer : public Initializer {
 public:
-    explicit AssignmentInitializer(NODE(Expr)& expression) {
+    explicit AssignmentInitializer(NODE(ExprNode)& expression) {
         Expression = std::move(expression);
     }
 
-    NODE(Expr) Expression;
+    NODE(ExprNode) Expression;
 
     std::list<std::string> Repr() override {
         std::list<std::string> repr = { "AssignmentInitializer: " };

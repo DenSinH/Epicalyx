@@ -25,14 +25,27 @@ public:
 
 };
 
-class Expr : public Node {
+class ExprNode : public Node {
 public:
     virtual bool IsConstant() {
         return false;
     }
 };
 
-class Decl : public Node {
+class SpecifierQualifier : public Node {
+public:
+    virtual std::string String() { return ""; }
+
+    std::list<std::string> Repr() override {
+        return { String() };
+    }
+};
+
+class TypeNode : public Node {
+
+};
+
+class DeclNode : public Node {
 
 };
 

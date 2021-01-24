@@ -12,6 +12,7 @@
 
 class StaticAssertDecl;
 class Initializer;
+class InitializerList;
 class AbstractDeclarator;
 class Declarator;
 class Pointer;
@@ -20,6 +21,8 @@ class TypeSpecifier;
 class ParameterDeclaration;
 class DirectDeclaratorParameterListPostfix;
 class StructUnionSpecifier;
+class EnumSpecifier;
+class TypeName;
 
 
 class Parser {
@@ -98,33 +101,37 @@ private:
     NODE(TypeSpecifier) ExpectTypeSpecifier();
     bool IsTypeName(size_t after);
 
-    NODE(Expr) ExpectPrimaryExpression();
-    NODE(Expr) ExpectPostfixExpression();
-    NODE(Expr) ExpectArgumentListExpression();
-    NODE(Expr) ExpectUnaryExpression();
-    NODE(Expr) ExpectCastExpression();
-    NODE(Expr) ExpectMultExpression();
-    NODE(Expr) ExpectAddExpression();
-    NODE(Expr) ExpectShiftExpression();
-    NODE(Expr) ExpectRelationalExpression();
-    NODE(Expr) ExpectEqualityExpression();
-    NODE(Expr) ExpectBinAndExpression();
-    NODE(Expr) ExpectBinXorExpression();
-    NODE(Expr) ExpectBinOrExpression();
-    NODE(Expr) ExpectLogicAndExpression();
-    NODE(Expr) ExpectLogicOrExpression();
-    NODE(Expr) ExpectConditionalExpression();
-    NODE(Expr) ExpectConstantExpression() { return ExpectConditionalExpression(); }
-    NODE(Expr) ExpectAssignmentExpression();
-    NODE(Expr) ExpectExpression();
+    NODE(ExprNode) ExpectPrimaryExpression();
+    NODE(ExprNode) ExpectPostfixExpression();
+    NODE(ExprNode) ExpectArgumentListExpression();
+    NODE(ExprNode) ExpectUnaryExpression();
+    NODE(ExprNode) ExpectCastExpressionOrTypeInitializer();
+    NODE(ExprNode) ExpectMultExpression();
+    NODE(ExprNode) ExpectAddExpression();
+    NODE(ExprNode) ExpectShiftExpression();
+    NODE(ExprNode) ExpectRelationalExpression();
+    NODE(ExprNode) ExpectEqualityExpression();
+    NODE(ExprNode) ExpectBinAndExpression();
+    NODE(ExprNode) ExpectBinXorExpression();
+    NODE(ExprNode) ExpectBinOrExpression();
+    NODE(ExprNode) ExpectLogicAndExpression();
+    NODE(ExprNode) ExpectLogicOrExpression();
+    NODE(ExprNode) ExpectConditionalExpression();
+    NODE(ExprNode) ExpectConstantExpression() { return ExpectConditionalExpression(); }
+    NODE(ExprNode) ExpectAssignmentExpression();
+    NODE(ExprNode) ExpectExpression();
 
     NODE(StaticAssertDecl) ExpectStaticAssert();
     NODE(Initializer) ExpectInitializer();
+    NODE(InitializerList) ExpectInitializerList();
     NODE(Pointer) ExpectOptPointer();
     NODE(DeclarationSpecifiers) ExpectDeclarationSpecifiers();
     NODE(AbstractDeclarator) ExpectDeclaratorOrAbstractDeclarator();
+    NODE(AbstractDeclarator) ExpectDeclarator();
     NODE(DirectDeclaratorParameterListPostfix) ExpectParameterListPostfix();
     NODE(StructUnionSpecifier) ExpectStructUnionSpecifier();
+    NODE(EnumSpecifier) ExpectEnumSpecifier();
+    NODE(TypeName) ExpectTypeName();
 
     template<typename T>
     std::vector<NODE(T)> ExpectListGreedy() {
@@ -139,9 +146,9 @@ private:
     }
 
     template<
-            NODE(Expr) (Parser::*SubNode)(),
+            NODE(ExprNode) (Parser::*SubNode)(),
             enum TokenType... type
-    > NODE(Expr) ExpectBinOpExpression();
+    > NODE(ExprNode) ExpectBinOpExpression();
 };
 
 #include "ExpectBinOp.inl"

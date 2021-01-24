@@ -3,7 +3,7 @@
 
 #include "../AST.h"
 
-class PrimaryExpression : public Expr {
+class PrimaryExpression : public ExprNode {
 public:
     enum class PrimExprType {
         Identifier,

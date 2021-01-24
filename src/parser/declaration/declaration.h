@@ -6,7 +6,7 @@
 #include "initializer.h"
 #include "declarator.h"
 
-class InitDeclarator : public Decl {
+class InitDeclarator : public DeclNode {
 public:
     explicit InitDeclarator(NODE(Declarator)& declarator) {
         Declar = std::move(declarator);
@@ -35,7 +35,7 @@ public:
     }
 };
 
-class Declaration : public Decl {
+class Declaration : public DeclNode {
 public:
     explicit Declaration(NODE(DeclarationSpecifiers)& specifiers) {
         Specifiers = std::move(specifiers);

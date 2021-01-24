@@ -7,7 +7,7 @@
 
 #include <map>
 
-class BinOpExpression : public Expr {
+class BinOpExpression : public ExprNode {
 public:
     enum class BinOp {
         Mul,
@@ -30,15 +30,15 @@ public:
         LogicOr,
     };
 
-    BinOpExpression(BinOp op, NODE(Expr)& left, NODE(Expr)& right) {
+    BinOpExpression(BinOp op, NODE(ExprNode)& left, NODE(ExprNode)& right) {
         this->Op = op;
         this->Left = std::move(left);
         this->Right = std::move(right);
     }
 
     BinOp Op;
-    NODE(Expr) Left;
-    NODE(Expr) Right;
+    NODE(ExprNode) Left;
+    NODE(ExprNode) Right;
 
     static BinOp TokenTypeToBinOp(const enum TokenType type) {
         if (TokenMap.contains(type)) {

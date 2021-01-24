@@ -9,15 +9,6 @@
 
 class TypeName;
 
-class SpecifierQualifier : public Decl {
-public:
-    virtual std::string String() { return ""; }
-
-    std::list<std::string> Repr() override {
-        return { String() };
-    }
-};
-
 class StorageClassSpecifier : public SpecifierQualifier {
 public:
     enum class StorageClass {
@@ -212,14 +203,14 @@ public:
 class AlignmentSpecifierExpr : public AlignmentSpecifier {
 public:
 
-    explicit AlignmentSpecifierExpr(NODE(Expr)& expression) {
+    explicit AlignmentSpecifierExpr(NODE(ExprNode)& expression) {
         Expression = std::move(expression);
         if (!Expression->IsConstant()) {
             throw std::runtime_error("Alignment specifier expression is not a constant");
         }
     }
 
-    NODE(Expr) Expression;
+    NODE(ExprNode) Expression;
 
     std::string String() override {
         return "_AlignOf";
@@ -234,7 +225,7 @@ public:
     }
 };
 
-class DeclarationSpecifiers : public Decl {
+class DeclarationSpecifiers : public DeclNode {
 public:
     DeclarationSpecifiers() = default;
 

@@ -5,13 +5,13 @@
 #include "specifiers.h"
 #include "declarator.h"
 
-class TypeName : public Decl {
+class TypeName : public TypeNode {
 public:
-    TypeName() {
+    explicit TypeName() {
 
     }
 
-    TypeName(NODE(AbstractDeclarator)& declar) {
+    explicit TypeName(NODE(AbstractDeclarator)& declar) {
         Declar = std::move(declar);
     }
 
@@ -23,7 +23,7 @@ public:
         TypeQualifiers.push_back(std::move(qualifier));
     }
 
-    NODE(AbstractDeclarator) Declar;
+    NODE(AbstractDeclarator) Declar = nullptr;  // optional
     std::vector<NODE(TypeSpecifier)> TypeSpecifiers = {};
     std::vector<NODE(TypeQualifier)> TypeQualifiers = {};
 
@@ -34,13 +34,17 @@ public:
                 repr.push_back(REPR_PADDING + s);
             }
         }
+
         for (auto& ts : TypeSpecifiers) {
             for (auto& s : ts->Repr()) {
                 repr.push_back(REPR_PADDING + s);
             }
         }
-        for (auto& s : Declar->Repr()) {
-            repr.push_back(REPR_PADDING + s);
+
+        if (Declar) {
+            for (auto& s : Declar->Repr()) {
+                repr.push_back(REPR_PADDING + s);
+            }
         }
         return repr;
     }

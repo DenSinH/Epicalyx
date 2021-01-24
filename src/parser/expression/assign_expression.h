@@ -7,7 +7,7 @@
 #include <map>
 #include <stdexcept>
 
-class AssignmentExpression : public Expr {
+class AssignmentExpression : public ExprNode {
 public:
     enum class AssignOp {
         Eq,
@@ -24,17 +24,17 @@ public:
     };
 
     AssignmentExpression(
-            NODE(Expr)& left,
+            NODE(ExprNode)& left,
             AssignOp op,
-            NODE(Expr)& right) {
+            NODE(ExprNode)& right) {
         this->Left = std::move(left);
         this->Op = op;
         this->Right = std::move(right);
     }
 
-    NODE(Expr) Left;
+    NODE(ExprNode) Left;
     AssignOp Op;
-    NODE(Expr) Right;  // can also be a CondExpr
+    NODE(ExprNode) Right;  // can also be a CondExpr
 
     std::list<std::string> Repr() override {
         std::list<std::string> repr = { "AssignExpr:" };

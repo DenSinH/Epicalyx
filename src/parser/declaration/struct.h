@@ -6,9 +6,9 @@
 #include "declarator.h"
 #include <stdexcept>
 
-class StructDeclarator : public Decl {
+class StructDeclarator : public DeclNode {
 public:
-    explicit StructDeclarator(NODE(AbstractDeclarator)& field, NODE(Expr)& size) {
+    explicit StructDeclarator(NODE(AbstractDeclarator)& field, NODE(ExprNode)& size) {
         this->Field = std::move(field);
         this->Size = std::move(size);
 
@@ -17,7 +17,7 @@ public:
         }
     }
 
-    explicit StructDeclarator(NODE(Expr)& size) {
+    explicit StructDeclarator(NODE(ExprNode)& size) {
         this->Size = std::move(size);
 
         if (Size && !Size->IsConstant()) {
@@ -30,7 +30,7 @@ public:
     }
 
     NODE(AbstractDeclarator) Field = nullptr;  // declarator, opt
-    NODE(Expr) Size = nullptr;  // constant-expression, opt
+    NODE(ExprNode) Size = nullptr;  // constant-expression, opt
 
     std::list<std::string> Repr() override {
         // std::list<std::string> repr = { "StructDeclarator:" };
@@ -54,7 +54,7 @@ public:
 };
 
 
-class StructDeclaration : public Decl {
+class StructDeclaration : public DeclNode {
 public:
     explicit StructDeclaration() {
 

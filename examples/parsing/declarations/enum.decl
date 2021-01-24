@@ -1,0 +1,4 @@
+enum test_enum {
+    enum_hello = 1,
+    enum_world,
+}

@@ -6,12 +6,12 @@
 
 class Declarator;
 
-class DirectDeclaratorPostfix : public Decl {
+class DirectDeclaratorPostfix : public Node {
 public:
 
 };
 
-class AbstractDeclarator : public Decl {
+class AbstractDeclarator : public DeclNode {
 public:
     AbstractDeclarator() {
 
@@ -69,7 +69,7 @@ public:
 
 class DirectDeclaratorArrayPostfix : public DirectDeclaratorPostfix {
 public:
-    explicit DirectDeclaratorArrayPostfix(NODE(Expr)& size, bool _Static = false, bool _Pointer = false) {
+    explicit DirectDeclaratorArrayPostfix(NODE(ExprNode)& size, bool _Static = false, bool _Pointer = false) {
         Size = std::move(size);
         Static = _Static;
         Pointer = _Pointer;
@@ -85,7 +85,7 @@ public:
         Qualifiers.push_back(std::move(qualifier));
     }
 
-    NODE(Expr) Size;
+    NODE(ExprNode) Size;
     bool Static = false;
     bool Pointer = false;
     std::vector<NODE(TypeQualifier)> Qualifiers = {};
@@ -116,7 +116,7 @@ public:
     }
 };
 
-class ParameterDeclaration : public Decl {
+class ParameterDeclaration : public DeclNode {
 public:
     ParameterDeclaration(NODE(DeclarationSpecifiers)& specifiers, NODE(AbstractDeclarator)& declar) {
         Specifiers = std::move(specifiers);

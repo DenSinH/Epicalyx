@@ -29,20 +29,17 @@ NODE(TypeSpecifier) Parser::ExpectTypeSpecifier() {
         type = MAKE_NODE(TypedefName)(std::static_pointer_cast<Identifier>(current)->Name);
         Advance();
     }
+    else if (StructSpecifier::Is(current->Type) || UnionSpecifier::Is(current->Type)) {
+        return ExpectStructUnionSpecifier();
+    }
     else {
-        // struct/union/enum/...
+        // enum
         log_fatal("Unimplemented type specifier: %s", current->Repr().c_str());
     }
     return type;
 }
 
-NODE(Initializer) Parser::ExpectInitializer() {
-    auto current = Current();
-    if (current->Type != TokenType::LBrace) {
-        // assignment expression initializer
-        auto expr = ExpectAssignmentExpression();
-        return MAKE_NODE(AssignmentInitializer)(expr);
-    }
+NODE(InitializerList) Parser::ExpectInitializerList() {
     // initializer list
     auto initializer = MAKE_NODE(InitializerList)();
     EatType(TokenType::LBrace);
@@ -50,7 +47,7 @@ NODE(Initializer) Parser::ExpectInitializer() {
     // { (([constexpr] / .identifier)+ =)? initializer (,)? }
     while (true) {
         // list might end in a comma, we checked this at the end of the loop
-        current = Current();
+        auto current = Current();
 
         // end of initializer list
         if (current->Type == TokenType::RBrace) {
@@ -92,7 +89,19 @@ NODE(Initializer) Parser::ExpectInitializer() {
     }
 }
 
+NODE(Initializer) Parser::ExpectInitializer() {
+    auto current = Current();
+    if (current->Type != TokenType::LBrace) {
+        // assignment expression initializer
+        auto expr = ExpectAssignmentExpression();
+        return MAKE_NODE(AssignmentInitializer)(expr);
+    }
+    return ExpectInitializerList();
+}
+
 NODE(Pointer) Parser::ExpectOptPointer() {
+    // parse a pointer if it is there
+    // * type-qualifier-list(opt)
     if (Current()->Type != TokenType::Asterisk) {
         return nullptr;
     }
@@ -107,6 +116,7 @@ NODE(Pointer) Parser::ExpectOptPointer() {
 }
 
 NODE(DeclarationSpecifiers) Parser::ExpectDeclarationSpecifiers() {
+    // list of storage-class/type-specifier/type-qualifier/function-specifier/alignment-specifier s
     auto specifiers = MAKE_NODE(DeclarationSpecifiers)();
     while (true) {
         auto current = Current();
@@ -131,8 +141,8 @@ NODE(DeclarationSpecifiers) Parser::ExpectDeclarationSpecifiers() {
             NODE(AlignmentSpecifier) specifier;
             if (IsTypeName(0)) {
                 // _Alignas ( type-name )
-                // todo: expect type-name
-                log_fatal("Unimplemented: type-name alignment");
+                auto type_name = ExpectTypeName();
+                specifier = MAKE_NODE(AlignmentSpecifierTypeName)(type_name);
             }
             else {
                 // _Alignas ( constant expression )
@@ -159,6 +169,12 @@ NODE(DeclarationSpecifiers) Parser::ExpectDeclarationSpecifiers() {
 }
 
 NODE(DirectDeclaratorParameterListPostfix) Parser::ExpectParameterListPostfix() {
+    // START: expect lparen to already be eaten
+    // list of parameter declarations, as postfix for (abstract) declarations
+    // declaration-specifiers declarator , etc.
+    // or
+    // declaration-specifiers abstract-declarator(opt) , etc.
+    // followed by ... for variadic args
     auto parameter_list = MAKE_NODE(DirectDeclaratorParameterListPostfix)();
     NODE(DeclarationSpecifiers) specifiers;
     NODE(AbstractDeclarator) declarator;
@@ -179,6 +195,7 @@ NODE(DirectDeclaratorParameterListPostfix) Parser::ExpectParameterListPostfix() 
             Advance();
             if (Current()->Type == TokenType::Ellipsis) {
                 parameter_list->Variadic = true;
+                // ellipsis is always at the end
                 break;
             }
         }
@@ -252,6 +269,7 @@ NODE(AbstractDeclarator) Parser::ExpectDeclaratorOrAbstractDeclarator() {
                 else if (!declarator->IsAbstract()) {
                     // if the declarator is not abstract, we have already found the identifier or any nested declarators
                     // then we can safely assume there will be an identifier list next
+                    // identifier, identifier, etc.
                     NODE(DirectDeclaratorIdentifierListPostfix) ident_list = MAKE_NODE(DirectDeclaratorIdentifierListPostfix)();
                     current = Current();
                     while (current->Type == TokenType::Identifier) {
@@ -298,7 +316,7 @@ NODE(AbstractDeclarator) Parser::ExpectDeclaratorOrAbstractDeclarator() {
                     qualifier_list = ExpectListGreedy<TypeQualifier>();
                 }
 
-                NODE(Expr) expr = nullptr;
+                NODE(ExprNode) expr = nullptr;
                 if (Static || (Current()->Type != TokenType::RBracket)) {
                     // if static, has to have an expression, otherwise optional
                     expr = ExpectAssignmentExpression();
@@ -317,6 +335,15 @@ NODE(AbstractDeclarator) Parser::ExpectDeclaratorOrAbstractDeclarator() {
     return declarator;
 }
 
+NODE(AbstractDeclarator) Parser::ExpectDeclarator() {
+    auto declarator = ExpectDeclaratorOrAbstractDeclarator();
+    if (declarator->IsAbstract()) {
+        declarator->Print();
+        throw std::runtime_error("Abstract declarator not allowed in this context");
+    }
+    return declarator;
+}
+
 NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
     NODE(StructUnionSpecifier) struct_specifier = nullptr;
 
@@ -331,13 +358,15 @@ NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
     }
     Advance();
 
+    bool has_name = false;
     if (Current()->Type == TokenType::Identifier) {
         // there has to be a next, since struct / union has to be followed by either an identifier or a declaration list
         struct_specifier->ID = std::static_pointer_cast<Identifier>(Current())->Name;
+        has_name = true;
         Advance();
     }
 
-    if (Current()->Type == TokenType::LBrace) {
+    if (!has_name || Current()->Type == TokenType::LBrace) {
         // struct-declaration-list
         Advance();
         while (Current()->Type != TokenType::RBrace) {
@@ -382,8 +411,10 @@ NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
                         }
                         else {
                             // declarator
-                            auto declarator = ExpectDeclaratorOrAbstractDeclarator();
+                            auto declarator = ExpectDeclarator();
+
                             if (Current()->Type == TokenType::Colon) {
+                                // sized field
                                 // declarator: constant-expression
                                 Advance();
                                 auto expr = ExpectConstantExpression();
@@ -391,6 +422,7 @@ NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
                                 declaration->AddDeclarator(field);
                             }
                             else {
+                                // non-sized field
                                 auto field = MAKE_NODE(StructDeclarator)(declarator);
                                 declaration->AddDeclarator(field);
                             }
@@ -412,4 +444,76 @@ NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
         EatType(TokenType::RBrace);
     }
     return struct_specifier;
+}
+
+NODE(EnumSpecifier) Parser::ExpectEnumSpecifier() {
+    EatType(TokenType::Enum);
+    auto enum_specifier = MAKE_NODE(EnumSpecifier)();
+
+    // enum identifier(opt)
+    bool has_name = false;
+    if (Current()->Type == TokenType::Identifier) {
+        enum_specifier->ID = std::static_pointer_cast<Identifier>(Current())->Name;
+        has_name = true;
+        Advance();
+    }
+
+    // if enum has no name, it must have an explicit enumeration list
+    if (!has_name || Current()->Type == TokenType::LBrace) {
+        EatType(TokenType::LBrace);
+        do {
+            ExpectType(TokenType::Identifier);
+            NODE(Enumerator) enumerator = nullptr;
+            std::string name = std::static_pointer_cast<Identifier>(Current())->Name;
+            Advance();
+            if (Current()->Type == TokenType::Assign) {
+                Advance();
+                auto expr = ExpectConstantExpression();
+                enumerator = MAKE_NODE(Enumerator)(name, expr);
+            }
+            else {
+                enumerator = MAKE_NODE(Enumerator)(name);
+            }
+            enum_specifier->AddEnumerator(enumerator);
+
+            if (Current()->Type == TokenType::Comma) {
+                Advance();
+            }
+        } while(Current()->Type != TokenType::RBrace);
+
+        EatType(TokenType::RBrace);
+    }
+    return enum_specifier;
+}
+
+NODE(TypeName) Parser::ExpectTypeName() {
+    auto type_name = MAKE_NODE(TypeName)();
+    if (!(TypeQualifier::Is(Current()->Type) || IsTypeSpecifier(Current()))) {
+        throw std::runtime_error("Expected type qualifier or type specifier, got: " + Current()->Repr());
+    }
+
+    // specifier-qualifier-list
+    while (true) {
+        if (TypeQualifier::Is(Current()->Type)) {
+            auto qualifier = MAKE_NODE(TypeQualifier)(Current()->Type);
+            Advance();
+            type_name->AddQualifier(qualifier);
+        }
+        else if (IsTypeSpecifier(Current())) {
+            auto specifier = ExpectTypeSpecifier();
+            type_name->AddSpecifier(specifier);
+        }
+        else {
+            break;
+        }
+    }
+
+    // abstract-declarator (opt)
+    // NOTE: from the grammar: after a type-name is always an RParen
+    if (Current()->Type != TokenType::RParen) {
+        auto declarator = ExpectDeclarator();
+        type_name->Declar = std::move(declarator);
+    }
+
+    return type_name;
 }

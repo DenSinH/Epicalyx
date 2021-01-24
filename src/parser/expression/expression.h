@@ -3,15 +3,15 @@
 
 #include "../AST.h"
 
-class Expression : public Expr {
+class Expression : public ExprNode {
 public:
-    Expression(NODE(Expr)& left, NODE(Expr)& right) {
+    Expression(NODE(ExprNode)& left, NODE(ExprNode)& right) {
         this->Left = std::move(left);
         this->Right = std::move(right);
     }
 
-    NODE(Expr) Left;
-    NODE(Expr) Right;
+    NODE(ExprNode) Left;
+    NODE(ExprNode) Right;
 
     std::list<std::string> Repr() override {
         std::list<std::string> repr = {};

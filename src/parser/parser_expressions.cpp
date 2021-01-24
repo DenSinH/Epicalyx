@@ -3,7 +3,7 @@
 
 #include <stdexcept>
 
-NODE(Expr) Parser::ExpectPrimaryExpression() {
+NODE(ExprNode) Parser::ExpectPrimaryExpression() {
     auto current = Current();
     switch (current->Class) {
         case TokenClass::Identifier: {
@@ -49,12 +49,11 @@ NODE(Expr) Parser::ExpectPrimaryExpression() {
     }
 }
 
-std::unique_ptr<Expr> Parser::ExpectPostfixExpression() {
+std::unique_ptr<ExprNode> Parser::ExpectPostfixExpression() {
     auto current = Current();
     if (current->Type == TokenType::LParen) {
         if (IsTypeName(1)) {
-            // todo:
-            log_fatal("Unimplemented: type names");
+            return ExpectCastExpressionOrTypeInitializer();
         }
         return ExpectPrimaryExpression();
     }
@@ -110,7 +109,7 @@ std::unique_ptr<Expr> Parser::ExpectPostfixExpression() {
     return node;
 }
 
-std::unique_ptr<Expr> Parser::ExpectUnaryExpression() {
+std::unique_ptr<ExprNode> Parser::ExpectUnaryExpression() {
     auto current = Current();
     switch(current->Type) {
         case TokenType::Incr: {
@@ -154,19 +153,25 @@ std::unique_ptr<Expr> Parser::ExpectUnaryExpression() {
             return MAKE_NODE(UnaryOpExpression)(UnaryOpExpression::UnOpType::LogicalNot, right);
         }
         case TokenType::Sizeof: {
-            EatType(TokenType::Sizeof);
+            Advance();
             if (Current()->Type == TokenType::LParen) {
                 // check if type_name
                 if (IsTypeName(1)) {
-                    // todo:
-                    log_fatal("Unimplemented: type names");
+                    Advance();
+                    auto type_name = ExpectTypeName();
+                    EatType(TokenType::RParen);
+                    return MAKE_NODE(SizeOfTypeExpression)(type_name);
                 }
-                return ExpectUnaryExpression();
+                auto expr = ExpectUnaryExpression();
+                return MAKE_NODE(SizeOfExpression)(expr);
             }
         }
         case TokenType::Alignof: {
-            // todo
-            log_fatal("Unimplemented: alignof type name");
+            Advance();
+            EatType(TokenType::LParen);
+            auto type_name = ExpectTypeName();
+            EatType(TokenType::RParen);
+            return MAKE_NODE(AlignOfExpression)(type_name);
         }
         default: {
             // normal postfix expression
@@ -175,31 +180,38 @@ std::unique_ptr<Expr> Parser::ExpectUnaryExpression() {
     }
 }
 
-NODE(Expr) Parser::ExpectCastExpression() {
+NODE(ExprNode) Parser::ExpectCastExpressionOrTypeInitializer() {
     if (Current()->Type == TokenType::LParen) {
         // check if type_name
         if (IsTypeName(1)) {
-            // todo
-            log_fatal("Unimplemented: type names");
+            Advance();
+            auto type_name = ExpectTypeName();
+            EatType(TokenType::RParen);
+            if (!EndOfStream() && Current()->Type == TokenType::LBrace) {
+                // type initializer expression
+                auto initializer_list = ExpectInitializerList();
+                return MAKE_NODE(TypeInitializerExpression)(type_name, initializer_list);
+            }
+            auto expr = ExpectCastExpressionOrTypeInitializer();
+            return MAKE_NODE(CastExpression)(type_name, expr);
         }
-        return ExpectUnaryExpression();
     }
     return ExpectUnaryExpression();
 }
 
-NODE(Expr) Parser::ExpectMultExpression() {
-    return ExpectBinOpExpression<&Parser::ExpectCastExpression, TokenType::Asterisk, TokenType::Div, TokenType::Mod>();
+NODE(ExprNode) Parser::ExpectMultExpression() {
+    return ExpectBinOpExpression<&Parser::ExpectCastExpressionOrTypeInitializer, TokenType::Asterisk, TokenType::Div, TokenType::Mod>();
 }
 
-NODE(Expr) Parser::ExpectAddExpression() {
+NODE(ExprNode) Parser::ExpectAddExpression() {
     return ExpectBinOpExpression<&Parser::ExpectMultExpression, TokenType::Plus, TokenType::Minus>();
 }
 
-NODE(Expr) Parser::ExpectShiftExpression() {
+NODE(ExprNode) Parser::ExpectShiftExpression() {
     return ExpectBinOpExpression<&Parser::ExpectAddExpression, TokenType::LShift, TokenType::RShift>();
 }
 
-NODE(Expr) Parser::ExpectRelationalExpression() {
+NODE(ExprNode) Parser::ExpectRelationalExpression() {
     return ExpectBinOpExpression<
             &Parser::ExpectShiftExpression,
             TokenType::LessEqual,
@@ -208,31 +220,31 @@ NODE(Expr) Parser::ExpectRelationalExpression() {
             TokenType::Greater>();
 }
 
-NODE(Expr) Parser::ExpectEqualityExpression() {
+NODE(ExprNode) Parser::ExpectEqualityExpression() {
     return ExpectBinOpExpression<&Parser::ExpectRelationalExpression, TokenType::Equal, TokenType::NotEqual>();
 }
 
-NODE(Expr) Parser::ExpectBinAndExpression() {
+NODE(ExprNode) Parser::ExpectBinAndExpression() {
     return ExpectBinOpExpression<&Parser::ExpectEqualityExpression, TokenType::Ampersand>();
 }
 
-NODE(Expr) Parser::ExpectBinXorExpression() {
+NODE(ExprNode) Parser::ExpectBinXorExpression() {
     return ExpectBinOpExpression<&Parser::ExpectBinAndExpression, TokenType::BinXor>();
 }
 
-NODE(Expr) Parser::ExpectBinOrExpression() {
+NODE(ExprNode) Parser::ExpectBinOrExpression() {
     return ExpectBinOpExpression<&Parser::ExpectBinXorExpression, TokenType::BinOr>();
 }
 
-NODE(Expr) Parser::ExpectLogicAndExpression() {
+NODE(ExprNode) Parser::ExpectLogicAndExpression() {
     return ExpectBinOpExpression<&Parser::ExpectBinOrExpression, TokenType::LogicalAnd>();
 }
 
-NODE(Expr) Parser::ExpectLogicOrExpression() {
+NODE(ExprNode) Parser::ExpectLogicOrExpression() {
     return ExpectBinOpExpression<&Parser::ExpectLogicAndExpression, TokenType::LogicalOr>();
 }
 
-NODE(Expr) Parser::ExpectConditionalExpression() {
+NODE(ExprNode) Parser::ExpectConditionalExpression() {
     auto node = ExpectLogicOrExpression();
     if (!EndOfStream() && Current()->Type == TokenType::Question) {
         // actual conditional expression
@@ -241,12 +253,12 @@ NODE(Expr) Parser::ExpectConditionalExpression() {
         auto t = ExpectExpression();
         EatType(TokenType::Colon);
         auto f = ExpectConditionalExpression();
-        node = MAKE_NODE(CondExpr)(node, t, f);
+        node = MAKE_NODE(CondExpression)(node, t, f);
     }
     return node;
 }
 
-NODE(Expr) Parser::ExpectAssignmentExpression() {
+NODE(ExprNode) Parser::ExpectAssignmentExpression() {
     auto node = ExpectConditionalExpression();
 
     // if node is of type UnaryExpression and
@@ -274,7 +286,7 @@ NODE(Expr) Parser::ExpectAssignmentExpression() {
     return node;
 }
 
-NODE(Expr) Parser::ExpectExpression() {
+NODE(ExprNode) Parser::ExpectExpression() {
     auto node = ExpectAssignmentExpression();
     while (!EndOfStream() && Current()->Type == TokenType::Comma) {
         EatType(TokenType::Comma);
@@ -284,7 +296,7 @@ NODE(Expr) Parser::ExpectExpression() {
     return node;
 }
 
-NODE(Expr) Parser::ExpectArgumentListExpression() {
+NODE(ExprNode) Parser::ExpectArgumentListExpression() {
     // same grammar:
     return ExpectExpression();
 }

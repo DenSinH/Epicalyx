@@ -4,13 +4,13 @@
 #include "../AST.h"
 #include <stdexcept>
 
-class Designator : public Decl {
+class Designator : public DeclNode {
 
 };
 
 class ArrayMemberDesignator : public Designator {
 public:
-    explicit ArrayMemberDesignator(NODE(Expr)& member) {
+    explicit ArrayMemberDesignator(NODE(ExprNode)& member) {
         Member = std::move(member);
 
         if (!Member->IsConstant()) {
@@ -18,7 +18,7 @@ public:
         }
     }
 
-    NODE(Expr) Member;  // must be constant
+    NODE(ExprNode) Member;  // must be constant
 
     std::list<std::string> Repr() override {
         std::list<std::string> repr = { "ArrayMemberDesignator: [" };

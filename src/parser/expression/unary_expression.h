@@ -2,15 +2,16 @@
 #define EPICALYX_UNARY_EXPRESSION_H
 
 #include "../AST.h"
-
+#include "../declaration/typename.h"
 
 // a cast expression can just be a unary expression
-class UnaryExpression : public Expr {
+class UnaryExpression : public ExprNode {
 public:
     enum class UnExprType {
         PostFix,
         UnOp,  // ++/--/&/*/+/-/~/!
         SizeOf,
+        AlignOf,
     };
 
     explicit UnaryExpression(UnExprType type) {
@@ -33,13 +34,17 @@ public:
         LogicalNot,
     };
 
-    explicit UnaryOpExpression(UnOpType type, NODE(Expr)& right) : UnaryExpression(UnExprType::UnOp) {
+    explicit UnaryOpExpression(UnOpType type, NODE(ExprNode)& right) : UnaryExpression(UnExprType::UnOp) {
         this->Type = type;
         this->Right = std::move(right);
     }
 
     UnOpType Type;
-    NODE(Expr) Right;
+    NODE(ExprNode) Right;
+
+    bool IsConstant() override {
+        return Right->IsConstant();
+    }
 
     std::list<std::string> Repr() override {
         std::list<std::string> repr = { "UnaryExpression: " + Operation() };
@@ -73,12 +78,16 @@ private:
 };
 
 class SizeOfTypeExpression : public UnaryExpression {
-
-    explicit SizeOfTypeExpression(NODE(Expr)& right) : UnaryExpression(UnExprType::SizeOf) {
+public:
+    explicit SizeOfTypeExpression(NODE(TypeName)& right) : UnaryExpression(UnExprType::SizeOf) {
         this->Right = std::move(right);
     }
 
-    NODE(Expr) Right;
+    NODE(TypeName) Right;
+
+    bool IsConstant() override {
+        return true;
+    }
 
     std::list<std::string> Repr() override {
         std::list<std::string> repr = { "SizeOfTypeExpression: " };
@@ -90,15 +99,39 @@ class SizeOfTypeExpression : public UnaryExpression {
 };
 
 class SizeOfExpression : public UnaryExpression {
-
-    explicit SizeOfExpression(NODE(Expr)& right) : UnaryExpression(UnExprType::SizeOf) {
+public:
+    explicit SizeOfExpression(NODE(ExprNode)& right) : UnaryExpression(UnExprType::SizeOf) {
         this->Right = std::move(right);
     }
 
-    NODE(Expr) Right;
+    NODE(ExprNode) Right;
+    bool IsConstant() override {
+        return true;
+    }
 
     std::list<std::string> Repr() override {
         std::list<std::string> repr = { "SizeOfExpression: " };
+        for (auto& s : Right->Repr()) {
+            repr.emplace_back(REPR_PADDING + s);
+        }
+        return repr;
+    }
+};
+
+class AlignOfExpression : public UnaryExpression {
+public:
+    explicit AlignOfExpression(NODE(TypeName)& right) : UnaryExpression(UnExprType::AlignOf) {
+        this->Right = std::move(right);
+    }
+
+    NODE(TypeName) Right;
+
+    bool IsConstant() override {
+        return true;
+    }
+
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "AlignOf: " };
         for (auto& s : Right->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
         }

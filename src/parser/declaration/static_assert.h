@@ -8,7 +8,7 @@
 
 class StaticAssertDecl : public StructDeclaration {
 public:
-    StaticAssertDecl(NODE(Expr)& expression, std::string& message) {
+    StaticAssertDecl(NODE(ExprNode)& expression, std::string& message) {
         Expression = std::move(expression);
         Message = message;
 
@@ -17,7 +17,7 @@ public:
         }
     }
 
-    NODE(Expr) Expression;  // must be constant
+    NODE(ExprNode) Expression;  // must be constant
     std::string Message;
 
     std::list<std::string> Repr() override {

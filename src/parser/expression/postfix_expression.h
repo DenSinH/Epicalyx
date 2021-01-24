@@ -2,8 +2,10 @@
 #define EPICALYX_POSTFIX_EXPRESSION_H
 
 #include "../AST.h"
+#include "../declaration/typename.h"
+#include "../declaration/initializer.h"
 
-class PostfixExpression : public Expr {
+class PostfixExpression : public ExprNode {
 public:
     enum class PostExprType {
         PrimaryExpression,
@@ -24,15 +26,15 @@ public:
 class ArrayAccessExpression : public PostfixExpression {
 public:
     explicit ArrayAccessExpression(
-            NODE(Expr)& left,
-            NODE(Expr)& right
+            NODE(ExprNode)& left,
+            NODE(ExprNode)& right
             ) : PostfixExpression(PostExprType::ArrayAccess) {
         this->Left = std::move(left);
         this->Right = std::move(right);
     }
 
-    NODE(Expr) Left;
-    NODE(Expr) Right;
+    NODE(ExprNode) Left;
+    NODE(ExprNode) Right;
 
     std::list<std::string> Repr() override {
         std::list<std::string> repr = { "ArrayAccessExpr:" };
@@ -54,22 +56,22 @@ public:
 class FunctionCallExpression : public PostfixExpression {
 public:
     explicit FunctionCallExpression(
-            NODE(Expr)& func
+            NODE(ExprNode)& func
             ) : PostfixExpression(PostExprType::FunctionCall) {
         this->Func = std::move(func);
         this->Args = nullptr;
     }
 
     explicit FunctionCallExpression(
-            NODE(Expr)& func,
-            NODE(Expr)& args
+            NODE(ExprNode)& func,
+            NODE(ExprNode)& args
             ) : PostfixExpression(PostExprType::FunctionCall) {
         this->Func = std::move(func);
         this->Args = std::move(args);
     }
 
-    NODE(Expr) Func;
-    NODE(Expr) Args;
+    NODE(ExprNode) Func;
+    NODE(ExprNode) Args;
 
     std::list<std::string> Repr() override {
         std::list<std::string> repr = { "FunctionCallExpr:" };
@@ -92,7 +94,7 @@ public:
     };
 
     explicit MemberAccessExpression(
-            NODE(Expr)& left,
+            NODE(ExprNode)& left,
             std::string& member,
             MemberAccessType access_type
             ) : PostfixExpression(PostExprType::MemberAccess) {
@@ -101,7 +103,7 @@ public:
         this-> AccessType = access_type;
     }
 
-    NODE(Expr) Left;
+    NODE(ExprNode) Left;
     std::string Member;
     MemberAccessType AccessType;
 
@@ -127,14 +129,14 @@ public:
     };
 
     explicit PostCrementExpression(
-            NODE(Expr)& left,
+            NODE(ExprNode)& left,
             CrementType type
             ) : PostfixExpression(PostExprType::Crement) {
         this->Left = std::move(left);
         this-> Type = type;
     }
 
-    NODE(Expr) Left;
+    NODE(ExprNode) Left;
     CrementType Type;
 
     std::list<std::string> Repr() override {
@@ -147,25 +149,33 @@ public:
 };
 
 
-//class TypeInitializerExpression : public PostfixExpression {
-//public:
-//
-//    explicit TypeInitializerExpression(
-//            std::vector<Expr> args
-//    ) : PostfixExpression(PostExprType::TypeInitializer) {
-//        this->Args = std::move(args);
-//    }
-//
-//    std::vector<Expr> Args;
-//
-//    std::vector<std::string> Repr() override {
-//        std::vector<std::string> repr = { "TypeInitializerExpr:" };
-//        for (auto& s : Args->Repr()) {
-//            repr.emplace_back(REPR_PADDING + s);
-//        }
-//        return repr;
-//    }
-//};
+class TypeInitializerExpression : public PostfixExpression {
+public:
+
+    explicit TypeInitializerExpression(
+            NODE(TypeName)& type,
+            NODE(InitializerList)& initializers
+    ) : PostfixExpression(PostExprType::TypeInitializer) {
+        Type = std::move(type);
+        Initializers = std::move(initializers);
+    }
+
+    NODE(TypeName) Type;
+    NODE(InitializerList) Initializers = {};
+
+    std::list<std::string> Repr() override {
+        std::list<std::string> repr = { "TypeInitializerExpr:" };
+
+        for (auto& s : Type->Repr()) {
+            repr.emplace_back(REPR_PADDING + s);
+        }
+
+        for (auto& s : Initializers->Repr()) {
+            repr.emplace_back(REPR_PADDING + s);
+        }
+        return repr;
+    }
+};
 
 
 #endif //EPICALYX_POSTFIX_EXPRESSION_H
