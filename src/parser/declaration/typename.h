@@ -11,7 +11,7 @@ public:
 
     }
 
-    explicit TypeName(const TOKEN& tok, NODE(AbstractDeclarator)& declar) : TypeNode(tok) {
+    explicit TypeName(const TOKEN& tok, NODE(Declarator)& declar) : TypeNode(tok) {
         Declar = std::move(declar);
     }
 
@@ -23,7 +23,7 @@ public:
         TypeQualifiers.push_back(std::move(qualifier));
     }
 
-    NODE(AbstractDeclarator) Declar = nullptr;  // optional
+    NODE(Declarator) Declar = nullptr;  // optional
     std::vector<NODE(TypeSpecifier)> TypeSpecifiers = {};
     std::vector<NODE(TypeQualifier)> TypeQualifiers = {};
 

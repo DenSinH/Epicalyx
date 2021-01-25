@@ -3,6 +3,7 @@
 
 #include "tokens.h"
 #include "../state/state.h"
+#include "../file/file.h"
 
 #include <string>
 #include <vector>
@@ -13,22 +14,23 @@ class Tokenizer : public Stateful {
 public:
     Tokenizer() = default;
 
-    void Tokenize(const std::string& file_name);
+    void Tokenize(std::shared_ptr<const File> file);
 
     std::vector<TOKEN> Tokens;
 
-    std::string current_token;
-    std::string File;
+    std::shared_ptr<const File> FileObj;
     size_t LineNo;
-    std::string Line;
+    std::shared_ptr<const std::string> Line;
 
 private:
+    std::string current_token;  // keep this here to know it in case of an error
+
     template<typename T, typename... Args>
     TOKEN MakeToken(const Args&... args) {
-        return MAKE_TOKEN(T)(File, LineNo, Line, args...);
+        return MAKE_TOKEN(T)(FileObj->FileName, LineNo, Line, args...);
     }
 
-    void TokenizeLine(std::ifstream& file, const std::string& line);
+    void TokenizeLine(const std::string& line);
     TOKEN ReadNumericConstant(std::string::const_iterator& current, const std::string::const_iterator& end);
     TOKEN ReadStringConstant(std::string::const_iterator& current, const std::string::const_iterator& end);
     TOKEN ReadCharSequenceConstant(std::string::const_iterator& current, const std::string::const_iterator& end);

@@ -10,19 +10,14 @@
 #include <stdexcept>
 
 
-void Tokenizer::Tokenize(const std::string& file_name) {
-    std::ifstream file(file_name);
-    if (!file.good()) {
-        throw std::runtime_error("Could not open file!");
-    }
-
-    const auto ctx = context("Tokenizing file: " + file_name);
+void Tokenizer::Tokenize(std::shared_ptr<const File> file) {
+    const auto ctx = context("Tokenizing file: " + *file->FileName);
     try {
-        std::string line;
-        File = file_name;
+        FileObj = file;
         LineNo = 1;
-        while (std::getline(file, Line)) {
-            TokenizeLine(file, Line);
+        for (auto& line : file->Lines) {
+            Line = line;
+            TokenizeLine(*line);
             LineNo++;
         }
     }
@@ -37,7 +32,7 @@ void Tokenizer::Tokenize(const std::string& file_name) {
     }
 }
 
-void Tokenizer::TokenizeLine(std::ifstream& file, const std::string& line) {
+void Tokenizer::TokenizeLine(const std::string& line) {
     for (auto current = line.begin(); current != line.end();) {
         current_token = "";
         auto next = current + 1;

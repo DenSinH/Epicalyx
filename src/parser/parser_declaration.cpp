@@ -178,12 +178,12 @@ NODE(DirectDeclaratorParameterListPostfix) Parser::ExpectParameterListPostfix() 
     // followed by ... for variadic args
     auto parameter_list = MAKE_NODE(DirectDeclaratorParameterListPostfix)(Current());
     NODE(DeclarationSpecifiers) specifiers;
-    NODE(AbstractDeclarator) declarator;
+    NODE(AnyDeclarator) declarator;
     do {
         specifiers = ExpectDeclarationSpecifiers();
         if (!Is(Current()->Type).AnyOf<TokenType::Comma, TokenType::RParen>()) {
             // not end of declarator
-            declarator = ExpectDeclaratorOrAbstractDeclarator();
+            declarator = ExpectDeclarator<AnyDeclarator>();
         }
         else {
             // end of declarator
@@ -208,142 +208,6 @@ NODE(DirectDeclaratorParameterListPostfix) Parser::ExpectParameterListPostfix() 
     return parameter_list;
 }
 
-NODE(AbstractDeclarator) Parser::ExpectDeclaratorOrAbstractDeclarator() {
-    NODE(AbstractDeclarator) declarator = MAKE_NODE(AbstractDeclarator)(Current());
-
-    // optional pointer
-    NODE(Pointer) pointer = ExpectOptPointer();
-    while (pointer) {
-        declarator->AddPointer(pointer);
-        pointer = ExpectOptPointer();
-    }
-
-    auto current = Current();
-    while (!EndOfStream() && Is(Current()->Type).AnyOf<TokenType::LParen, TokenType::LBracket, TokenType::Identifier>()) {
-        current = Current();
-        // direct-abstract-declarator
-        switch(current->Type) {
-            case TokenType::Identifier: {
-                // is not abstract declarator, but normal declarator
-                // has to be the first thing in the declarator
-                if (declarator->IsAbstract()) {
-                    if (declarator->Nested) {
-                        log_fatal("Nested declarator on abstract declarator -> declarator conversion");
-                    }
-
-                    std::string name = std::static_pointer_cast<Identifier>(current)->Name;
-                    declarator = MAKE_NODE(Declarator)(current, name, declarator->Pointers);
-                    Advance();
-                }
-                else {
-                    throw std::runtime_error("Got unexpected identifier for non-abstract declarator: " + current->Repr());
-                }
-                break;
-            }
-            case TokenType::LParen: {
-                // (abstract-declarator) OR (parameter-type-list[opt])
-                EatType(TokenType::LParen);
-                if (Current()->Type == TokenType::RParen) {
-                    // empty parameter-type-list
-                    NODE(DirectDeclaratorPostfix) postfix;
-                    if (declarator->IsAbstract()) {
-                        // type list for abstract declarators
-                        postfix = MAKE_NODE(DirectDeclaratorParameterListPostfix)(Current());
-                    }
-                    else {
-                        // otherwise an identifier list
-                        postfix = MAKE_NODE(DirectDeclaratorIdentifierListPostfix)(Current());
-                    }
-
-                    declarator->AddPostfix(postfix);
-                    EatType(TokenType::RParen);
-                    break;
-                }
-                current = Current();
-                if (IsDeclarationSpecifier(current)) {
-                    // parameter type list
-                    NODE(DirectDeclaratorPostfix) parameter_list = ExpectParameterListPostfix();
-                    declarator->AddPostfix(parameter_list);
-                    EatType(TokenType::RParen);
-                    break;
-                }
-                else if (!declarator->IsAbstract()) {
-                    // if the declarator is not abstract, we have already found the identifier or any nested declarators
-                    // then we can safely assume there will be an identifier list next
-                    // identifier, identifier, etc.
-                    current = Current();
-                    NODE(DirectDeclaratorIdentifierListPostfix) ident_list = MAKE_NODE(DirectDeclaratorIdentifierListPostfix)(current);
-                    while (current->Type == TokenType::Identifier) {
-                        ident_list->AddIdentifier(std::static_pointer_cast<Identifier>(current)->Name);
-                        if (Current()->Type == TokenType::Comma) {
-                            Advance();
-                        }
-                        current = Current();
-                    }
-
-                    EatType(TokenType::RParen);
-                    NODE(DirectDeclaratorPostfix) postfix = std::move(ident_list);
-                    declarator->AddPostfix(postfix);
-                    break;
-                }
-
-                // nested (abstract) declarator
-                auto nested_declarator = ExpectDeclaratorOrAbstractDeclarator();
-                EatType(TokenType::RParen);
-                declarator->SetNested(nested_declarator);
-                break;
-            }
-            case TokenType::LBracket: {
-                EatType(TokenType::LBracket);
-                current = Current();
-
-                // qualifier-list(opt) * -- for normal declarators
-                auto qualifier_list = ExpectListGreedy<TypeQualifier>();
-
-                if (current->Type == TokenType::Asterisk) {
-                    EatType(TokenType::RBracket);
-                    // [*] postfix
-                    NODE(DirectDeclaratorPostfix) array_postfix = MAKE_NODE(DirectDeclaratorArrayPostfix)(current, false, true);
-                    declarator->AddPostfix(array_postfix);
-                    break;
-                }
-                // normal array postfix [qualifiers / static / assignment expression]
-                bool Static = Current()->Type == TokenType::Static;
-                if (Static) {
-                    Advance();
-                }
-                // static may be before qualifier list
-                if (qualifier_list.empty()) {
-                    qualifier_list = ExpectListGreedy<TypeQualifier>();
-                }
-
-                NODE(ExprNode) expr = nullptr;
-                if (Static || (Current()->Type != TokenType::RBracket)) {
-                    // if static, has to have an expression, otherwise optional
-                    expr = ExpectAssignmentExpression();
-                }
-                EatType(TokenType::RBracket);
-
-                NODE(DirectDeclaratorPostfix) array_postfix = MAKE_NODE(DirectDeclaratorArrayPostfix)(current, expr, Static);
-                declarator->AddPostfix(array_postfix);
-                break;
-            }
-            default:
-                break;
-        }
-    }
-
-    return declarator;
-}
-
-NODE(AbstractDeclarator) Parser::ExpectDeclarator() {
-    auto declarator = ExpectDeclaratorOrAbstractDeclarator();
-    if (declarator->IsAbstract()) {
-        declarator->Print();
-        throw std::runtime_error("Abstract declarator not allowed in this context");
-    }
-    return declarator;
-}
 
 NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
     auto ctx = context("parsing struct / union definition");
@@ -353,7 +217,7 @@ NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
     // there has to be a next, since struct / union has to be followed by either an identifier or a declaration list
     std::string name;
     if (Next()->Type == TokenType::Identifier) {
-        name = std::static_pointer_cast<Identifier>(Current())->Name;
+        name = std::static_pointer_cast<Identifier>(Next())->Name;
     }
 
     if (Current()->Type == TokenType::Struct) {
@@ -418,7 +282,7 @@ NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
                         }
                         else {
                             // declarator
-                            auto declarator = ExpectDeclarator();
+                            auto declarator = ExpectDeclarator<Declarator>();
 
                             if (Current()->Type == TokenType::Colon) {
                                 // sized field
@@ -522,7 +386,7 @@ NODE(TypeName) Parser::ExpectTypeName() {
     // abstract-declarator (opt)
     // NOTE: from the grammar: after a type-name is always an RParen
     if (Current()->Type != TokenType::RParen) {
-        auto declarator = ExpectDeclarator();
+        auto declarator = ExpectDeclarator<Declarator>();
         type_name->Declar = std::move(declarator);
     }
 
@@ -534,15 +398,17 @@ NODE(Declaration) Parser::ExpectDeclaration() {
     auto declaration = MAKE_NODE(Declaration)(Current(), specifiers);
     do {
         // init-declarator-list
-        auto declarator = ExpectDeclarator();
-        if (Current()->Type == TokenType::Assign) {
+        auto declarator = ExpectDeclarator<Declarator>();
+        auto current = Current();
+        if (current->Type == TokenType::Assign) {
             Advance();
             auto initializer = ExpectInitializer();
-            // todo: declarator instead of abstract declarator (template expect function)
-            // declaration->AddDeclarator(MAKE_NODE(InitDeclarator)(declarator, initializer));
+            auto init_declarator = MAKE_NODE(InitDeclarator)(current, declarator, initializer);
+            declaration->AddDeclarator(init_declarator);
         }
         else {
-            // declaration->AddDeclarator(MAKE_NODE(InitDeclarator)(declarator));
+            auto init_declarator = MAKE_NODE(InitDeclarator)(current, declarator);
+            declaration->AddDeclarator(init_declarator);
         }
 
         if (Current()->Type != TokenType::SemiColon) {

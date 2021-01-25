@@ -5,7 +5,7 @@
 #include <string>
 #include <iostream>
 
-#define INFILE_ARGS std::string& file, size_t line_no, std::string& line
+#define INFILE_ARGS std::shared_ptr<const std::string> file, size_t line_no, std::shared_ptr<const std::string> line
 #define INFILE_VALUES file, line_no, line
 #define INFILE_CONSTRUCTOR InFile(INFILE_VALUES)
 
@@ -18,12 +18,12 @@ public:
     }
 
     std::string Loc() const {
-        return File + ":" + std::to_string(LineNo) + ": " + Line;
+        return *File + ":" + std::to_string(LineNo) + ": " + *Line;
     }
 
-    const std::string Line;
+    const std::shared_ptr<const std::string> Line;
     const size_t LineNo;
-    const std::string File;
+    const std::shared_ptr<const std::string> File;
 };
 
 

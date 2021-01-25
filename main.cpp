@@ -6,13 +6,15 @@
 
 
 int main() {
+    auto file = std::make_shared<File>("examples/parsing/declarations/declaration.decl");
+
     auto t = new Tokenizer();
 
-    t->Tokenize("examples/parsing/expressions/postfix/type_initializer.expr");
+    t->Tokenize(file);
 
     auto p = new Parser(t);
 
-    auto n = p->ExpectExpression();
+    auto n = p->ExpectDeclaration();
     n->Print();
 
     return 0;

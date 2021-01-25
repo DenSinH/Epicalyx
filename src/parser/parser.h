@@ -11,20 +11,7 @@
 #include <stdexcept>
 #include <variant>
 
-class StaticAssertDecl;
-class Initializer;
-class InitializerList;
-class AbstractDeclarator;
-class Declarator;
-class Pointer;
-class DeclarationSpecifiers;
-class TypeSpecifier;
-class ParameterDeclaration;
-class DirectDeclaratorParameterListPostfix;
-class StructUnionSpecifier;
-class EnumSpecifier;
-class TypeName;
-class Declaration;
+#include "declaration_nodes.h"
 
 
 class Parser : public Stateful {
@@ -128,7 +115,8 @@ private:
     NODE(InitializerList) ExpectInitializerList();
     NODE(Pointer) ExpectOptPointer();
     NODE(DeclarationSpecifiers) ExpectDeclarationSpecifiers();
-    NODE(AbstractDeclarator) ExpectDeclaratorOrAbstractDeclarator();
+    template<typename T>
+    NODE(T) ExpectDeclarator();
     NODE(AbstractDeclarator) ExpectDeclarator();
     NODE(DirectDeclaratorParameterListPostfix) ExpectParameterListPostfix();
     NODE(StructUnionSpecifier) ExpectStructUnionSpecifier();
@@ -155,5 +143,6 @@ private:
 };
 
 #include "ExpectBinOp.inl"
+#include "ExpectDeclarator.inl"
 
 #endif //EPICALYX_PARSER_H

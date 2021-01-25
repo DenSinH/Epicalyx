@@ -68,6 +68,10 @@ public:
     static bool Is(enum TokenType type) {
         return type == TokenType::Enum;
     }
+
+    std::string String() const override {
+        return "enum " + ID + "{ " + std::to_string(EnumeratorList.size()) + " enumerators }";
+    }
 };
 
 #endif //EPICALYX_ENUM_H

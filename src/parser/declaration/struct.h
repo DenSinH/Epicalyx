@@ -8,7 +8,7 @@
 
 class StructDeclarator : public DeclNode {
 public:
-    explicit StructDeclarator(const TOKEN& tok, NODE(AbstractDeclarator)& field, NODE(ExprNode)& size) : DeclNode(tok) {
+    explicit StructDeclarator(const TOKEN& tok, NODE(Declarator)& field, NODE(ExprNode)& size) : DeclNode(tok) {
         this->Field = std::move(field);
         this->Size = std::move(size);
 
@@ -25,11 +25,11 @@ public:
         }
     }
 
-    explicit StructDeclarator(const TOKEN& tok, NODE(AbstractDeclarator)& field) : DeclNode(tok) {
+    explicit StructDeclarator(const TOKEN& tok, NODE(Declarator)& field) : DeclNode(tok) {
         this->Field = std::move(field);
     }
 
-    NODE(AbstractDeclarator) Field = nullptr;  // declarator, opt
+    NODE(Declarator) Field = nullptr;  // declarator, opt
     NODE(ExprNode) Size = nullptr;  // constant-expression, opt
 
     std::list<std::string> Repr() const override {
@@ -124,6 +124,10 @@ public:
         return repr;
     }
 
+    std::string String() const override {
+        return Keyword() + " " + ID + " { " + std::to_string(DeclarationList.size()) + " declarations }";
+    }
+
 protected:
     virtual std::string Keyword() const {
         return "";
@@ -144,7 +148,6 @@ public:
         return type == TokenType::Struct;
     }
 
-protected:
     std::string Keyword() const override {
         return "struct";
     }
@@ -164,7 +167,6 @@ public:
         return type == TokenType::Union;
     }
 
-protected:
     std::string Keyword() const override {
         return "union";
     }

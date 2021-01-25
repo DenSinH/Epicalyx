@@ -13,17 +13,10 @@ public:
     }
 };
 
-class AbstractDeclarator : public DeclNode {
+class AnyDeclarator : public DeclNode {
 public:
-    AbstractDeclarator(const TOKEN& tok) : DeclNode(tok) {
-
-    }
-
-    void SetNested(NODE(AbstractDeclarator)& nested) {
-        if (Nested) {
-            log_fatal("Invalid handling of AbstractDeclarator::SetNested: nested already exists");
-        }
-        Nested = std::move(nested);
+    explicit AnyDeclarator(const TOKEN& tok, std::vector<NODE(Pointer)>& pointers) : DeclNode(tok) {
+        Pointers = std::move(pointers);
     }
 
     void AddPostfix(NODE(DirectDeclaratorPostfix)& postfix) {
@@ -35,29 +28,30 @@ public:
     }
 
     virtual bool IsAbstract() const {
-        if (Nested) {
-            return Nested->IsAbstract();
-        }
-        return true;
+        log_fatal("Uninherited AnyDeclarator");
+    }
+
+    virtual bool HasNested() const {
+        log_fatal("Uninherted AnyDeclarator");
+    }
+
+    virtual void SetNested(NODE(AnyDeclarator)&) {
+        log_fatal("Uninherted AnyDeclarator");
     }
 
     std::vector<NODE(Pointer)> Pointers = {};
-    NODE(AbstractDeclarator) Nested = nullptr;
     std::vector<NODE(DirectDeclaratorPostfix)> Postfixes = {};
 
     std::list<std::string> Repr() const override {
-        std::list<std::string> repr = { "AbstractDeclarator: " };
+        std::list<std::string> repr = { NameRepr() };
         for (auto& ptr : Pointers) {
             for (auto& s : ptr->Repr()) {
                 repr.push_back(REPR_PADDING + s);
             }
         }
 
-        if (Nested) {
-            repr.emplace_back("Nested:");
-            for (auto& s : Nested->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+        for (auto& s : NestedRepr()) {
+            repr.push_back(REPR_PADDING + s);
         }
 
         for (auto& pf : Postfixes) {
@@ -66,6 +60,15 @@ public:
             }
         }
         return repr;
+    }
+
+protected:
+    virtual std::string NameRepr() const {
+        return "";
+    }
+
+    virtual std::list<std::string> NestedRepr() const {
+        return {};
     }
 };
 
@@ -122,7 +125,7 @@ public:
 
 class ParameterDeclaration : public DeclNode {
 public:
-    ParameterDeclaration(const TOKEN& tok, NODE(DeclarationSpecifiers)& specifiers, NODE(AbstractDeclarator)& declar) :
+    ParameterDeclaration(const TOKEN& tok, NODE(DeclarationSpecifiers)& specifiers, NODE(AnyDeclarator)& declar) :
             DeclNode(tok) {
         Specifiers = std::move(specifiers);
         Declar = std::move(declar);
@@ -136,7 +139,7 @@ public:
     }
 
     NODE(DeclarationSpecifiers) Specifiers;
-    NODE(AbstractDeclarator) Declar;
+    NODE(AnyDeclarator) Declar;
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "ParameterDeclaration: " };
@@ -154,6 +157,7 @@ public:
         return repr;
     }
 };
+
 
 class DirectDeclaratorParameterListPostfix : public DirectDeclaratorPostfix {
 public:
@@ -185,6 +189,7 @@ public:
     }
 };
 
+
 class DirectDeclaratorIdentifierListPostfix : public DirectDeclaratorPostfix {
 public:
     explicit DirectDeclaratorIdentifierListPostfix(const TOKEN& tok) : DirectDeclaratorPostfix(tok) {
@@ -207,17 +212,65 @@ public:
     }
 };
 
-class Declarator : public AbstractDeclarator {
+
+class AbstractDeclarator : public AnyDeclarator {
 public:
-    explicit Declarator(const TOKEN& tok, std::string& name) : Name(name), AbstractDeclarator(tok) {
+    explicit AbstractDeclarator(const TOKEN& tok, std::vector<NODE(Pointer)>& pointers) : AnyDeclarator(tok, pointers) {
 
     }
 
-    explicit Declarator(const TOKEN& tok, std::string& name, std::vector<NODE(Pointer)>& pointers) : Declarator(tok, name) {
-        Pointers = std::move(pointers);
+    void SetNested(NODE(AnyDeclarator)& nested) override {
+        if (Nested) {
+            log_fatal("Invalid handling of AbstractDeclarator::SetNested: nested already exists");
+        }
+        Nested = std::move(nested);
+    }
+
+    bool IsAbstract() const override {
+        if (Nested) {
+            return Nested->IsAbstract();
+        }
+        return true;
+    }
+
+    NODE(AnyDeclarator) Nested = nullptr;
+
+protected:
+    std::string NameRepr() const override {
+        return "AbstractDeclarator: ";
+    }
+
+    std::list<std::string> NestedRepr() const override {
+        std::list<std::string> repr = {};
+        if (Nested) {
+            repr.emplace_back("Nested:");
+            for (auto& s : Nested->Repr()) {
+                repr.push_back(REPR_PADDING + s);
+            }
+        }
+        return repr;
+    }
+};
+
+
+class Declarator : public AnyDeclarator {
+public:
+    explicit Declarator(const TOKEN& tok, NODE(Declarator)& nested, std::vector<NODE(Pointer)>& pointers) :
+            AnyDeclarator(tok, pointers),
+            Name(""),
+            Nested(std::move(nested)) {
+
+    }
+
+    explicit Declarator(const TOKEN& tok, const std::string& name, std::vector<NODE(Pointer)>& pointers) :
+            AnyDeclarator(tok, pointers),
+            Name(name),
+            Nested(nullptr) {
+
     }
 
     const std::string Name;
+    const NODE(Declarator) Nested;
 
     bool IsAbstract() const override {
         if (Nested) {
@@ -226,18 +279,16 @@ public:
         return false;
     }
 
-    std::list<std::string> Repr() const override {
-        std::list<std::string> repr = { "Declarator: " };
-        for (auto& ptr : Pointers) {
-            for (auto& s : ptr->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
-        }
+protected:
+    std::string NameRepr() const override {
+        return "Declarator: " + Name;
+    }
 
-        repr.push_back("ID: " + Name);
-
-        for (auto& pf : Postfixes) {
-            for (auto& s : pf->Repr()) {
+    std::list<std::string> NestedRepr() const override {
+        std::list<std::string> repr = {};
+        if (Nested) {
+            repr.emplace_back("Nested:");
+            for (auto& s : Nested->Repr()) {
                 repr.push_back(REPR_PADDING + s);
             }
         }
