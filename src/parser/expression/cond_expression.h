@@ -5,9 +5,11 @@
 
 class CondExpression : public ExprNode {
 public:
-    CondExpression(NODE(ExprNode)& left,
-                   NODE(ExprNode)& t,
-                   NODE(ExprNode)& f) {
+    CondExpression(
+            const TOKEN& tok,
+            NODE(ExprNode)& left,
+            NODE(ExprNode)& t,
+            NODE(ExprNode)& f) : ExprNode(tok) {
         this->Left = std::move(left);
         this->True = std::move(t);
         this->False = std::move(f);

@@ -12,7 +12,7 @@ public:
         // todo: generic selection
     };
 
-    explicit PrimaryExpression(PrimaryExpression::PrimExprType type) {
+    explicit PrimaryExpression(const TOKEN& tok, PrimaryExpression::PrimExprType type) : ExprNode(tok) {
         this->Type = type;
     }
 
@@ -21,8 +21,8 @@ public:
 
 class PrimaryExpressionIdentifier : public PrimaryExpression {
 public:
-    explicit PrimaryExpressionIdentifier(const std::string& id) :
-        PrimaryExpression(PrimExprType::Identifier),
+    explicit PrimaryExpressionIdentifier(const TOKEN& tok, const std::string& id) :
+        PrimaryExpression(tok, PrimExprType::Identifier),
         ID(id) {
 
     }
@@ -42,8 +42,8 @@ public:
 template<typename T>
 class PrimaryExpressionConstant : public PrimaryExpression {
 public:
-    explicit PrimaryExpressionConstant(const T& value) :
-        PrimaryExpression(PrimExprType::Constant),
+    explicit PrimaryExpressionConstant(const TOKEN& tok, const T& value) :
+        PrimaryExpression(tok, PrimExprType::Constant),
         Value(value) {
 
     }
@@ -61,8 +61,8 @@ public:
 
 class PrimaryStringLiteral : public PrimaryExpression {
 public:
-    explicit PrimaryStringLiteral(const std::string& value) :
-        PrimaryExpression(PrimExprType::StringLiteral),
+    explicit PrimaryStringLiteral(const TOKEN& tok, const std::string& value) :
+        PrimaryExpression(tok, PrimExprType::StringLiteral),
         Value(value) {
     }
 

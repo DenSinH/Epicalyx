@@ -7,8 +7,9 @@
 
 class Enumerator : public DeclNode {
 public:
-    explicit Enumerator(std::string& name, NODE(ExprNode)& value) {
-        this->Name = name;
+    explicit Enumerator(const TOKEN& tok, std::string& name, NODE(ExprNode)& value) :
+            DeclNode(tok),
+            Name(name) {
         this->Value = std::move(value);
 
         if (Value && !Value->IsConstant()) {
@@ -16,11 +17,12 @@ public:
         }
     }
 
-    explicit Enumerator(std::string& name) {
-        this->Name = name;
+    explicit Enumerator(const TOKEN& tok, std::string& name) :
+            DeclNode(tok),
+            Name(name ){
     }
 
-    std::string Name;
+    const std::string Name;
     NODE(ExprNode) Value = nullptr;  // constant-expression / nullptr for default value
 
     std::list<std::string> Repr() const override {
@@ -36,12 +38,12 @@ public:
 
 class EnumSpecifier : public TypeSpecifier {
 public:
-    explicit EnumSpecifier() : TypeSpecifier(TypeSpecifierType::Enum) {
+    explicit EnumSpecifier(const TOKEN& tok) : TypeSpecifier(tok, TypeSpecifierType::Enum) {
 
     }
 
-    explicit EnumSpecifier(const std::string& id) :
-        TypeSpecifier(TypeSpecifierType::Enum),
+    explicit EnumSpecifier(const TOKEN& tok, const std::string& id) :
+        TypeSpecifier(tok, TypeSpecifierType::Enum),
         ID(id) {
 
     }

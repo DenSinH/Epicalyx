@@ -30,13 +30,14 @@ public:
         LogicOr,
     };
 
-    BinOpExpression(BinOp op, NODE(ExprNode)& left, NODE(ExprNode)& right) {
-        this->Op = op;
+    BinOpExpression(const TOKEN& tok, BinOp op, NODE(ExprNode)& left, NODE(ExprNode)& right) :
+        ExprNode(tok),
+        Op(op) {
         this->Left = std::move(left);
         this->Right = std::move(right);
     }
 
-    BinOp Op;
+    const BinOp Op;
     NODE(ExprNode) Left;
     NODE(ExprNode) Right;
 

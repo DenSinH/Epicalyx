@@ -5,12 +5,15 @@
 #include <stdexcept>
 
 class Designator : public DeclNode {
+public:
+    explicit Designator(const TOKEN& tok) : DeclNode(tok) {
 
+    }
 };
 
 class ArrayMemberDesignator : public Designator {
 public:
-    explicit ArrayMemberDesignator(NODE(ExprNode)& member) {
+    explicit ArrayMemberDesignator(const TOKEN& tok, NODE(ExprNode)& member) : Designator(tok) {
         Member = std::move(member);
 
         if (!Member->IsConstant()) {
@@ -32,11 +35,13 @@ public:
 
 class StructFieldDesignator : public Designator {
 public:
-    explicit StructFieldDesignator(std::string& name) {
-        Name = name;
+    explicit StructFieldDesignator(const TOKEN& tok, const std::string& name) :
+            Designator(tok),
+            Name(name) {
+
     }
 
-    std::string Name;
+    const std::string Name;
 
     std::list<std::string> Repr() const override {
         return { "." + Name };

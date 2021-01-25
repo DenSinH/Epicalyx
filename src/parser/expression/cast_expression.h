@@ -7,7 +7,7 @@
 // CondExpr can also just be a CastExpression
 class CastExpression : public ExprNode {
 public:
-    CastExpression(NODE(TypeName)& type, NODE(ExprNode)& right) {
+    CastExpression(const TOKEN& tok, NODE(TypeName)& type, NODE(ExprNode)& right) : ExprNode(tok) {
         this->Type = std::move(type);
         this->Right = std::move(right);
     }
@@ -21,7 +21,7 @@ public:
             repr.emplace_back(REPR_PADDING + s);
         }
 
-        repr.push_back("Value:");
+        repr.emplace_back("Value:");
         for (auto& s : Right->Repr()) {
             repr.emplace_back(REPR_PADDING + s);
         }

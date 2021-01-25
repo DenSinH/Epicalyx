@@ -8,7 +8,7 @@
 
 class StaticAssertDecl : public StructDeclaration {
 public:
-    StaticAssertDecl(NODE(ExprNode)& expression, std::string& message) {
+    StaticAssertDecl(const TOKEN& tok, NODE(ExprNode)& expression, std::string& message) : StructDeclaration(tok) {
         Expression = std::move(expression);
         Message = message;
 

@@ -15,7 +15,10 @@ public:
         File(file),
         LineNo(line_no),
         Line(line) {
+    }
 
+    std::string Loc() const {
+        return File + ":" + std::to_string(LineNo) + ": " + Line;
     }
 
     const std::string Line;
@@ -27,9 +30,9 @@ public:
 class Stateful {
 public:
     template<typename S>
-    auto context(S& context) {
+    auto context(const S& context) {
         struct Context {
-            Context(Stateful& s, S& context) : state(s) {
+            Context(Stateful& s, const S& context) : state(s) {
                 state.Stack.push_back(context);
             }
 

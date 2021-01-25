@@ -8,12 +8,14 @@ class Declarator;
 
 class DirectDeclaratorPostfix : public Node {
 public:
+    explicit DirectDeclaratorPostfix(const TOKEN& tok) : Node(tok) {
 
+    }
 };
 
 class AbstractDeclarator : public DeclNode {
 public:
-    AbstractDeclarator() {
+    AbstractDeclarator(const TOKEN& tok) : DeclNode(tok) {
 
     }
 
@@ -69,13 +71,15 @@ public:
 
 class DirectDeclaratorArrayPostfix : public DirectDeclaratorPostfix {
 public:
-    explicit DirectDeclaratorArrayPostfix(NODE(ExprNode)& size, bool _Static = false, bool _Pointer = false) {
+    explicit DirectDeclaratorArrayPostfix(const TOKEN& tok, NODE(ExprNode)& size, bool _Static = false, bool _Pointer = false) :
+            DirectDeclaratorPostfix(tok) {
         Size = std::move(size);
         Static = _Static;
         Pointer = _Pointer;
     }
 
-    explicit DirectDeclaratorArrayPostfix(bool _Static = false, bool _Pointer = false) {
+    explicit DirectDeclaratorArrayPostfix(const TOKEN& tok, bool _Static = false, bool _Pointer = false) :
+            DirectDeclaratorPostfix(tok) {
         Size = nullptr;
         Static = _Static;
         Pointer = _Pointer;
@@ -118,12 +122,14 @@ public:
 
 class ParameterDeclaration : public DeclNode {
 public:
-    ParameterDeclaration(NODE(DeclarationSpecifiers)& specifiers, NODE(AbstractDeclarator)& declar) {
+    ParameterDeclaration(const TOKEN& tok, NODE(DeclarationSpecifiers)& specifiers, NODE(AbstractDeclarator)& declar) :
+            DeclNode(tok) {
         Specifiers = std::move(specifiers);
         Declar = std::move(declar);
     }
 
-    ParameterDeclaration(NODE(DeclarationSpecifiers)& specifiers) {
+    ParameterDeclaration(const TOKEN& tok, NODE(DeclarationSpecifiers)& specifiers) :
+            DeclNode(tok) {
         // in case declar is an abstract-declarator, it is optional
         Specifiers = std::move(specifiers);
         Declar = nullptr;
@@ -151,7 +157,8 @@ public:
 
 class DirectDeclaratorParameterListPostfix : public DirectDeclaratorPostfix {
 public:
-    explicit DirectDeclaratorParameterListPostfix(bool variadic = false) {
+    explicit DirectDeclaratorParameterListPostfix(const TOKEN& tok, bool variadic = false) :
+            DirectDeclaratorPostfix(tok) {
         Variadic = variadic;
     }
 
@@ -180,7 +187,7 @@ public:
 
 class DirectDeclaratorIdentifierListPostfix : public DirectDeclaratorPostfix {
 public:
-    explicit DirectDeclaratorIdentifierListPostfix() {
+    explicit DirectDeclaratorIdentifierListPostfix(const TOKEN& tok) : DirectDeclaratorPostfix(tok) {
 
     }
 
@@ -202,11 +209,11 @@ public:
 
 class Declarator : public AbstractDeclarator {
 public:
-    explicit Declarator(std::string& name) : Name(name), AbstractDeclarator() {
+    explicit Declarator(const TOKEN& tok, std::string& name) : Name(name), AbstractDeclarator(tok) {
 
     }
 
-    explicit Declarator(std::string& name, std::vector<NODE(Pointer)>& pointers) : Declarator(name) {
+    explicit Declarator(const TOKEN& tok, std::string& name, std::vector<NODE(Pointer)>& pointers) : Declarator(tok, name) {
         Pointers = std::move(pointers);
     }
 

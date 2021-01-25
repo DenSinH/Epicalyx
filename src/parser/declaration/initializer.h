@@ -5,16 +5,19 @@
 #include "designation.h"
 
 class Initializer : public DeclNode {
+public:
+    explicit Initializer(const TOKEN& tok) : DeclNode(tok) {
 
+    }
 };
 
 class InitializerList : public Initializer {
 public:
-    explicit InitializerList() {
+    explicit InitializerList(const TOKEN& tok) : Initializer(tok) {
 
     }
 
-    explicit InitializerList(std::vector<std::pair<std::vector<NODE(Designator)>, NODE(Initializer)>>& list) {
+    explicit InitializerList(const TOKEN& tok, std::vector<std::pair<std::vector<NODE(Designator)>, NODE(Initializer)>>& list) : Initializer(tok) {
         List = std::move(list);
     }
 
@@ -42,7 +45,7 @@ public:
 
 class AssignmentInitializer : public Initializer {
 public:
-    explicit AssignmentInitializer(NODE(ExprNode)& expression) {
+    explicit AssignmentInitializer(const TOKEN& tok, NODE(ExprNode)& expression) : Initializer(tok) {
         Expression = std::move(expression);
     }
 

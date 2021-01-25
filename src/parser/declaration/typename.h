@@ -7,11 +7,11 @@
 
 class TypeName : public TypeNode {
 public:
-    explicit TypeName() {
+    explicit TypeName(const TOKEN& tok) : TypeNode(tok) {
 
     }
 
-    explicit TypeName(NODE(AbstractDeclarator)& declar) {
+    explicit TypeName(const TOKEN& tok, NODE(AbstractDeclarator)& declar) : TypeNode(tok) {
         Declar = std::move(declar);
     }
 
@@ -52,7 +52,7 @@ public:
 
 class AtomicTypeSpecifier : public TypeSpecifier {
 public:
-    explicit AtomicTypeSpecifier(NODE(TypeName)& type_name) : TypeSpecifier(TypeSpecifierType::AtomicType) {
+    explicit AtomicTypeSpecifier(const TOKEN& tok, NODE(TypeName)& type_name) : TypeSpecifier(tok, TypeSpecifierType::AtomicType) {
         this->Type = std::move(type_name);
     }
 
@@ -70,7 +70,7 @@ public:
 class AlignmentSpecifierTypeName : public AlignmentSpecifier {
 public:
 
-    explicit AlignmentSpecifierTypeName(NODE(TypeName)& type_name) {
+    explicit AlignmentSpecifierTypeName(const TOKEN& tok, NODE(TypeName)& type_name) : AlignmentSpecifier(tok) {
         Type = std::move(type_name);
     }
 

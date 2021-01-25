@@ -5,7 +5,7 @@
 
 class Expression : public ExprNode {
 public:
-    Expression(NODE(ExprNode)& left, NODE(ExprNode)& right) {
+    Expression(const TOKEN& tok, NODE(ExprNode)& left, NODE(ExprNode)& right) : ExprNode(tok) {
         this->Left = std::move(left);
         this->Right = std::move(right);
     }

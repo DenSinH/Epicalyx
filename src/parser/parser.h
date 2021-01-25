@@ -141,7 +141,7 @@ private:
         std::vector<NODE(T)> list = {};
         auto current = Current();
         while (T::Is(current->Type)) {
-            list.push_back(MAKE_NODE(T)(current->Type));
+            list.push_back(MAKE_NODE(T)(current, current->Type));
             Advance();
             current = Current();
         }

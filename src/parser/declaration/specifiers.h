@@ -20,11 +20,11 @@ public:
         Register,
     };
 
-    explicit StorageClassSpecifier(StorageClass cls) {
+    explicit StorageClassSpecifier(const TOKEN& tok, StorageClass cls) : SpecifierQualifier(tok) {
         this->Class = cls;
     };
 
-    explicit StorageClassSpecifier(enum TokenType type) : StorageClassSpecifier(TokenTypeToStorageClass(type)) {
+    explicit StorageClassSpecifier(const TOKEN& tok, enum TokenType type) : StorageClassSpecifier(tok, TokenTypeToStorageClass(type)) {
 
     };
 
@@ -72,15 +72,17 @@ public:
         TypedefName,
     };
 
-    explicit TypeSpecifier(TypeSpecifierType type) {
-        this->Type = type;
-    }
-
-    explicit TypeSpecifier(enum TokenType type) : TypeSpecifier(TokenTypeToTypeSpecifierType(type)) {
+    explicit TypeSpecifier(const TOKEN& tok, TypeSpecifierType type) :
+        SpecifierQualifier(tok),
+        Type(type) {
 
     }
 
-    TypeSpecifierType Type;
+    explicit TypeSpecifier(const TOKEN& tok, enum TokenType type) : TypeSpecifier(tok, TokenTypeToTypeSpecifierType(type)) {
+
+    }
+
+    const TypeSpecifierType Type;
 
     static TypeSpecifierType TokenTypeToTypeSpecifierType(enum TokenType type) {
         if (TokenMap.contains(type)) {
@@ -107,8 +109,8 @@ private:
 
 class TypedefName : public TypeSpecifier {
 public:
-    explicit TypedefName(const std::string& name) :
-        TypeSpecifier(TypeSpecifierType::TypedefName),
+    explicit TypedefName(const TOKEN& tok, const std::string& name) :
+        TypeSpecifier(tok, TypeSpecifierType::TypedefName),
         Name(name) {
 
     }
@@ -129,11 +131,11 @@ public:
         Atomic,
     };
 
-    explicit TypeQualifier(TypeQualifierType qualifier) {
+    explicit TypeQualifier(const TOKEN& tok, TypeQualifierType qualifier) : SpecifierQualifier(tok) {
         Qualifier = qualifier;
     }
 
-    explicit TypeQualifier(enum TokenType qualifier) {
+    explicit TypeQualifier(const TOKEN& tok, enum TokenType qualifier) : SpecifierQualifier(tok) {
         if (TokenMap.contains(qualifier)) {
             Qualifier = TokenMap.at(qualifier);
         }
@@ -168,7 +170,7 @@ public:
         Noreturn,
     };
 
-    explicit FunctionSpecifier(enum TokenType type) {
+    explicit FunctionSpecifier(const TOKEN& tok, enum TokenType type) : SpecifierQualifier(tok) {
         if (type == TokenType::Inline) {
             Type = FunctionSpecifierType::Inline;
         }
@@ -180,7 +182,7 @@ public:
         }
     }
 
-    explicit FunctionSpecifier(FunctionSpecifierType type) {
+    explicit FunctionSpecifier(const TOKEN& tok, FunctionSpecifierType type) : SpecifierQualifier(tok) {
         Type = type;
     }
 
@@ -197,6 +199,8 @@ public:
 
 class AlignmentSpecifier : public SpecifierQualifier {
 public:
+    explicit AlignmentSpecifier(const TOKEN& tok) : SpecifierQualifier(tok) {}
+
     static bool Is(enum TokenType type) {
         return type == TokenType::Alignas;
     }
@@ -205,7 +209,7 @@ public:
 class AlignmentSpecifierExpr : public AlignmentSpecifier {
 public:
 
-    explicit AlignmentSpecifierExpr(NODE(ExprNode)& expression) {
+    explicit AlignmentSpecifierExpr(const TOKEN& tok, NODE(ExprNode)& expression) : AlignmentSpecifier(tok) {
         Expression = std::move(expression);
         if (!Expression->IsConstant()) {
             throw std::runtime_error("Alignment specifier expression is not a constant");
@@ -229,7 +233,7 @@ public:
 
 class DeclarationSpecifiers : public DeclNode {
 public:
-    DeclarationSpecifiers() = default;
+    DeclarationSpecifiers(const TOKEN& tok) : DeclNode(tok) {};
 
     template<typename T>
     void AddSpecifier(NODE(T)& specifier);

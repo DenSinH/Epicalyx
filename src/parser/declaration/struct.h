@@ -8,7 +8,7 @@
 
 class StructDeclarator : public DeclNode {
 public:
-    explicit StructDeclarator(NODE(AbstractDeclarator)& field, NODE(ExprNode)& size) {
+    explicit StructDeclarator(const TOKEN& tok, NODE(AbstractDeclarator)& field, NODE(ExprNode)& size) : DeclNode(tok) {
         this->Field = std::move(field);
         this->Size = std::move(size);
 
@@ -17,7 +17,7 @@ public:
         }
     }
 
-    explicit StructDeclarator(NODE(ExprNode)& size) {
+    explicit StructDeclarator(const TOKEN& tok, NODE(ExprNode)& size) : DeclNode(tok) {
         this->Size = std::move(size);
 
         if (Size && !Size->IsConstant()) {
@@ -25,7 +25,7 @@ public:
         }
     }
 
-    explicit StructDeclarator(NODE(AbstractDeclarator)& field) {
+    explicit StructDeclarator(const TOKEN& tok, NODE(AbstractDeclarator)& field) : DeclNode(tok) {
         this->Field = std::move(field);
     }
 
@@ -56,7 +56,7 @@ public:
 
 class StructDeclaration : public DeclNode {
 public:
-    explicit StructDeclaration() {
+    explicit StructDeclaration(const TOKEN& tok) : DeclNode(tok){
 
     }
 
@@ -99,8 +99,8 @@ public:
 
 class StructUnionSpecifier : public TypeSpecifier {
 public:
-    explicit StructUnionSpecifier(const std::string& id, TypeSpecifierType type) :
-        TypeSpecifier(type),
+    explicit StructUnionSpecifier(const TOKEN& tok, const std::string& id, TypeSpecifierType type) :
+        TypeSpecifier(tok, type),
         ID(id) {
 
     }
@@ -132,11 +132,11 @@ protected:
 
 class StructSpecifier : public StructUnionSpecifier {
 public:
-    explicit StructSpecifier(const std::string& id) : StructUnionSpecifier(id, TypeSpecifierType::Struct) {
+    explicit StructSpecifier(const TOKEN& tok, const std::string& id) : StructUnionSpecifier(tok, id, TypeSpecifierType::Struct) {
 
     }
 
-    explicit StructSpecifier() : StructUnionSpecifier("", TypeSpecifierType::Struct) {
+    explicit StructSpecifier(const TOKEN& tok) : StructUnionSpecifier(tok, "", TypeSpecifierType::Struct) {
 
     }
 
@@ -152,11 +152,11 @@ protected:
 
 class UnionSpecifier : public StructUnionSpecifier {
 public:
-    explicit UnionSpecifier(const std::string& id) : StructUnionSpecifier(id, TypeSpecifierType::Union) {
+    explicit UnionSpecifier(const TOKEN& tok, const std::string& id) : StructUnionSpecifier(tok, id, TypeSpecifierType::Union) {
 
     }
 
-    explicit UnionSpecifier() : StructUnionSpecifier("", TypeSpecifierType::Union) {
+    explicit UnionSpecifier(const TOKEN& tok) : StructUnionSpecifier(tok, "", TypeSpecifierType::Union) {
 
     }
 

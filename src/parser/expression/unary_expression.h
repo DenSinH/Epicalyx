@@ -14,7 +14,7 @@ public:
         AlignOf,
     };
 
-    explicit UnaryExpression(UnExprType type) {
+    explicit UnaryExpression(const TOKEN& tok, UnExprType type) : ExprNode(tok) {
         this->Type = type;
     }
 
@@ -34,7 +34,7 @@ public:
         LogicalNot,
     };
 
-    explicit UnaryOpExpression(UnOpType type, NODE(ExprNode)& right) : UnaryExpression(UnExprType::UnOp) {
+    explicit UnaryOpExpression(const TOKEN& tok, UnOpType type, NODE(ExprNode)& right) : UnaryExpression(tok, UnExprType::UnOp) {
         this->Type = type;
         this->Right = std::move(right);
     }
@@ -79,7 +79,7 @@ private:
 
 class SizeOfTypeExpression : public UnaryExpression {
 public:
-    explicit SizeOfTypeExpression(NODE(TypeName)& right) : UnaryExpression(UnExprType::SizeOf) {
+    explicit SizeOfTypeExpression(const TOKEN& tok, NODE(TypeName)& right) : UnaryExpression(tok, UnExprType::SizeOf) {
         this->Right = std::move(right);
     }
 
@@ -100,7 +100,7 @@ public:
 
 class SizeOfExpression : public UnaryExpression {
 public:
-    explicit SizeOfExpression(NODE(ExprNode)& right) : UnaryExpression(UnExprType::SizeOf) {
+    explicit SizeOfExpression(const TOKEN& tok, NODE(ExprNode)& right) : UnaryExpression(tok, UnExprType::SizeOf) {
         this->Right = std::move(right);
     }
 
@@ -120,7 +120,7 @@ public:
 
 class AlignOfExpression : public UnaryExpression {
 public:
-    explicit AlignOfExpression(NODE(TypeName)& right) : UnaryExpression(UnExprType::AlignOf) {
+    explicit AlignOfExpression(const TOKEN& tok, NODE(TypeName)& right) : UnaryExpression(tok, UnExprType::AlignOf) {
         this->Right = std::move(right);
     }
 

@@ -6,9 +6,9 @@
 
 class Pointer : public SpecifierQualifier {
 public:
-    Pointer() = default;
+    explicit Pointer(const TOKEN& tok) : SpecifierQualifier(tok) {}
 
-    void AddQualifier(NODE(TypeQualifier)& qualifier) {
+    void AddQualifier(NODE(TypeQualifier)& qualifier){
         QualifierList.push_back(std::move(qualifier));
     }
 

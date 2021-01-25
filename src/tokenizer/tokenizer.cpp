@@ -16,19 +16,28 @@ void Tokenizer::Tokenize(const std::string& file_name) {
         throw std::runtime_error("Could not open file!");
     }
 
-    std::string line;
-    File = file_name;
-    LineNo = 1;
-    while (std::getline(file, Line)) {
-        TokenizeLine(file, Line);
-        LineNo++;
+    const auto ctx = context("Tokenizing file: " + file_name);
+    try {
+        std::string line;
+        File = file_name;
+        LineNo = 1;
+        while (std::getline(file, Line)) {
+            TokenizeLine(file, Line);
+            LineNo++;
+        }
+    }
+    catch (std::runtime_error& e) {
+        std::string message;
+        message = e.what();
+        message += "\n" + Trace();
+        // add fake token
+        Tokens.push_back(MakeToken<Token>(TokenClass::StringConstant, TokenType::ConstString));
+        message += "\n" + Tokens.back()->Loc();
+        log_fatal("%s", message.c_str());
     }
 }
 
 void Tokenizer::TokenizeLine(std::ifstream& file, const std::string& line) {
-    std::string current_token;
-    printf("%s\n", line.c_str());
-
     for (auto current = line.begin(); current != line.end();) {
         current_token = "";
         auto next = current + 1;

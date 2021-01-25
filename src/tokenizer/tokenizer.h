@@ -17,6 +17,7 @@ public:
 
     std::vector<TOKEN> Tokens;
 
+    std::string current_token;
     std::string File;
     size_t LineNo;
     std::string Line;

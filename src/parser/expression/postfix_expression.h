@@ -16,7 +16,7 @@ public:
         TypeInitializer,
     };
 
-    explicit PostfixExpression(PostExprType type) {
+    explicit PostfixExpression(const TOKEN& tok, PostExprType type) : ExprNode(tok) {
         this->Type = type;
     }
 
@@ -26,9 +26,10 @@ public:
 class ArrayAccessExpression : public PostfixExpression {
 public:
     explicit ArrayAccessExpression(
+            const TOKEN& tok,
             NODE(ExprNode)& left,
             NODE(ExprNode)& right
-            ) : PostfixExpression(PostExprType::ArrayAccess) {
+            ) : PostfixExpression(tok, PostExprType::ArrayAccess) {
         this->Left = std::move(left);
         this->Right = std::move(right);
     }
@@ -56,16 +57,18 @@ public:
 class FunctionCallExpression : public PostfixExpression {
 public:
     explicit FunctionCallExpression(
+            const TOKEN& tok,
             NODE(ExprNode)& func
-            ) : PostfixExpression(PostExprType::FunctionCall) {
+            ) : PostfixExpression(tok, PostExprType::FunctionCall) {
         this->Func = std::move(func);
         this->Args = nullptr;
     }
 
     explicit FunctionCallExpression(
+            const TOKEN& tok,
             NODE(ExprNode)& func,
             NODE(ExprNode)& args
-            ) : PostfixExpression(PostExprType::FunctionCall) {
+            ) : PostfixExpression(tok, PostExprType::FunctionCall) {
         this->Func = std::move(func);
         this->Args = std::move(args);
     }
@@ -94,11 +97,12 @@ public:
     };
 
     explicit MemberAccessExpression(
+            const TOKEN& tok,
             NODE(ExprNode)& left,
             const std::string& member,
             MemberAccessType access_type
             ) :
-            PostfixExpression(PostExprType::MemberAccess),
+            PostfixExpression(tok, PostExprType::MemberAccess),
             Left(std::move(left)),
             Member(member),
             AccessType(access_type) {
@@ -131,9 +135,10 @@ public:
     };
 
     explicit PostCrementExpression(
+            const TOKEN& tok,
             NODE(ExprNode)& left,
             CrementType type
-            ) : PostfixExpression(PostExprType::Crement) {
+            ) : PostfixExpression(tok, PostExprType::Crement) {
         this->Left = std::move(left);
         this-> Type = type;
     }
@@ -155,9 +160,10 @@ class TypeInitializerExpression : public PostfixExpression {
 public:
 
     explicit TypeInitializerExpression(
+            const TOKEN& tok,
             NODE(TypeName)& type,
             NODE(InitializerList)& initializers
-    ) : PostfixExpression(PostExprType::TypeInitializer) {
+    ) : PostfixExpression(tok,  PostExprType::TypeInitializer) {
         Type = std::move(type);
         Initializers = std::move(initializers);
     }

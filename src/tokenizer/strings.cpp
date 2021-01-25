@@ -21,7 +21,7 @@ static constexpr int ASCIIHexToInt[] =
 TOKEN Tokenizer::ReadStringConstant(std::string::const_iterator& current, const std::string::const_iterator& end) {
     auto ctx = context("scanning string literal");
 
-    std::string value;
+    current_token = "";
     // string encoding
     if (*current == 'L' || *current == 'U') {
         current++;
@@ -38,7 +38,7 @@ TOKEN Tokenizer::ReadStringConstant(std::string::const_iterator& current, const 
     }
     current++;
     while (current != end && *current != '"') {
-        value.push_back(ReadCChar(current, end));
+        current_token.push_back(ReadCChar(current, end));
     }
 
     if (current == end) {
@@ -49,7 +49,7 @@ TOKEN Tokenizer::ReadStringConstant(std::string::const_iterator& current, const 
     }
     // skip last char
     current++;
-    return MakeToken<StringConstant>(value);
+    return MakeToken<StringConstant>(current_token);
 }
 
 TOKEN Tokenizer::ReadCharSequenceConstant(std::string::const_iterator& current, const std::string::const_iterator& end) {

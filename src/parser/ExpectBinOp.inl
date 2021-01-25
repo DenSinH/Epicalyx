@@ -7,10 +7,10 @@ template<
 > NODE(ExprNode) Parser::ExpectBinOpExpression() {
     NODE(ExprNode) node = (this->*SubNode)();
     while (!EndOfStream() && Is(Current()->Type).AnyOf<types...>()) {
-        auto current = Current()->Type;
-        EatType(current);
+        auto current = Current();
+        Advance();
         auto right = (this->*SubNode)();
-        node = std::make_unique<BinOpExpression>(BinOpExpression::TokenTypeToBinOp(current), node, right);
+        node = MAKE_NODE(BinOpExpression)(current, BinOpExpression::TokenTypeToBinOp(current->Type), node, right);
     }
     return node;
 }
