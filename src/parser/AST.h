@@ -27,12 +27,21 @@ public:
             printf("%s\n", s.c_str());
         }
     }
-
 };
 
-class ExprNode : public Node {
+class BlockItem : public Node {
 public:
-    explicit ExprNode(const TOKEN& tok) : Node(tok) {}
+    explicit BlockItem(const TOKEN& tok) : Node(tok) {}
+};
+
+class StatementNode : public BlockItem {
+public:
+    explicit StatementNode(const TOKEN& tok) : BlockItem(tok) {}
+};
+
+class ExprNode : public StatementNode {
+public:
+    explicit ExprNode(const TOKEN& tok) : StatementNode(tok) {}
 
     virtual bool IsConstant() const {
         return false;
@@ -55,9 +64,9 @@ public:
     explicit TypeNode(const TOKEN& tok) : Node(tok) {}
 };
 
-class DeclNode : public Node {
+class DeclNode : public BlockItem {
 public:
-    explicit DeclNode(const TOKEN& tok) : Node(tok) {}
+    explicit DeclNode(const TOKEN& tok) : BlockItem(tok) {}
 };
 
 #endif //EPICALYX_AST_H

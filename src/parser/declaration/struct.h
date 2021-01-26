@@ -6,9 +6,9 @@
 #include "declarator.h"
 #include <stdexcept>
 
-class StructDeclarator : public DeclNode {
+class StructDeclarator : public Node {
 public:
-    explicit StructDeclarator(const TOKEN& tok, NODE(Declarator)& field, NODE(ExprNode)& size) : DeclNode(tok) {
+    explicit StructDeclarator(const TOKEN& tok, NODE(Declarator)& field, NODE(ExprNode)& size) : Node(tok) {
         this->Field = std::move(field);
         this->Size = std::move(size);
 
@@ -17,7 +17,7 @@ public:
         }
     }
 
-    explicit StructDeclarator(const TOKEN& tok, NODE(ExprNode)& size) : DeclNode(tok) {
+    explicit StructDeclarator(const TOKEN& tok, NODE(ExprNode)& size) : Node(tok) {
         this->Size = std::move(size);
 
         if (Size && !Size->IsConstant()) {
@@ -25,7 +25,7 @@ public:
         }
     }
 
-    explicit StructDeclarator(const TOKEN& tok, NODE(Declarator)& field) : DeclNode(tok) {
+    explicit StructDeclarator(const TOKEN& tok, NODE(Declarator)& field) : Node(tok) {
         this->Field = std::move(field);
     }
 
@@ -54,9 +54,9 @@ public:
 };
 
 
-class StructDeclaration : public DeclNode {
+class StructDeclaration : public Node {
 public:
-    explicit StructDeclaration(const TOKEN& tok) : DeclNode(tok){
+    explicit StructDeclaration(const TOKEN& tok) : Node(tok){
 
     }
 

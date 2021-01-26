@@ -5,10 +5,10 @@
 #include <stdexcept>
 #include "specifiers.h"
 
-class Enumerator : public DeclNode {
+class Enumerator : public Node {
 public:
     explicit Enumerator(const TOKEN& tok, std::string& name, NODE(ExprNode)& value) :
-            DeclNode(tok),
+            Node(tok),
             Name(name) {
         this->Value = std::move(value);
 
@@ -18,7 +18,7 @@ public:
     }
 
     explicit Enumerator(const TOKEN& tok, std::string& name) :
-            DeclNode(tok),
+            Node(tok),
             Name(name ){
     }
 

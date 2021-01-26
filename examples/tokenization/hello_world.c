@@ -1,5 +1,4 @@
-#include <stdio.h>
-
+extern void printf(const char*);
 
 int main() {
     printf("hello world!");

@@ -231,9 +231,9 @@ public:
     }
 };
 
-class DeclarationSpecifiers : public DeclNode {
+class DeclarationSpecifiers : public Node {
 public:
-    DeclarationSpecifiers(const TOKEN& tok) : DeclNode(tok) {};
+    DeclarationSpecifiers(const TOKEN& tok) : Node(tok) {};
 
     template<typename T>
     void AddSpecifier(NODE(T)& specifier);

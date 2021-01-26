@@ -6,7 +6,7 @@
 
 
 int main() {
-    auto file = std::make_shared<File>("examples/parsing/declarations/declaration.decl");
+    auto file = std::make_shared<File>("examples/parsing/statements/combined.stat");
 
     auto t = new Tokenizer();
 
@@ -14,8 +14,17 @@ int main() {
 
     auto p = new Parser(t);
 
-    auto n = p->ExpectDeclaration();
-    n->Print();
+    try {
+        auto n = p->ExpectStatement();
+        n->Print();
+    }
+    catch (std::runtime_error& e) {
+        std::string message = e.what();
+        if (!p->EndOfStream()) {
+            message += "\n" + p->Current()->Loc();
+        }
+        log_fatal("%s", message.c_str());
+    }
 
     return 0;
 }

@@ -1,6 +1,8 @@
 add_library(Parser STATIC
         parser.h
-        parser_expressions.cpp
+        parser_expression.cpp
+        parser_declaration.cpp
+        parser_statement.cpp
         AST.h
         parser_utils.cpp
         expression/primary_expression.h
@@ -11,7 +13,26 @@ add_library(Parser STATIC
         expression/expression.h
         expression/assign_expression.h
         expression/cond_expression.h
-        declaration/specifiers.h expression/tables.cpp declaration/enum.h declaration/struct.h declaration/tables.cpp declaration/static_assert.h declaration/designation.h declaration/initializer.h declaration/declaration.h declaration/declarator.h declaration/pointer.h declaration/typename.h parser_declaration.cpp declaration_nodes.h expression_nodes.h)
+        declaration/specifiers.h
+        expression/tables.cpp
+        declaration/enum.h
+        declaration/struct.h
+        declaration/tables.cpp
+        declaration/static_assert.h
+        declaration/designation.h
+        declaration/initializer.h
+        declaration/declaration.h
+        declaration/declarator.h
+        declaration/pointer.h
+        declaration/typename.h
+        declaration_nodes.h
+        expression_nodes.h
+        statement/labeled.h
+        statement_nodes.h
+        statement/compound.h
+        statement/selection.h
+        statement/jump.h
+        statement/iteration.h statement/empty.h)
 
 include_directories(
         ${PROJECT_SOURCE_DIR}/include

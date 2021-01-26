@@ -25,7 +25,7 @@ public:
     }
 
     virtual std::string Repr() {
-        return ClassString(Class) + " : " + TypeString(Type);
+        return TypeString(Type);
     }
     const TokenClass Class;
     const TokenType Type;
@@ -63,7 +63,7 @@ public:
 
     const std::string Value;
     std::string Repr() override {
-        return "String literal: " + Value;
+        return "\"" + Value + "\"";
     }
 };
 
@@ -78,7 +78,7 @@ public:
 
     const T Value;
     std::string Repr() override {
-        return "Constant: " + std::to_string(Value);
+        return std::to_string(Value);
     }
 };
 
@@ -93,7 +93,7 @@ public:
 
     const std::string Name;
     std::string Repr() override {
-        return "Identifier: " + Name;
+        return Name;
     }
 };
 

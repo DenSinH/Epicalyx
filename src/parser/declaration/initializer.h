@@ -4,9 +4,9 @@
 #include "../AST.h"
 #include "designation.h"
 
-class Initializer : public DeclNode {
+class Initializer : public Node {
 public:
-    explicit Initializer(const TOKEN& tok) : DeclNode(tok) {
+    explicit Initializer(const TOKEN& tok) : Node(tok) {
 
     }
 };

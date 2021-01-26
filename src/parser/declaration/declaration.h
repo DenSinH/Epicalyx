@@ -62,5 +62,4 @@ public:
     }
 };
 
-
 #endif //EPICALYX_DECLARATION_H

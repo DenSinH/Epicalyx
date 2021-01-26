@@ -12,6 +12,7 @@
 #include <variant>
 
 #include "declaration_nodes.h"
+#include "statement_nodes.h"
 
 
 class Parser : public Stateful {
@@ -67,7 +68,7 @@ public:
     TOKEN ExpectType(enum TokenType type) {
         auto current = Current();
         if (current->Type != type) {
-            throw std::runtime_error("Unexpected token, got " + current->Repr() + ", expected: " + Token::TypeString(current->Type));
+            throw std::runtime_error("Unexpected token, got " + current->Repr() + ", expected: " + Token::TypeString(type));
         }
         return current;
     }
@@ -123,6 +124,9 @@ private:
     NODE(EnumSpecifier) ExpectEnumSpecifier();
     NODE(TypeName) ExpectTypeName();
     NODE(Declaration) ExpectDeclaration();
+
+    NODE(StatementNode) ExpectStatement();
+    NODE(CompoundStatement) ExpectCompoundStatement();
 
     template<typename T>
     std::vector<NODE(T)> ExpectListGreedy() {

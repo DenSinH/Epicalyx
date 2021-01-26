@@ -4,9 +4,9 @@
 #include "../AST.h"
 #include <stdexcept>
 
-class Designator : public DeclNode {
+class Designator : public Node {
 public:
-    explicit Designator(const TOKEN& tok) : DeclNode(tok) {
+    explicit Designator(const TOKEN& tok) : Node(tok) {
 
     }
 };

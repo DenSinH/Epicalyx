@@ -13,9 +13,9 @@ public:
     }
 };
 
-class AnyDeclarator : public DeclNode {
+class AnyDeclarator : public Node {
 public:
-    explicit AnyDeclarator(const TOKEN& tok, std::vector<NODE(Pointer)>& pointers) : DeclNode(tok) {
+    explicit AnyDeclarator(const TOKEN& tok, std::vector<NODE(Pointer)>& pointers) : Node(tok) {
         Pointers = std::move(pointers);
     }
 
@@ -123,16 +123,16 @@ public:
     }
 };
 
-class ParameterDeclaration : public DeclNode {
+class ParameterDeclaration : public Node {
 public:
     ParameterDeclaration(const TOKEN& tok, NODE(DeclarationSpecifiers)& specifiers, NODE(AnyDeclarator)& declar) :
-            DeclNode(tok) {
+            Node(tok) {
         Specifiers = std::move(specifiers);
         Declar = std::move(declar);
     }
 
     ParameterDeclaration(const TOKEN& tok, NODE(DeclarationSpecifiers)& specifiers) :
-            DeclNode(tok) {
+            Node(tok) {
         // in case declar is an abstract-declarator, it is optional
         Specifiers = std::move(specifiers);
         Declar = nullptr;
