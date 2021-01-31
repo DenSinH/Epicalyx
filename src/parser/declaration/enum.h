@@ -7,7 +7,7 @@
 
 class Enumerator : public Node {
 public:
-    explicit Enumerator(const TOKEN& tok, std::string& name, NODE(ExprNode)& value) :
+    explicit Enumerator(const TOKEN& tok, const std::string& name, NODE(ExprNode)&& value) :
             Node(tok),
             Name(name) {
         this->Value = std::move(value);
@@ -17,7 +17,7 @@ public:
         }
     }
 
-    explicit Enumerator(const TOKEN& tok, std::string& name) :
+    explicit Enumerator(const TOKEN& tok, const std::string& name) :
             Node(tok),
             Name(name ){
     }

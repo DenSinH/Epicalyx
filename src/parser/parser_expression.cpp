@@ -67,7 +67,7 @@ std::unique_ptr<ExprNode> Parser::ExpectPostfixExpression() {
                 EatType(TokenType::LBracket);
                 auto right = ExpectExpression();
                 EatType(TokenType::RBracket);
-                node = MAKE_NODE(ArrayAccessExpression)(current, node, right);
+                node = MAKE_NODE(ArrayAccessExpression)(current, std::move(node), std::move(right));
                 break;
             }
             case TokenType::LParen: {
@@ -75,11 +75,11 @@ std::unique_ptr<ExprNode> Parser::ExpectPostfixExpression() {
                 EatType(TokenType::LParen);
                 if (Current()->Type == TokenType::RParen) {
                     EatType(TokenType::RParen);
-                    return MAKE_NODE(FunctionCallExpression)(current, node);
+                    return MAKE_NODE(FunctionCallExpression)(current, std::move(node));
                 }
                 auto args = ExpectArgumentListExpression();
                 EatType(TokenType::RParen);
-                return MAKE_NODE(FunctionCallExpression)(current, node, args);
+                return MAKE_NODE(FunctionCallExpression)(current, std::move(node), std::move(args));
             }
             case TokenType::Dot:
             case TokenType::Arrow: {
@@ -89,7 +89,7 @@ std::unique_ptr<ExprNode> Parser::ExpectPostfixExpression() {
                         MemberAccessExpression::MemberAccessType::Pointer;
                 Advance();
                 auto field = EatType(TokenType::Identifier);
-                node = MAKE_NODE(MemberAccessExpression)(current, node, std::static_pointer_cast<Identifier>(field)->Name, type);
+                node = MAKE_NODE(MemberAccessExpression)(current, std::move(node), std::static_pointer_cast<Identifier>(field)->Name, type);
                 break;
             }
             case TokenType::Incr:
@@ -99,7 +99,7 @@ std::unique_ptr<ExprNode> Parser::ExpectPostfixExpression() {
                         PostCrementExpression::CrementType::Increment :
                         PostCrementExpression::CrementType::Decrement;
                 Advance();
-                node = MAKE_NODE(PostCrementExpression)(current, node, type);
+                node = MAKE_NODE(PostCrementExpression)(current, std::move(node), type);
                 break;
             }
             default:
@@ -115,42 +115,42 @@ std::unique_ptr<ExprNode> Parser::ExpectUnaryExpression() {
         case TokenType::Incr: {
             EatType(TokenType::Incr);
             auto right = ExpectUnaryExpression();
-            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::PreIncrement, right);
+            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::PreIncrement, std::move(right));
         }
         case TokenType::Decr: {
             EatType(TokenType::Decr);
             auto right = ExpectUnaryExpression();
-            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::PreDecrement, right);
+            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::PreDecrement, std::move(right));
         }
         case TokenType::Ampersand: {
             EatType(TokenType::Ampersand);
             auto right = ExpectUnaryExpression();
-            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::Reference, right);
+            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::Reference, std::move(right));
         }
         case TokenType::Asterisk: {
             EatType(TokenType::Asterisk);
             auto right = ExpectUnaryExpression();
-            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::Dereference, right);
+            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::Dereference, std::move(right));
         }
         case TokenType::Plus: {
             EatType(TokenType::Plus);
             auto right = ExpectUnaryExpression();
-            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::Positive, right);
+            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::Positive, std::move(right));
         }
         case TokenType::Minus: {
             EatType(TokenType::Minus);
             auto right = ExpectUnaryExpression();
-            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::Negative, right);
+            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::Negative, std::move(right));
         }
         case TokenType::Tilde: {
             EatType(TokenType::Tilde);
             auto right = ExpectUnaryExpression();
-            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::BinaryNot, right);
+            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::BinaryNot, std::move(right));
         }
         case TokenType::Exclamation: {
             EatType(TokenType::Exclamation);
             auto right = ExpectUnaryExpression();
-            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::LogicalNot, right);
+            return MAKE_NODE(UnaryOpExpression)(current, UnaryOpExpression::UnOpType::LogicalNot, std::move(right));
         }
         case TokenType::Sizeof: {
             Advance();
@@ -160,7 +160,7 @@ std::unique_ptr<ExprNode> Parser::ExpectUnaryExpression() {
                     Advance();
                     auto type_name = ExpectTypeName();
                     EatType(TokenType::RParen);
-                    return MAKE_NODE(SizeOfTypeExpression)(current, type_name);
+                    return MAKE_NODE(SizeOfTypeExpression)(current, std::move(type_name));
                 }
                 auto expr = ExpectUnaryExpression();
                 return MAKE_NODE(SizeOfExpression)(current, expr);
@@ -191,11 +191,11 @@ NODE(ExprNode) Parser::ExpectCastExpressionOrTypeInitializer() {
             if (!EndOfStream() && current->Type == TokenType::LBrace) {
                 // type initializer expression
                 auto initializer_list = ExpectInitializerList();
-                return MAKE_NODE(TypeInitializerExpression)(current, type_name, initializer_list);
+                return MAKE_NODE(TypeInitializerExpression)(current, std::move(type_name), std::move(initializer_list));
             }
             current = Current();
             auto expr = ExpectCastExpressionOrTypeInitializer();
-            return MAKE_NODE(CastExpression)(current, type_name, expr);
+            return MAKE_NODE(CastExpression)(current, std::move(type_name), std::move(expr));
         }
     }
     return ExpectUnaryExpression();
@@ -255,7 +255,7 @@ NODE(ExprNode) Parser::ExpectConditionalExpression() {
         auto t = ExpectExpression();
         EatType(TokenType::Colon);
         auto f = ExpectConditionalExpression();
-        node = MAKE_NODE(CondExpression)(Current(), node, t, f);
+        node = MAKE_NODE(CondExpression)(Current(), std::move(node), std::move(t), std::move(f));
     }
     return node;
 }
@@ -282,7 +282,12 @@ NODE(ExprNode) Parser::ExpectAssignmentExpression() {
             // assignment expression
             Advance();
             auto value = ExpectAssignmentExpression();
-            node = MAKE_NODE(AssignmentExpression)(current, node, AssignmentExpression::TokenTypeToAssignOp(current->Type), value);
+            node = MAKE_NODE(AssignmentExpression)(
+                    current,
+                    std::move(node),
+                    AssignmentExpression::TokenTypeToAssignOp(current->Type),
+                    std::move(value)
+            );
         }
     }
     return node;
@@ -295,7 +300,7 @@ NODE(ExprNode) Parser::ExpectExpression() {
     while (!EndOfStream() && Current()->Type == TokenType::Comma) {
         EatType(TokenType::Comma);
         auto next = ExpectAssignmentExpression();
-        node = MAKE_NODE(Expression)(Current(), node, next);
+        node = MAKE_NODE(Expression)(Current(), std::move(node), std::move(next));
     }
     return node;
 }

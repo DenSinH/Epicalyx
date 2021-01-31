@@ -7,7 +7,7 @@
 
 class IfStatement : public StatementNode {
 public:
-    explicit IfStatement(const TOKEN& tok, NODE(ExprNode)& condition, NODE(StatementNode)& _if, NODE(StatementNode)& _else) :
+    explicit IfStatement(const TOKEN& tok, NODE(ExprNode)&& condition, NODE(StatementNode)&& _if, NODE(StatementNode)&& _else) :
             StatementNode(tok),
             Condition(std::move(condition)),
             If(std::move(_if)),
@@ -15,7 +15,7 @@ public:
 
     }
 
-    explicit IfStatement(const TOKEN& tok, NODE(ExprNode)& condition, NODE(StatementNode)& _if) :
+    explicit IfStatement(const TOKEN& tok, NODE(ExprNode)&& condition, NODE(StatementNode)&& _if) :
             StatementNode(tok),
             Condition(std::move(condition)),
             If(std::move(_if)),
@@ -50,7 +50,7 @@ public:
 
 class Switch : public StatementNode {
 public:
-    explicit Switch(const TOKEN& tok, NODE(ExprNode)& expression, NODE(StatementNode)& statement) :
+    explicit Switch(const TOKEN& tok, NODE(ExprNode)&& expression, NODE(StatementNode)&& statement) :
             StatementNode(tok),
             Expression(std::move(expression)),
             Statement(std::move(statement)) {

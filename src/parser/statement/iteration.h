@@ -5,7 +5,7 @@
 
 class While : public StatementNode {
 public:
-    explicit While(const TOKEN& tok, NODE(ExprNode)& condition, NODE(StatementNode)& body) :
+    explicit While(const TOKEN& tok, NODE(ExprNode)&& condition, NODE(StatementNode)&& body) :
             StatementNode(tok),
             Condition(std::move(condition)),
             Body(std::move(body)) {
@@ -31,7 +31,7 @@ public:
 
 class DoWhile : public StatementNode {
 public:
-    explicit DoWhile(const TOKEN& tok, NODE(StatementNode)& body, NODE(ExprNode)& condition) :
+    explicit DoWhile(const TOKEN& tok, NODE(StatementNode)&& body, NODE(ExprNode)&& condition) :
             StatementNode(tok),
             Body(std::move(body)),
             Condition(std::move(condition)) {
@@ -60,11 +60,11 @@ class For : public StatementNode {
 public:
     explicit For(
                 const TOKEN& tok,
-                NODE(DeclNode)& declaration,
-                NODE(ExprNode)& initialization,
-                NODE(ExprNode)& condition,
-                NODE(ExprNode)& updation,
-                NODE(StatementNode)& body) :
+                NODE(DeclNode)&& declaration,
+                NODE(ExprNode)&& initialization,
+                NODE(ExprNode)&& condition,
+                NODE(ExprNode)&& updation,
+                NODE(StatementNode)&& body) :
             StatementNode(tok),
             Declaration(std::move(declaration)),
             Initialization(std::move(initialization)),

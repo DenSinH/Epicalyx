@@ -27,15 +27,17 @@ class ArrayAccessExpression : public PostfixExpression {
 public:
     explicit ArrayAccessExpression(
             const TOKEN& tok,
-            NODE(ExprNode)& left,
-            NODE(ExprNode)& right
-            ) : PostfixExpression(tok, PostExprType::ArrayAccess) {
-        this->Left = std::move(left);
-        this->Right = std::move(right);
+            NODE(ExprNode)&& left,
+            NODE(ExprNode)&& right
+            ) :
+                PostfixExpression(tok, PostExprType::ArrayAccess),
+                Left(std::move(left)),
+                Right(std::move(right)) {
+
     }
 
-    NODE(ExprNode) Left;
-    NODE(ExprNode) Right;
+    const NODE(ExprNode) Left;
+    const NODE(ExprNode) Right;
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "ArrayAccessExpr:" };
@@ -58,23 +60,27 @@ class FunctionCallExpression : public PostfixExpression {
 public:
     explicit FunctionCallExpression(
             const TOKEN& tok,
-            NODE(ExprNode)& func
-            ) : PostfixExpression(tok, PostExprType::FunctionCall) {
-        this->Func = std::move(func);
-        this->Args = nullptr;
+            NODE(ExprNode)&& func
+            ) :
+                PostfixExpression(tok, PostExprType::FunctionCall),
+                Func(std::move(func)),
+                Args(nullptr) {
+
     }
 
     explicit FunctionCallExpression(
             const TOKEN& tok,
-            NODE(ExprNode)& func,
-            NODE(ExprNode)& args
-            ) : PostfixExpression(tok, PostExprType::FunctionCall) {
-        this->Func = std::move(func);
-        this->Args = std::move(args);
+            NODE(ExprNode)&& func,
+            NODE(ExprNode)&& args
+            ) :
+                PostfixExpression(tok, PostExprType::FunctionCall),
+                Func(std::move(func)),
+                Args(std::move(args)) {
+
     }
 
-    NODE(ExprNode) Func;
-    NODE(ExprNode) Args;
+    const NODE(ExprNode) Func;
+    const NODE(ExprNode) Args;
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "FunctionCallExpr:" };
@@ -98,14 +104,14 @@ public:
 
     explicit MemberAccessExpression(
             const TOKEN& tok,
-            NODE(ExprNode)& left,
+            NODE(ExprNode)&& left,
             const std::string& member,
             MemberAccessType access_type
             ) :
-            PostfixExpression(tok, PostExprType::MemberAccess),
-            Left(std::move(left)),
-            Member(member),
-            AccessType(access_type) {
+                PostfixExpression(tok, PostExprType::MemberAccess),
+                Left(std::move(left)),
+                Member(member),
+                AccessType(access_type) {
 
     }
 
@@ -136,15 +142,17 @@ public:
 
     explicit PostCrementExpression(
             const TOKEN& tok,
-            NODE(ExprNode)& left,
+            NODE(ExprNode)&& left,
             CrementType type
-            ) : PostfixExpression(tok, PostExprType::Crement) {
-        this->Left = std::move(left);
-        this-> Type = type;
+            ) :
+                PostfixExpression(tok, PostExprType::Crement),
+                Left(std::move(left)),
+                Type(type) {
+
     }
 
-    NODE(ExprNode) Left;
-    CrementType Type;
+    const NODE(ExprNode) Left;
+    const CrementType Type;
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { std::string("PostCrementExpression:") + (Type == CrementType::Increment ? "++" : "--") };
@@ -161,15 +169,17 @@ public:
 
     explicit TypeInitializerExpression(
             const TOKEN& tok,
-            NODE(TypeName)& type,
-            NODE(InitializerList)& initializers
-    ) : PostfixExpression(tok,  PostExprType::TypeInitializer) {
-        Type = std::move(type);
-        Initializers = std::move(initializers);
+            NODE(TypeName)&& type,
+            NODE(InitializerList)&& initializers
+    ) :
+            PostfixExpression(tok,  PostExprType::TypeInitializer),
+            Type(std::move(type)),
+            Initializers(std::move(initializers)) {
+
     }
 
-    NODE(TypeName) Type;
-    NODE(InitializerList) Initializers = {};
+    const NODE(TypeName) Type;
+    const NODE(InitializerList) Initializers = {};
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "TypeInitializerExpr:" };

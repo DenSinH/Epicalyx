@@ -7,17 +7,19 @@ class CondExpression : public ExprNode {
 public:
     CondExpression(
             const TOKEN& tok,
-            NODE(ExprNode)& left,
-            NODE(ExprNode)& t,
-            NODE(ExprNode)& f) : ExprNode(tok) {
-        this->Left = std::move(left);
-        this->True = std::move(t);
-        this->False = std::move(f);
+            NODE(ExprNode)&& left,
+            NODE(ExprNode)&& t,
+            NODE(ExprNode)&& f) :
+                ExprNode(tok),
+                Left(std::move(left)),
+                True(std::move(t)),
+                False(std::move(f)) {
+
     }
 
-    NODE(ExprNode) Left;
-    NODE(ExprNode) True;
-    NODE(ExprNode) False;
+    const NODE(ExprNode) Left;
+    const NODE(ExprNode) True;
+    const NODE(ExprNode) False;
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "CondExpr: Cond:" };

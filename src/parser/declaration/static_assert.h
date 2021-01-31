@@ -8,17 +8,18 @@
 
 class StaticAssertDecl : public StructDeclaration {
 public:
-    StaticAssertDecl(const TOKEN& tok, NODE(ExprNode)& expression, std::string& message) : StructDeclaration(tok) {
-        Expression = std::move(expression);
-        Message = message;
+    StaticAssertDecl(const TOKEN& tok, NODE(ExprNode)&& expression, const std::string& message) :
+            StructDeclaration(tok),
+            Expression(std::move(expression)),
+            Message(message) {
 
         if (!Expression->IsConstant()) {
             throw std::runtime_error("Non constant expression in static assert expression");
         }
     }
 
-    NODE(ExprNode) Expression;  // must be constant
-    std::string Message;
+    const NODE(ExprNode) Expression;  // must be constant
+    const std::string Message;
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "StaticAssert: " };

@@ -15,15 +15,15 @@ public:
 
 class AnyDeclarator : public Node {
 public:
-    explicit AnyDeclarator(const TOKEN& tok, std::vector<NODE(Pointer)>& pointers) : Node(tok) {
+    explicit AnyDeclarator(const TOKEN& tok, std::vector<NODE(Pointer)>&& pointers) : Node(tok) {
         Pointers = std::move(pointers);
     }
 
-    void AddPostfix(NODE(DirectDeclaratorPostfix)& postfix) {
+    void AddPostfix(NODE(DirectDeclaratorPostfix)&& postfix) {
         Postfixes.push_back(std::move(postfix));
     }
 
-    void AddPointer(NODE(Pointer)& postfix) {
+    void AddPointer(NODE(Pointer)&& postfix) {
         Pointers.push_back(std::move(postfix));
     }
 
@@ -32,11 +32,11 @@ public:
     }
 
     virtual bool HasNested() const {
-        log_fatal("Uninherted AnyDeclarator");
+        log_fatal("Uninherited AnyDeclarator");
     }
 
-    virtual void SetNested(NODE(AnyDeclarator)&) {
-        log_fatal("Uninherted AnyDeclarator");
+    virtual void SetNested(NODE(AnyDeclarator)&&) {
+        log_fatal("Uninherited AnyDeclarator");
     }
 
     std::vector<NODE(Pointer)> Pointers = {};
@@ -74,27 +74,29 @@ protected:
 
 class DirectDeclaratorArrayPostfix : public DirectDeclaratorPostfix {
 public:
-    explicit DirectDeclaratorArrayPostfix(const TOKEN& tok, NODE(ExprNode)& size, bool _Static = false, bool _Pointer = false) :
-            DirectDeclaratorPostfix(tok) {
-        Size = std::move(size);
-        Static = _Static;
-        Pointer = _Pointer;
+    explicit DirectDeclaratorArrayPostfix(const TOKEN& tok, NODE(ExprNode)&& size, bool _Static = false, bool _Pointer = false) :
+            DirectDeclaratorPostfix(tok),
+            Size(std::move(size)),
+            Static(_Static),
+            Pointer(_Pointer) {
+
     }
 
     explicit DirectDeclaratorArrayPostfix(const TOKEN& tok, bool _Static = false, bool _Pointer = false) :
-            DirectDeclaratorPostfix(tok) {
-        Size = nullptr;
-        Static = _Static;
-        Pointer = _Pointer;
+            DirectDeclaratorPostfix(tok),
+            Size(nullptr),
+            Static(_Static),
+            Pointer(_Pointer) {
+
     }
 
-    void AddQualifier(NODE(TypeQualifier)& qualifier) {
+    void AddQualifier(NODE(TypeQualifier)&& qualifier) {
         Qualifiers.push_back(std::move(qualifier));
     }
 
-    NODE(ExprNode) Size;
-    bool Static = false;
-    bool Pointer = false;
+    const NODE(ExprNode) Size;
+    const bool Static = false;
+    const bool Pointer = false;
     std::vector<NODE(TypeQualifier)> Qualifiers = {};
 
     std::list<std::string> Repr() const override {
@@ -125,13 +127,13 @@ public:
 
 class ParameterDeclaration : public Node {
 public:
-    ParameterDeclaration(const TOKEN& tok, NODE(DeclarationSpecifiers)& specifiers, NODE(AnyDeclarator)& declar) :
+    ParameterDeclaration(const TOKEN& tok, NODE(DeclarationSpecifiers)&& specifiers, NODE(AnyDeclarator)&& declar) :
             Node(tok) {
         Specifiers = std::move(specifiers);
         Declar = std::move(declar);
     }
 
-    ParameterDeclaration(const TOKEN& tok, NODE(DeclarationSpecifiers)& specifiers) :
+    ParameterDeclaration(const TOKEN& tok, NODE(DeclarationSpecifiers)&& specifiers) :
             Node(tok) {
         // in case declar is an abstract-declarator, it is optional
         Specifiers = std::move(specifiers);
@@ -166,7 +168,7 @@ public:
         Variadic = variadic;
     }
 
-    void AddParameter(NODE(ParameterDeclaration)& parameter) {
+    void AddParameter(NODE(ParameterDeclaration)&& parameter) {
         ParameterTypeList.push_back(std::move(parameter));
     }
 
@@ -215,11 +217,11 @@ public:
 
 class AbstractDeclarator : public AnyDeclarator {
 public:
-    explicit AbstractDeclarator(const TOKEN& tok, std::vector<NODE(Pointer)>& pointers) : AnyDeclarator(tok, pointers) {
+    explicit AbstractDeclarator(const TOKEN& tok, std::vector<NODE(Pointer)>&& pointers) : AnyDeclarator(tok, std::move(pointers)) {
 
     }
 
-    void SetNested(NODE(AnyDeclarator)& nested) override {
+    void SetNested(NODE(AnyDeclarator)&& nested) override {
         if (Nested) {
             log_fatal("Invalid handling of AbstractDeclarator::SetNested: nested already exists");
         }
@@ -255,15 +257,15 @@ protected:
 
 class Declarator : public AnyDeclarator {
 public:
-    explicit Declarator(const TOKEN& tok, NODE(Declarator)& nested, std::vector<NODE(Pointer)>& pointers) :
-            AnyDeclarator(tok, pointers),
+    explicit Declarator(const TOKEN& tok, NODE(Declarator)&& nested, std::vector<NODE(Pointer)>&& pointers) :
+            AnyDeclarator(tok, std::move(pointers)),
             Name(""),
             Nested(std::move(nested)) {
 
     }
 
-    explicit Declarator(const TOKEN& tok, const std::string& name, std::vector<NODE(Pointer)>& pointers) :
-            AnyDeclarator(tok, pointers),
+    explicit Declarator(const TOKEN& tok, const std::string& name, std::vector<NODE(Pointer)>&& pointers) :
+            AnyDeclarator(tok, std::move(pointers)),
             Name(name),
             Nested(nullptr) {
 

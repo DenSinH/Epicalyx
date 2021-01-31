@@ -8,7 +8,7 @@
 
 class StructDeclarator : public Node {
 public:
-    explicit StructDeclarator(const TOKEN& tok, NODE(Declarator)& field, NODE(ExprNode)& size) : Node(tok) {
+    explicit StructDeclarator(const TOKEN& tok, NODE(Declarator)&& field, NODE(ExprNode)&& size) : Node(tok) {
         this->Field = std::move(field);
         this->Size = std::move(size);
 
@@ -17,7 +17,7 @@ public:
         }
     }
 
-    explicit StructDeclarator(const TOKEN& tok, NODE(ExprNode)& size) : Node(tok) {
+    explicit StructDeclarator(const TOKEN& tok, NODE(ExprNode)&& size) : Node(tok) {
         this->Size = std::move(size);
 
         if (Size && !Size->IsConstant()) {
@@ -25,7 +25,7 @@ public:
         }
     }
 
-    explicit StructDeclarator(const TOKEN& tok, NODE(Declarator)& field) : Node(tok) {
+    explicit StructDeclarator(const TOKEN& tok, NODE(Declarator)&& field) : Node(tok) {
         this->Field = std::move(field);
     }
 
@@ -60,15 +60,15 @@ public:
 
     }
 
-    void AddSpecifier(NODE(TypeSpecifier)& specifier) {
+    void AddSpecifier(NODE(TypeSpecifier)&& specifier) {
         Specifiers.push_back(std::move(specifier));
     }
 
-    void AddQualifier(NODE(TypeQualifier)& qualifier) {
+    void AddQualifier(NODE(TypeQualifier)&& qualifier) {
         Qualifiers.push_back(std::move(qualifier));
     }
 
-    void AddDeclarator(NODE(StructDeclarator)& declarator) {
+    void AddDeclarator(NODE(StructDeclarator)&& declarator) {
         Declarators.push_back(std::move(declarator));
     }
 

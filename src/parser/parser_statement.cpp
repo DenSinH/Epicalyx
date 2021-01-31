@@ -34,20 +34,20 @@ NODE(StatementNode) Parser::ExpectStatement() {
             }
             auto expr = ExpectExpression();
             EatType(TokenType::SemiColon);
-            return MAKE_NODE(Return)(current, expr);
+            return MAKE_NODE(Return)(current, std::move(expr));
         }
         case TokenType::Case: {
             Advance();
             auto expr = ExpectConstantExpression();
             EatType(TokenType::Colon);
             auto statement = ExpectStatement();
-            return MAKE_NODE(CaseStatement)(current, expr, statement);
+            return MAKE_NODE(CaseStatement)(current, std::move(expr), std::move(statement));
         }
         case TokenType::Default: {
             Advance();
             EatType(TokenType::Colon);
             auto statement = ExpectStatement();
-            return MAKE_NODE(DefaultStatement)(current, statement);
+            return MAKE_NODE(DefaultStatement)(current, std::move(statement));
         }
         case TokenType::If: {
             // if statement
@@ -60,9 +60,9 @@ NODE(StatementNode) Parser::ExpectStatement() {
             if (!EndOfStream() && Current()->Type == TokenType::Else) {
                 Advance();
                 auto _else = ExpectStatement();
-                return MAKE_NODE(IfStatement)(current, condition, statement, _else);
+                return MAKE_NODE(IfStatement)(current, std::move(condition), std::move(statement), std::move(_else));
             }
-            return MAKE_NODE(IfStatement)(current, condition, statement);
+            return MAKE_NODE(IfStatement)(current, std::move(condition), std::move(statement));
         }
         case TokenType::Switch: {
             Advance();
@@ -70,7 +70,7 @@ NODE(StatementNode) Parser::ExpectStatement() {
             auto expression = ExpectExpression();
             EatType(TokenType::RParen);
             auto statement = ExpectStatement();
-            return MAKE_NODE(Switch)(current, expression, statement);
+            return MAKE_NODE(Switch)(current, std::move(expression), std::move(statement));
         }
         case TokenType::While: {
             Advance();
@@ -78,7 +78,7 @@ NODE(StatementNode) Parser::ExpectStatement() {
             auto condition = ExpectExpression();
             EatType(TokenType::RParen);
             auto statement = ExpectStatement();
-            return MAKE_NODE(While)(current, condition, statement);
+            return MAKE_NODE(While)(current, std::move(condition), std::move(statement));
         }
         case TokenType::Do: {
             Advance();
@@ -88,7 +88,7 @@ NODE(StatementNode) Parser::ExpectStatement() {
             auto condition = ExpectExpression();
             EatType(TokenType::RParen);
             EatType(TokenType::SemiColon);
-            return MAKE_NODE(DoWhile)(current, statement, condition);
+            return MAKE_NODE(DoWhile)(current, std::move(statement), std::move(condition));
         }
         case TokenType::For: {
             Advance();
@@ -126,7 +126,14 @@ NODE(StatementNode) Parser::ExpectStatement() {
             }
             EatType(TokenType::RParen);
             auto statement = ExpectStatement();
-            return MAKE_NODE(For)(current, declaration, initializer, condition, updation, statement);
+            return MAKE_NODE(For)(
+                    current,
+                    std::move(declaration),
+                    std::move(initializer),
+                    std::move(condition),
+                    std::move(updation),
+                    std::move(statement)
+            );
         }
         case TokenType::SemiColon: {
             // empty statement
@@ -140,7 +147,7 @@ NODE(StatementNode) Parser::ExpectStatement() {
                 Advance();  // identifier
                 Advance();  // colon
                 auto statement = ExpectStatement();
-                return MAKE_NODE(LabelStatement)(current, name, statement);
+                return MAKE_NODE(LabelStatement)(current, name, std::move(statement));
             }
             // if it's not a labeled statement, it has to be an expression
             // declarations are not statements, but block items
@@ -166,12 +173,10 @@ NODE(CompoundStatement) Parser::ExpectCompoundStatement() {
     auto compound = MAKE_NODE(CompoundStatement)(current);
     while (Current()->Type != TokenType::RBrace) {
         if (IsDeclarationSpecifier(Current())) {
-            NODE(BlockItem) declaration = ExpectDeclaration();
-            compound->AddStatement(declaration);
+            compound->AddStatement(ExpectDeclaration());
         }
         else {
-            NODE(BlockItem) statement = ExpectStatement();
-            compound->AddStatement(statement);
+            compound->AddStatement(ExpectStatement());
         }
     }
     EatType(TokenType::RBrace);

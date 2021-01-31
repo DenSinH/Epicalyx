@@ -17,11 +17,11 @@ public:
 
     }
 
-    explicit InitializerList(const TOKEN& tok, std::vector<std::pair<std::vector<NODE(Designator)>, NODE(Initializer)>>& list) : Initializer(tok) {
+    explicit InitializerList(const TOKEN& tok, std::vector<std::pair<std::vector<NODE(Designator)>, NODE(Initializer)>>&& list) : Initializer(tok) {
         List = std::move(list);
     }
 
-    void AddInitializer(std::vector<NODE(Designator)>& designators, NODE(Initializer)& initializer) {
+    void AddInitializer(std::vector<NODE(Designator)>&& designators, NODE(Initializer)&& initializer) {
         List.emplace_back(std::move(designators), std::move(initializer) );
     }
 
@@ -45,7 +45,7 @@ public:
 
 class AssignmentInitializer : public Initializer {
 public:
-    explicit AssignmentInitializer(const TOKEN& tok, NODE(ExprNode)& expression) : Initializer(tok) {
+    explicit AssignmentInitializer(const TOKEN& tok, NODE(ExprNode)&& expression) : Initializer(tok) {
         Expression = std::move(expression);
     }
 

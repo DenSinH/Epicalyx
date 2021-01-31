@@ -10,7 +10,12 @@ template<
         auto current = Current();
         Advance();
         auto right = (this->*SubNode)();
-        node = MAKE_NODE(BinOpExpression)(current, BinOpExpression::TokenTypeToBinOp(current->Type), node, right);
+        node = MAKE_NODE(BinOpExpression)(
+                current,
+                BinOpExpression::TokenTypeToBinOp(current->Type),
+                std::move(node),
+                std::move(right)
+        );
     }
     return node;
 }

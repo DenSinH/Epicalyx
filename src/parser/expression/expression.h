@@ -5,13 +5,15 @@
 
 class Expression : public ExprNode {
 public:
-    Expression(const TOKEN& tok, NODE(ExprNode)& left, NODE(ExprNode)& right) : ExprNode(tok) {
-        this->Left = std::move(left);
-        this->Right = std::move(right);
+    Expression(const TOKEN& tok, NODE(ExprNode)&& left, NODE(ExprNode)&& right) :
+            ExprNode(tok),
+            Left(std::move(left)),
+            Right(std::move(right)) {
+
     }
 
-    NODE(ExprNode) Left;
-    NODE(ExprNode) Right;
+    const NODE(ExprNode) Left;
+    const NODE(ExprNode) Right;
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = {};

@@ -18,17 +18,17 @@ NODE(T) Parser::ExpectDeclarator() {
         if (current->Type == TokenType::LParen) {
             Advance();
             auto nested = ExpectDeclarator<Declarator>();
-            declarator = MAKE_NODE(Declarator)(current, nested, pointers);
+            declarator = MAKE_NODE(Declarator)(current, std::move(nested), std::move(pointers));
             EatType(TokenType::RParen);
         }
         else {
             EatType(TokenType::Identifier);
-            std::string name = std::static_pointer_cast<Identifier>(current)->Name;
-            declarator = MAKE_NODE(Declarator)(current, name, pointers);
+            const std::string& name = std::static_pointer_cast<Identifier>(current)->Name;
+            declarator = MAKE_NODE(Declarator)(current, name, std::move(pointers));
         }
     }
     else {
-        declarator = MAKE_NODE(AbstractDeclarator)(current, pointers);
+        declarator = MAKE_NODE(AbstractDeclarator)(current, std::move(pointers));
     }
 
     while (!EndOfStream() && Is(Current()->Type).AnyOf<TokenType::LParen, TokenType::LBracket, TokenType::Identifier>()) {
@@ -42,8 +42,8 @@ NODE(T) Parser::ExpectDeclarator() {
                     if (declarator->HasNested()) {
                         log_fatal("Nested declarator on abstract declarator -> declarator conversion");
                     }
-                    std::string name = std::static_pointer_cast<Identifier>(current)->Name;
-                    declarator = MAKE_NODE(Declarator)(current, name, declarator->Pointers);
+                    const std::string& name = std::static_pointer_cast<Identifier>(current)->Name;
+                    declarator = MAKE_NODE(Declarator)(current, name, std::move(declarator->Pointers));
                     Advance();
                 }
                 else {
@@ -66,7 +66,7 @@ NODE(T) Parser::ExpectDeclarator() {
                         postfix = MAKE_NODE(DirectDeclaratorIdentifierListPostfix)(Current());
                     }
 
-                    declarator->AddPostfix(postfix);
+                    declarator->AddPostfix(std::move(postfix));
                     EatType(TokenType::RParen);
                     break;
                 }
@@ -74,7 +74,7 @@ NODE(T) Parser::ExpectDeclarator() {
                 if (IsDeclarationSpecifier(current)) {
                     // parameter type list
                     NODE(DirectDeclaratorPostfix) parameter_list = ExpectParameterListPostfix();
-                    declarator->AddPostfix(parameter_list);
+                    declarator->AddPostfix(std::move(parameter_list));
                     EatType(TokenType::RParen);
                     break;
                 }
@@ -94,7 +94,7 @@ NODE(T) Parser::ExpectDeclarator() {
 
                     EatType(TokenType::RParen);
                     NODE(DirectDeclaratorPostfix) postfix = std::move(ident_list);
-                    declarator->AddPostfix(postfix);
+                    declarator->AddPostfix(std::move(postfix));
                     break;
                 }
 
@@ -105,7 +105,7 @@ NODE(T) Parser::ExpectDeclarator() {
                 else {
                     auto nested_declarator = ExpectDeclarator<T>();
                     EatType(TokenType::RParen);
-                    declarator->Declarator::SetNested(nested_declarator);
+                    declarator->Declarator::SetNested(std::move(nested_declarator));
                 }
                 break;
             }
@@ -120,7 +120,7 @@ NODE(T) Parser::ExpectDeclarator() {
                     EatType(TokenType::RBracket);
                     // [*] postfix
                     NODE(DirectDeclaratorPostfix) array_postfix = MAKE_NODE(DirectDeclaratorArrayPostfix)(current, false, true);
-                    declarator->AddPostfix(array_postfix);
+                    declarator->AddPostfix(std::move(array_postfix));
                     break;
                 }
                 // normal array postfix [qualifiers / static / assignment expression]
@@ -140,8 +140,8 @@ NODE(T) Parser::ExpectDeclarator() {
                 }
                 EatType(TokenType::RBracket);
 
-                NODE(DirectDeclaratorPostfix) array_postfix = MAKE_NODE(DirectDeclaratorArrayPostfix)(current, expr, Static);
-                declarator->AddPostfix(array_postfix);
+                NODE(DirectDeclaratorPostfix) array_postfix = MAKE_NODE(DirectDeclaratorArrayPostfix)(current, std::move(expr), Static);
+                declarator->AddPostfix(std::move(array_postfix));
                 break;
             }
             default:

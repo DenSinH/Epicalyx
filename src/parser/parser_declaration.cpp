@@ -11,11 +11,11 @@ NODE(StaticAssertDecl) Parser::ExpectStaticAssert() {
     auto expr = ExpectConstantExpression();
     EatType(TokenType::Comma);
     ExpectType(TokenType::ConstString);
-    std::string message = std::static_pointer_cast<StringConstant>(Current())->Value;
+    const std::string& message = std::static_pointer_cast<StringConstant>(Current())->Value;
     EatType(TokenType::ConstString);
     EatType(TokenType::RParen);
     EatType(TokenType::SemiColon);
-    return MAKE_NODE(StaticAssertDecl)(current, expr, message);
+    return MAKE_NODE(StaticAssertDecl)(current, std::move(expr), message);
 }
 
 NODE(TypeSpecifier) Parser::ExpectTypeSpecifier() {
@@ -70,7 +70,7 @@ NODE(InitializerList) Parser::ExpectInitializerList() {
             else {
                 // array field initializer [constant-expression]
                 auto expr = ExpectConstantExpression();
-                designators.push_back(MAKE_NODE(ArrayMemberDesignator)(current, expr));
+                designators.push_back(MAKE_NODE(ArrayMemberDesignator)(current, std::move(expr)));
                 EatType(TokenType::RBracket);
             }
         }
@@ -81,7 +81,7 @@ NODE(InitializerList) Parser::ExpectInitializerList() {
         }
 
         auto designation_initializer = ExpectInitializer();
-        initializer->AddInitializer(designators, designation_initializer);
+        initializer->AddInitializer(std::move(designators), std::move(designation_initializer));
 
         // either a comma and another initializer-list or end of initializer
         if (Current()->Type != TokenType::RBrace) {
@@ -95,7 +95,7 @@ NODE(Initializer) Parser::ExpectInitializer() {
     if (current->Type != TokenType::LBrace) {
         // assignment expression initializer
         auto expr = ExpectAssignmentExpression();
-        return MAKE_NODE(AssignmentInitializer)(current, expr);
+        return MAKE_NODE(AssignmentInitializer)(current, std::move(expr));
     }
     return ExpectInitializerList();
 }
@@ -123,17 +123,17 @@ NODE(DeclarationSpecifiers) Parser::ExpectDeclarationSpecifiers() {
         auto current = Current();
         if (StorageClassSpecifier::Is(current->Type)) {
             auto specifier = MAKE_NODE(StorageClassSpecifier)(current, current->Type);
-            specifiers->AddSpecifier(specifier);
+            specifiers->AddSpecifier(std::move(specifier));
             Advance();
         }
         else if (TypeQualifier::Is(current->Type)) {
             auto qualifier = MAKE_NODE(TypeQualifier)(current, current->Type);
-            specifiers->AddSpecifier(qualifier);
+            specifiers->AddSpecifier(std::move(qualifier));
             Advance();
         }
         else if (FunctionSpecifier::Is(current->Type)) {
             auto specifier = MAKE_NODE(FunctionSpecifier)(current, current->Type);
-            specifiers->AddSpecifier(specifier);
+            specifiers->AddSpecifier(std::move(specifier));
             Advance();
         }
         else if (AlignmentSpecifier::Is(current->Type)) {
@@ -143,19 +143,19 @@ NODE(DeclarationSpecifiers) Parser::ExpectDeclarationSpecifiers() {
             if (IsTypeName(0)) {
                 // _Alignas ( type-name )
                 auto type_name = ExpectTypeName();
-                specifier = MAKE_NODE(AlignmentSpecifierTypeName)(current, type_name);
+                specifier = MAKE_NODE(AlignmentSpecifierTypeName)(current, std::move(type_name));
             }
             else {
                 // _Alignas ( constant expression )
                 auto expr = ExpectConstantExpression();
-                specifier = MAKE_NODE(AlignmentSpecifierExpr)(current, expr);
+                specifier = MAKE_NODE(AlignmentSpecifierExpr)(current, std::move(expr));
             }
-            specifiers->AddSpecifier(specifier);
+            specifiers->AddSpecifier(std::move(specifier));
             EatType(TokenType::RParen);
         }
         else if (IsTypeSpecifier(current)) {
             auto specifier = ExpectTypeSpecifier();
-            specifiers->AddSpecifier(specifier);
+            specifiers->AddSpecifier(std::move(specifier));
         }
         else {
             break;
@@ -189,8 +189,8 @@ NODE(DirectDeclaratorParameterListPostfix) Parser::ExpectParameterListPostfix() 
             // end of declarator
             declarator = NODE(AbstractDeclarator)(nullptr);
         }
-        auto parameter = MAKE_NODE(ParameterDeclaration)(Current(), specifiers, declarator);
-        parameter_list->AddParameter(parameter);
+        auto parameter = MAKE_NODE(ParameterDeclaration)(Current(), std::move(specifiers), std::move(declarator));
+        parameter_list->AddParameter(std::move(parameter));
 
         if (Current()->Type == TokenType::Comma) {
             Advance();
@@ -259,11 +259,11 @@ NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
                     if (TypeQualifier::Is(Current()->Type)) {
                         auto qualifier = MAKE_NODE(TypeQualifier)(Current(), Current()->Type);
                         Advance();
-                        declaration->AddQualifier(qualifier);
+                        declaration->AddQualifier(std::move(qualifier));
                     }
                     else if (IsTypeSpecifier(Current())) {
                         auto specifier = ExpectTypeSpecifier();
-                        declaration->AddSpecifier(specifier);
+                        declaration->AddSpecifier(std::move(specifier));
                     }
                     else {
                         break;
@@ -277,8 +277,8 @@ NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
                             // unnamed field (: constant-expression)
                             Advance();
                             auto expr = ExpectConstantExpression();
-                            auto field = MAKE_NODE(StructDeclarator)(Current(), expr);
-                            declaration->AddDeclarator(field);
+                            auto field = MAKE_NODE(StructDeclarator)(Current(), std::move(expr));
+                            declaration->AddDeclarator(std::move(field));
                         }
                         else {
                             // declarator
@@ -289,13 +289,13 @@ NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
                                 // declarator: constant-expression
                                 Advance();
                                 auto expr = ExpectConstantExpression();
-                                auto field = MAKE_NODE(StructDeclarator)(Current(), declarator, expr);
-                                declaration->AddDeclarator(field);
+                                auto field = MAKE_NODE(StructDeclarator)(Current(), std::move(declarator), std::move(expr));
+                                declaration->AddDeclarator(std::move(field));
                             }
                             else {
                                 // non-sized field
-                                auto field = MAKE_NODE(StructDeclarator)(Current(), declarator);
-                                declaration->AddDeclarator(field);
+                                auto field = MAKE_NODE(StructDeclarator)(Current(), std::move(declarator));
+                                declaration->AddDeclarator(std::move(field));
                             }
                         }
 
@@ -338,13 +338,13 @@ NODE(EnumSpecifier) Parser::ExpectEnumSpecifier() {
         do {
             ExpectType(TokenType::Identifier);
             NODE(Enumerator) enumerator = nullptr;
-            std::string name = std::static_pointer_cast<Identifier>(Current())->Name;
+            const std::string& name = std::static_pointer_cast<Identifier>(Current())->Name;
             Advance();
             if (Current()->Type == TokenType::Assign) {
                 auto current = Current();
                 Advance();
                 auto expr = ExpectConstantExpression();
-                enumerator = MAKE_NODE(Enumerator)(current, name, expr);
+                enumerator = MAKE_NODE(Enumerator)(current, name, std::move(expr));
             }
             else {
                 enumerator = MAKE_NODE(Enumerator)(Current(), name);
@@ -372,11 +372,11 @@ NODE(TypeName) Parser::ExpectTypeName() {
         if (TypeQualifier::Is(Current()->Type)) {
             auto qualifier = MAKE_NODE(TypeQualifier)(Current(), Current()->Type);
             Advance();
-            type_name->AddQualifier(qualifier);
+            type_name->AddQualifier(std::move(qualifier));
         }
         else if (IsTypeSpecifier(Current())) {
             auto specifier = ExpectTypeSpecifier();
-            type_name->AddSpecifier(specifier);
+            type_name->AddSpecifier(std::move(specifier));
         }
         else {
             break;
@@ -395,7 +395,7 @@ NODE(TypeName) Parser::ExpectTypeName() {
 
 NODE(Declaration) Parser::ExpectDeclaration() {
     auto specifiers = ExpectDeclarationSpecifiers();
-    auto declaration = MAKE_NODE(Declaration)(Current(), specifiers);
+    auto declaration = MAKE_NODE(Declaration)(Current(), std::move(specifiers));
     do {
         // init-declarator-list
         auto declarator = ExpectDeclarator<Declarator>();
@@ -403,11 +403,11 @@ NODE(Declaration) Parser::ExpectDeclaration() {
         if (current->Type == TokenType::Assign) {
             Advance();
             auto initializer = ExpectInitializer();
-            auto init_declarator = MAKE_NODE(InitDeclarator)(current, declarator, initializer);
+            auto init_declarator = MAKE_NODE(InitDeclarator)(current, std::move(declarator), std::move(initializer));
             declaration->AddDeclarator(init_declarator);
         }
         else {
-            auto init_declarator = MAKE_NODE(InitDeclarator)(current, declarator);
+            auto init_declarator = MAKE_NODE(InitDeclarator)(current, std::move(declarator));
             declaration->AddDeclarator(init_declarator);
         }
 

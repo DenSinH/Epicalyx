@@ -7,7 +7,7 @@
 // CondExpr can also just be a CastExpression
 class CastExpression : public ExprNode {
 public:
-    CastExpression(const TOKEN& tok, NODE(TypeName)& type, NODE(ExprNode)& right) : ExprNode(tok) {
+    CastExpression(const TOKEN& tok, NODE(TypeName)&& type, NODE(ExprNode)&& right) : ExprNode(tok) {
         this->Type = std::move(type);
         this->Right = std::move(right);
     }

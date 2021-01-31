@@ -13,7 +13,7 @@ public:
 
 class ArrayMemberDesignator : public Designator {
 public:
-    explicit ArrayMemberDesignator(const TOKEN& tok, NODE(ExprNode)& member) : Designator(tok) {
+    explicit ArrayMemberDesignator(const TOKEN& tok, NODE(ExprNode)&& member) : Designator(tok) {
         Member = std::move(member);
 
         if (!Member->IsConstant()) {

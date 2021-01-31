@@ -55,7 +55,7 @@ public:
 
     }
 
-    explicit Return(const TOKEN& tok, NODE(ExprNode)& expression) :
+    explicit Return(const TOKEN& tok, NODE(ExprNode)&& expression) :
             JumpStatement(tok),
             Expression(std::move(expression)) {
 

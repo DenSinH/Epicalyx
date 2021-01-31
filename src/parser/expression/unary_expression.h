@@ -34,13 +34,15 @@ public:
         LogicalNot,
     };
 
-    explicit UnaryOpExpression(const TOKEN& tok, UnOpType type, NODE(ExprNode)& right) : UnaryExpression(tok, UnExprType::UnOp) {
-        this->Type = type;
-        this->Right = std::move(right);
+    explicit UnaryOpExpression(const TOKEN& tok, UnOpType type, NODE(ExprNode)&& right) :
+            UnaryExpression(tok, UnExprType::UnOp),
+            Type(type),
+            Right(std::move(right)) {
+
     }
 
-    UnOpType Type;
-    NODE(ExprNode) Right;
+    const UnOpType Type;
+    const NODE(ExprNode) Right;
 
     bool IsConstant() const override {
         return Right->IsConstant();
@@ -79,11 +81,13 @@ private:
 
 class SizeOfTypeExpression : public UnaryExpression {
 public:
-    explicit SizeOfTypeExpression(const TOKEN& tok, NODE(TypeName)& right) : UnaryExpression(tok, UnExprType::SizeOf) {
-        this->Right = std::move(right);
+    explicit SizeOfTypeExpression(const TOKEN& tok, NODE(TypeName)&& right) :
+            UnaryExpression(tok, UnExprType::SizeOf),
+            Right(std::move(right)) {
+
     }
 
-    NODE(TypeName) Right;
+    const NODE(TypeName) Right;
 
     bool IsConstant() const override {
         return true;
@@ -100,11 +104,13 @@ public:
 
 class SizeOfExpression : public UnaryExpression {
 public:
-    explicit SizeOfExpression(const TOKEN& tok, NODE(ExprNode)& right) : UnaryExpression(tok, UnExprType::SizeOf) {
-        this->Right = std::move(right);
+    explicit SizeOfExpression(const TOKEN& tok, NODE(ExprNode)& right) :
+            UnaryExpression(tok, UnExprType::SizeOf),
+            Right(std::move(right)) {
+
     }
 
-    NODE(ExprNode) Right;
+    const NODE(ExprNode) Right;
     bool IsConstant() const override {
         return true;
     }
@@ -120,11 +126,13 @@ public:
 
 class AlignOfExpression : public UnaryExpression {
 public:
-    explicit AlignOfExpression(const TOKEN& tok, NODE(TypeName)& right) : UnaryExpression(tok, UnExprType::AlignOf) {
-        this->Right = std::move(right);
+    explicit AlignOfExpression(const TOKEN& tok, NODE(TypeName)& right) :
+            UnaryExpression(tok, UnExprType::AlignOf),
+            Right(std::move(right)) {
+
     }
 
-    NODE(TypeName) Right;
+    const NODE(TypeName) Right;
 
     bool IsConstant() const override {
         return true;

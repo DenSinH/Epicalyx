@@ -25,9 +25,9 @@ public:
 
     AssignmentExpression(
             const TOKEN& tok,
-            NODE(ExprNode)& left,
+            NODE(ExprNode)&& left,
             AssignOp op,
-            NODE(ExprNode)& right) : ExprNode(tok) {
+            NODE(ExprNode)&& right) : ExprNode(tok) {
         this->Left = std::move(left);
         this->Op = op;
         this->Right = std::move(right);

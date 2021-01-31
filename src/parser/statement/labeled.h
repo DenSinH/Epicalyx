@@ -5,7 +5,7 @@
 
 class LabeledStatement : public StatementNode {
 public:
-    explicit LabeledStatement(const TOKEN& tok, NODE(StatementNode)& statement) :
+    explicit LabeledStatement(const TOKEN& tok, NODE(StatementNode)&& statement) :
             StatementNode(tok),
             Statement(std::move(statement)) {
 
@@ -16,8 +16,8 @@ public:
 
 class LabelStatement : public LabeledStatement {
 public:
-    explicit LabelStatement(const TOKEN& tok, const std::string& label, NODE(StatementNode)& statement) :
-            LabeledStatement(tok, statement),
+    explicit LabelStatement(const TOKEN& tok, const std::string& label, NODE(StatementNode)&& statement) :
+            LabeledStatement(tok, std::move(statement)),
             Label(label) {
 
     }
@@ -35,8 +35,8 @@ public:
 
 class CaseStatement : public LabeledStatement {
 public:
-    explicit CaseStatement(const TOKEN& tok, NODE(ExprNode)& expression, NODE(StatementNode)& statement) :
-            LabeledStatement(tok, statement),
+    explicit CaseStatement(const TOKEN& tok, NODE(ExprNode)&& expression, NODE(StatementNode)&& statement) :
+            LabeledStatement(tok, std::move(statement)),
             Expression(std::move(expression)) {
 
     }
@@ -59,8 +59,8 @@ public:
 
 class DefaultStatement : public LabeledStatement {
 public:
-    explicit DefaultStatement(const TOKEN& tok, NODE(StatementNode)& statement) :
-            LabeledStatement(tok, statement) {
+    explicit DefaultStatement(const TOKEN& tok, NODE(StatementNode)&& statement) :
+            LabeledStatement(tok, std::move(statement)) {
 
     }
 

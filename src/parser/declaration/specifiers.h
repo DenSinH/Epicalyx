@@ -209,7 +209,7 @@ public:
 class AlignmentSpecifierExpr : public AlignmentSpecifier {
 public:
 
-    explicit AlignmentSpecifierExpr(const TOKEN& tok, NODE(ExprNode)& expression) : AlignmentSpecifier(tok) {
+    explicit AlignmentSpecifierExpr(const TOKEN& tok, NODE(ExprNode)&& expression) : AlignmentSpecifier(tok) {
         Expression = std::move(expression);
         if (!Expression->IsConstant()) {
             throw std::runtime_error("Alignment specifier expression is not a constant");
@@ -236,26 +236,26 @@ public:
     DeclarationSpecifiers(const TOKEN& tok) : Node(tok) {};
 
     template<typename T>
-    void AddSpecifier(NODE(T)& specifier);
+    void AddSpecifier(NODE(T)&& specifier);
 
     template<>
-    void AddSpecifier(NODE(StorageClassSpecifier)& specifier) {
+    void AddSpecifier(NODE(StorageClassSpecifier)&& specifier) {
         StorageClassSpecifiers.push_back(std::move(specifier));
     }
     template<>
-    void AddSpecifier(NODE(TypeSpecifier)& specifier) {
+    void AddSpecifier(NODE(TypeSpecifier)&& specifier) {
         TypeSpecifiers.push_back(std::move(specifier));
     }
     template<>
-    void AddSpecifier(NODE(TypeQualifier)& specifier) {
+    void AddSpecifier(NODE(TypeQualifier)&& specifier) {
         TypeQualifiers.push_back(std::move(specifier));
     }
     template<>
-    void AddSpecifier(NODE(FunctionSpecifier)& specifier) {
+    void AddSpecifier(NODE(FunctionSpecifier)&& specifier) {
         FunctionSpecifiers.push_back(std::move(specifier));
     }
     template<>
-    void AddSpecifier(NODE(AlignmentSpecifier)& specifier) {
+    void AddSpecifier(NODE(AlignmentSpecifier)&& specifier) {
         AlignmentSpecifiers.push_back(std::move(specifier));
     }
 

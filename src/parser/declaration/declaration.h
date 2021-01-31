@@ -8,12 +8,12 @@
 
 class InitDeclarator : public DeclNode {
 public:
-    explicit InitDeclarator(const TOKEN& tok, NODE(Declarator)& declarator) : DeclNode(tok) {
+    explicit InitDeclarator(const TOKEN& tok, NODE(Declarator)&& declarator) : DeclNode(tok) {
         Declar = std::move(declarator);
         Init = nullptr;
     }
 
-    explicit InitDeclarator(const TOKEN& tok, NODE(Declarator)& declarator, NODE(Initializer)& initializer) : DeclNode(tok) {
+    explicit InitDeclarator(const TOKEN& tok, NODE(Declarator)&& declarator, NODE(Initializer)&& initializer) : DeclNode(tok) {
         Declar = std::move(declarator);
         Init = std::move(initializer);
     }
@@ -37,7 +37,7 @@ public:
 
 class Declaration : public DeclNode {
 public:
-    explicit Declaration(const TOKEN& tok, NODE(DeclarationSpecifiers)& specifiers) : DeclNode(tok) {
+    explicit Declaration(const TOKEN& tok, NODE(DeclarationSpecifiers)&& specifiers) : DeclNode(tok) {
         Specifiers = std::move(specifiers);
     }
 

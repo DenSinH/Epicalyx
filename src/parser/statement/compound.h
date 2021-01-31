@@ -10,7 +10,7 @@ public:
 
     }
 
-    void AddStatement(NODE(BlockItem)& statement) {
+    void AddStatement(NODE(BlockItem)&& statement) {
         Statements.emplace_back(std::move(statement));
     }
 
