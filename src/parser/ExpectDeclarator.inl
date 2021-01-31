@@ -57,14 +57,7 @@ NODE(T) Parser::ExpectDeclarator() {
                 if (Current()->Type == TokenType::RParen) {
                     // empty parameter-type-list
                     NODE(DirectDeclaratorPostfix) postfix;
-                    if (declarator->IsAbstract()) {
-                        // type list for abstract declarators
-                        postfix = MAKE_NODE(DirectDeclaratorParameterListPostfix)(Current());
-                    }
-                    else {
-                        // otherwise an identifier list
-                        postfix = MAKE_NODE(DirectDeclaratorIdentifierListPostfix)(Current());
-                    }
+                    postfix = MAKE_NODE(DirectDeclaratorParameterListPostfix)(Current());
 
                     declarator->AddPostfix(std::move(postfix));
                     EatType(TokenType::RParen);
@@ -78,25 +71,26 @@ NODE(T) Parser::ExpectDeclarator() {
                     EatType(TokenType::RParen);
                     break;
                 }
-                else if (!declarator->IsAbstract()) {
-                    // if the declarator is not abstract, we have already found the identifier or any nested declarators
-                    // then we can safely assume there will be an identifier list next
-                    // identifier, identifier, etc.
-                    current = Current();
-                    NODE(DirectDeclaratorIdentifierListPostfix) ident_list = MAKE_NODE(DirectDeclaratorIdentifierListPostfix)(current);
-                    while (current->Type == TokenType::Identifier) {
-                        ident_list->AddIdentifier(std::static_pointer_cast<Identifier>(current)->Name);
-                        if (Current()->Type == TokenType::Comma) {
-                            Advance();
-                        }
-                        current = Current();
-                    }
-
-                    EatType(TokenType::RParen);
-                    NODE(DirectDeclaratorPostfix) postfix = std::move(ident_list);
-                    declarator->AddPostfix(std::move(postfix));
-                    break;
-                }
+                // K&R style functions (identifier-list, unsupported):
+//                else if (!declarator->IsAbstract()) {
+//                    // if the declarator is not abstract, we have already found the identifier or any nested declarators
+//                    // then we can safely assume there will be an identifier list next
+//                    // identifier, identifier, etc.
+//                    current = Current();
+//                    NODE(DirectDeclaratorIdentifierListPostfix) ident_list = MAKE_NODE(DirectDeclaratorIdentifierListPostfix)(current);
+//                    while (current->Type == TokenType::Identifier) {
+//                        ident_list->AddIdentifier(std::static_pointer_cast<Identifier>(current)->Name);
+//                        if (Current()->Type == TokenType::Comma) {
+//                            Advance();
+//                        }
+//                        current = Current();
+//                    }
+//
+//                    EatType(TokenType::RParen);
+//                    NODE(DirectDeclaratorPostfix) postfix = std::move(ident_list);
+//                    declarator->AddPostfix(std::move(postfix));
+//                    break;
+//                }
 
                 // nested (abstract) declarator
                 if constexpr(std::is_same_v<T, Declarator>) {

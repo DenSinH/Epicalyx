@@ -6,7 +6,7 @@
 
 
 int main() {
-    auto file = std::make_shared<File>("examples/parsing/statements/combined.stat");
+    auto file = std::make_shared<File>("examples/parsing/program/test.c");
 
     auto t = new Tokenizer();
 
@@ -14,17 +14,19 @@ int main() {
 
     auto p = new Parser(t);
 
-    try {
-        auto n = p->ExpectStatement();
-        n->Print();
-    }
-    catch (std::runtime_error& e) {
-        std::string message = e.what();
-        if (!p->EndOfStream()) {
-            message += "\n" + p->Current()->Loc();
+//    try {
+        auto program = p->Parse();
+        for (auto& n : program) {
+            n->Print();
         }
-        log_fatal("%s", message.c_str());
-    }
+//    }
+//    catch (std::runtime_error& e) {
+//        std::string message = e.what();
+//        if (!p->EndOfStream()) {
+//            message += "\n" + p->Current()->Loc();
+//        }
+//        log_fatal("%s", message.c_str());
+//    }
 
     return 0;
 }

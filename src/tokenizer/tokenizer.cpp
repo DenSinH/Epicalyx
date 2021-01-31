@@ -102,14 +102,20 @@ numeric_constant:
                     goto numeric_constant;
                 }
 
-                do {
-                    // keep appending characters until the current token is no longer a punctuator
-                    // or until we have reached the end of the line
-                    current_token.push_back(*current);
-                    current++;
-                } while (current != line.end()
-                         && !std::isalnum(*current)
-                         && Punctuators.find(current_token) != Punctuators.end());
+                if (*current == '.' && current != line.end() && *next == '.' && next != line.end() && *(next + 1) == '.') {
+                    current += 3;
+                    current_token = "...";
+                }
+                else {
+                    do {
+                        // keep appending characters until the current token is no longer a punctuator
+                        // or until we have reached the end of the line
+                        current_token.push_back(*current);
+                        current++;
+                    } while (current != line.end()
+                             && !std::isalnum(*current)
+                             && Punctuators.find(current_token) != Punctuators.end());
+                }
 
                 if (Punctuators.find(current_token) == Punctuators.end()) {
                     // loop ended because our current_token is no longer a punctuator, so we must step back one character

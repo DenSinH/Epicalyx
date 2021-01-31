@@ -11,6 +11,10 @@ public:
     explicit DirectDeclaratorPostfix(const TOKEN& tok) : Node(tok) {
 
     }
+
+    virtual constexpr bool IsFunctionPostfix() const {
+        return false;
+    }
 };
 
 class AnyDeclarator : public Node {
@@ -20,11 +24,17 @@ public:
     }
 
     void AddPostfix(NODE(DirectDeclaratorPostfix)&& postfix) {
+        // declarator is a function if the last postfix is a function postfix
+        _IsFunction = postfix->IsFunctionPostfix();
         Postfixes.push_back(std::move(postfix));
     }
 
     void AddPointer(NODE(Pointer)&& postfix) {
         Pointers.push_back(std::move(postfix));
+    }
+
+    bool IsFunction() const {
+        return _IsFunction;
     }
 
     virtual bool IsAbstract() const {
@@ -70,6 +80,9 @@ protected:
     virtual std::list<std::string> NestedRepr() const {
         return {};
     }
+
+private:
+    bool _IsFunction = false;
 };
 
 class DirectDeclaratorArrayPostfix : public DirectDeclaratorPostfix {
@@ -175,6 +188,10 @@ public:
     bool Variadic = false;
     std::vector<NODE(ParameterDeclaration)> ParameterTypeList = {};
 
+    constexpr bool IsFunctionPostfix() const override {
+        return true;
+    }
+
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "DirectDeclaratorParameterListPostfix: " };
 
@@ -192,33 +209,38 @@ public:
 };
 
 
-class DirectDeclaratorIdentifierListPostfix : public DirectDeclaratorPostfix {
-public:
-    explicit DirectDeclaratorIdentifierListPostfix(const TOKEN& tok) : DirectDeclaratorPostfix(tok) {
-
-    }
-
-    void AddIdentifier(const std::string& identifier) {
-        IdentifierList.push_back(identifier);
-    }
-
-    std::vector<std::string> IdentifierList = {};
-
-    std::list<std::string> Repr() const override {
-        std::list<std::string> repr = { "DirectDeclaratorIdentifierListPostfix: " };
-
-        for (auto& s : IdentifierList) {
-            repr.push_back(REPR_PADDING + s);
-        }
-        return repr;
-    }
-};
+// for K&R style functions, not supported:
+//class DirectDeclaratorIdentifierListPostfix : public DirectDeclaratorPostfix {
+//public:
+//    explicit DirectDeclaratorIdentifierListPostfix(const TOKEN& tok) : DirectDeclaratorPostfix(tok) {
+//
+//    }
+//
+//    void AddIdentifier(const std::string& identifier) {
+//        IdentifierList.push_back(identifier);
+//    }
+//
+//    std::vector<std::string> IdentifierList = {};
+//
+//    std::list<std::string> Repr() const override {
+//        std::list<std::string> repr = { "DirectDeclaratorIdentifierListPostfix: " };
+//
+//        for (auto& s : IdentifierList) {
+//            repr.push_back(REPR_PADDING + s);
+//        }
+//        return repr;
+//    }
+//};
 
 
 class AbstractDeclarator : public AnyDeclarator {
 public:
     explicit AbstractDeclarator(const TOKEN& tok, std::vector<NODE(Pointer)>&& pointers) : AnyDeclarator(tok, std::move(pointers)) {
 
+    }
+
+    bool HasNested() const override {
+        return Nested != nullptr;
     }
 
     void SetNested(NODE(AnyDeclarator)&& nested) override {

@@ -37,6 +37,7 @@ NODE(StatementNode) Parser::ExpectStatement() {
             return MAKE_NODE(Return)(current, std::move(expr));
         }
         case TokenType::Case: {
+            // case constant-expression:
             Advance();
             auto expr = ExpectConstantExpression();
             EatType(TokenType::Colon);
@@ -44,6 +45,7 @@ NODE(StatementNode) Parser::ExpectStatement() {
             return MAKE_NODE(CaseStatement)(current, std::move(expr), std::move(statement));
         }
         case TokenType::Default: {
+            // default :
             Advance();
             EatType(TokenType::Colon);
             auto statement = ExpectStatement();
@@ -55,7 +57,7 @@ NODE(StatementNode) Parser::ExpectStatement() {
             Advance();
             EatType(TokenType::LParen);
             auto condition = ExpectExpression();
-            EatType(TokenType::LParen);
+            EatType(TokenType::RParen);
             auto statement = ExpectStatement();
             if (!EndOfStream() && Current()->Type == TokenType::Else) {
                 Advance();
@@ -65,6 +67,7 @@ NODE(StatementNode) Parser::ExpectStatement() {
             return MAKE_NODE(IfStatement)(current, std::move(condition), std::move(statement));
         }
         case TokenType::Switch: {
+            // switch ( expression ) statement
             Advance();
             EatType(TokenType::LParen);
             auto expression = ExpectExpression();
@@ -73,6 +76,7 @@ NODE(StatementNode) Parser::ExpectStatement() {
             return MAKE_NODE(Switch)(current, std::move(expression), std::move(statement));
         }
         case TokenType::While: {
+            // while ( expression ) statement
             Advance();
             EatType(TokenType::LParen);
             auto condition = ExpectExpression();
@@ -81,6 +85,7 @@ NODE(StatementNode) Parser::ExpectStatement() {
             return MAKE_NODE(While)(current, std::move(condition), std::move(statement));
         }
         case TokenType::Do: {
+            // do
             Advance();
             auto statement = ExpectStatement();
             EatType(TokenType::While);
@@ -91,6 +96,7 @@ NODE(StatementNode) Parser::ExpectStatement() {
             return MAKE_NODE(DoWhile)(current, std::move(statement), std::move(condition));
         }
         case TokenType::For: {
+            // for ([declaration]opt [expression]opt ; [expression]opt ; [expression]opt ) statement
             Advance();
             EatType(TokenType::LParen);
             NODE(DeclNode) declaration = nullptr;
@@ -144,6 +150,7 @@ NODE(StatementNode) Parser::ExpectStatement() {
             std::string name = std::static_pointer_cast<Identifier>(current)->Name;
             if (Next()->Type == TokenType::Colon) {
                 // labeled statement
+                // identifier : statement
                 Advance();  // identifier
                 Advance();  // colon
                 auto statement = ExpectStatement();

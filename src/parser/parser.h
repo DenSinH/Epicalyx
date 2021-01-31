@@ -29,7 +29,7 @@ public:
         this->Tokens = tokenizer->Tokens;
     }
 
-    NODE(Node) Parse() { return nullptr; };
+    std::vector<NODE(Node)> Parse();
 
     TOKEN Current() {
         if (Index < Tokens.size()) {
@@ -127,6 +127,8 @@ private:
 
     NODE(StatementNode) ExpectStatement();
     NODE(CompoundStatement) ExpectCompoundStatement();
+
+    NODE(Node) ExpectTranslationUnit();
 
     template<typename T>
     std::vector<NODE(T)> ExpectListGreedy() {

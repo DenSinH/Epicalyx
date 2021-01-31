@@ -163,6 +163,7 @@ NODE(DeclarationSpecifiers) Parser::ExpectDeclarationSpecifiers() {
     }
 
     if (specifiers->Empty()) {
+        auto current = Current();
         throw std::runtime_error("Empty declaration specifiers list");
     }
 
@@ -195,6 +196,7 @@ NODE(DirectDeclaratorParameterListPostfix) Parser::ExpectParameterListPostfix() 
         if (Current()->Type == TokenType::Comma) {
             Advance();
             if (Current()->Type == TokenType::Ellipsis) {
+                Advance();
                 parameter_list->Variadic = true;
                 // ellipsis is always at the end
                 break;

@@ -32,7 +32,7 @@ add_library(Parser STATIC
         statement/compound.h
         statement/selection.h
         statement/jump.h
-        statement/iteration.h statement/empty.h)
+        statement/iteration.h statement/empty.h translation_unit/function_definition.h parser_translation_unit.cpp Parser.cpp parser.cpp)
 
 include_directories(
         ${PROJECT_SOURCE_DIR}/include
