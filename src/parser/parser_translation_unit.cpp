@@ -60,5 +60,15 @@ NODE(Node) Parser::ExpectTranslationUnit() {
     } while (true);
 
     EatType(TokenType::SemiColon);
+
+    // add typedef names if any
+#ifndef NDEBUG
+    if (TypedefNames.size() != 1) {
+        // debug check
+        log_fatal("Invalid typedef name stack size in global scope: %d", TypedefNames.size());
+    }
+#endif
+    declaration->AddTypedefNames(TypedefNames.back());
+
     return declaration;
 }

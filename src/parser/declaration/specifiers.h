@@ -235,6 +235,15 @@ class DeclarationSpecifiers : public Node {
 public:
     DeclarationSpecifiers(const TOKEN& tok) : Node(tok) {};
 
+    bool IsTypedef() const {
+        for (auto& specifier : StorageClassSpecifiers) {
+            if (specifier->Class == StorageClassSpecifier::StorageClass::Typedef) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     template<typename T>
     void AddSpecifier(NODE(T)&& specifier);
 

@@ -388,8 +388,8 @@ NODE(TypeName) Parser::ExpectTypeName() {
     // abstract-declarator (opt)
     // NOTE: from the grammar: after a type-name is always an RParen
     if (Current()->Type != TokenType::RParen) {
-        auto declarator = ExpectDeclarator<Declarator>();
-        type_name->Declar = std::move(declarator);
+        auto declarator = ExpectDeclarator<AnyDeclarator>();
+        type_name->SetDeclar(std::move(declarator));
     }
 
     return type_name;
@@ -421,5 +421,7 @@ NODE(Declaration) Parser::ExpectDeclaration() {
         }
     } while (true);
     EatType(TokenType::SemiColon);
+
+    declaration->AddTypedefNames(TypedefNames.back());
     return declaration;
 }

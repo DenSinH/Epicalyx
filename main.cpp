@@ -6,7 +6,7 @@
 
 
 int main() {
-    auto file = std::make_shared<File>("examples/parsing/program/test.c");
+    auto file = std::make_shared<File>("examples/parsing/program/typedefs.c");
 
     auto t = new Tokenizer();
 

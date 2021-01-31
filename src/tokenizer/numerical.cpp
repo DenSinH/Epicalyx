@@ -27,7 +27,7 @@ TOKEN Tokenizer::ReadNumericConstant(
     value.push_back(*current);
 
     if (*current == '0') {
-        if ((current != end) && (*next == 'x' || *next == 'X')) {
+        if ((current != end) && (next != end) && (*next == 'x' || *next == 'X')) {
             // hex-prefex
             type = NumberType::Hex;
             value.push_back('x');

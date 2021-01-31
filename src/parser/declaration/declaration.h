@@ -21,6 +21,10 @@ public:
     NODE(Declarator) Declar;
     NODE(Initializer) Init = nullptr;  // optional
 
+    std::string GetName() const {
+        return Declar->GetName();
+    }
+
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "InitDeclarator: "};
         for (auto& s : Declar->Repr()) {
@@ -47,6 +51,18 @@ public:
 
     NODE(DeclarationSpecifiers) Specifiers;
     std::vector<NODE(InitDeclarator)> InitDeclarators;
+
+
+    virtual void AddTypedefNames(std::set<std::string>& typedef_names) {
+        // keep track of typedef names
+        if (!Specifiers->IsTypedef()) {
+            return;
+        }
+
+        for (auto& decl : InitDeclarators) {
+            typedef_names.insert(decl->GetName());
+        }
+    }
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "Declaration: "};

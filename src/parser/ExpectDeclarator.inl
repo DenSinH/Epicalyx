@@ -99,7 +99,7 @@ NODE(T) Parser::ExpectDeclarator() {
                 else {
                     auto nested_declarator = ExpectDeclarator<T>();
                     EatType(TokenType::RParen);
-                    declarator->Declarator::SetNested(std::move(nested_declarator));
+                    declarator->SetNested(std::move(nested_declarator));
                 }
                 break;
             }

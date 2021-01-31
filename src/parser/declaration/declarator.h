@@ -293,6 +293,13 @@ public:
 
     }
 
+    std::string GetName() const {
+        if (Nested) {
+            return Nested->GetName();
+        }
+        return Name;
+    }
+
     const std::string Name;
     const NODE(Declarator) Nested;
 

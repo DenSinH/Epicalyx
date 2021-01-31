@@ -23,7 +23,15 @@ public:
         TypeQualifiers.push_back(std::move(qualifier));
     }
 
-    NODE(Declarator) Declar = nullptr;  // optional
+    void SetDeclar(NODE(AnyDeclarator)&& declar) {
+        if (Declar) {
+            log_fatal("Tried to set type-name declartor when one was already present");
+        }
+
+        Declar = std::move(declar);
+    }
+
+    NODE(AnyDeclarator) Declar = nullptr;  // optional
     std::vector<NODE(TypeSpecifier)> TypeSpecifiers = {};
     std::vector<NODE(TypeQualifier)> TypeQualifiers = {};
 

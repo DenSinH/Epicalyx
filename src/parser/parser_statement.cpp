@@ -177,6 +177,9 @@ NODE(CompoundStatement) Parser::ExpectCompoundStatement() {
     auto current = Current();
     EatType(TokenType::LBrace);
 
+    // new scope for typedef names
+    TypedefNames.emplace_back(std::set<std::string>());
+
     auto compound = MAKE_NODE(CompoundStatement)(current);
     while (Current()->Type != TokenType::RBrace) {
         if (IsDeclarationSpecifier(Current())) {
@@ -187,5 +190,7 @@ NODE(CompoundStatement) Parser::ExpectCompoundStatement() {
         }
     }
     EatType(TokenType::RBrace);
+
+    TypedefNames.pop_back();
     return compound;
 }

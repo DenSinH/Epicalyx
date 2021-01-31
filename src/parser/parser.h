@@ -84,7 +84,8 @@ private:
     std::vector<TOKEN> Tokens;
     unsigned long long Index = 0;
 
-    std::set<std::string> TypedefNames = {};
+    std::vector<std::set<std::string>> TypedefNames = {{}};  // global scope initially
+    std::set<std::string> _TypedefNames = {};
     bool IsTypedefName(const TOKEN& token);
     bool IsTypeSpecifier(const TOKEN& token);
     bool IsDeclarationSpecifier(const TOKEN& token);
