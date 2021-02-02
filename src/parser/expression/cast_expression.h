@@ -28,8 +28,8 @@ public:
         return repr;
     }
 
-    bool IsConstant() const override {
-        return Right->IsConstant();
+    bool IsConstant(const ParserState& state) const override {
+        return Right->IsConstant(state);
     }
 };
 

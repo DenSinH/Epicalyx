@@ -6,15 +6,18 @@
 #include <string>
 #include <memory>
 #include <utility>
+#include <stdexcept>
 
 #include "../tokenizer/tokens.h"
 #include "../state/state.h"
+#include "types/types.h"
 
 #define REPR_PADDING "|   "
 #define NODE(_type) std::unique_ptr<_type>
 #define MAKE_NODE(_type) std::make_unique<_type>
 
 class Parser;
+class ParserState;
 
 class Node : public InFile {
 public:
@@ -39,12 +42,23 @@ public:
     explicit StatementNode(const TOKEN& tok) : BlockItem(tok) {}
 };
 
-class ExprNode : public StatementNode {
+class Typed {
+public:
+    virtual TYPE GetType(const ParserState& state) {
+        throw std::runtime_error("Not implemented");
+    }
+};
+
+class ExprNode : public StatementNode, Typed {
 public:
     explicit ExprNode(const TOKEN& tok) : StatementNode(tok) {}
 
-    virtual bool IsConstant() const {
+    virtual bool IsConstant(const ParserState& state) const {
         return false;
+    }
+
+    virtual TYPE ConstEval(const ParserState& state) const {
+        throw std::runtime_error("Expression is not a constant");
     }
 };
 
@@ -59,12 +73,12 @@ public:
     }
 };
 
-class TypeNode : public Node {
+class TypeSpecifierNode : public Node {
 public:
-    explicit TypeNode(const TOKEN& tok) : Node(tok) {}
+    explicit TypeSpecifierNode(const TOKEN& tok) : Node(tok) {}
 };
 
-class DeclNode : public BlockItem {
+class DeclNode : public BlockItem, Typed {
 public:
     explicit DeclNode(const TOKEN& tok) : BlockItem(tok) {}
 };

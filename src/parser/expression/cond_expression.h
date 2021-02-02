@@ -37,14 +37,18 @@ public:
         return repr;
     }
 
-    bool IsConstant() const override {
-        if (!Left->IsConstant()) {
+    bool IsConstant(const ParserState& state) const override {
+        if (!Left->IsConstant(state)) {
             return false;
         }
 
-        // todo:
-        // if Left->Eval() / return True->IsConstant() / False->IsConstant()
-        return True->IsConstant() && False->IsConstant();
+        auto left_value = Left->ConstEval(state);
+        if (left_value->GetBoolValue()) {
+            return True->IsConstant(state);
+        }
+        else {
+            return False->IsConstant(state);
+        }
     }
 };
 

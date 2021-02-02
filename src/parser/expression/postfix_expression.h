@@ -51,8 +51,8 @@ public:
         return repr;
     }
 
-    bool IsConstant() const override {
-        return Left->IsConstant() && Right->IsConstant();
+    bool IsConstant(const ParserState& state) const override {
+        return Left->IsConstant(state) && Right->IsConstant(state);
     }
 };
 
@@ -127,8 +127,8 @@ public:
         return repr;
     }
 
-    bool IsConstant() const override {
-        return Left->IsConstant();
+    bool IsConstant(const ParserState& state) const override {
+        return Left->IsConstant(state);
     }
 };
 

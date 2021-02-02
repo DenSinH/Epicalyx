@@ -4,7 +4,7 @@ add_library(Tokenizer STATIC
         tokens.h
         punctuators.h
         keywords.h
-        types.h
+        token_types.h
         strings.cpp
         numerical.cpp
         tokens.cpp)

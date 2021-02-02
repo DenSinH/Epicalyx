@@ -11,7 +11,7 @@ NODE(StaticAssertDecl) Parser::ExpectStaticAssert() {
     auto expr = ExpectConstantExpression();
     EatType(TokenType::Comma);
     ExpectType(TokenType::ConstString);
-    const std::string& message = std::static_pointer_cast<StringConstant>(Current())->Value;
+    const std::string& message = Current()->StringValue();
     EatType(TokenType::ConstString);
     EatType(TokenType::RParen);
     EatType(TokenType::SemiColon);
@@ -27,7 +27,7 @@ NODE(TypeSpecifier) Parser::ExpectTypeSpecifier() {
         Advance();
     }
     else if (IsTypedefName(current)) {
-        type = MAKE_NODE(TypedefName)(current, std::static_pointer_cast<Identifier>(current)->Name);
+        type = MAKE_NODE(TypedefName)(current, current->IdentifierName());
         Advance();
     }
     else if (StructSpecifier::Is(current->Type) || UnionSpecifier::Is(current->Type)) {

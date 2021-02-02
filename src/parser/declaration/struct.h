@@ -12,17 +12,17 @@ public:
         this->Field = std::move(field);
         this->Size = std::move(size);
 
-        if (Size && !Size->IsConstant()) {
-            throw std::runtime_error("Explicit struct declarator size is not a constant expression");
-        }
+//        if (Size && !Size->IsConstant(<#initializer#>)) {
+//            throw std::runtime_error("Explicit struct declarator size is not a constant expression");
+//        }
     }
 
     explicit StructDeclarator(const TOKEN& tok, NODE(ExprNode)&& size) : Node(tok) {
         this->Size = std::move(size);
 
-        if (Size && !Size->IsConstant()) {
-            throw std::runtime_error("Explicit struct declarator size is not a constant expression");
-        }
+//        if (Size && !Size->IsConstant(<#initializer#>)) {
+//            throw std::runtime_error("Explicit struct declarator size is not a constant expression");
+//        }
     }
 
     explicit StructDeclarator(const TOKEN& tok, NODE(Declarator)&& field) : Node(tok) {

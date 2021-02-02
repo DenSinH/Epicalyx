@@ -13,9 +13,9 @@ public:
             Expression(std::move(expression)),
             Message(message) {
 
-        if (!Expression->IsConstant()) {
-            throw std::runtime_error("Non constant expression in static assert expression");
-        }
+//        if (!Expression->IsConstant(<#initializer#>)) {
+//            throw std::runtime_error("Non constant expression in static assert expression");
+//        }
     }
 
     const NODE(ExprNode) Expression;  // must be constant

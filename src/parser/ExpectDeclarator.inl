@@ -23,7 +23,7 @@ NODE(T) Parser::ExpectDeclarator() {
         }
         else {
             EatType(TokenType::Identifier);
-            const std::string& name = std::static_pointer_cast<Identifier>(current)->Name;
+            const std::string& name = current->IdentifierName();
             declarator = MAKE_NODE(Declarator)(current, name, std::move(pointers));
         }
     }
@@ -42,7 +42,7 @@ NODE(T) Parser::ExpectDeclarator() {
                     if (declarator->HasNested()) {
                         log_fatal("Nested declarator on abstract declarator -> declarator conversion");
                     }
-                    const std::string& name = std::static_pointer_cast<Identifier>(current)->Name;
+                    const std::string& name = current->IdentifierName();
                     declarator = MAKE_NODE(Declarator)(current, name, std::move(declarator->Pointers));
                     Advance();
                 }

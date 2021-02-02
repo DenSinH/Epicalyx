@@ -33,7 +33,7 @@ public:
         return { std::string("Identifier: ") + ID };
     }
 
-    bool IsConstant() const override {
+    bool IsConstant(const ParserState &state) const override {
         // todo: We don't know this yet?
         return false;
     }
@@ -54,7 +54,7 @@ public:
         return { std::string("Constant: ") + std::to_string(Value) };
     }
 
-    bool IsConstant() const override {
+    bool IsConstant(const ParserState &state) const override {
         return true;
     }
 };
@@ -72,7 +72,7 @@ public:
         return { std::string("Constant String: ") + Value };
     }
 
-    bool IsConstant() const override {
+    bool IsConstant(const ParserState &state) const override {
         return true;
     }
 };

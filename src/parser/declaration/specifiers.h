@@ -211,9 +211,9 @@ public:
 
     explicit AlignmentSpecifierExpr(const TOKEN& tok, NODE(ExprNode)&& expression) : AlignmentSpecifier(tok) {
         Expression = std::move(expression);
-        if (!Expression->IsConstant()) {
-            throw std::runtime_error("Alignment specifier expression is not a constant");
-        }
+//        if (!Expression->IsConstant(<#initializer#>)) {
+//            throw std::runtime_error("Alignment specifier expression is not a constant");
+//        }
     }
 
     NODE(ExprNode) Expression;

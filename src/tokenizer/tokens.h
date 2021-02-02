@@ -6,7 +6,7 @@
 #include <vector>
 #include <map>
 
-#include "types.h"
+#include "token_types.h"
 #include "../state/state.h"
 #define TOKEN std::shared_ptr<Token>
 #define MAKE_TOKEN(_type) std::make_shared<_type>
@@ -24,9 +24,18 @@ public:
         return Token(INFILE_VALUES, TokenClass::Keyword, type);
     }
 
-    virtual std::string Repr() {
+    virtual std::string IdentifierName() const {
+        throw std::runtime_error("Invalid token: expected identfier");
+    }
+
+    virtual std::string StringValue() const {
+        throw std::runtime_error("Invalid token: expected string literal");
+    }
+
+    virtual std::string Repr() const {
         return TypeString(Type);
     }
+
     const TokenClass Class;
     const TokenType Type;
 
@@ -62,9 +71,14 @@ public:
     }
 
     const std::string Value;
-    std::string Repr() override {
+    std::string Repr() const override {
         return "\"" + Value + "\"";
     }
+
+    std::string StringValue() const override {
+        return Value;
+    }
+
 };
 
 template<typename T>
@@ -77,7 +91,7 @@ public:
     }
 
     const T Value;
-    std::string Repr() override {
+    std::string Repr() const override {
         return std::to_string(Value);
     }
 };
@@ -92,7 +106,11 @@ public:
     }
 
     const std::string Name;
-    std::string Repr() override {
+    std::string Repr() const override {
+        return Name;
+    }
+
+    std::string IdentifierName() const override {
         return Name;
     }
 };

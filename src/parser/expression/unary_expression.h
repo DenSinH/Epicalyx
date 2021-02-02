@@ -44,8 +44,8 @@ public:
     const UnOpType Type;
     const NODE(ExprNode) Right;
 
-    bool IsConstant() const override {
-        return Right->IsConstant();
+    bool IsConstant(const ParserState& state) const override {
+        return Right->IsConstant(state);
     }
 
     std::list<std::string> Repr() const override {
@@ -89,7 +89,7 @@ public:
 
     const NODE(TypeName) Right;
 
-    bool IsConstant() const override {
+    bool IsConstant(const ParserState &state) const override {
         return true;
     }
 
@@ -111,7 +111,7 @@ public:
     }
 
     const NODE(ExprNode) Right;
-    bool IsConstant() const override {
+    bool IsConstant(const ParserState &state) const override {
         return true;
     }
 
@@ -134,7 +134,7 @@ public:
 
     const NODE(TypeName) Right;
 
-    bool IsConstant() const override {
+    bool IsConstant(const ParserState &state) const override {
         return true;
     }
 

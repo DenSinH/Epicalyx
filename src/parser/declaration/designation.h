@@ -16,9 +16,9 @@ public:
     explicit ArrayMemberDesignator(const TOKEN& tok, NODE(ExprNode)&& member) : Designator(tok) {
         Member = std::move(member);
 
-        if (!Member->IsConstant()) {
-            throw std::runtime_error("Array member designator is not a constant");
-        }
+//        if (!Member->IsConstant(<#initializer#>)) {
+//            throw std::runtime_error("Array member designator is not a constant");
+//        }
     }
 
     NODE(ExprNode) Member;  // must be constant

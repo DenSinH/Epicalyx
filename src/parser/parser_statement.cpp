@@ -20,7 +20,7 @@ NODE(StatementNode) Parser::ExpectStatement() {
             // goto identifier ;
             Advance();  // goto
             ExpectType(TokenType::Identifier);
-            std::string label = std::static_pointer_cast<Identifier>(Current())->Name;
+            std::string label = Current()->IdentifierName();
             Advance();  // identifier
             EatType(TokenType::SemiColon);
             return MAKE_NODE(Goto)(current, label);
@@ -147,7 +147,7 @@ NODE(StatementNode) Parser::ExpectStatement() {
             return MAKE_NODE(EmptyStatement)(current);
         }
         case TokenType::Identifier: {
-            std::string name = std::static_pointer_cast<Identifier>(current)->Name;
+            const std::string name = current->IdentifierName();
             if (Next()->Type == TokenType::Colon) {
                 // labeled statement
                 // identifier : statement

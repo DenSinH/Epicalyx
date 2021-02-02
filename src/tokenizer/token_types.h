@@ -1,5 +1,5 @@
-#ifndef EPICALYX_TYPES_H
-#define EPICALYX_TYPES_H
+#ifndef EPICALYX_TOKEN_TYPES_H
+#define EPICALYX_TOKEN_TYPES_H
 
 enum class TokenClass {
     Identifier,
@@ -132,4 +132,4 @@ enum class TokenType {
     // <: :> <% %> %: %:%: I don't know what these are
 };
 
-#endif //EPICALYX_TYPES_H
+#endif //EPICALYX_TOKEN_TYPES_H

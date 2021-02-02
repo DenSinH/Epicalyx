@@ -32,13 +32,22 @@ add_library(Parser STATIC
         statement/compound.h
         statement/selection.h
         statement/jump.h
-        statement/iteration.h statement/empty.h translation_unit/function_definition.h parser_translation_unit.cpp Parser.cpp parser.cpp)
+        statement/iteration.h
+        statement/empty.h
+        translation_unit/function_definition.h
+        parser_translation_unit.cpp
+        parser.cpp
+        types/types.h
+        parser_state.h)
 
 include_directories(
         ${PROJECT_SOURCE_DIR}/include
 )
 
+add_subdirectory(analysis)
+
 set_target_properties(Parser PROPERTIES LINKER_LANGUAGE CXX)
 
 
 target_include_directories(Parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/include)
+target_link_libraries(Parser Analysis)

@@ -5,13 +5,13 @@
 #include "specifiers.h"
 #include "declarator.h"
 
-class TypeName : public TypeNode {
+class TypeName : public TypeSpecifierNode {
 public:
-    explicit TypeName(const TOKEN& tok) : TypeNode(tok) {
+    explicit TypeName(const TOKEN& tok) : TypeSpecifierNode(tok) {
 
     }
 
-    explicit TypeName(const TOKEN& tok, NODE(Declarator)&& declar) : TypeNode(tok) {
+    explicit TypeName(const TOKEN& tok, NODE(Declarator)&& declar) : TypeSpecifierNode(tok) {
         Declar = std::move(declar);
     }
 

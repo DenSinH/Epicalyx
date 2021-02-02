@@ -8,7 +8,7 @@ NODE(ExprNode) Parser::ExpectPrimaryExpression() {
     switch (current->Class) {
         case TokenClass::Identifier: {
             Advance();
-            return MAKE_NODE(PrimaryExpressionIdentifier)(current, std::static_pointer_cast<Identifier>(current)->Name);
+            return MAKE_NODE(PrimaryExpressionIdentifier)(current, current->IdentifierName());
         }
         case TokenClass::NumericalConstant: {
             Advance();
@@ -35,7 +35,7 @@ NODE(ExprNode) Parser::ExpectPrimaryExpression() {
         }
         case TokenClass::StringConstant: {
             Advance();
-            return MAKE_NODE(PrimaryStringLiteral)(current, std::static_pointer_cast<StringConstant>(current)->Value);
+            return MAKE_NODE(PrimaryStringLiteral)(current, current->StringValue());
         }
         case TokenClass::Punctuator: {
             // has to be ( expression )
@@ -89,7 +89,7 @@ std::unique_ptr<ExprNode> Parser::ExpectPostfixExpression() {
                         MemberAccessExpression::MemberAccessType::Pointer;
                 Advance();
                 auto field = EatType(TokenType::Identifier);
-                node = MAKE_NODE(MemberAccessExpression)(current, std::move(node), std::static_pointer_cast<Identifier>(field)->Name, type);
+                node = MAKE_NODE(MemberAccessExpression)(current, std::move(node), field->IdentifierName(), type);
                 break;
             }
             case TokenType::Incr:

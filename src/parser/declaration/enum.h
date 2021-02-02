@@ -5,21 +5,21 @@
 #include <stdexcept>
 #include "specifiers.h"
 
-class Enumerator : public Node {
+class Enumerator : public DeclNode {
 public:
     explicit Enumerator(const TOKEN& tok, const std::string& name, NODE(ExprNode)&& value) :
-            Node(tok),
+            DeclNode(tok),
             Name(name) {
         this->Value = std::move(value);
 
-        if (Value && !Value->IsConstant()) {
-            throw std::runtime_error("Explicit enum value is not a constant expression");
-        }
+//        if (Value && !Value->IsConstant(<#initializer#>)) {
+//            throw std::runtime_error("Explicit enum value is not a constant expression");
+//        }
     }
 
     explicit Enumerator(const TOKEN& tok, const std::string& name) :
-            Node(tok),
-            Name(name ){
+            DeclNode(tok),
+            Name(name) {
     }
 
     const std::string Name;
