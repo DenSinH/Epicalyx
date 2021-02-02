@@ -1,6 +1,6 @@
 add_library(Analysis STATIC
         visitor.h
-)
+        visitor.cpp)
 
 include_directories(
         ${PROJECT_SOURCE_DIR}/include

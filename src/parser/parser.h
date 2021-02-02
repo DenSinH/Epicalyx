@@ -11,8 +11,8 @@
 #include <stdexcept>
 #include <variant>
 
-#include "declaration_nodes.h"
-#include "statement_nodes.h"
+#include "declaration/declaration_nodes.h"
+#include "statement/statement_nodes.h"
 
 
 class Parser : public Stateful {

@@ -2,7 +2,6 @@
 
 #include <tokenizer.h>
 #include <parser.h>
-#include <declaration_nodes.h>
 
 
 int main() {
@@ -12,6 +11,8 @@ int main() {
 
     t->Tokenize(file);
 
+//    auto tok = MAKE_TOKEN(Token)(std::make_shared<const std::string>(), 0, std::make_shared<const std::string>(), TokenClass::Identifier, TokenType::Identifier);
+//    auto test = MAKE_NODE(PrimaryExpressionIdentifier)(tok, "test");
     auto p = new Parser(t);
 
 //    try {

@@ -1,6 +1,8 @@
 #ifndef EPICALYX_PRIMARY_EXPRESSION_H
 #define EPICALYX_PRIMARY_EXPRESSION_H
 
+#include <utility>
+
 #include "../AST.h"
 
 class PrimaryExpression : public ExprNode {
@@ -21,22 +23,19 @@ public:
 
 class PrimaryExpressionIdentifier : public PrimaryExpression {
 public:
-    explicit PrimaryExpressionIdentifier(const TOKEN& tok, const std::string& id) :
-        PrimaryExpression(tok, PrimExprType::Identifier),
-        ID(id) {
+    explicit PrimaryExpressionIdentifier(const TOKEN& tok, std::string name) :
+            PrimaryExpression(tok, PrimExprType::Identifier),
+            Name(std::move(name)) {
 
     }
 
-    const std::string ID;
+    const std::string Name;
 
     std::list<std::string> Repr() const override {
-        return { std::string("Identifier: ") + ID };
+        return {std::string("Identifier: ") + Name };
     }
 
-    bool IsConstant(const ParserState &state) const override {
-        // todo: We don't know this yet?
-        return false;
-    }
+    bool IsConstant(const ParserState& state) const override; // requires knowledge about the ParserState struct
 };
 
 template<typename T>
@@ -54,9 +53,7 @@ public:
         return { std::string("Constant: ") + std::to_string(Value) };
     }
 
-    bool IsConstant(const ParserState &state) const override {
-        return true;
-    }
+    bool IsConstant(const ParserState &state) const override { return true; }
 };
 
 class PrimaryStringLiteral : public PrimaryExpression {
@@ -72,9 +69,7 @@ public:
         return { std::string("Constant String: ") + Value };
     }
 
-    bool IsConstant(const ParserState &state) const override {
-        return true;
-    }
+    bool IsConstant(const ParserState &state) const override { return true; }
 };
 
 #endif //EPICALYX_PRIMARY_EXPRESSION_H

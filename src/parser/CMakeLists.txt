@@ -1,10 +1,21 @@
 add_library(Parser STATIC
         parser.h
-        parser_expression.cpp
-        parser_declaration.cpp
-        parser_statement.cpp
         AST.h
+        parser_state.h
+
+        types/types.h
+
         parser_utils.cpp
+        parser.cpp
+
+        expression/expression_nodes.cpp
+        expression/parser_expression.cpp
+
+        declaration/parser_declaration.cpp
+
+        statement/parser_statement.cpp
+
+        expression/expression_nodes.h
         expression/primary_expression.h
         expression/postfix_expression.h
         expression/unary_expression.h
@@ -13,8 +24,10 @@ add_library(Parser STATIC
         expression/expression.h
         expression/assign_expression.h
         expression/cond_expression.h
-        declaration/specifiers.h
         expression/tables.cpp
+
+        declaration/declaration_nodes.h
+        declaration/specifiers.h
         declaration/enum.h
         declaration/struct.h
         declaration/tables.cpp
@@ -25,29 +38,26 @@ add_library(Parser STATIC
         declaration/declarator.h
         declaration/pointer.h
         declaration/typename.h
-        declaration_nodes.h
-        expression_nodes.h
+
+        statement/statement_nodes.h
         statement/labeled.h
-        statement_nodes.h
         statement/compound.h
         statement/selection.h
         statement/jump.h
         statement/iteration.h
         statement/empty.h
+
         translation_unit/function_definition.h
-        parser_translation_unit.cpp
-        parser.cpp
-        types/types.h
-        parser_state.h)
+        translation_unit/parser_translation_unit.cpp
+)
 
 include_directories(
         ${PROJECT_SOURCE_DIR}/include
 )
 
-add_subdirectory(analysis)
-
 set_target_properties(Parser PROPERTIES LINKER_LANGUAGE CXX)
 
-
 target_include_directories(Parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/include)
+
+add_subdirectory(analysis)
 target_link_libraries(Parser Analysis)

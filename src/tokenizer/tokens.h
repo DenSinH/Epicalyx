@@ -13,14 +13,14 @@
 
 class Token : public InFile {
 public:
-    explicit Token(INFILE_ARGS, TokenClass cls, TokenType type) :
+    explicit Token(INFILE_ARGS, TokenClass cls, enum TokenType type) :
         INFILE_CONSTRUCTOR,
         Class(cls),
         Type(type) {
 
     }
 
-    static Token Keyword(INFILE_ARGS, TokenType type) {
+    static Token Keyword(INFILE_ARGS, enum TokenType type) {
         return Token(INFILE_VALUES, TokenClass::Keyword, type);
     }
 
@@ -37,23 +37,23 @@ public:
     }
 
     const TokenClass Class;
-    const TokenType Type;
+    const enum TokenType Type;
 
     static std::string ClassString(TokenClass cls) {
         return ClassMap.at(cls);
     }
 
-    static std::string TypeString(TokenType type) {
+    static std::string TypeString(enum TokenType type) {
         return TypeMap.at(type);
     }
 private:
     static const std::map<TokenClass, std::string> ClassMap;
-    static const std::map<TokenType, std::string> TypeMap;
+    static const std::map<enum TokenType, std::string> TypeMap;
 };
 
 class Punctuator : public Token {
 public:
-    explicit Punctuator(INFILE_ARGS, TokenType type, unsigned flags) :
+    explicit Punctuator(INFILE_ARGS, enum TokenType type, unsigned flags) :
         Token(INFILE_VALUES, TokenClass::Punctuator, type) ,
         Flags(flags) {
 
@@ -84,7 +84,7 @@ public:
 template<typename T>
 class NumericalConstant : public Token {
 public:
-    NumericalConstant(INFILE_ARGS, TokenType type, const T& value) :
+    NumericalConstant(INFILE_ARGS, enum TokenType type, const T& value) :
         Token(INFILE_VALUES, TokenClass::NumericalConstant, type),
         Value(value) {
 

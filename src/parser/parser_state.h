@@ -34,6 +34,15 @@ struct ParserState {
         ConstantScope.back().emplace(name, type);
     }
 
+    bool IsConstant(const std::string& name) const {
+        for (auto t = ConstantScope.rbegin(); t != ConstantScope.rend(); t++) {
+            if (t->contains(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     CType::OptionalNumericValue GetOptionalValue(const std::string& name) const {
         return GetType(name).GetOptionalValue();
     }
