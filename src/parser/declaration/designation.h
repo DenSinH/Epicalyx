@@ -25,9 +25,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "ArrayMemberDesignator: [" };
-        for (auto& s : Member->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Member);
         repr.emplace_back("]");
         return repr;
     }

@@ -17,14 +17,10 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "CastExpr:" };
-        for (auto& s : Type->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Type);
 
         repr.emplace_back("Value:");
-        for (auto& s : Right->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Right);
         return repr;
     }
 

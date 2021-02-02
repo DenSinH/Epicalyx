@@ -23,17 +23,11 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "CondExpr: Cond:" };
-        for (auto& s : Left->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Left);
         repr.emplace_back("True:");
-        for (auto& s : True->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, True);
         repr.emplace_back("False:");
-        for (auto& s : False->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, False);
         return repr;
     }
 

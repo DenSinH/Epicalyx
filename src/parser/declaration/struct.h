@@ -38,15 +38,11 @@ public:
 
         if (Field) {
             repr.emplace_back("Declarator:");
-            for (auto& s : Field->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+            NestedRepr(repr, Field);
         }
         if (Size) {
             repr.emplace_back("Size:");
-            for (auto& s : Size->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+            NestedRepr(repr, Size);
         }
 
         return repr;
@@ -88,11 +84,7 @@ public:
         }
         repr.push_back(qualifiers);
 
-        for (auto& decl : Declarators) {
-            for (auto& s : decl->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
-        }
+        NestedRepr(repr, Declarators);
         return repr;
     }
 };
@@ -116,11 +108,7 @@ public:
         std::list<std::string> repr = {};
         repr.push_back(Keyword() + " " + ID);
 
-        for (auto& decl : DeclarationList) {
-            for (auto& s : decl->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
-        }
+        NestedRepr(repr, DeclarationList);
         return repr;
     }
 

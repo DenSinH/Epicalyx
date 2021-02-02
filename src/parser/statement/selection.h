@@ -29,19 +29,13 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "if: "};
-        for (auto& s : Condition->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Condition);
         repr.emplace_back("do:");
 
-        for (auto& s : If->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, If);
         if (Else) {
             repr.emplace_back("else:");
-            for (auto& s : Else->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+            NestedRepr(repr, Else);
         }
 
         return repr;
@@ -62,14 +56,10 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "switch: "};
-        for (auto& s : Expression->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Expression);
         repr.emplace_back("statement:");
 
-        for (auto& s : Statement->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Statement);
         return repr;
     }
 };

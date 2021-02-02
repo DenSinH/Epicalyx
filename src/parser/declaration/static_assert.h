@@ -23,9 +23,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "StaticAssert: " };
-        for (auto& s : Expression->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Expression);
         repr.push_back("Message: " + Message);
         return repr;
     }

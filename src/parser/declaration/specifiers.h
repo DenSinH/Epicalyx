@@ -283,33 +283,18 @@ public:
         std::string specifiers_qualifiers;
         for (auto& sc : StorageClassSpecifiers) {
             specifiers_qualifiers += sc->String() + " ";
-//            for (auto& s : sc->Repr()) {
-//                repr.push_back(REPR_PADDING + s);
-//            }
         }
         for (auto& ts : TypeSpecifiers) {
             specifiers_qualifiers += ts->String() + " ";
-//            for (auto& s : ts->Repr()) {
-//                repr.push_back(REPR_PADDING + s);
-//            }
         }
         for (auto& tq : TypeQualifiers) {
             specifiers_qualifiers += tq->String() + " ";
-//            for (auto& s : tq->Repr()) {
-//                repr.push_back(REPR_PADDING + s);
-//            }
         }
         for (auto& fs : FunctionSpecifiers) {
             specifiers_qualifiers += fs->String() + " ";
-//            for (auto& s : fs->Repr()) {
-//                repr.push_back(REPR_PADDING + s);
-//            }
         }
         for (auto& as : AlignmentSpecifiers) {
             specifiers_qualifiers += as->String() + " ";
-//            for (auto& s : as->Repr()) {
-//                repr.push_back(REPR_PADDING + s);
-//            }
         }
         repr.push_back(REPR_PADDING + specifiers_qualifiers);
         return repr;

@@ -39,13 +39,9 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "AssignExpr:" };
-        for (auto& s : Left->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Left);
         repr.emplace_back(Operation());
-        for (auto& s : Right->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Right);
         return repr;
     }
 

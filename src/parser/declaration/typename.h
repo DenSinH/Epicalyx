@@ -37,22 +37,11 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "TypeName: "};
-        for (auto& tq : TypeQualifiers) {
-            for (auto& s : tq->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
-        }
-
-        for (auto& ts : TypeSpecifiers) {
-            for (auto& s : ts->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
-        }
+        NestedRepr(repr, TypeQualifiers);
+        NestedRepr(repr, TypeSpecifiers);
 
         if (Declar) {
-            for (auto& s : Declar->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+            NestedRepr(repr, Declar);
         }
         return repr;
     }
@@ -68,9 +57,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "AtomicTypeSpecifier: "};
-        for (auto& s : Type->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Type);
         return repr;
     }
 };
@@ -86,9 +73,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "AlignmentSpecifierTypeName: "};
-        for (auto& s : Type->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Type);
         return repr;
     }
 };

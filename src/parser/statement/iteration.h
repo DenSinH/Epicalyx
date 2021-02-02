@@ -17,14 +17,10 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "while: {" };
-        for (auto& s : Condition->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Condition);
         repr.emplace_back("do:");
 
-        for (auto& s : Body->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Body);
         return repr;
     }
 };
@@ -43,14 +39,10 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "do: {" };
-        for (auto& s : Body->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Body);
 
         repr.emplace_back("while:");
-        for (auto& s : Condition->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Condition);
 
         return repr;
     }
@@ -86,36 +78,26 @@ public:
 
         repr.emplace_back("declaration:");
         if (Declaration) {
-            for (auto& s : Declaration->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+            NestedRepr(repr, Declaration);
         }
 
         repr.emplace_back("initialization:");
         if (Initialization) {
-            for (auto& s : Initialization->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+            NestedRepr(repr, Initialization);
         }
 
         repr.emplace_back("condition:");
         if (Condition) {
-            for (auto& s : Condition->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+            NestedRepr(repr, Condition);
         }
 
         repr.emplace_back("updation:");
         if (Updation) {
-            for (auto& s : Updation->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+            NestedRepr(repr, Updation);
         }
 
         repr.emplace_back("do:");
-        for (auto& s : Body->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Body);
 
         return repr;
     }

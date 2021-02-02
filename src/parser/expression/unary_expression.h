@@ -50,9 +50,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "UnaryExpression: " + Operation() };
-        for (auto& s : Right->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Right);
         return repr;
     }
 
@@ -95,9 +93,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "SizeOfTypeExpression: " };
-        for (auto& s : Right->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Right);
         return repr;
     }
 };
@@ -117,9 +113,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "SizeOfExpression: " };
-        for (auto& s : Right->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Right);
         return repr;
     }
 };
@@ -140,9 +134,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "AlignOf: " };
-        for (auto& s : Right->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Right);
         return repr;
     }
 };

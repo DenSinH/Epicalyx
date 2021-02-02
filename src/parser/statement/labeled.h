@@ -26,9 +26,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "label: " + Label};
-        for (auto& s : Statement->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Statement);
         return repr;
     }
 };
@@ -45,14 +43,10 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "case: "};
-        for (auto& s : Expression->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Expression);
 
         repr.emplace_back("statement:");
-        for (auto& s : Statement->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Statement);
         return repr;
     }
 };
@@ -66,9 +60,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "default: "};
-        for (auto& s : Statement->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Statement);
         return repr;
     }
 };

@@ -30,14 +30,8 @@ public:
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "InitializerList: " };
         for (auto& di : List) {
-            for (auto& des : di.first) {
-                for (auto& s : des->Repr()) {
-                    repr.push_back(REPR_PADDING + s);
-                }
-            }
-            for (auto& s : di.second->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+            NestedRepr(repr, di.first);
+            NestedRepr(repr, di.second);
         }
         return repr;
     }
@@ -53,9 +47,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "AssignmentInitializer: " };
-        for (auto& s : Expression->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Expression);
         return repr;
     }
 };

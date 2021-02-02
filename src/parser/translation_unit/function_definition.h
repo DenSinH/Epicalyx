@@ -27,18 +27,12 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "function: "};
-        for (auto& s : Specifiers->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Specifiers);
         repr.emplace_back("declarator:");
-        for (auto& s : Decl->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Decl);
 
         repr.emplace_back("body:");
-        for (auto& s : Body->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Body);
         return repr;
     }
 };

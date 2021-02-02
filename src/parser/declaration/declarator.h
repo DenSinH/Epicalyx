@@ -54,21 +54,13 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { NameRepr() };
-        for (auto& ptr : Pointers) {
-            for (auto& s : ptr->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
-        }
 
+        Node::NestedRepr(repr, Pointers);
         for (auto& s : NestedRepr()) {
             repr.push_back(REPR_PADDING + s);
         }
+        Node::NestedRepr(repr, Postfixes);
 
-        for (auto& pf : Postfixes) {
-            for (auto& s : pf->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
-        }
         return repr;
     }
 
@@ -129,9 +121,7 @@ public:
         repr.push_back(qualifiers);
 
         if (Size) {
-            for (auto& s : Size->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+            NestedRepr(repr, Size);
         }
 
         return repr;
@@ -159,14 +149,9 @@ public:
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "ParameterDeclaration: " };
 
-        for (auto& s : Specifiers->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
-
+        NestedRepr(repr, Specifiers);
         if (Declar) {
-            for (auto& s : Declar->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+            NestedRepr(repr, Declar);
         }
 
         return repr;
@@ -195,11 +180,7 @@ public:
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "DirectDeclaratorParameterListPostfix: " };
 
-        for (auto& param : ParameterTypeList) {
-            for (auto& s : param->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
-        }
+        NestedRepr(repr, ParameterTypeList);
 
         if (Variadic) {
             repr.emplace_back("...");
@@ -268,9 +249,7 @@ protected:
         std::list<std::string> repr = {};
         if (Nested) {
             repr.emplace_back("Nested:");
-            for (auto& s : Nested->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+            Node::NestedRepr(repr, Nested);
         }
         return repr;
     }
@@ -319,9 +298,7 @@ protected:
         std::list<std::string> repr = {};
         if (Nested) {
             repr.emplace_back("Nested:");
-            for (auto& s : Nested->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+            Node::NestedRepr(repr, Nested);
         }
         return repr;
     }

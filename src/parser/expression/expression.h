@@ -17,12 +17,8 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = {};
-        for (auto& s : Left->Repr()) {
-            repr.emplace_back(s);
-        }
-        for (auto& s : Right->Repr()) {
-            repr.emplace_back(s);
-        }
+        NestedRepr(repr, Left);
+        NestedRepr(repr, Right);
         return repr;
     }
 };

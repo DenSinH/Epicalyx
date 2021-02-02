@@ -28,9 +28,7 @@ public:
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "Enumerator: " + Name };
         if (Value) {
-            for (auto& s : Value->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
+            NestedRepr(repr, Value);
         }
         return repr;
     }
@@ -57,11 +55,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "EnumSpecifier: " + ID };
-        for (auto& enumerator : EnumeratorList) {
-            for (auto& s : enumerator->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
-        }
+        NestedRepr(repr, EnumeratorList);
         return repr;
     }
 

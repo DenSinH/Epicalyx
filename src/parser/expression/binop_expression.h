@@ -50,12 +50,8 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "BinOp: " + Operation() };
-        for (auto& s : Left->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
-        for (auto& s : Right->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Left);
+        NestedRepr(repr, Right);
         return repr;
     }
 

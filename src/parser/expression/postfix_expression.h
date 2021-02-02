@@ -41,13 +41,9 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "ArrayAccessExpr:" };
-        for (auto& s : Left->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Left);
         repr.emplace_back("Element");
-        for (auto& s : Right->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Right);
         return repr;
     }
 
@@ -84,13 +80,9 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "FunctionCallExpr:" };
-        for (auto& s : Func->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Func);
         repr.emplace_back("Args");
-        for (auto& s : Args->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Args);
         return repr;
     }
 };
@@ -121,9 +113,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { std::string("MemberAccessExpr:") + (AccessType == MemberAccessType::Direct ? "." : "->") + Member};
-        for (auto& s : Left->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Left);
         return repr;
     }
 
@@ -156,9 +146,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { std::string("PostCrementExpression:") + (Type == CrementType::Increment ? "++" : "--") };
-        for (auto& s : Left->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Left);
         return repr;
     }
 };
@@ -184,13 +172,8 @@ public:
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "TypeInitializerExpr:" };
 
-        for (auto& s : Type->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
-
-        for (auto& s : Initializers->Repr()) {
-            repr.emplace_back(REPR_PADDING + s);
-        }
+        NestedRepr(repr, Type);
+        NestedRepr(repr, Initializers);
         return repr;
     }
 };

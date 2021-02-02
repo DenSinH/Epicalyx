@@ -44,6 +44,23 @@ public:
             printf("%s\n", s.c_str());
         }
     }
+
+protected:
+    template<typename N>
+    static void NestedRepr(std::list<std::string>& repr, const NODE(N)& node) {
+        for (auto& s : node->Repr()) {
+            repr.push_back(REPR_PADDING + s);
+        }
+    }
+
+    template<typename N>
+    static void NestedRepr(std::list<std::string>& repr, const std::vector<NODE(N)>& nodes) {
+        for (auto& n : nodes) {
+            for (auto& s : n->Repr()) {
+                repr.push_back(REPR_PADDING + s);
+            }
+        }
+    }
 };
 
 class BlockItem : public Node {

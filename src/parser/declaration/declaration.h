@@ -66,14 +66,10 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "Declaration: "};
-        for (auto& s : Specifiers->Repr()) {
-            repr.push_back(REPR_PADDING + s);
-        }
-        for (auto& id : InitDeclarators) {
-            for (auto& s : id->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
-        }
+
+        NestedRepr(repr, Specifiers);
+        NestedRepr(repr, InitDeclarators);
+
         return repr;
     }
 };

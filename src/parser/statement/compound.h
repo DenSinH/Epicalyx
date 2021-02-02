@@ -18,11 +18,7 @@ public:
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "Compound statement: {" };
-        for (auto& statement : Statements) {
-            for (auto& s : statement->Repr()) {
-                repr.push_back(REPR_PADDING + s);
-            }
-        }
+        NestedRepr(repr, Statements);
         repr.emplace_back("}");
         return repr;
     }
