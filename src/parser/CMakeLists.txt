@@ -49,7 +49,7 @@ add_library(Parser STATIC
 
         translation_unit/function_definition.h
         translation_unit/parser_translation_unit.cpp
-        types/type_utils.h)
+        types/type_utils.h types/type_propagation.h)
 
 include_directories(
         ${PROJECT_SOURCE_DIR}/include

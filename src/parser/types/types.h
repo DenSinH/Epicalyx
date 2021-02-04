@@ -59,7 +59,7 @@ struct CType {
     }
 
     virtual bool GetBoolValue() const {
-        return false;
+        throw std::runtime_error("Type cannot be converted to bool");
     }
 
     virtual std::string to_string() const noexcept {
@@ -129,15 +129,21 @@ struct PointerType : public CType {
     std::string to_string() const noexcept override {
         return "(" + Contained->to_string() + ") *";
     }
+
+protected:
+    PointerType(CTYPE contained, BaseType base_type) :
+            CType(base_type),
+            Contained(contained) {
+
+    }
 };
 
-struct ArrayType : public CType {
-    explicit ArrayType() : CType(BaseType::Array) {
+struct ArrayType : public PointerType {
+    explicit ArrayType(CTYPE contained) : PointerType(contained, BaseType::Array) {
 
     }
 
     size_t Size;
-    CTYPE Contained;
 
     bool IsComplete() const override {
         return true;
@@ -203,7 +209,11 @@ struct StructUnionType : public CType {
         Fields.push_back(Field(name, contained));
     }
 
-    std::vector<Field> Fields;
+    bool IsComplete() const override {
+        return Fields.size() != 0;
+    }
+
+    std::vector<Field> Fields;  // empty if struct was only declared but never defined
 };
 
 struct StructType : public StructUnionType<CType::BaseType::Struct> {
@@ -223,61 +233,6 @@ struct UnionType : public StructUnionType<CType::BaseType::Union> {
 
     std::string to_string() const noexcept override {
         return "union";
-    }
-};
-
-struct TypePropagation {
-
-    template<typename L, typename R>
-    static CTYPE Add(const TYPE(ValueType<L>) left, const TYPE(ValueType<R>) right) {
-        if (left->has_value() && right->has_value()) {
-            return MAKE_TYPE(ValueType<std::common_type_t<L, R>>)(left->value() + right->value(), 0);
-        }
-        return MAKE_TYPE(ValueType<std::common_type_t<L, R>>)(0);
-    }
-
-    template<typename T>
-    static CTYPE Add(const TYPE(PointerType) left, const TYPE(ValueType<T>) right) {
-        if constexpr(!std::is_integral_v<T>) {
-            InvalidOperation("+", left, right);
-        }
-        if (!left->Contained->IsComplete()) {
-            IncompleteType(left->Contained);
-        }
-
-        return MAKE_TYPE(PointerType)(left->Contained);
-    }
-
-    template<typename T>
-    static CTYPE Add(const TYPE(ValueType<T>) left, const TYPE(PointerType) right) {
-        return Add(right, left);
-    }
-
-    template<typename T>
-    static CTYPE Add(const TYPE(ArrayType) left, const TYPE(ValueType<T>) right) {
-        if constexpr(!std::is_integral_v<T>) {
-            InvalidOperation("+", left, right);
-        }
-
-        return MAKE_TYPE(PointerType)(left->Contained);
-    }
-
-    template<typename T>
-    static CTYPE Add(const TYPE(ValueType<T>) left, const TYPE(ArrayType) right) {
-        return Add(right, left);
-    }
-
-    static CTYPE Add(CTYPE left, CTYPE right) {
-        InvalidOperation("+", left, right);
-    }
-
-private:
-    [[noreturn]] static void InvalidOperation(const std::string& op, CTYPE left, CTYPE right) {
-        throw std::runtime_error("invalid operands for " + op + ": " + left->to_string() + " and " + right->to_string());
-    }
-
-    [[noreturn]] static void IncompleteType(CTYPE right) {
-        throw std::runtime_error("operation on incomplete type: " + right->to_string());
     }
 };
 
