@@ -9,7 +9,7 @@
 #include "token_types.h"
 #include "../state/state.h"
 #define TOKEN std::shared_ptr<Token>
-#define MAKE_TOKEN(_type) std::make_shared<_type>
+#define MAKE_TOKEN(...) std::make_shared<__VA_ARGS__>
 
 class Token : public InFile {
 public:

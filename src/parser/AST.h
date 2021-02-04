@@ -13,15 +13,15 @@
 #include "types/types.h"
 
 #define REPR_PADDING "|   "
-#define NODE(_type) std::unique_ptr<_type>
-#define MAKE_NODE(_type) std::make_unique<_type>
+#define NODE(...) std::unique_ptr<__VA_ARGS__>
+#define MAKE_NODE(...) std::make_unique<__VA_ARGS__>
 
 class Parser;
 class ParserState;
 
 class Typed {
 public:
-    virtual TYPE GetType(const ParserState& state) const {
+    virtual CTYPE GetType(const ParserState& state) const {
         throw std::runtime_error("Not implemented");
     }
 };
@@ -73,7 +73,7 @@ public:
     explicit StatementNode(const TOKEN& tok) : BlockItem(tok) {}
 };
 
-class ExprNode : public StatementNode, public Typed, public Analyzable {
+class ExprNode : public StatementNode, Typed, Analyzable {
 public:
     explicit ExprNode(const TOKEN& tok) : StatementNode(tok) {}
 
@@ -81,7 +81,7 @@ public:
         return false;
     }
 
-    virtual TYPE ConstEval(const ParserState& state) const {
+    virtual CTYPE ConstEval(const ParserState& state) const {
         throw std::runtime_error("Expression is not a constant");
     }
 };
