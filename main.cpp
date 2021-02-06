@@ -13,13 +13,16 @@ int main() {
 
     CTYPE Int = MAKE_TYPE(ValueType<int>)(1, 0);
     CTYPE FloatPtr = MAKE_TYPE(PointerType)(MAKE_TYPE(ValueType<float>)(1.2, 0));
-    CTYPE IntPtr = MAKE_TYPE(PointerType)(MAKE_TYPE(ValueType<int>)(1.2, 0));
+    CTYPE IntPtr = MAKE_TYPE(PointerType)(MAKE_TYPE(ValueType<int>)(1, 0));
     auto shifted = (*Int).RShift(*Int);
     auto equal = (*Int).Eq(*Int);
-    auto test = (*IntPtr).Xor(*IntPtr);
+    auto test = (*IntPtr).Sub(*IntPtr);
+
+    std::cout << (*IntPtr).EqualType(*IntPtr) << std::endl;
 
     std::cout << shifted->ToString() << std::endl;
     std::cout << equal->ToString() << std::endl;
+    std::cout << test->ToString() << std::endl;
 
     t->Tokenize(file);
 
