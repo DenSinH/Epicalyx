@@ -13,6 +13,7 @@ add_executable(
         src/include/utils.h
         src/state/state.h
         src/file/file.h
+        src/include/default.h
 )
 
 if (MSVC)

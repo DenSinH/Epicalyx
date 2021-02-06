@@ -1,5 +1,6 @@
 #include "tokenizer.h"
 #include <climits>
+#include "default.h"
 
 enum class NumberType {
     Decimal,
@@ -184,33 +185,27 @@ TOKEN Tokenizer::ReadNumericConstant(
         double val = std::stod(value);
         auto fval = (float)val;
         if (is_long || ((double)fval != val)) {
-            return MakeToken<NumericalConstant<double>>(TokenType::ConstDouble, val);
+            return MakeToken<NumericalConstantToken<double>>(TokenType::ConstDouble, val);
         }
-        return MakeToken<NumericalConstant<float>>(TokenType::ConstFloat, fval);
+        return MakeToken<NumericalConstantToken<float>>(TokenType::ConstFloat, fval);
     }
     else {
         if (is_unsigned) {
             unsigned long long val = std::stoull(value);
-            if (is_long == 2 || val >= ULONG_MAX) {
-                return MakeToken<NumericalConstant<unsigned long long>>(TokenType::ConstUnsignedLongLong, val);
-            }
-            else if (is_long == 1 || val >= UINT_MAX) {
-                return MakeToken<NumericalConstant<unsigned long>>(TokenType::ConstUnsignedLong, val);
+            if (is_long == 2 || val >= UINT32_MAX) {
+                return MakeToken<NumericalConstantToken<u64>>(TokenType::ConstUnsignedLongLong, val);
             }
             else {
-                return MakeToken<NumericalConstant<unsigned int>>(TokenType::ConstUnsignedInt, val);
+                return MakeToken<NumericalConstantToken<u32>>(TokenType::ConstUnsignedInt, val);
             }
         }
         else {
             long long val = std::stoll(value);
-            if (is_long == 2 || val >= LONG_MAX) {
-                return MakeToken<NumericalConstant<long long>>(TokenType::ConstLongLong, val);
-            }
-            else if (is_long == 1 || val >= INT_MAX) {
-                return MakeToken<NumericalConstant<long>>(TokenType::ConstLong, val);
+            if (is_long == 2 || val >= INT32_MAX) {
+                return MakeToken<NumericalConstantToken<i64>>(TokenType::ConstLongLong, val);
             }
             else {
-                return MakeToken<NumericalConstant<int>>(TokenType::ConstInt, val);
+                return MakeToken<NumericalConstantToken<i32>>(TokenType::ConstInt, val);
             }
         }
     }

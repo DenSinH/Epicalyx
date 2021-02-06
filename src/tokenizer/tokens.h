@@ -51,9 +51,9 @@ private:
     static const std::map<enum TokenType, std::string> TypeMap;
 };
 
-class Punctuator : public Token {
+class PunctuatorToken : public Token {
 public:
-    explicit Punctuator(INFILE_ARGS, enum TokenType type, unsigned flags) :
+    explicit PunctuatorToken(INFILE_ARGS, enum TokenType type, unsigned flags) :
         Token(INFILE_VALUES, TokenClass::Punctuator, type) ,
         Flags(flags) {
 
@@ -62,9 +62,9 @@ public:
     const unsigned Flags;
 };
 
-class StringConstant : public Token {
+class StringConstantToken : public Token {
 public:
-    StringConstant(INFILE_ARGS, const std::string& value) :
+    StringConstantToken(INFILE_ARGS, const std::string& value) :
         Token(INFILE_VALUES, TokenClass::StringConstant, TokenType::ConstString),
         Value(value) {
 
@@ -82,9 +82,9 @@ public:
 };
 
 template<typename T>
-class NumericalConstant : public Token {
+class NumericalConstantToken : public Token {
 public:
-    NumericalConstant(INFILE_ARGS, enum TokenType type, const T& value) :
+    NumericalConstantToken(INFILE_ARGS, enum TokenType type, const T& value) :
         Token(INFILE_VALUES, TokenClass::NumericalConstant, type),
         Value(value) {
 
@@ -97,9 +97,9 @@ public:
 };
 
 
-class Identifier : public Token {
+class IdentifierToken : public Token {
 public:
-    explicit Identifier(INFILE_ARGS, const std::string& name) :
+    explicit IdentifierToken(INFILE_ARGS, const std::string& name) :
         Token(INFILE_VALUES, TokenClass::Identifier, TokenType::Identifier),
         Name(name) {
 

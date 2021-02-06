@@ -13,7 +13,7 @@ public:
         this->Value = std::move(value);
 
 //        if (Value && !Value->IsConstant(<#initializer#>)) {
-//            throw std::runtime_error("Explicit enum value is not a constant expression");
+//            throw std::runtime_error("Explicit enum Get is not a constant expression");
 //        }
     }
 
@@ -23,7 +23,7 @@ public:
     }
 
     const std::string Name;
-    NODE(ExprNode) Value = nullptr;  // constant-expression / nullptr for default value
+    NODE(ExprNode) Value = nullptr;  // constant-expression / nullptr for default Get
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "Enumerator: " + Name };

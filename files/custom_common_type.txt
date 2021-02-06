@@ -1,0 +1,60 @@
+
+//    static ValueType UsualArithmeticConversion(const ValueType& lhs, const ValueType& rhs) {
+//        // todo: long double stuff
+//        if (lhs.Base == BaseType::Double || rhs.Base == BaseType::Double) {
+//            return ValueType(BaseType::Double);
+//        }
+//        else if (lhs.Base == BaseType::Float || rhs.Base == BaseType::Float) {
+//            return ValueType(BaseType::Float);
+//        }
+//        else {
+//            if ((lhs.Flags ^ rhs.Flags & TypeFlags::SpecifierUnsigned) == 0) {
+//                // same sign
+//                return ValueType(std::max(lhs.Base, rhs.Base), lhs.Flags & TypeFlags::SpecifierUnsigned);
+//            }
+//            BaseType lhsbase = lhs.Base;
+//            unsigned lhsflags = lhs.Flags;
+//            BaseType rhsbase = rhs.Base;
+//            unsigned rhsflags = rhs.Flags;
+//            if (rhsbase > lhsbase) {
+//                std::swap(lhsbase, rhsbase);
+//                std::swap(lhsflags, rhsflags);
+//            }
+//
+//            // lhs >= rhs now in rank
+//            if (lhsflags & TypeFlags::SpecifierUnsigned) {
+//                // unsigned >= signed
+//                return ValueType(lhsbase,  TypeFlags::SpecifierUnsigned);  // return unsigned type
+//            }
+//            else {
+//                // unsigned <= signed
+//                // usual type conversions:
+//                // If the signed type can represent all values of the unsigned type,
+//                // then the operand with the unsigned type is implicitly converted to the signed type.
+//
+//                // I don't think this can happen, so convert to unsigned counterpart of signed type
+//                return ValueType(rhsbase, TypeFlags::SpecifierUnsigned);
+//            }
+//        }
+//    }
+
+//    template<typename Op, typename L, typename R>
+//    static OptionalNumericValue PropagateValue(const ValueType<L>& left, const ValueType<R>& right) {
+//        if (!left.has_value()) {
+//            return {};
+//        }
+//
+//        if (!right.HasValue()) {
+//            return {};
+//        }
+//
+//        const auto left_value = left.value();
+//        const auto right_value = left.Get();
+//        NumericValue result = std::visit(
+//                [op](auto left, auto right) -> NumericValue {
+//                    return left + right;
+//                },
+//                left_value, right_value
+//        );
+//        return result;
+//    }

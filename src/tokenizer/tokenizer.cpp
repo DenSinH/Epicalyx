@@ -69,7 +69,7 @@ void Tokenizer::TokenizeLine(const std::string& line) {
                 log_tokenizer("Keyword: %s", current_token.c_str());
             }
             else {
-                Tokens.emplace_back(MakeToken<Identifier>(current_token));
+                Tokens.emplace_back(MakeToken<IdentifierToken>(current_token));
                 log_tokenizer("Identifier: %s", current_token.c_str());
             }
         }

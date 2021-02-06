@@ -30,7 +30,7 @@ static const std::set<enum TokenType> TypeNameIndicators = {
 bool Parser::IsTypedefName(const TOKEN& token) {
     if (token->Class == TokenClass::Identifier) {
         for (auto& names : TypedefNames) {
-            if (names.contains(std::static_pointer_cast<Identifier>(token)->Name)) {
+            if (names.contains(std::static_pointer_cast<IdentifierToken>(token)->Name)) {
                 return true;
             }
         }

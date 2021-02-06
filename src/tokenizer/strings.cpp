@@ -49,7 +49,7 @@ TOKEN Tokenizer::ReadStringConstant(std::string::const_iterator& current, const 
     }
     // skip last char
     current++;
-    return MakeToken<StringConstant>(current_token);
+    return MakeToken<StringConstantToken>(current_token);
 }
 
 TOKEN Tokenizer::ReadCharSequenceConstant(std::string::const_iterator& current, const std::string::const_iterator& end) {
@@ -86,13 +86,13 @@ TOKEN Tokenizer::ReadCharSequenceConstant(std::string::const_iterator& current, 
     current++;
 
     if (is_unsigned) {
-        return MakeToken<NumericalConstant<unsigned long long>>(TokenType::ConstUnsignedInt, value);
+        return MakeToken<NumericalConstantToken<unsigned long long>>(TokenType::ConstUnsignedInt, value);
     }
     else if (is_long) {
-        return MakeToken<NumericalConstant<long long>>(TokenType::ConstLongLong, value);
+        return MakeToken<NumericalConstantToken<long long>>(TokenType::ConstLongLong, value);
     }
     else {
-        return MakeToken<NumericalConstant<int>>(TokenType::ConstInt, value);
+        return MakeToken<NumericalConstantToken<int>>(TokenType::ConstInt, value);
     }
 }
 

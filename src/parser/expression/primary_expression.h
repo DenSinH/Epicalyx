@@ -47,6 +47,12 @@ public:
 
     }
 
+    explicit PrimaryExpressionConstant(const NumericalConstantToken<T>& tok) :
+            PrimaryExpression(tok, PrimExprType::Constant),
+            Value(tok.Value) {
+
+    }
+
     const T Value;
 
     std::list<std::string> Repr() const override {

@@ -1,6 +1,7 @@
 #include "expression_nodes.h"
 #include "parser.h"
 #include "parser_state.h"
+#include "default.h"
 
 #include <stdexcept>
 
@@ -15,22 +16,20 @@ NODE(ExprNode) Parser::ExpectPrimaryExpression() {
         case TokenClass::NumericalConstant: {
             Advance();
             switch(current->Type) {
-                case TokenType::ConstInt:
-                    return MAKE_NODE(PrimaryExpressionConstant<int>)(current, std::static_pointer_cast<NumericalConstant<int>>(current)->Value);
-                case TokenType::ConstUnsignedInt:
-                    return MAKE_NODE(PrimaryExpressionConstant<unsigned int>)(current, std::static_pointer_cast<NumericalConstant<unsigned int>>(current)->Value);
                 case TokenType::ConstLong:
-                    return MAKE_NODE(PrimaryExpressionConstant<long>)(current, std::static_pointer_cast<NumericalConstant<long>>(current)->Value);
+                case TokenType::ConstInt:
+                    return MAKE_NODE(PrimaryExpressionConstant<i32>)(current, std::static_pointer_cast<NumericalConstantToken<i32>>(current)->Value);
                 case TokenType::ConstUnsignedLong:
-                    return MAKE_NODE(PrimaryExpressionConstant<unsigned long>)(current, std::static_pointer_cast<NumericalConstant<unsigned long>>(current)->Value);
+                case TokenType::ConstUnsignedInt:
+                    return MAKE_NODE(PrimaryExpressionConstant<u32>)(current, std::static_pointer_cast<NumericalConstantToken<u32>>(current)->Value);
                 case TokenType::ConstLongLong:
-                    return MAKE_NODE(PrimaryExpressionConstant<long long>)(current, std::static_pointer_cast<NumericalConstant<long long>>(current)->Value);
+                    return MAKE_NODE(PrimaryExpressionConstant<i64>)(current, std::static_pointer_cast<NumericalConstantToken<i64>>(current)->Value);
                 case TokenType::ConstUnsignedLongLong:
-                    return MAKE_NODE(PrimaryExpressionConstant<unsigned long long>)(current, std::static_pointer_cast<NumericalConstant<unsigned long long>>(current)->Value);
+                    return MAKE_NODE(PrimaryExpressionConstant<u64>)(current, std::static_pointer_cast<NumericalConstantToken<u64>>(current)->Value);
                 case TokenType::ConstFloat:
-                    return MAKE_NODE(PrimaryExpressionConstant<float>)(current, std::static_pointer_cast<NumericalConstant<float>>(current)->Value);
+                    return MAKE_NODE(PrimaryExpressionConstant<float>)(current, std::static_pointer_cast<NumericalConstantToken<float>>(current)->Value);
                 case TokenType::ConstDouble:
-                    return MAKE_NODE(PrimaryExpressionConstant<double>)(current, std::static_pointer_cast<NumericalConstant<double>>(current)->Value);
+                    return MAKE_NODE(PrimaryExpressionConstant<double>)(current, std::static_pointer_cast<NumericalConstantToken<double>>(current)->Value);
                 default:
                     throw std::runtime_error("Invalid token: numerical constant of unknown type");
             }

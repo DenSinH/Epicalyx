@@ -63,7 +63,7 @@ NODE(InitializerList) Parser::ExpectInitializerList() {
             if (current->Type == TokenType::Dot) {
                 // struct member initializer .identifier
                 ExpectType(TokenType::Identifier);
-                std::string name = std::static_pointer_cast<Identifier>(Current())->Name;
+                std::string name = std::static_pointer_cast<IdentifierToken>(Current())->Name;
                 designators.push_back(MAKE_NODE(StructFieldDesignator)(current, name));
                 Advance();
             }
@@ -219,7 +219,7 @@ NODE(StructUnionSpecifier) Parser::ExpectStructUnionSpecifier() {
     // there has to be a next, since struct / union has to be followed by either an identifier or a declaration list
     std::string name;
     if (Next()->Type == TokenType::Identifier) {
-        name = std::static_pointer_cast<Identifier>(Next())->Name;
+        name = std::static_pointer_cast<IdentifierToken>(Next())->Name;
     }
 
     if (Current()->Type == TokenType::Struct) {
@@ -326,7 +326,7 @@ NODE(EnumSpecifier) Parser::ExpectEnumSpecifier() {
     // enum identifier(opt)
     bool has_name = false;
     if (Current()->Type == TokenType::Identifier) {
-        enum_specifier = MAKE_NODE(EnumSpecifier)(Current(), std::static_pointer_cast<Identifier>(Current())->Name);
+        enum_specifier = MAKE_NODE(EnumSpecifier)(Current(), std::static_pointer_cast<IdentifierToken>(Current())->Name);
         has_name = true;
         Advance();
     }
@@ -340,7 +340,7 @@ NODE(EnumSpecifier) Parser::ExpectEnumSpecifier() {
         do {
             ExpectType(TokenType::Identifier);
             NODE(Enumerator) enumerator = nullptr;
-            const std::string& name = std::static_pointer_cast<Identifier>(Current())->Name;
+            const std::string& name = std::static_pointer_cast<IdentifierToken>(Current())->Name;
             Advance();
             if (Current()->Type == TokenType::Assign) {
                 auto current = Current();

@@ -11,11 +11,15 @@ int main() {
 
     auto t = new Tokenizer();
 
-//    auto Int = MAKE_TYPE(ValueType<int>)(1, 0);
-//    auto Ptr = MAKE_TYPE(PointerType)(MAKE_TYPE(ValueType<float>)(1.2, 0));
-//    auto sum = TypePropagation::Add(Int, Ptr);
-//
-//    std::cout << sum->to_string() << std::endl;
+    CTYPE Int = MAKE_TYPE(ValueType<int>)(1, 0);
+    CTYPE FloatPtr = MAKE_TYPE(PointerType)(MAKE_TYPE(ValueType<float>)(1.2, 0));
+    CTYPE IntPtr = MAKE_TYPE(PointerType)(MAKE_TYPE(ValueType<int>)(1.2, 0));
+    auto shifted = (*Int).RShift(*Int);
+    auto equal = (*Int).Eq(*Int);
+    auto test = (*IntPtr).Xor(*IntPtr);
+
+    std::cout << shifted->ToString() << std::endl;
+    std::cout << equal->ToString() << std::endl;
 
     t->Tokenize(file);
 
