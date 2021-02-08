@@ -1,5 +1,3 @@
-#include <cstdio>
-
 #include <tokenizer.h>
 #include <parser.h>
 
@@ -12,17 +10,24 @@ int main() {
     auto t = new Tokenizer();
 
     CTYPE Int = MAKE_TYPE(ValueType<int>)(1, 0);
+    CTYPE UnknownInt = MAKE_TYPE(ValueType<int>)(0);
     CTYPE FloatPtr = MAKE_TYPE(PointerType)(MAKE_TYPE(ValueType<float>)(1.2, 0));
-    CTYPE IntPtr = MAKE_TYPE(PointerType)(MAKE_TYPE(ValueType<int>)(1, 0));
+    CTYPE IntPtr = MAKE_TYPE(PointerType)(Int);
+    CTYPE IntArray = MAKE_TYPE(ArrayType)(Int, Int);
+
     auto shifted = (*Int).RShift(*Int);
-    auto equal = (*Int).Eq(*Int);
-    auto test = (*IntPtr).Sub(*IntPtr);
+    auto equal = (*UnknownInt).Eq(*Int);
+    auto notequal = (*Int).Neq(*Int);
+    auto ptr_sub = (*IntPtr).Sub(*IntPtr);
+    auto array_add = (*Int).Add(*IntArray);
 
-    std::cout << (*IntPtr).EqualType(*IntPtr) << std::endl;
-
+    std::cout << IntPtr->ToString() << std::endl;
+    std::cout << IntArray->EqualType(*IntPtr) << std::endl;
     std::cout << shifted->ToString() << std::endl;
     std::cout << equal->ToString() << std::endl;
-    std::cout << test->ToString() << std::endl;
+    std::cout << notequal->ToString() << std::endl;
+    std::cout << ptr_sub->ToString() << std::endl;
+    std::cout << array_add->ToString() << std::endl;
 
     t->Tokenize(file);
 

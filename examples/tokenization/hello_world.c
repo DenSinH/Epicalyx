@@ -1,7 +1,7 @@
 extern int printf(const char*, ...);
 
 void test() {
-
+    return;
 }
 
 int main() {

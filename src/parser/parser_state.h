@@ -15,10 +15,10 @@ struct ParserState {
     std::vector<std::map<std::string, CTYPE>> ConstantScope = {{}};
     std::vector<std::map<std::string, CTYPE>> Scope = {{}};
 
-    CType GetType(const std::string& name) const {
+    const CTYPE GetType(const std::string& name) const {
         for (auto t = Scope.rbegin(); t != Scope.rend(); t++) {
             if (t->contains(name)) {
-                return *t->at(name);
+                return t->at(name);
             }
         }
         throw std::runtime_error("Unknown variable name: " + name);

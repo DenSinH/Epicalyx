@@ -64,8 +64,8 @@ struct UnionType;
 #define VIRTUAL_CASTABLE(_, type) virtual bool CastableTypeImpl(const type& other) const { return false; }
 #define VIRTUAL_EQ(_, type) virtual bool EqualTypeImpl(const type& other) const { return false; }
 #define VIRTUAL_BINOP_HANDLER(handler, type) virtual BINOP_HANDLER(handler, type) { throw std::runtime_error("Invalid types for operand"); }
-#define VIRTUAL_BINOP(handler) public: virtual CTYPE handler(const CType& other) const { return nullptr; }; protected: VIRTUAL_BINOP_HANDLERS(R ## handler)
-#define VIRTUAL_UNOP(handler) virtual UNOP_HANDLER(handler) { return nullptr; }
+#define VIRTUAL_BINOP(handler) public: virtual CTYPE handler(const CType& other) const { throw std::runtime_error("Unimplemented binop handler"); }; protected: VIRTUAL_BINOP_HANDLERS(R ## handler)
+#define VIRTUAL_UNOP(handler) public: virtual UNOP_HANDLER(handler) { throw std::runtime_error("Unimplemented unop handler"); }
 
 struct CType {
     enum class BaseType {
@@ -131,21 +131,27 @@ struct CType {
     VIRTUAL_BINOP(BinAnd)
     VIRTUAL_BINOP(BinOr)
 
-    TYPE(ValueType<i32>) LogAnd(const CTYPE& other) const;
-    TYPE(ValueType<i32>) LogOr(const CTYPE& other) const;
+    TYPE(ValueType<i32>) LogAnd(const CType& other) const;
+    TYPE(ValueType<i32>) LogOr(const CType& other) const;
+    TYPE(ValueType<i32>) LogNot() const;
 
     VIRTUAL_BINOP(Lt)
     VIRTUAL_BINOP(Gt)
     VIRTUAL_BINOP(Eq)
 
+public:
+    // combinations of above functions
+    CTYPE Le(const CType& other) const;
+    CTYPE Ge(const CType& other) const;
+    CTYPE Neq(const CType& other) const;
+
     VIRTUAL_BINOP(LShift)
     VIRTUAL_BINOP(RShift)
 
     VIRTUAL_UNOP(Deref)
-    VIRTUAL_UNOP(Ref)
+    virtual UNOP_HANDLER(Ref);  // we wan't a different default here
     VIRTUAL_UNOP(Neg)
     VIRTUAL_UNOP(BinNot)
-    VIRTUAL_UNOP(Not)
 
 public:
     // for checking actual equality:
@@ -157,14 +163,28 @@ public:
         return false;
     }
 
-    virtual TYPE(ValueType<i32>) BoolVal() const {
-        throw std::runtime_error("Type cannot be cast to bool");
+    virtual bool HasTruthiness() const {
+        return false;
+    }
+
+    virtual TYPE(ValueType<i32>) TruthinessAsCType() const {
+        throw std::runtime_error("Type does not have a truthiness value: " + ToString());
+    }
+
+    virtual u64 ConstIntVal(bool _signed) const {
+        throw std::runtime_error("Type is not an integer value: " + ToString());
+    }
+
+    virtual void ForgetConstInfo() {
+        // forget info on contained value (for example, adding an int to a pointer)
     }
 
     const BaseType Base;
     unsigned Flags = 0;
 
 protected:
+    virtual CTYPE Clone() const = 0;
+
     CTYPE_SIGNATURES(VIRTUAL_CASTABLE)  // compatible types (can cast)
     CTYPE_SIGNATURES(VIRTUAL_EQ)        // equal types
 };
@@ -202,6 +222,10 @@ protected:
     bool EqualTypeImpl(const VoidType& other) const override {
         return true;
     }
+
+    CTYPE Clone() const override {
+        return MAKE_TYPE(VoidType)(Flags);
+    }
 };
 
 template<typename T>
@@ -237,11 +261,26 @@ struct ValueType : public CType {
         return Value.has_value();
     }
 
-    TYPE(ValueType<i32>) BoolVal() const override {
+    bool HasTruthiness() const override { return true; }
+    TYPE(ValueType<i32>) TruthinessAsCType() const override {
         if (HasValue()) {
             return MAKE_TYPE(ValueType<i32>)(Value.value() != 0, 0);
         }
         return MAKE_TYPE(ValueType<i32>)(0);
+    }
+
+    u64 ConstIntVal(bool _signed) const override {
+        if constexpr(!std::is_integral_v<T>) {
+            throw std::runtime_error("Floating point type is not an integral value");
+        }
+        if (_signed != std::is_unsigned_v<T>) {
+            throw std::runtime_error("Expected " + (_signed ? std::string() : "un") + "signed value");
+        }
+        return Get();
+    }
+
+    void ForgetConstInfo() override {
+        Value = {};
     }
 
     std::string ToString() const noexcept override {
@@ -276,26 +315,26 @@ struct ValueType : public CType {
 
 protected:
     // perform BinOp on other in reverse: so this.ValueTypeRBinOp<std::plus> <==> other + this
-    template<typename L>
+    template<typename L, typename common_t = std::common_type_t<L, T>>
     CTYPE ValueTypeRBinOp(
             const ValueType<L>& other,
             std::function<std::common_type_t<L, T>(std::common_type_t<L, T>, std::common_type_t<L, T>)> handler
     ) const {
         if (HasValue() && other.HasValue()) {
-            return MAKE_TYPE(ValueType<std::common_type_t<L, T>>)(handler(other.Get(), Get()), 0);
+            return MAKE_TYPE(ValueType<common_t>)(handler(other.Get(), Get()), 0);
         }
-        return MAKE_TYPE(ValueType<std::common_type_t<L, T>>)(0);
+        return MAKE_TYPE(ValueType<common_t>)(0);
     }
 
     template<typename L>
     CTYPE ValueTypeRBoolBinOp(
             const ValueType<L>& other,
-            std::function<i8(std::common_type_t<L, T>, std::common_type_t<L, T>)> handler
+            std::function<i32(std::common_type_t<L, T>, std::common_type_t<L, T>)> handler
     ) const {
         if (HasValue() && other.HasValue()) {
-            return MAKE_TYPE(ValueType<i8>)(handler(other.Get(), Get()), 0);
+            return MAKE_TYPE(ValueType<i32>)(handler(other.Get(), Get()), 0);
         }
-        return MAKE_TYPE(ValueType<i8>)(0);
+        return MAKE_TYPE(ValueType<i32>)(0);
     }
 
     NUMERIC_CTYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RAdd)
@@ -335,12 +374,19 @@ protected:
     bool EqualTypeImpl(const ValueType<T>& other) const override {
         return true;
     }
+
+    CTYPE Clone() const override {
+        if (HasValue()) {
+            return MAKE_TYPE(ValueType<T>)(Get(), Flags);
+        }
+        return MAKE_TYPE(ValueType<T>)(Flags);
+    }
 };
 
 struct PointerType : public CType {
-    explicit PointerType(CTYPE contained, unsigned flags = 0) :
+    explicit PointerType(const CTYPE& contained, unsigned flags = 0) :
             CType(BaseType::Pointer, flags),
-            Contained(std::move(contained)) {
+            Contained(contained->Clone()) {
 
     }
 
@@ -354,8 +400,13 @@ struct PointerType : public CType {
         return "(" + Contained->ToString() + ") *";
     }
 
-    TYPE(ValueType<i32>) BoolVal() const override {
+    bool HasTruthiness() const override { return true; }
+    TYPE(ValueType<i32>) TruthinessAsCType() const override {
         return MAKE_TYPE(ValueType<i32>)(0);
+    }
+
+    void ForgetConstInfo() override {
+        Contained->ForgetConstInfo();
     }
 
     OVERRIDE_BASE_CASTABLE
@@ -364,13 +415,12 @@ struct PointerType : public CType {
     OVERRIDE_BINOP(Add)
     OVERRIDE_BINOP(Sub)
 
-    OVERRIDE_BINOP(Lt);
-    OVERRIDE_BINOP(Gt);
-    OVERRIDE_BINOP(Eq);
-
+    CTYPE Clone() const override {
+        return MAKE_TYPE(PointerType)(Contained->Clone(), Flags);
+    }
 protected:
-    PointerType(CTYPE contained, BaseType base_type) :
-            CType(base_type),
+    PointerType(CTYPE&& contained, BaseType base_type, unsigned flags = 0) :
+            CType(base_type, flags),
             Contained(std::move(contained)) {
 
     }
@@ -402,7 +452,14 @@ protected:
 };
 
 struct ArrayType : public PointerType {
-    explicit ArrayType(CTYPE contained) : PointerType(std::move(contained), BaseType::Array) {
+    explicit ArrayType(const CTYPE& contained, const CTYPE& size, unsigned flags = 0) :
+            PointerType(contained->Clone(), BaseType::Array, flags) {
+        Size = size->ConstIntVal(false);
+    }
+
+    explicit ArrayType(const CTYPE& contained, size_t size, unsigned flags = 0) :
+            PointerType(contained->Clone(), BaseType::Array, flags),
+            Size(size) {
 
     }
 
@@ -415,26 +472,40 @@ struct ArrayType : public PointerType {
     std::string ToString() const noexcept override {
         return "(" + Contained->ToString() + ")[" + std::to_string(Size) + "]";
     }
+
+protected:
+    CTYPE Clone() const override {
+        return MAKE_TYPE(ArrayType)(Contained, Size, Flags);
+    }
 };
 
-struct FunctionType : public CType {
-    explicit FunctionType() : CType(BaseType::Function) {
+struct FunctionType : public PointerType {
+    explicit FunctionType(const CTYPE& return_type, std::string symbol = "", unsigned flags = 0) :
+            PointerType(return_type->Clone(), BaseType::Function, flags),
+            Symbol(std::move(symbol)) {
 
     }
 
-    CTYPE ReturnType;
+    const std::string Symbol;  // if there is a symbol here, the function is a global definition
     std::vector<CTYPE> ArgTypes;
+
+    void AddArg(const CTYPE& arg) {
+        ArgTypes.push_back(arg->Clone());
+    }
 
     bool IsComplete() const override {
         return true;
     }
 
-    TYPE(ValueType<i32>) BoolVal() const override {
-        return MAKE_TYPE(ValueType<i32>)(1, 0);  // always true
+    TYPE(ValueType<i32>) TruthinessAsCType() const override {
+        if (!Symbol.empty()) {
+            return MAKE_TYPE(ValueType<i32>)(1, 0);  // always true
+        }
+        return MAKE_TYPE(ValueType<i32>)(0);  // unknown, might be function pointer variable
     }
 
     std::string ToString() const noexcept override {
-        std::string repr = ReturnType->ToString() + "(";
+        std::string repr = Contained->ToString() + " " + Symbol + "(";
         for (auto& a : ArgTypes) {
             repr += a->ToString() + ",";
         }
@@ -444,6 +515,9 @@ struct FunctionType : public CType {
     OVERRIDE_BASE_CASTABLE
     OVERRIDE_BASE_EQ
 
+    OVERRIDE_BINOP(Lt);
+    OVERRIDE_BINOP(Gt);
+    OVERRIDE_BINOP(Eq);
 protected:
     bool CastableTypeImpl(const FunctionType& other) const override { return true; }
     bool CastableTypeImpl(const PointerType& other) const override { return true; }
@@ -456,8 +530,9 @@ protected:
     bool CastableTypeImpl(const ValueType<i64>&) const override { return true; }
     bool CastableTypeImpl(const ValueType<u64>&) const override { return true; }
 
+    bool EqualTypeImpl(const PointerType& other) const override { return false; }
     bool EqualTypeImpl(const FunctionType& other) const override {
-        if (!(*ReturnType).EqualType(*other.ReturnType)) {
+        if (!(*Contained).EqualType(*other.Contained)) {
             return false;
         }
         if (ArgTypes.size() != other.ArgTypes.size()) {
@@ -472,26 +547,35 @@ protected:
 
         return true;
     }
+
+protected:
+    CTYPE Clone() const override {
+        auto clone = MAKE_TYPE(FunctionType)(Contained, Symbol, Flags);
+        for (const auto& arg : ArgTypes) {
+            clone->AddArg(arg);
+        }
+        return clone;
+    }
 };
 
 template<CType::BaseType type>
 struct StructUnionType : public CType {
-    explicit StructUnionType() : CType(type) {
+    explicit StructUnionType(unsigned flags = 0) : CType(type, flags) {
 
     }
 
     struct Field {
-        Field(std::string name, size_t size, std::shared_ptr<CType> contained) :
+        Field(std::string name, size_t size, const CTYPE& contained) :
             Name(std::move(name)),
             Size(size),
-            Type(std::move(contained)) {
+            Type(contained->Clone()) {
 
         }
 
-        Field(std::string name, std::shared_ptr<CType> contained) :
+        Field(std::string name, const CTYPE& contained) :
             Name(std::move(name)),
             Size(0),
-            Type(std::move(contained)) {
+            Type(contained->Clone()) {
 
         }
 
@@ -500,16 +584,22 @@ struct StructUnionType : public CType {
         std::shared_ptr<CType> Type;
     };
 
-    void AddField(const std::string& name, size_t size, std::shared_ptr<CType> contained) {
+    void AddField(const std::string& name, size_t size, const CTYPE& contained) {
         Fields.push_back(Field(name, size, contained));
     }
 
-    void AddField(const std::string& name, std::shared_ptr<CType> contained) {
+    void AddField(const std::string& name, const CTYPE& contained) {
         Fields.push_back(Field(name, contained));
     }
 
     bool IsComplete() const override {
         return !Fields.empty();
+    }
+
+    void ForgetConstInfo() override {
+        for (auto& field : Fields) {
+            field.Type->ForgetConstInfo();
+        }
     }
 
     std::vector<Field> Fields;  // empty if struct was only declared but never defined
@@ -543,6 +633,14 @@ protected:
         }
 
         return true;
+    }
+
+    CTYPE Clone() const override {
+        auto clone = MAKE_TYPE(StructUnionType<type>)(Flags);
+        for (const auto& arg : Fields) {
+            clone->AddField(arg.Name, arg.Size, arg.Type);
+        }
+        return clone;
     }
 };
 
