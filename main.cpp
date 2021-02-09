@@ -9,10 +9,13 @@ int main() {
 
     auto t = new Tokenizer();
 
-    CTYPE Int = MAKE_TYPE(ValueType<int>)(1, 0);
-    CTYPE UnknownInt = MAKE_TYPE(ValueType<int>)(0);
-    CTYPE FloatPtr = MAKE_TYPE(PointerType)(MAKE_TYPE(ValueType<float>)(1.2, 0));
-    CTYPE IntPtr = MAKE_TYPE(PointerType)(Int);
+    CTYPE Int = MAKE_TYPE(ValueType<int>)(1, CType::LValueNess::Assignable, 0);
+    CTYPE UnknownInt = MAKE_TYPE(ValueType<int>)(CType::LValueNess::None, 0);
+    CTYPE Float = MAKE_TYPE(ValueType<float>)(1.2, CType::LValueNess::None, 0);
+    CTYPE FloatPtr = MAKE_TYPE(PointerType)(
+            Float, CType::LValueNess::None
+    );
+    CTYPE IntPtr = MAKE_TYPE(PointerType)(Int, CType::LValueNess::None);
     CTYPE IntArray = MAKE_TYPE(ArrayType)(Int, Int);
 
     auto shifted = (*Int).RShift(*Int);
@@ -20,9 +23,13 @@ int main() {
     auto notequal = (*Int).Neq(*Int);
     auto ptr_sub = (*IntPtr).Sub(*IntPtr);
     auto array_add = (*Int).Add(*IntArray);
+    auto valid_ref = (*Int).Ref();
+    // auto invalid_ref = (*Float).Ref();  // not lvalue, throws exception
+    // auto invalid = (*Float).Mod(*Int);  // throws exception
 
     std::cout << IntPtr->ToString() << std::endl;
     std::cout << IntArray->EqualType(*IntPtr) << std::endl;
+    std::cout << valid_ref->ToString() << std::endl;
     std::cout << shifted->ToString() << std::endl;
     std::cout << equal->ToString() << std::endl;
     std::cout << notequal->ToString() << std::endl;

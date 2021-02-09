@@ -3,7 +3,7 @@
 
 BINOP_HANDLER(PointerType::RSub, PointerType) {
     if ((*this).EqualTypeImpl(other)) {
-        return MAKE_TYPE(ValueType<u64>)(0);
+        return MAKE_TYPE(ValueType<u64>)(LValueNess::None, 0);
     }
     throw std::runtime_error("Cannot subtract pointers of non-compatible types");
 }
@@ -11,54 +11,62 @@ BINOP_HANDLER(PointerType::RSub, PointerType) {
 BINOP_HANDLER(PointerType::RAdd, ValueType<i8>) {
     auto same_type = Clone();
     same_type->ForgetConstInfo();
+    same_type->SetNotLValue();
     return same_type;
 }
 
 BINOP_HANDLER(PointerType::RAdd, ValueType<u8>) {
     auto same_type = Clone();
     same_type->ForgetConstInfo();
+    same_type->SetNotLValue();
     return same_type;
 }
 
 BINOP_HANDLER(PointerType::RAdd, ValueType<u16>) {
     auto same_type = Clone();
     same_type->ForgetConstInfo();
+    same_type->SetNotLValue();
     return same_type;
 }
 
 BINOP_HANDLER(PointerType::RAdd, ValueType<i16>) {
     auto same_type = Clone();
     same_type->ForgetConstInfo();
+    same_type->SetNotLValue();
     return same_type;
 }
 
 BINOP_HANDLER(PointerType::RAdd, ValueType<u32>) {
     auto same_type = Clone();
     same_type->ForgetConstInfo();
+    same_type->SetNotLValue();
     return same_type;
 }
 
 BINOP_HANDLER(PointerType::RAdd, ValueType<i32>) {
     auto same_type = Clone();
     same_type->ForgetConstInfo();
+    same_type->SetNotLValue();
     return same_type;
 }
 
 BINOP_HANDLER(PointerType::RAdd, ValueType<u64>) {
     auto same_type = Clone();
     same_type->ForgetConstInfo();
+    same_type->SetNotLValue();
     return same_type;
 }
 
 BINOP_HANDLER(PointerType::RAdd, ValueType<i64>) {
     auto same_type = Clone();
     same_type->ForgetConstInfo();
+    same_type->SetNotLValue();
     return same_type;
 }
 
 BINOP_HANDLER(PointerType::RLt, PointerType) {
     if ((*this).EqualTypeImpl(other)) {
-        return MAKE_TYPE(ValueType<i32>)(0);
+        return MakeBool();
     }
     throw std::runtime_error("Cannot compare pointers of non-compatible types");
 }
@@ -66,23 +74,23 @@ BINOP_HANDLER(PointerType::RLt, PointerType) {
 template<typename T>
 BINOP_HANDLER(ValueType<T>::RLt, PointerType) {
     if constexpr(std::is_integral_v<T>) {
-        return MAKE_TYPE(ValueType<i32>)(0);
+        return MakeBool();
     }
     throw std::runtime_error("Cannot compare pointers with non-integral types");
 }
 
-BINOP_HANDLER(PointerType::RLt, ValueType<i8>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::RLt, ValueType<u8>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::RLt, ValueType<u16>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::RLt, ValueType<i16>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::RLt, ValueType<u32>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::RLt, ValueType<i32>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::RLt, ValueType<u64>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::RLt, ValueType<i64>) { return MAKE_TYPE(ValueType<i32>)(0); }
+BINOP_HANDLER(PointerType::RLt, ValueType<i8>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::RLt, ValueType<u8>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::RLt, ValueType<u16>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::RLt, ValueType<i16>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::RLt, ValueType<u32>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::RLt, ValueType<i32>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::RLt, ValueType<u64>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::RLt, ValueType<i64>) { return MakeBool(); }
 
 BINOP_HANDLER(PointerType::RGt, PointerType) {
     if ((*this).EqualTypeImpl(other)) {
-        return MAKE_TYPE(ValueType<i32>)(0);
+        return MakeBool();
     }
     throw std::runtime_error("Cannot compare pointers of non-compatible types");
 }
@@ -90,31 +98,31 @@ BINOP_HANDLER(PointerType::RGt, PointerType) {
 template<typename T>
 BINOP_HANDLER(ValueType<T>::RGt, PointerType) {
     if constexpr(std::is_integral_v<T>) {
-        return MAKE_TYPE(ValueType<i32>)(0);
+        return MakeBool();
     }
     throw std::runtime_error("Cannot compare pointers with non-integral types");
 }
 
-BINOP_HANDLER(PointerType::RGt, ValueType<i8>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::RGt, ValueType<u8>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::RGt, ValueType<u16>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::RGt, ValueType<i16>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::RGt, ValueType<u32>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::RGt, ValueType<i32>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::RGt, ValueType<u64>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::RGt, ValueType<i64>) { return MAKE_TYPE(ValueType<i32>)(0); }
+BINOP_HANDLER(PointerType::RGt, ValueType<i8>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::RGt, ValueType<u8>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::RGt, ValueType<u16>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::RGt, ValueType<i16>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::RGt, ValueType<u32>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::RGt, ValueType<i32>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::RGt, ValueType<u64>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::RGt, ValueType<i64>) { return MakeBool(); }
 
 BINOP_HANDLER(PointerType::REq, PointerType) {
     if ((*this).EqualTypeImpl(other)) {
-        return MAKE_TYPE(ValueType<i32>)(0);
+        return MakeBool();
     }
     else if (Contained->Base == BaseType::Void) {
         // also allowed
-        return MAKE_TYPE(ValueType<i32>)(0);
+        return MakeBool();
     }
     else if (other.Contained->Base == BaseType::Void) {
         // also allowed
-        return MAKE_TYPE(ValueType<i32>)(0);
+        return MakeBool();
     }
     throw std::runtime_error("Cannot compare pointers of non-compatible types");
 }
@@ -122,48 +130,63 @@ BINOP_HANDLER(PointerType::REq, PointerType) {
 template<typename T>
 BINOP_HANDLER(ValueType<T>::REq, PointerType) {
     if constexpr(std::is_integral_v<T>) {
-        return MAKE_TYPE(ValueType<i32>)(0);
+        return MakeBool();
     }
     throw std::runtime_error("Cannot compare pointers with non-integral types");
 }
 
-BINOP_HANDLER(PointerType::REq, ValueType<i8>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::REq, ValueType<u8>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::REq, ValueType<u16>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::REq, ValueType<i16>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::REq, ValueType<u32>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::REq, ValueType<i32>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::REq, ValueType<u64>) { return MAKE_TYPE(ValueType<i32>)(0); }
-BINOP_HANDLER(PointerType::REq, ValueType<i64>) { return MAKE_TYPE(ValueType<i32>)(0); }
+BINOP_HANDLER(PointerType::REq, ValueType<i8>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::REq, ValueType<u8>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::REq, ValueType<u16>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::REq, ValueType<i16>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::REq, ValueType<u32>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::REq, ValueType<i32>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::REq, ValueType<u64>) { return MakeBool(); }
+BINOP_HANDLER(PointerType::REq, ValueType<i64>) { return MakeBool(); }
+
+TYPE(ValueType<i32>) CType::MakeBool(bool value) {
+    // make bool with value
+    return MAKE_TYPE(ValueType<i32>)(value, LValueNess::None, 0);
+}
+
+TYPE(ValueType<i32>) CType::MakeBool() {
+    // make bool without value
+    return MAKE_TYPE(ValueType<i32>)(LValueNess::None, 0);
+}
 
 TYPE(ValueType<i32>) CType::LogAnd(const CType& other) const {
     auto l = this->TruthinessAsCType();
     auto r = other.TruthinessAsCType();
     if (l->HasValue() && r->HasValue()) {
-        return MAKE_TYPE(ValueType<i32>)(l->Get() && r->Get(), 0);
+        return MakeBool(l->Get() && r->Get());
     }
-    return MAKE_TYPE(ValueType<i32>)(0);
+    return MakeBool();
 }
 
 TYPE(ValueType<i32>) CType::LogOr(const CType& other) const {
     auto l = this->TruthinessAsCType();
     auto r = other.TruthinessAsCType();
     if (l->HasValue() && r->HasValue()) {
-        return MAKE_TYPE(ValueType<i32>)(l->Get() || r->Get(), 0);
+        return MakeBool(l->Get() || r->Get());
     }
-    return MAKE_TYPE(ValueType<i32>)(0);
+    return MakeBool();
 }
 
 TYPE(ValueType<i32>) CType::LogNot() const {
     auto bool_val = TruthinessAsCType();
     if (bool_val->HasValue()) {
-        return MAKE_TYPE(ValueType<i32>)(bool_val->Get(), 0);
+        return MakeBool(!bool_val->Get());
     }
-    return MAKE_TYPE(ValueType<i32>)(0);
+    return MakeBool();
 }
 
 UNOP_HANDLER(CType::Ref) {
-    return MAKE_TYPE(PointerType)(Clone());
+    // only for lvalues
+    // not an lvalue after
+    if (LValue == LValueNess::None) {
+        throw std::runtime_error("Cannot get reference to non-lvalue expression");
+    }
+    return MAKE_TYPE(PointerType)(Clone(), LValueNess::None);
 }
 
 CTYPE CType::Le(const CType& other) const {
@@ -228,6 +251,7 @@ template<typename T>
 BINOP_HANDLER(ValueType<T>::RSub, PointerType) {
     auto same_type = other.Clone();
     same_type->ForgetConstInfo();
+    same_type->SetNotLValue();
     return same_type;
 }
 
@@ -235,6 +259,7 @@ template<typename T>
 BINOP_HANDLER(ValueType<T>::RAdd, PointerType) {
     auto same_type = other.Clone();
     same_type->ForgetConstInfo();
+    same_type->SetNotLValue();
     return same_type;
 }
 
@@ -252,6 +277,6 @@ VALUE_TYPE_INTEGRAL_TYPE_HANDLERS(INTEGRAL_VALUE_TYPE_BINOP_HANDLER, Xor, std::b
 VALUE_TYPE_INTEGRAL_TYPE_HANDLERS(INTEGRAL_VALUE_TYPE_BINOP_HANDLER, BinAnd, std::bit_and<common_t>())
 VALUE_TYPE_INTEGRAL_TYPE_HANDLERS(INTEGRAL_VALUE_TYPE_BINOP_HANDLER, BinOr, std::bit_or<common_t>())
 
-VALUE_TYPE_NUMERIC_TYPE_HANDLERS(VALUE_TYPE_BOOL_BINOP_HANDLER, Lt, [](common_t l, common_t r) -> i32 { return l < r; });
-VALUE_TYPE_NUMERIC_TYPE_HANDLERS(VALUE_TYPE_BOOL_BINOP_HANDLER, Gt, [](common_t l, common_t r) -> i32 { return l < r; });
-VALUE_TYPE_NUMERIC_TYPE_HANDLERS(VALUE_TYPE_BOOL_BINOP_HANDLER, Eq, [](common_t l, common_t r) -> i32 { return l == r; });
+VALUE_TYPE_NUMERIC_TYPE_HANDLERS(VALUE_TYPE_BOOL_BINOP_HANDLER, Lt, [](common_t l, common_t r) -> i32 { return l < r; })
+VALUE_TYPE_NUMERIC_TYPE_HANDLERS(VALUE_TYPE_BOOL_BINOP_HANDLER, Gt, [](common_t l, common_t r) -> i32 { return l < r; })
+VALUE_TYPE_NUMERIC_TYPE_HANDLERS(VALUE_TYPE_BOOL_BINOP_HANDLER, Eq, [](common_t l, common_t r) -> i32 { return l == r; })

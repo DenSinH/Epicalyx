@@ -93,7 +93,20 @@ struct CType {
         QualifierAtomic    = 0x80,
     };
 
-    explicit CType(BaseType type, unsigned flags = 0) : Base(type), Flags(flags) {
+    enum class LValueNess {
+        None = 0,
+        LValue,
+        Assignable,
+    };
+
+    explicit CType(
+            BaseType type,
+            LValueNess lvalue,
+            unsigned flags = 0
+                    ) :
+            Base(type),
+            LValue(lvalue),
+            Flags(flags) {
 
     }
 
@@ -149,7 +162,7 @@ public:
     VIRTUAL_BINOP(RShift)
 
     VIRTUAL_UNOP(Deref)
-    virtual UNOP_HANDLER(Ref);  // we wan't a different default here
+    virtual UNOP_HANDLER(Ref);  // we want a different default here
     VIRTUAL_UNOP(Neg)
     VIRTUAL_UNOP(BinNot)
 
@@ -167,6 +180,11 @@ public:
         return false;
     }
 
+    void SetNotLValue() {
+        // for example the result of expressions
+        LValue = LValueNess::None;
+    }
+
     virtual TYPE(ValueType<i32>) TruthinessAsCType() const {
         throw std::runtime_error("Type does not have a truthiness value: " + ToString());
     }
@@ -179,11 +197,15 @@ public:
         // forget info on contained value (for example, adding an int to a pointer)
     }
 
+    virtual CTYPE Clone() const = 0;
+
+    LValueNess LValue;
     const BaseType Base;
     unsigned Flags = 0;
 
 protected:
-    virtual CTYPE Clone() const = 0;
+    static TYPE(ValueType<i32>) MakeBool(bool value);
+    static TYPE(ValueType<i32>) MakeBool();
 
     CTYPE_SIGNATURES(VIRTUAL_CASTABLE)  // compatible types (can cast)
     CTYPE_SIGNATURES(VIRTUAL_EQ)        // equal types
@@ -199,7 +221,7 @@ protected:
 
 struct VoidType : public CType {
     explicit VoidType(unsigned flags) :
-        CType(BaseType::Void, flags) {
+        CType(BaseType::Void, LValueNess::None, flags) {
         
     }
     
@@ -230,14 +252,14 @@ protected:
 
 template<typename T>
 struct ValueType : public CType {
-    explicit ValueType(unsigned flags) :
-            CType(BaseType::Value, flags),
+    explicit ValueType(LValueNess lvalue, unsigned flags) :
+            CType(BaseType::Value, lvalue, flags),
             Value() {
 
     }
 
-    explicit ValueType(T value, unsigned flags) :
-            CType(BaseType::Value),
+    explicit ValueType(T value, LValueNess lvalue, unsigned flags) :
+            CType(BaseType::Value, lvalue, flags),
             Value(value) {
 
     }
@@ -264,9 +286,9 @@ struct ValueType : public CType {
     bool HasTruthiness() const override { return true; }
     TYPE(ValueType<i32>) TruthinessAsCType() const override {
         if (HasValue()) {
-            return MAKE_TYPE(ValueType<i32>)(Value.value() != 0, 0);
+            return MakeBool(Value.value() != 0);
         }
-        return MAKE_TYPE(ValueType<i32>)(0);
+        return MakeBool();
     }
 
     u64 ConstIntVal(bool _signed) const override {
@@ -320,10 +342,11 @@ protected:
             const ValueType<L>& other,
             std::function<std::common_type_t<L, T>(std::common_type_t<L, T>, std::common_type_t<L, T>)> handler
     ) const {
+        // results of binary expressions are never an lvalue
         if (HasValue() && other.HasValue()) {
-            return MAKE_TYPE(ValueType<common_t>)(handler(other.Get(), Get()), 0);
+            return MAKE_TYPE(ValueType<common_t>)(handler(other.Get(), Get()), LValueNess::None, 0);
         }
-        return MAKE_TYPE(ValueType<common_t>)(0);
+        return MAKE_TYPE(ValueType<common_t>)(LValueNess::None, 0);
     }
 
     template<typename L>
@@ -332,9 +355,9 @@ protected:
             std::function<i32(std::common_type_t<L, T>, std::common_type_t<L, T>)> handler
     ) const {
         if (HasValue() && other.HasValue()) {
-            return MAKE_TYPE(ValueType<i32>)(handler(other.Get(), Get()), 0);
+            return MakeBool(handler(other.Get(), Get()));
         }
-        return MAKE_TYPE(ValueType<i32>)(0);
+        return MakeBool();
     }
 
     NUMERIC_CTYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RAdd)
@@ -377,15 +400,15 @@ protected:
 
     CTYPE Clone() const override {
         if (HasValue()) {
-            return MAKE_TYPE(ValueType<T>)(Get(), Flags);
+            return MAKE_TYPE(ValueType<T>)(Get(), LValue, Flags);
         }
-        return MAKE_TYPE(ValueType<T>)(Flags);
+        return MAKE_TYPE(ValueType<T>)(LValue, Flags);
     }
 };
 
 struct PointerType : public CType {
-    explicit PointerType(const CTYPE& contained, unsigned flags = 0) :
-            CType(BaseType::Pointer, flags),
+    explicit PointerType(const CTYPE& contained, LValueNess lvalue, unsigned flags = 0) :
+            CType(BaseType::Pointer, lvalue, flags),
             Contained(contained->Clone()) {
 
     }
@@ -402,7 +425,7 @@ struct PointerType : public CType {
 
     bool HasTruthiness() const override { return true; }
     TYPE(ValueType<i32>) TruthinessAsCType() const override {
-        return MAKE_TYPE(ValueType<i32>)(0);
+        return MakeBool();
     }
 
     void ForgetConstInfo() override {
@@ -416,12 +439,12 @@ struct PointerType : public CType {
     OVERRIDE_BINOP(Sub)
 
     CTYPE Clone() const override {
-        return MAKE_TYPE(PointerType)(Contained->Clone(), Flags);
+        return MAKE_TYPE(PointerType)(Contained->Clone(), LValue, Flags);
     }
 protected:
-    PointerType(CTYPE&& contained, BaseType base_type, unsigned flags = 0) :
-            CType(base_type, flags),
-            Contained(std::move(contained)) {
+    PointerType(const CTYPE& contained, BaseType base_type, LValueNess lvalue, unsigned flags = 0) :
+            CType(base_type, lvalue, flags),
+            Contained(contained->Clone()) {
 
     }
 
@@ -453,12 +476,13 @@ protected:
 
 struct ArrayType : public PointerType {
     explicit ArrayType(const CTYPE& contained, const CTYPE& size, unsigned flags = 0) :
-            PointerType(contained->Clone(), BaseType::Array, flags) {
+            PointerType(contained, BaseType::Array, LValueNess::LValue, flags) {
+        // arrays are lvalues, but not assignable (besides the initializer)
         Size = size->ConstIntVal(false);
     }
 
     explicit ArrayType(const CTYPE& contained, size_t size, unsigned flags = 0) :
-            PointerType(contained->Clone(), BaseType::Array, flags),
+            PointerType(contained, BaseType::Array, LValueNess::LValue, flags),
             Size(size) {
 
     }
@@ -481,9 +505,14 @@ protected:
 
 struct FunctionType : public PointerType {
     explicit FunctionType(const CTYPE& return_type, std::string symbol = "", unsigned flags = 0) :
-            PointerType(return_type->Clone(), BaseType::Function, flags),
+            PointerType(
+                    return_type,
+                    BaseType::Function,
+                    symbol.empty() ? LValueNess::Assignable : LValueNess::LValue,
+                    flags
+                    ),
             Symbol(std::move(symbol)) {
-
+        // functions are assignable if they are variables, but not if they are global symbols
     }
 
     const std::string Symbol;  // if there is a symbol here, the function is a global definition
@@ -499,9 +528,9 @@ struct FunctionType : public PointerType {
 
     TYPE(ValueType<i32>) TruthinessAsCType() const override {
         if (!Symbol.empty()) {
-            return MAKE_TYPE(ValueType<i32>)(1, 0);  // always true
+            return MakeBool(true);  // always true
         }
-        return MAKE_TYPE(ValueType<i32>)(0);  // unknown, might be function pointer variable
+        return MakeBool();  // unknown, might be function pointer variable
     }
 
     std::string ToString() const noexcept override {
@@ -560,7 +589,7 @@ protected:
 
 template<CType::BaseType type>
 struct StructUnionType : public CType {
-    explicit StructUnionType(unsigned flags = 0) : CType(type, flags) {
+    explicit StructUnionType(LValueNess lvalue, unsigned flags = 0) : CType(type, lvalue, flags) {
 
     }
 
@@ -636,7 +665,7 @@ protected:
     }
 
     CTYPE Clone() const override {
-        auto clone = MAKE_TYPE(StructUnionType<type>)(Flags);
+        auto clone = MAKE_TYPE(StructUnionType<type>)(LValue, Flags);
         for (const auto& arg : Fields) {
             clone->AddField(arg.Name, arg.Size, arg.Type);
         }
@@ -645,7 +674,7 @@ protected:
 };
 
 struct StructType : public StructUnionType<CType::BaseType::Struct> {
-    explicit StructType() : StructUnionType() {
+    explicit StructType(LValueNess lvalue, unsigned flags = 0) : StructUnionType(lvalue, flags) {
 
     }
 
@@ -667,7 +696,7 @@ private:
 };
 
 struct UnionType : public StructUnionType<CType::BaseType::Union> {
-    explicit UnionType() : StructUnionType() {
+    explicit UnionType(LValueNess lvalue, unsigned flags = 0) : StructUnionType(lvalue, flags) {
 
     }
 
