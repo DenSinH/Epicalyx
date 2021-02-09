@@ -1,8 +1,17 @@
 #include "types.h"
 #include <iostream>
 
+UNOP_HANDLER(PointerType::Deref) {
+    return Contained->Clone();
+}
+
+UNOP_HANDLER(FunctionType::Deref) {
+    // dereferencing a function pointer returns the function pointer itself
+    return Clone();
+}
+
 BINOP_HANDLER(PointerType::RSub, PointerType) {
-    if ((*this).EqualTypeImpl(other)) {
+    if ((*this).EqualType(other)) {
         return MAKE_TYPE(ValueType<u64>)(LValueNess::None, 0);
     }
     throw std::runtime_error("Cannot subtract pointers of non-compatible types");
@@ -65,7 +74,7 @@ BINOP_HANDLER(PointerType::RAdd, ValueType<i64>) {
 }
 
 BINOP_HANDLER(PointerType::RLt, PointerType) {
-    if ((*this).EqualTypeImpl(other)) {
+    if ((*this).EqualType(other)) {
         return MakeBool();
     }
     throw std::runtime_error("Cannot compare pointers of non-compatible types");
@@ -89,7 +98,7 @@ BINOP_HANDLER(PointerType::RLt, ValueType<u64>) { return MakeBool(); }
 BINOP_HANDLER(PointerType::RLt, ValueType<i64>) { return MakeBool(); }
 
 BINOP_HANDLER(PointerType::RGt, PointerType) {
-    if ((*this).EqualTypeImpl(other)) {
+    if ((*this).EqualType(other)) {
         return MakeBool();
     }
     throw std::runtime_error("Cannot compare pointers of non-compatible types");
@@ -113,7 +122,7 @@ BINOP_HANDLER(PointerType::RGt, ValueType<u64>) { return MakeBool(); }
 BINOP_HANDLER(PointerType::RGt, ValueType<i64>) { return MakeBool(); }
 
 BINOP_HANDLER(PointerType::REq, PointerType) {
-    if ((*this).EqualTypeImpl(other)) {
+    if ((*this).EqualType(other)) {
         return MakeBool();
     }
     else if (Contained->Base == BaseType::Void) {
@@ -261,6 +270,34 @@ BINOP_HANDLER(ValueType<T>::RAdd, PointerType) {
     same_type->ForgetConstInfo();
     same_type->SetNotLValue();
     return same_type;
+}
+
+template<typename T>
+UNOP_HANDLER(ValueType<T>::Pos) {
+    auto same_type = Clone();
+    same_type->SetNotLValue();
+    return same_type;
+}
+
+template<typename T>
+UNOP_HANDLER(ValueType<T>::Neg) {
+    if (HasValue()) {
+        return MAKE_TYPE(ValueType<T>)(-Get(), LValueNess::None, 0);
+    }
+    return MAKE_TYPE(ValueType<T>)(LValueNess::None, 0);
+}
+
+template<typename T>
+UNOP_HANDLER(ValueType<T>::BinNot) {
+    if constexpr(!std::is_integral_v<T>) {
+        throw std::runtime_error("Cannot perform binary operations on floating point types");
+    }
+    else {
+        if (HasValue()) {
+            return MAKE_TYPE(ValueType<T>)(~Get(), LValueNess::None, 0);
+        }
+        return MAKE_TYPE(ValueType<T>)(LValueNess::None, 0);
+    }
 }
 
 VALUE_TYPE_NUMERIC_TYPE_HANDLERS(VALUE_TYPE_BINOP_HANDLER, Add, std::plus<common_t>())

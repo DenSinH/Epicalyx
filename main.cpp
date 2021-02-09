@@ -9,14 +9,15 @@ int main() {
 
     auto t = new Tokenizer();
 
-    CTYPE Int = MAKE_TYPE(ValueType<int>)(1, CType::LValueNess::Assignable, 0);
-    CTYPE UnknownInt = MAKE_TYPE(ValueType<int>)(CType::LValueNess::None, 0);
+    CTYPE Int = MAKE_TYPE(ValueType<i32>)(1, CType::LValueNess::Assignable, 0);
+    CTYPE UnknownInt = MAKE_TYPE(ValueType<i32>)(CType::LValueNess::None, 0);
     CTYPE Float = MAKE_TYPE(ValueType<float>)(1.2, CType::LValueNess::None, 0);
     CTYPE FloatPtr = MAKE_TYPE(PointerType)(
             Float, CType::LValueNess::None
     );
     CTYPE IntPtr = MAKE_TYPE(PointerType)(Int, CType::LValueNess::None);
     CTYPE IntArray = MAKE_TYPE(ArrayType)(Int, Int);
+    CTYPE FuncPtr = MAKE_TYPE(FunctionType)(Int, "my_function");
 
     auto shifted = (*Int).RShift(*Int);
     auto equal = (*UnknownInt).Eq(*Int);
@@ -35,6 +36,9 @@ int main() {
     std::cout << notequal->ToString() << std::endl;
     std::cout << ptr_sub->ToString() << std::endl;
     std::cout << array_add->ToString() << std::endl;
+    std::cout << IntPtr->Deref()->ToString() << std::endl;
+    std::cout << IntPtr->Deref()->Ref()->Deref()->Ref()->Deref()->Ref()->Deref()->ToString() << std::endl;
+    std::cout << FuncPtr->Deref()->Deref()->Deref()->Deref()->Deref()->Deref()->ToString() << std::endl;
 
     t->Tokenize(file);
 
