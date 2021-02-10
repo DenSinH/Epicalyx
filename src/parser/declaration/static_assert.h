@@ -1,7 +1,7 @@
 #ifndef EPICALYX_STATIC_ASSERT_H
 #define EPICALYX_STATIC_ASSERT_H
 
-#include "../AST.h"
+#include "AST.h"
 #include "../expression/primary_expression.h"
 #include "struct.h"
 #include <stdexcept>

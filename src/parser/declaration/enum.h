@@ -1,7 +1,7 @@
 #ifndef EPICALYX_ENUM_H
 #define EPICALYX_ENUM_H
 
-#include "../AST.h"
+#include "AST.h"
 #include <stdexcept>
 #include "specifiers.h"
 

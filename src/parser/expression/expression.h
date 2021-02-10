@@ -1,7 +1,7 @@
 #ifndef EPICALYX_EXPRESSION_H
 #define EPICALYX_EXPRESSION_H
 
-#include "../AST.h"
+#include "AST.h"
 
 class Expression : public ExprNode {
 public:

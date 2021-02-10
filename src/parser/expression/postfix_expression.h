@@ -2,8 +2,9 @@
 #define EPICALYX_POSTFIX_EXPRESSION_H
 
 #include "../AST.h"
-#include "../declaration/typename.h"
-#include "../declaration/initializer.h"
+
+class TypeName;
+class Initializer;
 
 class PostfixExpression : public ExprNode {
 public:
@@ -152,6 +153,8 @@ public:
 };
 
 
+class InitializerList;
+
 class TypeInitializerExpression : public PostfixExpression {
 public:
 
@@ -159,23 +162,12 @@ public:
             const TOKEN& tok,
             NODE(TypeName)&& type,
             NODE(InitializerList)&& initializers
-    ) :
-            PostfixExpression(tok,  PostExprType::TypeInitializer),
-            Type(std::move(type)),
-            Initializers(std::move(initializers)) {
-
-    }
+    );
 
     const NODE(TypeName) Type;
     const NODE(InitializerList) Initializers = {};
 
-    std::list<std::string> Repr() const override {
-        std::list<std::string> repr = { "TypeInitializerExpr:" };
-
-        NestedRepr(repr, Type);
-        NestedRepr(repr, Initializers);
-        return repr;
-    }
+    std::list<std::string> Repr() const override;  // requires info on InitializerList struct
 };
 
 

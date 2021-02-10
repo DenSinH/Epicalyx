@@ -1,7 +1,68 @@
-#include "primary_expression.h"
+#include "expression_nodes.h"
+#include "declaration/typename.h"
+#include "declaration/initializer.h"
 #include "parser_state.h"
 #include "types/types.h"
 
+
+CastExpression::CastExpression(const TOKEN& tok, NODE(TypeName)&& type, NODE(ExprNode)&& right)  :
+        ExprNode(tok),
+        Type(std::move(type)),
+        Right(std::move(right)) {
+
+}
+
+std::list<std::string> CastExpression::Repr() const  {
+    std::list<std::string> repr = { "CastExpr:" };
+    NestedRepr(repr, Type);
+
+    repr.emplace_back("Value:");
+    NestedRepr(repr, Right);
+    return repr;
+}
+
+TypeInitializerExpression::TypeInitializerExpression(
+        const TOKEN& tok,
+        NODE(TypeName)&& type,
+        NODE(InitializerList)&& initializers
+    ) :
+        PostfixExpression(tok,  PostExprType::TypeInitializer),
+        Type(std::move(type)),
+        Initializers(std::move(initializers)) {
+
+}
+
+std::list<std::string> TypeInitializerExpression::Repr() const {
+    std::list<std::string> repr = { "TypeInitializerExpr:" };
+
+    NestedRepr(repr, Type);
+    NestedRepr(repr, Initializers);
+    return repr;
+}
+
+SizeOfTypeExpression::SizeOfTypeExpression(const TOKEN& tok, NODE(TypeName)&& right) :
+        UnaryExpression(tok, UnExprType::SizeOf),
+        Right(std::move(right)) {
+
+}
+
+std::list<std::string> SizeOfTypeExpression::Repr() const {
+    std::list<std::string> repr = { "SizeOfTypeExpression: " };
+    NestedRepr(repr, Right);
+    return repr;
+}
+
+AlignOfExpression::AlignOfExpression(const TOKEN& tok, NODE(TypeName)& right) :
+        UnaryExpression(tok, UnExprType::AlignOf),
+        Right(std::move(right)) {
+
+}
+
+std::list<std::string> AlignOfExpression::Repr() const {
+    std::list<std::string> repr = { "AlignOf: " };
+    NestedRepr(repr, Right);
+    return repr;
+}
 
 bool PrimaryExpressionIdentifier::IsConstant(const ParserState& state) const {
     return state.IsConstant(Name);
@@ -9,11 +70,6 @@ bool PrimaryExpressionIdentifier::IsConstant(const ParserState& state) const {
 
 CTYPE PrimaryExpressionIdentifier::GetType(const ParserState& state) const {
     return state.GetType(Name);
-}
-
-template<typename T>
-CTYPE PrimaryExpressionConstant<T>::GetType(const ParserState&) const {
-    return MAKE_TYPE(ValueType<T>)(Value, CType::LValueNess::None);
 }
 
 CTYPE PrimaryStringLiteral::GetType(const ParserState&) const {

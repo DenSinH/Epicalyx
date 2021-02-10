@@ -1,6 +1,7 @@
 #include "expression_nodes.h"
 #include "parser.h"
 #include "parser_state.h"
+#include "types/types.h"
 #include "default.h"
 
 #include <stdexcept>
@@ -16,14 +17,14 @@ NODE(ExprNode) Parser::ExpectPrimaryExpression() {
         case TokenClass::NumericalConstant: {
             Advance();
             switch(current->Type) {
-                case TokenType::ConstLong:
                 case TokenType::ConstInt:
                     return MAKE_NODE(PrimaryExpressionConstant<i32>)(current, std::static_pointer_cast<NumericalConstantToken<i32>>(current)->Value);
-                case TokenType::ConstUnsignedLong:
                 case TokenType::ConstUnsignedInt:
                     return MAKE_NODE(PrimaryExpressionConstant<u32>)(current, std::static_pointer_cast<NumericalConstantToken<u32>>(current)->Value);
+                case TokenType::ConstLong:
                 case TokenType::ConstLongLong:
                     return MAKE_NODE(PrimaryExpressionConstant<i64>)(current, std::static_pointer_cast<NumericalConstantToken<i64>>(current)->Value);
+                case TokenType::ConstUnsignedLong:
                 case TokenType::ConstUnsignedLongLong:
                     return MAKE_NODE(PrimaryExpressionConstant<u64>)(current, std::static_pointer_cast<NumericalConstantToken<u64>>(current)->Value);
                 case TokenType::ConstFloat:

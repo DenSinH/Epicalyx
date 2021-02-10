@@ -3,7 +3,7 @@
 
 #include <stdexcept>
 #include "log.h"
-#include "../AST.h"
+#include "AST.h"
 
 #include <map>
 

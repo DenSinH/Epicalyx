@@ -1,7 +1,7 @@
 #ifndef EPICALYX_INITIALIZER_H
 #define EPICALYX_INITIALIZER_H
 
-#include "../AST.h"
+#include "AST.h"
 #include "designation.h"
 
 class Initializer : public Node {

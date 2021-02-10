@@ -1,7 +1,7 @@
 #ifndef EPICALYX_COND_EXPRESSION_H
 #define EPICALYX_COND_EXPRESSION_H
 
-#include "../AST.h"
+#include "AST.h"
 
 class CondExpression : public ExprNode {
 public:

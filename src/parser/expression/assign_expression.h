@@ -1,7 +1,7 @@
 #ifndef EPICALYX_ASSIGN_EXPRESSION_H
 #define EPICALYX_ASSIGN_EXPRESSION_H
 
-#include "../AST.h"
+#include "AST.h"
 #include "../../tokenizer/tokens.h"
 
 #include <map>

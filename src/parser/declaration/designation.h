@@ -1,7 +1,7 @@
 #ifndef EPICALYX_DESIGNATION_H
 #define EPICALYX_DESIGNATION_H
 
-#include "../AST.h"
+#include "AST.h"
 #include <stdexcept>
 
 class Designator : public Node {

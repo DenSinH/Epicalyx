@@ -753,4 +753,6 @@ private:
     }
 };
 
+#include "value_type_methods.inl"
+
 #endif //EPICALYX_TOKEN_TYPES_H

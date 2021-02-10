@@ -4,6 +4,8 @@ add_library(Parser STATIC
         parser_state.h
 
         types/types.h
+        types/type_utils.h
+        types/types.cpp
 
         parser_utils.cpp
         parser.cpp
@@ -49,7 +51,7 @@ add_library(Parser STATIC
 
         translation_unit/function_definition.h
         translation_unit/parser_translation_unit.cpp
-        types/type_utils.h types/type_propagation.h types/types.cpp)
+)
 
 include_directories(
         ${PROJECT_SOURCE_DIR}/include

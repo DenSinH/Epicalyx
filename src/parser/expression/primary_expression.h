@@ -1,9 +1,8 @@
 #ifndef EPICALYX_PRIMARY_EXPRESSION_H
 #define EPICALYX_PRIMARY_EXPRESSION_H
 
-#include <utility>
-
-#include "../AST.h"
+#include "AST.h"
+#include "types/types.h"
 
 class PrimaryExpression : public ExprNode {
 public:
@@ -61,7 +60,9 @@ public:
     }
 
     bool IsConstant(const ParserState &state) const override { return true; }
-    CTYPE GetType(const ParserState& state) const override;
+    CTYPE GetType(const ParserState& state) const override {
+            return MAKE_TYPE(ValueType<T>)(Value, CType::LValueNess::None);
+    }
 };
 
 class PrimaryStringLiteral : public PrimaryExpression {

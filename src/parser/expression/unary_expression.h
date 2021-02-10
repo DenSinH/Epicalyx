@@ -1,8 +1,7 @@
 #ifndef EPICALYX_UNARY_EXPRESSION_H
 #define EPICALYX_UNARY_EXPRESSION_H
 
-#include "../AST.h"
-#include "../declaration/typename.h"
+#include "AST.h"
 
 // a cast expression can just be a unary expression
 class UnaryExpression : public ExprNode {
@@ -79,11 +78,7 @@ private:
 
 class SizeOfTypeExpression : public UnaryExpression {
 public:
-    explicit SizeOfTypeExpression(const TOKEN& tok, NODE(TypeName)&& right) :
-            UnaryExpression(tok, UnExprType::SizeOf),
-            Right(std::move(right)) {
-
-    }
+    explicit SizeOfTypeExpression(const TOKEN& tok, NODE(TypeName)&& right);
 
     const NODE(TypeName) Right;
 
@@ -91,11 +86,7 @@ public:
         return true;
     }
 
-    std::list<std::string> Repr() const override {
-        std::list<std::string> repr = { "SizeOfTypeExpression: " };
-        NestedRepr(repr, Right);
-        return repr;
-    }
+    std::list<std::string> Repr() const override;
 };
 
 class SizeOfExpression : public UnaryExpression {
@@ -118,13 +109,11 @@ public:
     }
 };
 
+class TypeName;
+
 class AlignOfExpression : public UnaryExpression {
 public:
-    explicit AlignOfExpression(const TOKEN& tok, NODE(TypeName)& right) :
-            UnaryExpression(tok, UnExprType::AlignOf),
-            Right(std::move(right)) {
-
-    }
+    explicit AlignOfExpression(const TOKEN& tok, NODE(TypeName)& right);
 
     const NODE(TypeName) Right;
 
@@ -132,11 +121,7 @@ public:
         return true;
     }
 
-    std::list<std::string> Repr() const override {
-        std::list<std::string> repr = { "AlignOf: " };
-        NestedRepr(repr, Right);
-        return repr;
-    }
+    std::list<std::string> Repr() const override;
 };
 
 #endif //EPICALYX_UNARY_EXPRESSION_H
