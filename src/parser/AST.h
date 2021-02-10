@@ -63,7 +63,7 @@ protected:
     }
 };
 
-class BlockItem : public Node {
+class BlockItem : public Node, Analyzable {
 public:
     explicit BlockItem(const TOKEN& tok) : Node(tok) {}
 };
@@ -73,7 +73,7 @@ public:
     explicit StatementNode(const TOKEN& tok) : BlockItem(tok) {}
 };
 
-class ExprNode : public StatementNode, Typed, Analyzable {
+class ExprNode : public StatementNode, Typed {
 public:
     explicit ExprNode(const TOKEN& tok) : StatementNode(tok) {}
 
@@ -102,7 +102,7 @@ public:
     explicit TypeSpecifierNode(const TOKEN& tok) : Node(tok) {}
 };
 
-class DeclNode : public BlockItem, Typed, Analyzable {
+class DeclNode : public BlockItem, Typed {
 public:
     explicit DeclNode(const TOKEN& tok) : BlockItem(tok) {}
 };

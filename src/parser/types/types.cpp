@@ -215,6 +215,16 @@ CTYPE CType::Neq(const CType& other) const {
     return eq->LogNot();   // !( == )
 }
 
+template<CType::BaseType type>
+CTYPE StructUnionType<type>::MemberAccess(const std::string& member) const {
+    for (auto& field : Fields) {
+        if (field.Name == member) {
+            return field.Type->Clone();
+        }
+    }
+    throw std::runtime_error("No field named " + member + " in " + ToString());
+}
+
 #define VALUE_TYPE_INTEGRAL_TYPE_HANDLERS(MACRO, ...) \
     MACRO(__VA_ARGS__, u8) \
     MACRO(__VA_ARGS__, i8) \

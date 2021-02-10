@@ -36,6 +36,7 @@ public:
     }
 
     bool IsConstant(const ParserState& state) const override; // requires knowledge about the ParserState struct
+    CTYPE GetType(const ParserState& state) const override;
 };
 
 template<typename T>
@@ -60,6 +61,7 @@ public:
     }
 
     bool IsConstant(const ParserState &state) const override { return true; }
+    CTYPE GetType(const ParserState& state) const override;
 };
 
 class PrimaryStringLiteral : public PrimaryExpression {
@@ -76,6 +78,7 @@ public:
     }
 
     bool IsConstant(const ParserState &state) const override { return true; }
+    CTYPE GetType(const ParserState& state) const override;
 };
 
 #endif //EPICALYX_PRIMARY_EXPRESSION_H

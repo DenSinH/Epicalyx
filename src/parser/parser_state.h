@@ -12,24 +12,24 @@ struct ParserState {
     /*
      * To be passed through the AST when checking types / values.
      * */
-    std::vector<std::map<std::string, CTYPE>> ConstantScope = {{}};
-    std::vector<std::map<std::string, CTYPE>> Scope = {{}};
+    std::vector<std::map<std::string, const CTYPE>> ConstantScope = {{}};
+    std::vector<std::map<std::string, const CTYPE>> Scope = {{}};
 
     const CTYPE GetType(const std::string& name) const {
         for (auto t = Scope.rbegin(); t != Scope.rend(); t++) {
             if (t->contains(name)) {
-                return t->at(name);
+                return t->at(name)->Clone();
             }
         }
         throw std::runtime_error("Unknown variable name: " + name);
     }
 
-    void AddType(std::string name, CTYPE type) {
+    void AddType(const std::string& name, CTYPE&& type) {
         auto& current_scope = Scope.back();
         current_scope.emplace(name, type);
     }
 
-    void AddConstant(std::string name, CTYPE type) {
+    void AddConstant(const std::string& name, CTYPE&& type) {
         Scope.back().emplace(name, type);
         ConstantScope.back().emplace(name, type);
     }

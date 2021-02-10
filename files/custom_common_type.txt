@@ -8,14 +8,14 @@
 //            return ValueType(BaseType::Float);
 //        }
 //        else {
-//            if ((lhs.Flags ^ rhs.Flags & TypeFlags::SpecifierUnsigned) == 0) {
+//            if ((lhs.Qualifiers ^ rhs.Qualifiers & TypeFlags::SpecifierUnsigned) == 0) {
 //                // same sign
-//                return ValueType(std::max(lhs.Base, rhs.Base), lhs.Flags & TypeFlags::SpecifierUnsigned);
+//                return ValueType(std::max(lhs.Base, rhs.Base), lhs.Qualifiers & TypeFlags::SpecifierUnsigned);
 //            }
 //            BaseType lhsbase = lhs.Base;
-//            unsigned lhsflags = lhs.Flags;
+//            unsigned lhsflags = lhs.Qualifiers;
 //            BaseType rhsbase = rhs.Base;
-//            unsigned rhsflags = rhs.Flags;
+//            unsigned rhsflags = rhs.Qualifiers;
 //            if (rhsbase > lhsbase) {
 //                std::swap(lhsbase, rhsbase);
 //                std::swap(lhsflags, rhsflags);

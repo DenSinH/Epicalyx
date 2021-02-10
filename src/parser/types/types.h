@@ -81,12 +81,16 @@ struct CType {
         // typedef is just another type
     };
 
-    enum TypeFlags : unsigned {
-        StorageExtern      = 0x01,
-        StorageStatic      = 0x02,
-        StorageThreadLocal = 0x04,
-        StorageRegister    = 0x08,
+    enum StorageClass {
+        Typedef,
+        Extern,
+        Static,
+        ThreadLocal,
+        Register,
+        Auto,
+    };
 
+    enum QualifierFlags : unsigned {
         QualifierConst     = 0x10,
         QualifierRestrict  = 0x20,
         QualifierVolatile  = 0x40,
@@ -102,11 +106,13 @@ struct CType {
     explicit CType(
             BaseType type,
             LValueNess lvalue,
-            unsigned flags = 0
+            unsigned flags = 0,
+            StorageClass storage = StorageClass::Auto
         ) :
                 Base(type),
                 LValue(lvalue),
-                Flags(flags) {
+                Storage(storage),
+                Qualifiers(flags) {
 
     }
 
@@ -152,6 +158,8 @@ public:
     VIRTUAL_BINOP(LShift)
     VIRTUAL_BINOP(RShift)
 
+    UNOP_HANDLER(ArrayAccess) { return Deref(); }  // todo: constant propagation
+    virtual CTYPE MemberAccess(const std::string& member) const { throw std::runtime_error("Cannot access member of non-struct/union type"); }
     VIRTUAL_UNOP(Deref)
     virtual UNOP_HANDLER(Ref);  // we want a different default here
     VIRTUAL_UNOP(Neg)
@@ -178,8 +186,9 @@ public:
 
     virtual CTYPE Clone() const = 0;
 
+    const StorageClass Storage;
     const BaseType Base;
-    unsigned Flags = 0;
+    unsigned Qualifiers = 0;
 
 protected:
     LValueNess LValue;
@@ -224,8 +233,8 @@ private:
 #define OVERRIDE_BASE_EQ bool EqualType(const CType& other) const override { return other.EqualTypeImpl(*this); }
 
 struct VoidType : public CType {
-    explicit VoidType(unsigned flags) :
-        CType(BaseType::Void, LValueNess::None, flags) {
+    explicit VoidType(unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
+        CType(BaseType::Void, LValueNess::None, flags, storage) {
         
     }
     
@@ -250,20 +259,20 @@ protected:
     }
 
     CTYPE Clone() const override {
-        return MAKE_TYPE(VoidType)(Flags);
+        return MAKE_TYPE(VoidType)(Qualifiers, Storage);
     }
 };
 
 template<typename T>
 struct ValueType : public CType {
-    explicit ValueType(LValueNess lvalue, unsigned flags) :
-            CType(BaseType::Value, lvalue, flags),
+    explicit ValueType(LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
+            CType(BaseType::Value, lvalue, flags, storage),
             Value() {
 
     }
 
-    explicit ValueType(T value, LValueNess lvalue, unsigned flags) :
-            CType(BaseType::Value, lvalue, flags),
+    explicit ValueType(T value, LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
+            CType(BaseType::Value, lvalue, flags, storage),
             Value(value) {
 
     }
@@ -295,9 +304,9 @@ struct ValueType : public CType {
 
     CTYPE Clone() const override {
         if (HasValue()) {
-            return MAKE_TYPE(ValueType<T>)(Get(), LValue, Flags);
+            return MAKE_TYPE(ValueType<T>)(Get(), LValue, Qualifiers, Storage);
         }
-        return MAKE_TYPE(ValueType<T>)(LValue, Flags);
+        return MAKE_TYPE(ValueType<T>)(LValue, Qualifiers, Storage);
     }
 
     OVERRIDE_BASE_CASTABLE
@@ -419,8 +428,8 @@ private:
 };
 
 struct PointerType : public CType {
-    explicit PointerType(const CTYPE& contained, LValueNess lvalue, unsigned flags = 0) :
-            CType(BaseType::Pointer, lvalue, flags),
+    explicit PointerType(const CTYPE& contained, LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
+            CType(BaseType::Pointer, lvalue, flags, storage),
             Contained(contained->Clone()) {
 
     }
@@ -442,11 +451,11 @@ struct PointerType : public CType {
     OVERRIDE_UNOP(Deref)
 
     CTYPE Clone() const override {
-        return MAKE_TYPE(PointerType)(Contained->Clone(), LValue, Flags);
+        return MAKE_TYPE(PointerType)(Contained->Clone(), LValue, Qualifiers, Storage);
     }
 protected:
-    PointerType(const CTYPE& contained, BaseType base_type, LValueNess lvalue, unsigned flags = 0) :
-            CType(base_type, lvalue, flags),
+    PointerType(const CTYPE& contained, BaseType base_type, LValueNess lvalue, unsigned flags, StorageClass storage) :
+            CType(base_type, lvalue, flags, storage),
             Contained(contained->Clone()) {
 
     }
@@ -491,14 +500,14 @@ private:
 };
 
 struct ArrayType : public PointerType {
-    explicit ArrayType(const CTYPE& contained, const CTYPE& size, unsigned flags = 0) :
-            PointerType(contained, BaseType::Array, LValueNess::LValue, flags) {
+    explicit ArrayType(const CTYPE& contained, const CTYPE& size, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
+            PointerType(contained, BaseType::Array, LValueNess::LValue, flags, storage) {
         // arrays are lvalues, but not assignable (besides the initializer)
         Size = size->ConstIntVal(false);
     }
 
-    explicit ArrayType(const CTYPE& contained, size_t size, unsigned flags = 0) :
-            PointerType(contained, BaseType::Array, LValueNess::LValue, flags),
+    explicit ArrayType(const CTYPE& contained, size_t size, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
+            PointerType(contained, BaseType::Array, LValueNess::LValue, flags, storage),
             Size(size) {
 
     }
@@ -510,7 +519,7 @@ struct ArrayType : public PointerType {
     }
 
     CTYPE Clone() const override {
-        return MAKE_TYPE(ArrayType)(Contained, Size, Flags);
+        return MAKE_TYPE(ArrayType)(Contained, Size, Qualifiers, Storage);
     }
 
 private:
@@ -520,12 +529,13 @@ private:
 };
 
 struct FunctionType : public PointerType {
-    explicit FunctionType(const CTYPE& return_type, std::string symbol = "", unsigned flags = 0) :
+    explicit FunctionType(const CTYPE& return_type, std::string symbol = "", unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
             PointerType(
                     return_type,
                     BaseType::Function,
                     symbol.empty() ? LValueNess::Assignable : LValueNess::LValue,
-                    flags
+                    flags,
+                    storage
                     ),
             Symbol(std::move(symbol)) {
         Contained->ForgetConstInfo();
@@ -556,7 +566,7 @@ struct FunctionType : public PointerType {
     }
 
     CTYPE Clone() const override {
-        auto clone = MAKE_TYPE(FunctionType)(Contained, Symbol, Flags);
+        auto clone = MAKE_TYPE(FunctionType)(Contained, Symbol, Qualifiers, Storage);
         for (const auto& arg : ArgTypes) {
             clone->AddArg(arg);
         }
@@ -610,7 +620,8 @@ private:
 
 template<CType::BaseType type>
 struct StructUnionType : public CType {
-    explicit StructUnionType(LValueNess lvalue, unsigned flags = 0) : CType(type, lvalue, flags) {
+    explicit StructUnionType(LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
+            CType(type, lvalue, flags, storage) {
 
     }
 
@@ -642,8 +653,10 @@ struct StructUnionType : public CType {
         Fields.push_back(Field(name, contained));
     }
 
+    CTYPE MemberAccess(const std::string& member) const override;
+
     CTYPE Clone() const override {
-        auto clone = MAKE_TYPE(StructUnionType<type>)(LValue, Flags);
+        auto clone = MAKE_TYPE(StructUnionType<type>)(LValue, Qualifiers, Storage);
         for (const auto& arg : Fields) {
             clone->AddField(arg.Name, arg.Size, arg.Type);
         }
@@ -695,7 +708,8 @@ protected:
 };
 
 struct StructType : public StructUnionType<CType::BaseType::Struct> {
-    explicit StructType(LValueNess lvalue, unsigned flags = 0) : StructUnionType(lvalue, flags) {
+    explicit StructType(LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
+            StructUnionType(lvalue, flags, storage) {
 
     }
 
@@ -717,7 +731,8 @@ private:
 };
 
 struct UnionType : public StructUnionType<CType::BaseType::Union> {
-    explicit UnionType(LValueNess lvalue, unsigned flags = 0) : StructUnionType(lvalue, flags) {
+    explicit UnionType(LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
+            StructUnionType(lvalue, flags, storage) {
 
     }
 
