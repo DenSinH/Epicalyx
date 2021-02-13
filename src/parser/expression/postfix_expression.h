@@ -1,7 +1,7 @@
 #ifndef EPICALYX_POSTFIX_EXPRESSION_H
 #define EPICALYX_POSTFIX_EXPRESSION_H
 
-#include "../AST.h"
+#include "AST.h"
 
 class TypeName;
 class Initializer;
@@ -48,9 +48,8 @@ public:
         return repr;
     }
 
-    bool IsConstant(const ParserState& state) const override {
-        return Left->IsConstant(state) && Right->IsConstant(state);
-    }
+    bool IsConstant(const ParserState& state) const override { return Left->IsConstant(state) && Right->IsConstant(state); }
+    CTYPE SemanticAnalysis(const ParserState& state) const override;
 };
 
 class FunctionCallExpression : public PostfixExpression {
@@ -60,24 +59,16 @@ public:
             NODE(ExprNode)&& func
             ) :
                 PostfixExpression(tok, PostExprType::FunctionCall),
-                Func(std::move(func)),
-                Args(nullptr) {
+                Func(std::move(func)) {
 
     }
 
-    explicit FunctionCallExpression(
-            const TOKEN& tok,
-            NODE(ExprNode)&& func,
-            NODE(ExprNode)&& args
-            ) :
-                PostfixExpression(tok, PostExprType::FunctionCall),
-                Func(std::move(func)),
-                Args(std::move(args)) {
-
+    void AddArgument(NODE(ExprNode)&& arg) {
+        Args.push_back(std::move(arg));
     }
 
     const NODE(ExprNode) Func;
-    const NODE(ExprNode) Args;
+    std::vector<NODE(ExprNode)> Args;
 
     std::list<std::string> Repr() const override {
         std::list<std::string> repr = { "FunctionCallExpr:" };
@@ -86,6 +77,7 @@ public:
         NestedRepr(repr, Args);
         return repr;
     }
+    CTYPE SemanticAnalysis(const ParserState& state) const override;
 };
 
 class MemberAccessExpression : public PostfixExpression {
@@ -118,9 +110,8 @@ public:
         return repr;
     }
 
-    bool IsConstant(const ParserState& state) const override {
-        return Left->IsConstant(state);
-    }
+    bool IsConstant(const ParserState& state) const override { return Left->IsConstant(state); }
+    CTYPE SemanticAnalysis(const ParserState& state) const override;
 };
 
 
@@ -150,6 +141,7 @@ public:
         NestedRepr(repr, Left);
         return repr;
     }
+    CTYPE SemanticAnalysis(const ParserState& state) const override;
 };
 
 
@@ -168,6 +160,7 @@ public:
     const NODE(InitializerList) Initializers = {};
 
     std::list<std::string> Repr() const override;  // requires info on InitializerList struct
+    CTYPE SemanticAnalysis(const ParserState& state) const override;
 };
 
 

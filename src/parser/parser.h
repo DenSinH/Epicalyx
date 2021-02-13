@@ -94,7 +94,6 @@ private:
 
     NODE(ExprNode) ExpectPrimaryExpression();
     NODE(ExprNode) ExpectPostfixExpression();
-    NODE(ExprNode) ExpectArgumentListExpression();
     NODE(ExprNode) ExpectUnaryExpression();
     NODE(ExprNode) ExpectCastExpressionOrTypeInitializer();
     NODE(ExprNode) ExpectMultExpression();

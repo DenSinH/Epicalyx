@@ -126,6 +126,16 @@ inline BINOP_HANDLER(ValueType<T>::RLt, PointerType) {
     throw std::runtime_error("Cannot compare pointers with non-integral types");
 }
 
+template<typename T>
+inline BINOP_HANDLER(ValueType<T>::RArrayAccess, PointerType) {
+    if constexpr(std::is_integral_v<T>) {
+        return other.Deref();
+    }
+    else {
+        throw std::runtime_error("Non-integral expression in array access");
+    }
+}
+
 #undef VALUE_TYPE_INTEGRAL_TYPE_HANDLERS
 #undef VALUE_TYPE_NUMERIC_TYPE_HANDLERS
 #undef VALUE_TYPE_BINOP_HANDLER

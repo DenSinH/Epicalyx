@@ -68,11 +68,11 @@ bool PrimaryExpressionIdentifier::IsConstant(const ParserState& state) const {
     return state.IsConstant(Name);
 }
 
-CTYPE PrimaryExpressionIdentifier::GetType(const ParserState& state) const {
+CTYPE PrimaryExpressionIdentifier::SemanticAnalysis(const ParserState& state) const {
     return state.GetType(Name);
 }
 
-CTYPE PrimaryStringLiteral::GetType(const ParserState&) const {
+CTYPE PrimaryStringLiteral::SemanticAnalysis(const ParserState&) const {
     // not assignable (spec says it is undefined)
     TYPE(ValueType<i8>) Char;
     if (Value.empty()) {
@@ -85,4 +85,36 @@ CTYPE PrimaryStringLiteral::GetType(const ParserState&) const {
     // null terminator
     // todo: store string literals
     return MAKE_TYPE(ArrayType)(Char, Value.size() + 1);
+}
+
+CTYPE ArrayAccessExpression::SemanticAnalysis(const ParserState& state) const {
+    auto left  =  Left->SemanticAnalysis(state);
+    auto right =  Right->SemanticAnalysis(state);
+    return (*left).ArrayAccess(*right);
+}
+
+CTYPE FunctionCallExpression::SemanticAnalysis(const ParserState& state) const {
+    auto func = Func->SemanticAnalysis(state);
+    std::vector<CTYPE> args = {};
+    for (const auto& arg : Args) {
+        args.push_back(arg->SemanticAnalysis(state));
+    }
+    return (*func).FunctionCall(args);
+}
+
+CTYPE MemberAccessExpression::SemanticAnalysis(const ParserState& state) const {
+    auto left = Left->SemanticAnalysis(state);
+    if (AccessType == MemberAccessType::Pointer) {
+        left = left->Deref();
+    }
+    return left->MemberAccess(Member);
+}
+
+CTYPE PostCrementExpression::SemanticAnalysis(const ParserState& state) const {
+    auto left = Left->SemanticAnalysis(state);
+    auto one = CType::ConstOne();
+    if (Type == CrementType::Increment) {
+        return (*left).Add(*one);
+    }
+    return (*left).Sub(*one);
 }

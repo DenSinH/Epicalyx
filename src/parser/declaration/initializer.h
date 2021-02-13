@@ -35,6 +35,14 @@ public:
         }
         return repr;
     }
+
+    // todo: in CType: check initializer lists
+    /*
+     * std::vector<std::pair<std::vector<std::variant<std::string, CTYPE>>, CTYPE>>
+     * empty vector: anonymous member
+     * otherwise: string for struct / union field
+     *            CTYPE for array element
+     * */
 };
 
 class AssignmentInitializer : public Initializer {

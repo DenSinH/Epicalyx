@@ -191,6 +191,10 @@ CTYPE CType::Neq(const CType& other) const {
     return eq->LogNot();   // !( == )
 }
 
+TYPE(ValueType<i8>) CType::ConstOne() {
+    return MAKE_TYPE(ValueType<i8>)(1, LValueNess::None);
+}
+
 template<CType::BaseType type>
 CTYPE StructUnionType<type>::MemberAccess(const std::string& member) const {
     for (auto& field : Fields) {

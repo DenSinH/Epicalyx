@@ -3,6 +3,7 @@
 
 #include "AST.h"
 #include <stdexcept>
+#include <utility>
 
 class Designator : public Node {
 public:
@@ -33,9 +34,9 @@ public:
 
 class StructFieldDesignator : public Designator {
 public:
-    explicit StructFieldDesignator(const TOKEN& tok, const std::string& name) :
+    explicit StructFieldDesignator(const TOKEN& tok, std::string name) :
             Designator(tok),
-            Name(name) {
+            Name(std::move(name)) {
 
     }
 

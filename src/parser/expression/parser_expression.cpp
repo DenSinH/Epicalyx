@@ -74,14 +74,20 @@ std::unique_ptr<ExprNode> Parser::ExpectPostfixExpression() {
             }
             case TokenType::LParen: {
                 // function call
+                auto func = MAKE_NODE(FunctionCallExpression)(current, std::move(node));
                 EatType(TokenType::LParen);
                 if (Current()->Type == TokenType::RParen) {
                     EatType(TokenType::RParen);
-                    return MAKE_NODE(FunctionCallExpression)(current, std::move(node));
+                    return func;
                 }
-                auto args = ExpectArgumentListExpression();
+
+                do {
+                    auto arg = ExpectAssignmentExpression();
+                    func->AddArgument(std::move(arg));
+                } while (!EndOfStream() && Current()->Type == TokenType::Comma);
+
                 EatType(TokenType::RParen);
-                return MAKE_NODE(FunctionCallExpression)(current, std::move(node), std::move(args));
+                return func;
             }
             case TokenType::Dot:
             case TokenType::Arrow: {
@@ -305,9 +311,4 @@ NODE(ExprNode) Parser::ExpectExpression() {
         node = MAKE_NODE(Expression)(Current(), std::move(node), std::move(next));
     }
     return node;
-}
-
-NODE(ExprNode) Parser::ExpectArgumentListExpression() {
-    // same grammar:
-    return ExpectExpression();
 }

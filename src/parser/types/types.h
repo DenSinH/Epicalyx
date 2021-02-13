@@ -91,10 +91,10 @@ struct CType {
     };
 
     enum QualifierFlags : unsigned {
-        QualifierConst     = 0x10,
-        QualifierRestrict  = 0x20,
-        QualifierVolatile  = 0x40,
-        QualifierAtomic    = 0x80,
+        QualifierConst     = 0x1,
+        QualifierRestrict  = 0x2,
+        QualifierVolatile  = 0x4,
+        QualifierAtomic    = 0x8,
     };
 
     enum class LValueNess {
@@ -126,6 +126,8 @@ struct CType {
         throw std::runtime_error("Type cannot be converted to bool");
     }
 
+    static TYPE(ValueType<i8>) ConstOne();
+
     virtual std::string ToString() const noexcept {
         log_fatal("Unimplemented ctype");
     };
@@ -149,17 +151,17 @@ struct CType {
     VIRTUAL_BINOP(Gt)
     VIRTUAL_BINOP(Eq)
 
+    VIRTUAL_BINOP(ArrayAccess) // todo: constant propagation
+    VIRTUAL_BINOP(LShift)
+    VIRTUAL_BINOP(RShift)
 public:
     // combinations of above functions
     CTYPE Le(const CType& other) const;
     CTYPE Ge(const CType& other) const;
     CTYPE Neq(const CType& other) const;
 
-    VIRTUAL_BINOP(LShift)
-    VIRTUAL_BINOP(RShift)
-
-    UNOP_HANDLER(ArrayAccess) { return Deref(); }  // todo: constant propagation
     virtual CTYPE MemberAccess(const std::string& member) const { throw std::runtime_error("Cannot access member of non-struct/union type"); }
+    virtual CTYPE FunctionCall(const std::vector<CTYPE>& args) const { throw std::runtime_error("Expression is not a function pointer"); }
     VIRTUAL_UNOP(Deref)
     virtual UNOP_HANDLER(Ref);  // we want a different default here
     VIRTUAL_UNOP(Neg)
@@ -406,6 +408,8 @@ private:
     NUMERIC_CTYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, REq)
     OVERRIDE_BINOP_HANDLER(REq, PointerType);
 
+    OVERRIDE_BINOP_HANDLER(RArrayAccess, PointerType);
+
 private:
     bool CastableTypeImpl(const ValueType<u8>& other) const override { return true; }
     bool CastableTypeImpl(const ValueType<i8>& other) const override { return true; }
@@ -447,6 +451,7 @@ struct PointerType : public CType {
 
     OVERRIDE_BINOP(Add)
     OVERRIDE_BINOP(Sub)
+    OVERRIDE_BINOP(ArrayAccess)
 
     OVERRIDE_UNOP(Deref)
 
@@ -529,7 +534,13 @@ private:
 };
 
 struct FunctionType : public PointerType {
-    explicit FunctionType(const CTYPE& return_type, std::string symbol = "", unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
+    explicit FunctionType(
+                const CTYPE& return_type,
+                bool variadic = false,
+                std::string symbol = "",
+                unsigned flags = 0,
+                StorageClass storage = StorageClass::Auto
+                        ) :
             PointerType(
                     return_type,
                     BaseType::Function,
@@ -537,11 +548,13 @@ struct FunctionType : public PointerType {
                     flags,
                     storage
                     ),
-            Symbol(std::move(symbol)) {
+            Symbol(std::move(symbol)),
+            Variadic(variadic) {
         Contained->ForgetConstInfo();
         // functions are assignable if they are variables, but not if they are global symbols
     }
 
+    bool Variadic;
     const std::string Symbol;  // if there is a symbol here, the function is a global definition
     std::vector<CTYPE> ArgTypes;
 
@@ -566,7 +579,7 @@ struct FunctionType : public PointerType {
     }
 
     CTYPE Clone() const override {
-        auto clone = MAKE_TYPE(FunctionType)(Contained, Symbol, Qualifiers, Storage);
+        auto clone = MAKE_TYPE(FunctionType)(Contained, Variadic, Symbol, Qualifiers, Storage);
         for (const auto& arg : ArgTypes) {
             clone->AddArg(arg);
         }
@@ -582,6 +595,24 @@ struct FunctionType : public PointerType {
 //    OVERRIDE_BINOP(Eq);
 
     OVERRIDE_UNOP(Deref)
+    CTYPE ArrayAccess(const CType &other) const override {
+        throw std::runtime_error("Cannot access elements from function pointer");
+    }
+
+    CTYPE FunctionCall(const std::vector<CTYPE>& args) const override {
+        if (args.size() != ArgTypes.size()) {
+            if (!Variadic || args.size() < ArgTypes.size()) {
+                throw std::runtime_error("Not enough arguments for function call");
+            }
+        }
+
+        for (int i = 0; i < ArgTypes.size(); i++) {
+            if (!ArgTypes[i]->CastableType(*args[i])) {
+                throw std::runtime_error("Cannot cast argument type");
+            }
+        }
+        return Contained->Clone();
+    }
 
 private:
     bool CastableTypeImpl(const FunctionType& other) const override { return true; }

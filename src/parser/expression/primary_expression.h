@@ -35,7 +35,7 @@ public:
     }
 
     bool IsConstant(const ParserState& state) const override; // requires knowledge about the ParserState struct
-    CTYPE GetType(const ParserState& state) const override;
+    CTYPE SemanticAnalysis(const ParserState& state) const override;
 };
 
 template<typename T>
@@ -59,8 +59,8 @@ public:
         return { std::string("Constant: ") + std::to_string(Value) };
     }
 
-    bool IsConstant(const ParserState &state) const override { return true; }
-    CTYPE GetType(const ParserState& state) const override {
+    bool IsConstant(const ParserState&) const override { return true; }
+    CTYPE SemanticAnalysis(const ParserState&) const override {
             return MAKE_TYPE(ValueType<T>)(Value, CType::LValueNess::None);
     }
 };
@@ -78,8 +78,8 @@ public:
         return { std::string("Constant String: ") + Value };
     }
 
-    bool IsConstant(const ParserState &state) const override { return true; }
-    CTYPE GetType(const ParserState& state) const override;
+    bool IsConstant(const ParserState&) const override { return true; }
+    CTYPE SemanticAnalysis(const ParserState& state) const override;
 };
 
 #endif //EPICALYX_PRIMARY_EXPRESSION_H

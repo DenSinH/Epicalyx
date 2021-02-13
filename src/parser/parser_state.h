@@ -48,11 +48,11 @@ struct ParserState {
 //    }
 //
 //    CType::OptionalNumericValue GetOptionalValue(const std::string& name) const {
-//        return GetType(name).GetOptionalValue();
+//        return SemanticAnalysis(name).GetOptionalValue();
 //    }
 //
 //    CType::NumericValue GetNumericValue(const std::string& name) const {
-//        return GetType(name).GetNumericValue();
+//        return SemanticAnalysis(name).GetNumericValue();
 //    }
 };
 

@@ -19,17 +19,10 @@
 class Parser;
 class ParserState;
 
-class Typed {
-public:
-    virtual CTYPE GetType(const ParserState& state) const {
-        throw std::runtime_error("Not implemented");
-    }
-};
-
 class Analyzable {
 public:
-    virtual bool SemanticAnalysis(ParserState& state) {
-        return true;
+    virtual CTYPE SemanticAnalysis(const ParserState& state) const {
+        throw std::runtime_error("Not implemented");
     }
 };
 
@@ -63,7 +56,7 @@ protected:
     }
 };
 
-class BlockItem : public Node, Analyzable {
+class BlockItem : public Node, public Analyzable {
 public:
     explicit BlockItem(const TOKEN& tok) : Node(tok) {}
 };
@@ -73,7 +66,7 @@ public:
     explicit StatementNode(const TOKEN& tok) : BlockItem(tok) {}
 };
 
-class ExprNode : public StatementNode, Typed {
+class ExprNode : public StatementNode {
 public:
     explicit ExprNode(const TOKEN& tok) : StatementNode(tok) {}
 
@@ -102,7 +95,7 @@ public:
     explicit TypeSpecifierNode(const TOKEN& tok) : Node(tok) {}
 };
 
-class DeclNode : public BlockItem, Typed {
+class DeclNode : public BlockItem, Analyzable {
 public:
     explicit DeclNode(const TOKEN& tok) : BlockItem(tok) {}
 };
