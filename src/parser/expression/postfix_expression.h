@@ -160,7 +160,7 @@ public:
     const NODE(InitializerList) Initializers = {};
 
     std::list<std::string> Repr() const override;  // requires info on InitializerList struct
-    CTYPE SemanticAnalysis(const ParserState& state) const override;
+    // CTYPE SemanticAnalysis(const ParserState& state) const override;
 };
 
 

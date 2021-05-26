@@ -95,7 +95,7 @@ public:
     explicit TypeSpecifierNode(const TOKEN& tok) : Node(tok) {}
 };
 
-class DeclNode : public BlockItem, Analyzable {
+class DeclNode : public BlockItem {
 public:
     explicit DeclNode(const TOKEN& tok) : BlockItem(tok) {}
 };

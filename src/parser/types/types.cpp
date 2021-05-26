@@ -204,3 +204,16 @@ CTYPE StructUnionType<type>::MemberAccess(const std::string& member) const {
     }
     throw std::runtime_error("No field named " + member + " in " + ToString());
 }
+
+#include "value_type_methods.inl"
+
+template struct ValueType<i8>;
+template struct ValueType<u8>;
+template struct ValueType<i16>;
+template struct ValueType<u16>;
+template struct ValueType<i32>;
+template struct ValueType<u32>;
+template struct ValueType<i64>;
+template struct ValueType<u64>;;
+template struct ValueType<float>;
+template struct ValueType<double>;
