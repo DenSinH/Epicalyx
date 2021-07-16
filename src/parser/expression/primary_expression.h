@@ -60,8 +60,9 @@ public:
     }
 
     bool IsConstant(const ParserState&) const override { return true; }
+
     CTYPE SemanticAnalysis(const ParserState&) const override {
-            return MAKE_TYPE(ValueType<T>)(Value, CType::LValueNess::None);
+        return MAKE_TYPE(ValueType<T>)(Value, CType::LValueNess::None);
     }
 };
 

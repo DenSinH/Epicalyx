@@ -88,8 +88,8 @@ CTYPE PrimaryStringLiteral::SemanticAnalysis(const ParserState&) const {
 }
 
 CTYPE ArrayAccessExpression::SemanticAnalysis(const ParserState& state) const {
-    auto left  =  Left->SemanticAnalysis(state);
-    auto right =  Right->SemanticAnalysis(state);
+    auto left  = Left->SemanticAnalysis(state);
+    auto right = Right->SemanticAnalysis(state);
     return (*left).ArrayAccess(*right);
 }
 

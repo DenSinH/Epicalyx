@@ -135,9 +135,3 @@ inline BINOP_HANDLER(ValueType<T>::RArrayAccess, PointerType) {
         throw std::runtime_error("Non-integral expression in array access");
     }
 }
-
-#undef VALUE_TYPE_INTEGRAL_TYPE_HANDLERS
-#undef VALUE_TYPE_NUMERIC_TYPE_HANDLERS
-#undef VALUE_TYPE_BINOP_HANDLER
-#undef INTEGRAL_VALUE_TYPE_BINOP_HANDLER
-#undef VALUE_TYPE_BOOL_BINOP_HANDLER
