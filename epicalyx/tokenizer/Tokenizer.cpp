@@ -1,0 +1,336 @@
+#include "Tokenizer.h"
+#include "Default.h"
+
+#include <sstream>
+#include <array>
+#include <iostream>
+
+namespace epi {
+
+bool Tokenizer::IsEOS() {
+  SkipBlanks();
+  return in_stream.EOS();
+}
+
+void Tokenizer::SkipBlanks() {
+  in_stream.SkipWhile(std::isspace);
+}
+
+pToken Tokenizer::GetNew() {
+  char c;
+  SkipBlanks();
+  if (!in_stream.Peek(c, 0)) {
+    throw calyx::FormatExcept("Unexpected end of file while fetching token");
+  }
+
+  if (std::isalpha(c) || c == '_') {
+    // identifier, keyword or prefixed character sequence
+    if (in_stream.IsAfter(0, 'L', 'u', 'U')) {
+      if (in_stream.IsAfter(1, '\"')) {
+        // prefixed string literal
+        in_stream.Skip();
+        return Make<tStringConstant>(ReadString('\"'));
+      }
+      else if (in_stream.IsAfter(1, '8') && in_stream.IsAfter(2, '\"')) {
+        in_stream.Skip(2);
+        return Make<tStringConstant>(ReadString('\"'));
+      }
+      else if (in_stream.IsAfter(1, '\'')) {
+        // prefixed char literal
+        bool is_unsigned = in_stream.IsAfter(0, 'u', 'U');
+        std::string char_string = ReadString('\'');
+        u32 value = 0;
+        for (auto k : char_string) {
+          value <<= 8;
+          value |= k;
+        }
+
+        if (is_unsigned) {
+          return Make<tNumericConstant<u32>>(value);
+        }
+        return Make<tNumericConstant<i32>>(value);
+      }
+    }
+
+    std::stringstream token{};
+    while (in_stream.PredicateAfter(0, [](char k) { return std::isalnum(k) || k == '_'; })) {
+      token << in_stream.Get();
+    }
+
+    std::string content = token.str();
+    if (Keywords.contains(content)) {
+      return Make<Token>(Keywords.at(content));
+    }
+    else {
+      return Make<tIdentifier>(content);
+    }
+  }
+  else if (std::isdigit(c) || (c == '.' && in_stream.PredicateAfter(1, std::isdigit))) {
+    // numerical constant
+    return ReadNumericalConstant();
+  }
+  else if (c == '"') {
+    // string literal
+    return Make<tStringConstant>(ReadString('\"'));
+  }
+  else if (c == '\'') {
+    // char literal
+    std::string char_string = ReadString('\'');
+    u32 value = 0;
+    for (auto k : char_string) {
+      value <<= 8;
+      value |= k;
+    }
+    return Make<tNumericConstant<i32>>(value);
+  }
+  else {
+    // punctuator
+    if (in_stream.SequenceAfter(0, '.', '.', '.')) {
+      in_stream.Skip(3);
+      return Make<Token>(TokenType::Ellipsis);
+    }
+
+    std::stringstream str{};
+    do {
+      str << c;
+      if (Punctuators.contains(str.str())) {
+        in_stream.Skip();
+      }
+      else {
+        std::string punctuator = str.str();
+        punctuator.erase(punctuator.size() - 1);
+        return Make<Token>(Punctuators.at(punctuator));
+      }
+    } while (in_stream.Peek(c, 0));
+
+    if (Punctuators.contains(str.str())) {
+      std::string punctuator = str.str();
+      return Make<Token>(Punctuators.at(punctuator));
+    }
+
+    throw std::runtime_error("Unexpected end of stream while reading punctuator");
+  }
+}
+
+static constexpr std::array<i32, 0x100> ASCIIHexToInt = {
+        // ASCII
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
+        -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+};
+
+std::string Tokenizer::ReadString(const char delimiter) {
+  std::stringstream str{};
+
+  in_stream.Expect(delimiter);
+  char c;
+  for (c = in_stream.Get(); c != delimiter; c = in_stream.Get()) {
+    if (c == '\\') {
+      // escape sequence
+      c = in_stream.Get();
+      switch (c) {
+        case '\'': case '\"': case '\\': str << c; break;
+        case 'a': str << '\a'; break;
+        case 'b': str << '\b'; break;
+        case 'f': str << '\f'; break;
+        case 'n': str << '\n'; break;
+        case 'r': str << '\r'; break;
+        case 't': str << '\t'; break;
+        case 'v': str << '\v'; break;
+        case '?': str << '\?'; break;
+        case 'x': {
+          // hex literal
+          char hex = 0;
+          while (in_stream.PredicateAfter(0, std::isxdigit)) {
+            c = in_stream.Get();
+            hex <<= 4;
+            hex |= ASCIIHexToInt[c];
+          }
+          str << hex;
+        }
+        case '0': case '1': case '2': case '3':
+        case '4': case '5': case '6': case '7': {
+          // octal literal
+          char oct = c;
+          for (int count = 0; in_stream.PredicateAfter(0, std::isdigit) && count < 3; count++) {
+            if (in_stream.Peek(c, 0) && c < '8') {
+              c = in_stream.Get();
+              oct <<= 3;
+              oct |= c - '0';
+            }
+          }
+          str << oct;
+        }
+        default:
+          throw calyx::FormatExcept("Invalid escape sequence: %c", c);
+      }
+    }
+    else {
+      str << c;
+    }
+  }
+
+  return str.str();
+}
+
+pToken Tokenizer::ReadNumericalConstant() {
+  std::stringstream value{};
+  bool dot = false;
+  bool exponent = false;
+  bool octal = false;
+  bool hex = false;
+  bool is_float = false;
+
+  if (in_stream.IsAfter(0, '0')) {
+    if (in_stream.IsAfter(1, 'x')) {
+      // hexadecimal
+      hex = true;
+      value << "0x";
+      in_stream.Skip(2);
+    }
+    else {
+      octal = true;
+      value << "0";
+      in_stream.Skip();
+    }
+  }
+  else if (in_stream.IsAfter(0, '.')) {
+    dot = true;
+    value << '0' << '.';
+    in_stream.Skip();
+  }
+
+  while (true) {
+    while ((hex && in_stream.PredicateAfter(0, std::isxdigit)) || (!hex && in_stream.PredicateAfter(0, std::isdigit))) {
+      value << in_stream.Get();
+    }
+
+    if (in_stream.IsAfter(0, '.')) {
+      if (hex) {
+        throw std::runtime_error("No decimals allowed in hex float literal");
+      }
+
+      if (dot) {
+        throw std::runtime_error("Invalid float literal: double decimal point");
+      }
+
+      value << in_stream.Get();
+      dot = true;
+      is_float = true;
+    }
+    else if (in_stream.IsAfter(0, 'e', 'E')) {
+      if (exponent) {
+        throw std::runtime_error("Invalid float literal: double exponent");
+      }
+
+      if (hex) {
+        throw std::runtime_error("Invalid float literal: wrong exponent character for hex float");
+      }
+
+      value << in_stream.Get();
+
+      // no more dots after exponent
+      dot = true;
+      exponent = true;
+      is_float = true;
+
+      if (in_stream.IsAfter(0, '+', '-')) {
+        // exponent sign
+        value << in_stream.Get();
+      }
+    }
+    else if (in_stream.IsAfter(0, 'p', 'P')) {
+      // hex float exponent
+      if (!hex) {
+        throw std::runtime_error("Invalid float literal: wrong exponent character for decimal float");
+      }
+      value << in_stream.Get();
+
+      exponent = true;
+      is_float = true;
+
+      if (in_stream.IsAfter(0, '+', '-')) {
+        // exponent sign
+        value << in_stream.Get();
+      }
+    }
+    else {
+      // no special meaning, number is parsed
+      break;
+    }
+  }
+
+  int is_long = 0;
+  bool is_unsigned = false;
+  if (!octal && in_stream.IsAfter(0, 'f', 'F')) {
+    in_stream.Skip();
+    is_float = true;
+  }
+  else if (is_float && in_stream.IsAfter(0, 'l', 'L')) {
+    in_stream.Skip();
+    is_long = 1;
+  }
+  else if (!is_float) {
+    if (in_stream.IsAfter(0, 'u', 'U')) {
+      in_stream.Skip();
+      is_unsigned = true;
+      if (in_stream.IsAfter(0, 'l', 'L')) {
+        in_stream.Skip();
+        is_long = 1;
+        if (in_stream.IsAfter(0, 'l', 'L')) {
+          in_stream.Skip();
+          is_long = 2;
+        }
+      }
+    }
+    else if (in_stream.IsAfter(0, 'l', 'L')) {
+      in_stream.Skip();
+      is_long = 1;
+      if (in_stream.IsAfter(0, 'l', 'L')) {
+        in_stream.Skip();
+        is_long = 2;
+      }
+
+      if (in_stream.IsAfter(0, 'u', 'U')) {
+        in_stream.Skip();
+        is_unsigned = true;
+      }
+    }
+  }
+
+  if (is_float) {
+    double val = std::stod(value.str());
+    if (is_long || (val != (float)val)) {
+      return Make<tNumericConstant<double>>(val);
+    }
+    else {
+      return Make<tNumericConstant<float>>(val);
+    }
+  }
+  if (is_unsigned) {
+    u64 val = std::stoull(value.str());
+    if (is_long == 2 || val > UINT32_MAX) {
+      return Make<tNumericConstant<u64>>(val);
+    }
+    else {
+      return Make<tNumericConstant<u32>>(val);
+    }
+  }
+  else {
+    u64 val = std::stoll(value.str());
+    if (is_long == 2 || val > INT32_MAX || val < INT32_MIN) {
+      return Make<tNumericConstant<i64>>(val);
+    }
+    else {
+      return Make<tNumericConstant<i32>>(val);
+    }
+  }
+
+}
+
+}
