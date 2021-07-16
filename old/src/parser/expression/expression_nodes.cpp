@@ -2,7 +2,7 @@
 #include "declaration/typename.h"
 #include "declaration/initializer.h"
 #include "parser_state.h"
-#include "types/types.h"
+#include "types/Types.h"
 
 
 CastExpression::CastExpression(const TOKEN& tok, NODE(TypeName)&& type, NODE(ExprNode)&& right)  :

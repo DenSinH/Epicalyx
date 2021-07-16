@@ -12,9 +12,9 @@ std::string Format(const std::string& format, const Args&... args) {
   if (buf_size <= 0) {
     throw std::runtime_error("Error during formatting of string");
   }
-  auto buf = std::make_unique<char[]>((size_t)buf_size);
-  std::snprintf(buf.get(), buf_size, format.c_str(), args...);
-  return std::string(buf.get(), buf.get() + buf_size);
+  auto buf = std::make_unique<char[]>((size_t)buf_size + 1);
+  std::snprintf(buf.get(), buf_size + 1, format.c_str(), args...);
+  return std::string(buf.get(), buf.get() + buf_size + 1);
 }
 
 

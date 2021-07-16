@@ -361,7 +361,6 @@ pToken Tokenizer::ReadNumericalConstant() {
       return Make<tNumericConstant<i32>>(val);
     }
   }
-
 }
 
 }

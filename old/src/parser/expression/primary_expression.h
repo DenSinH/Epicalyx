@@ -2,7 +2,7 @@
 #define EPICALYX_PRIMARY_EXPRESSION_H
 
 #include "AST.h"
-#include "types/types.h"
+#include "types/Types.h"
 
 class PrimaryExpression : public ExprNode {
 public:

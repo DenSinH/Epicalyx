@@ -1,7 +1,7 @@
 #include "expression_nodes.h"
 #include "parser.h"
 #include "parser_state.h"
-#include "types/types.h"
+#include "types/Types.h"
 #include "default.h"
 
 #include <stdexcept>

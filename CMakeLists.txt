@@ -25,8 +25,10 @@ add_executable(
 # add_compile_options(-fstack-protector)
 add_subdirectory(epicalyx/file)
 add_subdirectory(epicalyx/tokenizer)
-#add_subdirectory(src/parser)
-#
+add_subdirectory(epicalyx/types)
+add_subdirectory(epicalyx/parser)
+
 target_link_libraries(epicalyx File)
 target_link_libraries(epicalyx Tokenizer)
-#target_link_libraries(epicalyx Parser)
+target_link_libraries(epicalyx Types)
+target_link_libraries(epicalyx Parser)
