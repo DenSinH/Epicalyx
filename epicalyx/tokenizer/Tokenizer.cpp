@@ -42,7 +42,7 @@ pToken Tokenizer::GetNew() {
         u32 value = 0;
         for (auto k : char_string) {
           value <<= 8;
-          value |= k;
+          value |= (u8)k;
         }
 
         if (is_unsigned) {
@@ -79,7 +79,7 @@ pToken Tokenizer::GetNew() {
     u32 value = 0;
     for (auto k : char_string) {
       value <<= 8;
-      value |= k;
+      value |= (u8)k;
     }
     return Make<tNumericConstant<i32>>(value);
   }
@@ -152,6 +152,7 @@ std::string Tokenizer::ReadString(const char delimiter) {
             hex |= ASCIIHexToInt[c];
           }
           str << hex;
+          break;
         }
         case '0': case '1': case '2': case '3':
         case '4': case '5': case '6': case '7': {
@@ -165,6 +166,7 @@ std::string Tokenizer::ReadString(const char delimiter) {
             }
           }
           str << oct;
+          break;
         }
         default:
           throw calyx::FormatExcept("Invalid escape sequence: %c", c);
@@ -187,15 +189,13 @@ pToken Tokenizer::ReadNumericalConstant() {
   bool is_float = false;
 
   if (in_stream.IsAfter(0, '0')) {
-    if (in_stream.IsAfter(1, 'x')) {
+    if (in_stream.IsAfter(1, 'x', 'X')) {
       // hexadecimal
       hex = true;
-      value << "0x";
       in_stream.Skip(2);
     }
     else {
       octal = true;
-      value << "0";
       in_stream.Skip();
     }
   }
@@ -313,7 +313,22 @@ pToken Tokenizer::ReadNumericalConstant() {
     }
   }
   if (is_unsigned) {
-    u64 val = std::stoull(value.str());
+    u64 val = 0;
+    if (octal) {
+      for (auto c : value.str()) {
+        if (c > '7') {
+          throw std::runtime_error("Invalid octal constant");
+        }
+        val <<= 3;
+        val |= c - '0';
+      }
+    }
+    else if (hex) {
+      val = std::stoull(value.str(), nullptr, 16);
+    }
+    else {
+      val = std::stoull(value.str());
+    }
     if (is_long == 2 || val > UINT32_MAX) {
       return Make<tNumericConstant<u64>>(val);
     }
@@ -322,7 +337,23 @@ pToken Tokenizer::ReadNumericalConstant() {
     }
   }
   else {
-    u64 val = std::stoll(value.str());
+    i64 val = 0;
+    if (octal) {
+      for (auto c : value.str()) {
+        if (c > '7') {
+          throw std::runtime_error("Invalid octal constant");
+        }
+        val <<= 3;
+        val |= c - '0';
+      }
+    }
+    else if (hex) {
+      val = std::stoll(value.str(), nullptr, 16);
+    }
+    else {
+      val = std::stoll(value.str());
+    }
+
     if (is_long == 2 || val > INT32_MAX || val < INT32_MIN) {
       return Make<tNumericConstant<i64>>(val);
     }

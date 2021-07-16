@@ -5,7 +5,7 @@
 
 
 int main() {
-  auto file = epi::File("examples/tokenization/hello_world.c");
+  auto file = epi::File("examples/tokenization/struct_def.c");
   auto tokenizer = epi::Tokenizer(file);
 
   while (!tokenizer.EOS()) {
