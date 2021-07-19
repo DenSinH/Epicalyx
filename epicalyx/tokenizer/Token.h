@@ -2,6 +2,9 @@
 
 #include "Format.h"
 
+#include "parser/nodes/Node.h"
+#include "parser/ConstTokenVisitor.h"
+
 #include <string>
 #include <utility>
 #include <map>
@@ -100,8 +103,15 @@ struct Token {
 
   }
 
-  virtual std::string ToString() {
+  virtual pExpr GetConst(ConstTokenVisitor& v) const { return v.Visit(*this); }
+  void Expect(TokenType t) const;
+
+  virtual std::string to_string()  const {
     return TokenData.at(type).name;
+  }
+
+  bool operator==(const Token& other) const {
+    return type == other.type;
   }
 
   virtual TokenClass Class() {
@@ -116,7 +126,9 @@ struct tIdentifier final : public Token {
 
   }
 
-  std::string ToString() final {
+  pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
+
+  std::string to_string()  const final {
     return name;
   }
 
@@ -136,7 +148,9 @@ struct tNumericConstant final : public Token {
 
   }
 
-  std::string ToString() final {
+  pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
+
+  std::string to_string()  const final {
     return std::to_string(value);
   }
 
@@ -155,7 +169,9 @@ struct tStringConstant : public Token {
 
   }
 
-  std::string ToString() final {
+  pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
+
+  std::string to_string()  const final {
     return calyx::Format("\"%s\"", value.c_str());
   }
 
@@ -165,5 +181,11 @@ struct tStringConstant : public Token {
 
   const std::string value;
 };
+
+static std::string to_string(const Token& t) {
+  return t.to_string();
+}
+
+using pToken = std::shared_ptr<Token>;
 
 }

@@ -19,7 +19,7 @@ void Tokenizer::SkipBlanks() {
 pToken Tokenizer::GetNew() {
   char c;
   SkipBlanks();
-  if (!in_stream.Peek(c, 0)) {
+  if (!in_stream.Peek(c)) {
     throw calyx::FormatExcept("Unexpected end of file while fetching token");
   }
 
@@ -101,7 +101,7 @@ pToken Tokenizer::GetNew() {
         punctuator.erase(punctuator.size() - 1);
         return Make<Token>(Punctuators.at(punctuator));
       }
-    } while (in_stream.Peek(c, 0));
+    } while (in_stream.Peek(c));
 
     if (Punctuators.contains(str.str())) {
       std::string punctuator = str.str();
@@ -127,7 +127,7 @@ static constexpr std::array<i32, 0x100> ASCIIHexToInt = {
 std::string Tokenizer::ReadString(const char delimiter) {
   std::stringstream str{};
 
-  in_stream.Expect(delimiter);
+  in_stream.Eat(delimiter);
   char c;
   for (c = in_stream.Get(); c != delimiter; c = in_stream.Get()) {
     if (c == '\\') {
@@ -159,7 +159,7 @@ std::string Tokenizer::ReadString(const char delimiter) {
           // octal literal
           char oct = c;
           for (int count = 0; in_stream.PredicateAfter(0, std::isdigit) && count < 3; count++) {
-            if (in_stream.Peek(c, 0) && c < '8') {
+            if (in_stream.Peek(c) && c < '8') {
               c = in_stream.Get();
               oct <<= 3;
               oct |= c - '0';

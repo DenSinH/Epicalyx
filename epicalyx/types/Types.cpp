@@ -189,17 +189,17 @@ BINOP_HANDLER(PointerType::REq, ValueType<i32>) { return MakeBool(); }
 BINOP_HANDLER(PointerType::REq, ValueType<u64>) { return MakeBool(); }
 BINOP_HANDLER(PointerType::REq, ValueType<i64>) { return MakeBool(); }
 
-Type<ValueType<i32>> CType::MakeBool(bool value) {
+pType<ValueType<i32>> CType::MakeBool(bool value) {
   // make bool with value
   return MakeType<ValueType<i32>>(value, LValueNess::None, 0);
 }
 
-Type<ValueType<i32>> CType::MakeBool() {
+pType<ValueType<i32>> CType::MakeBool() {
   // make bool without value
   return MakeType<ValueType<i32>>(LValueNess::None, 0);
 }
 
-Type<ValueType<i32>> CType::LogAnd(const CType& other) const {
+pType<ValueType<i32>> CType::LogAnd(const CType& other) const {
   auto l = this->TruthinessAsCType();
   auto r = other.TruthinessAsCType();
   if (l->HasValue() && r->HasValue()) {
@@ -208,7 +208,7 @@ Type<ValueType<i32>> CType::LogAnd(const CType& other) const {
   return MakeBool();
 }
 
-Type<ValueType<i32>> CType::LogOr(const CType& other) const {
+pType<ValueType<i32>> CType::LogOr(const CType& other) const {
   auto l = this->TruthinessAsCType();
   auto r = other.TruthinessAsCType();
   if (l->HasValue() && r->HasValue()) {
@@ -217,13 +217,17 @@ Type<ValueType<i32>> CType::LogOr(const CType& other) const {
   return MakeBool();
 }
 
-Type<ValueType<i32>> CType::LogNot() const {
+pType<ValueType<i32>> CType::LogNot() const {
   auto bool_val = TruthinessAsCType();
   if (bool_val->HasValue()) {
     return MakeBool(!bool_val->Get());
   }
   return MakeBool();
 }
+
+pType<> CType::LLogAnd(const CType& other) const { return LogAnd(other); }
+pType<> CType::LLogOr(const CType& other) const { return LogAnd(other); }
+pType<> CType::LLogNot() const { return LogNot(); }
 
 UNOP_HANDLER(CType::Ref) {
   // only for lvalues
@@ -234,36 +238,37 @@ UNOP_HANDLER(CType::Ref) {
   return MakeType<PointerType>(Clone(), LValueNess::None);
 }
 
-UNOP_HANDLER(FunctionType::Ref) {
-  if (symbol != "") {
-    return Clone();
-  }
-  return CType::Ref();
+UNOP_HANDLER(CType::Incr) {
+  return Add(*ConstOne());
 }
 
-Type<> CType::Le(const CType& other) const {
+UNOP_HANDLER(CType::Decr) {
+  return Sub(*ConstOne());
+}
+
+pType<> CType::Le(const CType& other) const {
   auto lt = this->Lt(other);
   auto eq = this->Eq(other);
   return lt->LogOr(other);  // < || ==
 }
 
-Type<> CType::Ge(const CType& other) const {
+pType<> CType::Ge(const CType& other) const {
   auto gt = this->Gt(other);
   auto eq = this->Eq(other);
   return gt->LogOr(other);  // > || ==
 }
 
-Type<> CType::Neq(const CType& other) const {
+pType<> CType::Neq(const CType& other) const {
   auto eq = this->Eq(other);
   return eq->LogNot();   // !( == )
 }
 
-Type<ValueType<i8>> CType::ConstOne() {
+pType<ValueType<i8>> CType::ConstOne() {
   return MakeType<ValueType<i8>>(1, LValueNess::None);
 }
 
 template<int type>
-Type<> StructUnionType<type>::MemberAccess(const std::string& member) const {
+pType<> StructUnionType<type>::MemberAccess(const std::string& member) const {
   for (auto& field : fields) {
     if (field.name == member) {
       return field.type->Clone();

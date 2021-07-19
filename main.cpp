@@ -10,18 +10,18 @@ int main() {
   auto tokenizer = epi::Tokenizer(file);
 
   while (!tokenizer.EOS()) {
-    std::cout << tokenizer.Get()->ToString() << std::endl;
+    std::cout << tokenizer.Get()->to_string() << std::endl;
   }
 
-  epi::Type<> Int = epi::MakeType<epi::ValueType<epi::i32>>(1, epi::CType::LValueNess::Assignable, 0);
-  epi::Type<> UnknownInt = epi::MakeType<epi::ValueType<epi::i32>>(epi::CType::LValueNess::None, 0);
-  epi::Type<> Float = epi::MakeType<epi::ValueType<float>>(1.2, epi::CType::LValueNess::None, 0);
-  epi::Type<> FloatPtr = epi::MakeType<epi::PointerType>(
+  epi::pType<> Int = epi::MakeType<epi::ValueType<epi::i32>>(1, epi::CType::LValueNess::Assignable, 0);
+  epi::pType<> UnknownInt = epi::MakeType<epi::ValueType<epi::i32>>(epi::CType::LValueNess::None, 0);
+  epi::pType<> Float = epi::MakeType<epi::ValueType<float>>(1.2, epi::CType::LValueNess::None, 0);
+  epi::pType<> FloatPtr = epi::MakeType<epi::PointerType>(
           Float, epi::CType::LValueNess::None
   );
-  epi::Type<> IntPtr = epi::MakeType<epi::PointerType>(Int, epi::CType::LValueNess::None);
-  epi::Type<> IntArray = epi::MakeType<epi::ArrayType>(Int, Int);
-  epi::Type<> FuncPtr = epi::MakeType<epi::FunctionType>(Int, std::string{"my_function"});
+  epi::pType<> IntPtr = epi::MakeType<epi::PointerType>(Int, epi::CType::LValueNess::None);
+  epi::pType<> IntArray = epi::MakeType<epi::ArrayType>(Int, Int);
+  epi::pType<> FuncPtr = epi::MakeType<epi::FunctionType>(Int, std::string{"my_function"});
 
   auto shifted = (*Int).RShift(*Int);
   auto equal = (*UnknownInt).Eq(*Int);

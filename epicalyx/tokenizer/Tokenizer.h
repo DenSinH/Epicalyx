@@ -7,9 +7,7 @@
 
 namespace epi {
 
-using pToken = std::shared_ptr<Token>;
-
-class Tokenizer : public calyx::Stream<pToken> {
+class Tokenizer : public calyx::pStream<Token> {
 public:
 
   Tokenizer(calyx::Stream<char>& in_stream) :
@@ -20,6 +18,7 @@ public:
 protected:
   pToken GetNew() final;
   bool IsEOS() final;
+
 
 private:
   calyx::Stream<char>& in_stream;

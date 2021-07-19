@@ -16,10 +16,10 @@ namespace epi {
 struct CType;
 
 template<typename T = CType>
-using Type = std::shared_ptr<T>;
+using pType = std::shared_ptr<T>;
 
 template<typename T = CType, typename ...Args>
-Type<T> MakeType(Args ...args) {
+pType<T> MakeType(Args ...args) {
   return std::make_shared<T>(args...);
 }
 
@@ -65,12 +65,12 @@ struct UnionType;
 
 #define VIRTUAL_BINOP_HANDLERS(handler) TYPE_SIGNATURES(VIRTUAL_BINOP_HANDLER, handler)
 
-#define BINOP_HANDLER(handler, type) Type<> handler(const type& other) const
-#define UNOP_HANDLER(handler) Type<> handler() const
+#define BINOP_HANDLER(handler, type) pType<> handler(const type& other) const
+#define UNOP_HANDLER(handler) pType<> handler() const
 #define VIRTUAL_CASTABLE(_, type) virtual bool CastableTypeImpl(const type& other) const { return false; }
 #define VIRTUAL_EQ(_, type) virtual bool EqualTypeImpl(const type& other) const { return false; }
 #define VIRTUAL_BINOP_HANDLER(handler, type) virtual BINOP_HANDLER(handler, type) { throw std::runtime_error("Invalid types for operand"); }
-#define VIRTUAL_BINOP(handler) public: virtual Type<> handler(const CType& other) const { throw std::runtime_error("Unimplemented binop handler"); }; protected: VIRTUAL_BINOP_HANDLERS(R ## handler)
+#define VIRTUAL_BINOP(handler) public: virtual pType<> handler(const CType& other) const { throw std::runtime_error("Unimplemented binop handler"); }; protected: VIRTUAL_BINOP_HANDLERS(R ## handler)
 #define VIRTUAL_UNOP(handler) public: virtual UNOP_HANDLER(handler) { throw std::runtime_error("Unimplemented unop handler"); }
 
 struct CType {
@@ -108,7 +108,7 @@ struct CType {
 
   virtual bool IsConstexpr() const { return false; }  // for optimizing branching
 
-  virtual Type<ValueType<i32>> TruthinessAsCType() const {
+  virtual pType<ValueType<i32>> TruthinessAsCType() const {
     throw std::runtime_error("Type does not have a truthiness value: " + ToString());
   }
 
@@ -116,7 +116,7 @@ struct CType {
     throw std::runtime_error("Type cannot be converted to bool");
   }
 
-  static Type<ValueType<i8>> ConstOne();
+  static pType<ValueType<i8>> ConstOne();
 
   virtual std::string ToString() const {
     throw std::runtime_error("Unimplemented ctype");
@@ -131,9 +131,14 @@ struct CType {
   VIRTUAL_BINOP(BinAnd)
   VIRTUAL_BINOP(BinOr)
 
-  Type<ValueType<i32>> LogAnd(const CType& other) const;
-  Type<ValueType<i32>> LogOr(const CType& other) const;
-  Type<ValueType<i32>> LogNot() const;
+public:
+  pType<ValueType<i32>> LogAnd(const CType& other) const;
+  pType<ValueType<i32>> LogOr(const CType& other) const;
+  pType<ValueType<i32>> LogNot() const;
+
+  pType<> LLogAnd(const CType& other) const;
+  pType<> LLogOr(const CType& other) const;
+  pType<> LLogNot() const;
 
   VIRTUAL_BINOP(Lt)
   VIRTUAL_BINOP(Gt)
@@ -144,24 +149,34 @@ struct CType {
 
 public:
   // combinations of above functions
-  Type<> Le(const CType& other) const;
-  Type<> Ge(const CType& other) const;
-  Type<> Neq(const CType& other) const;
+  pType<> Le(const CType& other) const;
+  pType<> Ge(const CType& other) const;
+  pType<> Neq(const CType& other) const;
 
-  virtual Type<> MemberAccess(const std::string& member) const {
+  virtual pType<> MemberAccess(const std::string& member) const {
     throw std::runtime_error("Cannot access member of non-struct/union type");
   }
 
-  virtual Type<> FunctionCall(const std::vector<Type<>>& args) const {
+  virtual pType<> FunctionCall(const std::vector<pType<>>& args) const {
     throw std::runtime_error("Expression is not a function pointer");
   }
 
   VIRTUAL_UNOP(Deref)
 
-  virtual UNOP_HANDLER(Ref);  // we want a different default here
+  UNOP_HANDLER(Ref);  // we want a different default here
   VIRTUAL_UNOP(Neg)
   VIRTUAL_UNOP(Pos)  // really just sets LValueNess to None
   VIRTUAL_UNOP(BinNot)
+  UNOP_HANDLER(Incr);
+  UNOP_HANDLER(Decr);
+
+  virtual pType<ValueType<u64>> Sizeof() const {
+    throw std::runtime_error("Size of incomplete type");
+  }
+
+  virtual pType<ValueType<u64>> Alignof() const {
+    throw std::runtime_error("Align of incomplete type");
+  }
 
 public:
   virtual bool CastableType(const CType& other) const {
@@ -181,7 +196,7 @@ public:
     throw std::runtime_error("Type is not an integer value: " + ToString());
   }
 
-  virtual Type<> Clone() const = 0;
+  virtual pType<> Clone() const = 0;
 
   const StorageClass storage;
   unsigned qualifiers = 0;
@@ -206,8 +221,8 @@ protected:
     // forget info on contained value (for example, adding an int to a pointer)
   }
 
-  static Type<ValueType<i32>> MakeBool(bool value);
-  static Type<ValueType<i32>> MakeBool();
+  static pType<ValueType<i32>> MakeBool(bool value);
+  static pType<ValueType<i32>> MakeBool();
 
   TYPE_SIGNATURES(VIRTUAL_CASTABLE)  // compatible types (can cast)
   TYPE_SIGNATURES(VIRTUAL_EQ)        // equal types
@@ -229,9 +244,10 @@ private:
 #define OVERRIDE_BINOP_HANDLER(handler, type) BINOP_HANDLER(handler, type) final
 #define OVERRIDE_BINOP_HANDLER_NOIMPL(handler, type) OVERRIDE_BINOP_HANDLER(handler, type);
 #define OVERRIDE_BINOP(handler) BINOP_HANDLER(handler, CType) final { return other.R ## handler(*this); }
-#define OVERRIDE_UNOP(_operator) Type<> _operator() const final;
+#define OVERRIDE_UNOP(_operator) pType<> _operator() const final;
 #define OVERRIDE_BASE_CASTABLE bool CastableType(const CType& other) const final { return other.CastableType(*this); }
 #define OVERRIDE_BASE_EQ bool EqualType(const CType& other) const final { return other.EqualTypeImpl(*this); }
+
 
 struct VoidType : public CType {
   VoidType(unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
@@ -259,10 +275,11 @@ protected:
     return true;
   }
 
-  Type<> Clone() const final {
+  pType<> Clone() const final {
     return MakeType<VoidType>(qualifiers, storage);
   }
 };
+
 
 template<typename T>
 struct ValueType : public CType {
@@ -294,7 +311,6 @@ struct ValueType : public CType {
   }
 
   bool IsConstexpr() const final { return HasValue(); }
-
   bool HasTruthiness() const final { return true; }
 
   std::string ToString() const final {
@@ -304,7 +320,7 @@ struct ValueType : public CType {
     return calyx::Format("%s:%s", type_string_v<T>.c_str(), std::to_string(Value.value()).c_str());
   }
 
-  Type<> Clone() const final {
+  pType<> Clone() const final {
     if (HasValue()) {
       return MakeType<ValueType<T>>(Get(), lvalue, qualifiers, storage);
     }
@@ -336,10 +352,19 @@ struct ValueType : public CType {
 
   OVERRIDE_BINOP(ArrayAccess);
 
+  pType<ValueType<u64>> Sizeof() const final {
+    return MakeType<ValueType<u64>>(sizeof(T), LValueNess::None);
+  }
+
+  pType<ValueType<u64>> Alignof() const final {
+    // todo:
+    return MakeType<ValueType<u64>>(sizeof(T), LValueNess::None);
+  }
+
   std::optional<T> Value;
 
 protected:
-  Type<ValueType<i32>> TruthinessAsCType() const final {
+  pType<ValueType<i32>> TruthinessAsCType() const final {
     if (HasValue()) {
       return MakeBool(Value.value() != 0);
     }
@@ -363,7 +388,7 @@ protected:
 private:
   // perform BinOp on other in reverse: so this.ValueTypeRBinOp<std::plus> <==> other + this
   template<typename L, template<typename t> class _handler, typename common_t = std::common_type_t<L, T>>
-  Type<> ValueTypeRBinOp(const ValueType<L>& other) const {
+  pType<> ValueTypeRBinOp(const ValueType<L>& other) const {
     // results of binary expressions are never an lvalue
     _handler<common_t> handler;
     if (HasValue() && other.HasValue()) {
@@ -373,7 +398,7 @@ private:
   }
 
   template<typename L, template<typename t> class _handler, typename common_t = std::common_type_t<L, T>>
-  Type<> ValueTypeRBoolBinOp(const ValueType<L>& other) const {
+  pType<> ValueTypeRBoolBinOp(const ValueType<L>& other) const {
     _handler<common_t> handler;
     if (HasValue() && other.HasValue()) {
       return MakeBool(handler(other.Get(), Get()));
@@ -423,15 +448,16 @@ private:
   }
 };
 
+
 struct PointerType : public CType {
-  PointerType(const Type<>& contained, LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto)
+  PointerType(const pType<>& contained, LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto)
           :
           CType(lvalue, flags, storage),
           contained(contained->Clone()) {
 
   }
 
-  const Type<> contained;
+  const pType<> contained;
 
   std::string ToString() const override {
     return calyx::Format("(%s)*", contained->ToString().c_str());
@@ -444,15 +470,24 @@ struct PointerType : public CType {
   OVERRIDE_BINOP(Add)
   OVERRIDE_BINOP(Sub)
 
-  Type<> ArrayAccess(const CType& other) const override { return other.RArrayAccess(*this); }
-  Type<> Deref() const override;
+  pType<> ArrayAccess(const CType& other) const override { return other.RArrayAccess(*this); }
+  pType<> Deref() const override;
 
-  Type<> Clone() const override {
+  pType<ValueType<u64>> Sizeof() const final {
+    return MakeType<ValueType<u64>>(sizeof(u64), LValueNess::None);
+  }
+
+  pType<ValueType<u64>> Alignof() const final {
+    // todo:
+    return MakeType<ValueType<u64>>(sizeof(u64), LValueNess::None);
+  }
+
+  pType<> Clone() const override {
     return MakeType<PointerType>(contained->Clone(), lvalue, qualifiers, storage);
   }
 
 private:
-  Type<ValueType<i32>> TruthinessAsCType() const override {
+  pType<ValueType<i32>> TruthinessAsCType() const override {
     return MakeBool();
   }
 
@@ -487,13 +522,13 @@ private:
 };
 
 struct ArrayType : public PointerType {
-  ArrayType(const Type<>& contained, const Type<>& size, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
+  ArrayType(const pType<>& contained, const pType<>& size, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
           PointerType(contained, LValueNess::LValue, flags, storage),
           size(size->ConstIntVal(false)) {
     // arrays are lvalues, but not assignable (besides the initializer)
   }
 
-  ArrayType(const Type<>& contained, size_t size, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
+  ArrayType(const pType<>& contained, size_t size, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
           PointerType(contained, LValueNess::LValue, flags, storage),
           size(size) {
 
@@ -505,41 +540,47 @@ struct ArrayType : public PointerType {
     return calyx::Format("(%s)[%d]", contained->ToString().c_str(), size);
   }
 
-  Type<> Clone() const override {
+  pType<> Clone() const override {
     return MakeType<ArrayType>(contained, size, qualifiers, storage);
   }
 };
 
 struct FunctionType : public PointerType {
   FunctionType(
-          const Type<>& return_type,
+          const pType<>& return_type,
           std::string symbol = "",
           bool variadic = false,
+          LValueNess lvalue = LValueNess::LValue,
           unsigned flags = 0,
           StorageClass storage = StorageClass::Auto
   ) :
           PointerType(
                   return_type,
-                  symbol.empty() ? LValueNess::Assignable : LValueNess::LValue,
+                  lvalue,
                   flags,
                   storage
           ),
           symbol(std::move(symbol)),
           variadic(variadic) {
     contained->ForgetConstInfo();
+    if (!symbol.empty()) {
+      if (lvalue != LValueNess::LValue) {
+        throw std::runtime_error("Bad function type initializer (symbol that is not an lvalue)");
+      }
+    }
     // functions are assignable if they are variables, but not if they are global symbols
   }
 
   bool variadic;
   const std::string symbol;  // if there is a symbol here, the function is a global definition
-  std::vector<Type<>> arg_types;
+  std::vector<pType<>> arg_types;
 
-  void AddArg(const Type<>& arg) {
+  void AddArg(const pType<>& arg) {
     arg_types.push_back(arg->Clone());
     arg_types.back()->ForgetConstInfo();  // constant info is nonsense for arguments
   }
 
-  Type<ValueType<i32>> TruthinessAsCType() const override {
+  pType<ValueType<i32>> TruthinessAsCType() const override {
     if (!symbol.empty()) {
       return MakeBool(true);  // always true
     }
@@ -554,8 +595,8 @@ struct FunctionType : public PointerType {
     return repr + ")";
   }
 
-  Type<> Clone() const override {
-    auto clone = MakeType<FunctionType>(contained, symbol, variadic, qualifiers, storage);
+  pType<> Clone() const override {
+    auto clone = MakeType<FunctionType>(contained, symbol, variadic, lvalue, qualifiers, storage);
     for (const auto& arg : arg_types) {
       clone->AddArg(arg);
     }
@@ -566,13 +607,12 @@ struct FunctionType : public PointerType {
   OVERRIDE_BASE_EQ
 
   OVERRIDE_UNOP(Deref)
-  OVERRIDE_UNOP(Ref);
 
-  Type<> ArrayAccess(const CType& other) const final {
+  pType<> ArrayAccess(const CType& other) const final {
     throw std::runtime_error("Cannot access elements from function pointer");
   }
 
-  Type<> FunctionCall(const std::vector<Type<>>& args) const final {
+  pType<> FunctionCall(const std::vector<pType<>>& args) const final {
     if (args.size() != arg_types.size()) {
       if (!variadic || args.size() < arg_types.size()) {
         throw std::runtime_error("Not enough arguments for function call");
@@ -619,6 +659,7 @@ private:
   }
 };
 
+
 template<int t>
 struct StructUnionType : public CType {
   StructUnionType(LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
@@ -627,14 +668,14 @@ struct StructUnionType : public CType {
   }
 
   struct Field {
-    Field(std::string name, size_t size, const Type<>& contained) :
+    Field(std::string name, size_t size, const pType<>& contained) :
             name(std::move(name)),
             size(size),
             type(contained->Clone()) {
 
     }
 
-    Field(std::string name, const Type<>& contained) :
+    Field(std::string name, const pType<>& contained) :
             name(std::move(name)),
             size(0),
             type(contained->Clone()) {
@@ -643,20 +684,37 @@ struct StructUnionType : public CType {
 
     const std::string name;
     const size_t size = 0;  // 0 means default size
-    Type<> type;
+    pType<> type;
   };
 
-  void AddField(const std::string& name, size_t size, const Type<>& contained) {
+  void AddField(const std::string& name, size_t size, const pType<>& contained) {
     fields.push_back(Field(name, size, contained));
   }
 
-  void AddField(const std::string& name, const Type<>& contained) {
+  void AddField(const std::string& name, const pType<>& contained) {
     fields.push_back(Field(name, contained));
   }
 
-  Type<> MemberAccess(const std::string& member) const final;
+  pType<> MemberAccess(const std::string& member) const final;
 
-  Type<> Clone() const final {
+  pType<ValueType<u64>> Sizeof() const final {
+    if (!IsComplete()) {
+      CType::Sizeof();
+      return nullptr;
+    }
+    u64 value = 0;
+    for (const auto& field : fields) {
+      value += field.type->Sizeof()->Get();
+    }
+    return MakeType<ValueType<u64>>(value, LValueNess::None);
+  }
+
+  pType<ValueType<u64>> Alignof() const final {
+    // todo:
+    return Sizeof();
+  }
+
+  pType<> Clone() const final {
     auto clone = MakeType<StructUnionType<t>>(lvalue, qualifiers, storage);
     for (const auto& arg : fields) {
       clone->AddField(arg.name, arg.size, arg.type);

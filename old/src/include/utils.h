@@ -7,8 +7,6 @@ struct Is {
 
     template <T... values>
     [[nodiscard]] constexpr bool AnyOf() const {
-//        const std::set<T> _values = {values...};
-//        return _values.contains(Get);
         return ((value == values) || ...);
     }
 
