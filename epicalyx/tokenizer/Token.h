@@ -24,7 +24,7 @@ enum class TokenType {
   Identifier,
 
   // constants
-  FloatConstant, NumericConstant, StringConstant,
+  NumericConstant, StringConstant,
 
   // Keywords
   Auto, Break, Case, Char, Const, Continue, Default, Do,
@@ -99,7 +99,7 @@ extern const std::map<TokenType, TokenInfo> TokenData;
 struct Token {
   const TokenType type;
 
-  explicit Token(TokenType type) : type(type) {
+  Token(TokenType type) : type(type) {
 
   }
 
@@ -164,7 +164,7 @@ struct tNumericConstant final : public Token {
 
 struct tStringConstant : public Token {
   explicit tStringConstant(const std::string value) :
-      Token(TokenType::FloatConstant),
+      Token(TokenType::StringConstant),
       value(value) {
 
   }
@@ -172,7 +172,7 @@ struct tStringConstant : public Token {
   pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
 
   std::string to_string()  const final {
-    return calyx::Format("\"%s\"", value.c_str());
+    return cotyl::Format("\"%s\"", value.c_str());
   }
 
   TokenClass Class() final {

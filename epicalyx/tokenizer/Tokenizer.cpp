@@ -20,7 +20,7 @@ pToken Tokenizer::GetNew() {
   char c;
   SkipBlanks();
   if (!in_stream.Peek(c)) {
-    throw calyx::FormatExcept("Unexpected end of file while fetching token");
+    throw cotyl::FormatExcept("Unexpected end of file while fetching token");
   }
 
   if (std::isalpha(c) || c == '_') {
@@ -169,7 +169,7 @@ std::string Tokenizer::ReadString(const char delimiter) {
           break;
         }
         default:
-          throw calyx::FormatExcept("Invalid escape sequence: %c", c);
+          throw cotyl::FormatExcept("Invalid escape sequence: %c", c);
       }
     }
     else {

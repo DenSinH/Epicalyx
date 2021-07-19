@@ -16,7 +16,7 @@ static std::string to_string(const std::shared_ptr<T> p) {
   return to_string(*p);
 }
 
-namespace calyx {
+namespace cotyl {
 
 template<typename T>
 struct Stream {

@@ -8,7 +8,7 @@ namespace epi {
 
 struct Parser {
 
-  Parser(calyx::pStream<Token>& in_stream) :
+  Parser(cotyl::pStream<Token>& in_stream) :
       in_stream(in_stream) {
 
   }
@@ -17,12 +17,13 @@ struct Parser {
   pExpr EPostfix();
   pExpr EUnary();
   pExpr ECast();
-  template<pType<> (CType::*op)(const CType& other), pExpr (Parser::*side)()>
+  template<pExpr (Parser::*SubNode)(), enum TokenType... types>
+  pExpr EBinopImpl();
   pExpr EBinop();
+  pExpr ETernary();
   pExpr EAssignment();
-  pExpr EExpression();
 
-  calyx::pStream<Token>& in_stream;
+  cotyl::pStream<Token>& in_stream;
 };
 
 }

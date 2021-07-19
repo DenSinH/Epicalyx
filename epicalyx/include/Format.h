@@ -3,8 +3,10 @@
 #include <stdexcept>
 #include <memory>
 
+#include "Is.h"
 
-namespace epi::calyx {
+
+namespace epi::cotyl {
 
 template<typename... Args>
 std::string Format(const std::string& format, const Args&... args) {
@@ -18,9 +20,21 @@ std::string Format(const std::string& format, const Args&... args) {
 }
 
 
+template<typename ...Args>
+std::string FormatStr(const std::string& format, const Args&... args) {
+  static_assert(are_all_same_v<std::string, Args...>);
+  return Format(format, args.c_str()...);
+}
+
+
 template<typename... Args>
 std::runtime_error FormatExcept(const std::string& format, const Args&... args) {
   return std::runtime_error(Format(format, args...));
+}
+
+template<typename... Args>
+std::runtime_error FormatExceptStr(const std::string& format, const Args&... args) {
+  return std::runtime_error(FormatStr(format, args...));
 }
 
 }

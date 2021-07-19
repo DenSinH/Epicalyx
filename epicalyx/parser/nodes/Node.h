@@ -1,16 +1,22 @@
 #pragma once
 
 #include <memory>
+#include <string>
+
 
 namespace epi {
 
 struct Node {
+  virtual ~Node() = default;
 
+  virtual std::string to_string() const = 0;
 };
 
 
 struct Expr : public Node {
+  virtual ~Expr() = default;
 
+  virtual std::string to_string() const override = 0;
 };
 
 

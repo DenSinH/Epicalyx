@@ -1,7 +1,7 @@
 #pragma once
 
 
-namespace epi::calyx {
+namespace epi::cotyl {
 
 template <typename T>
 struct Is {
@@ -15,5 +15,8 @@ struct Is {
 private:
   T value;
 };
+
+template <typename T, typename ...Ts>
+inline constexpr bool are_all_same_v = std::conjunction_v<std::is_same<T,Ts>...>;
 
 }

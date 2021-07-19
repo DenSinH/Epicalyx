@@ -21,12 +21,13 @@ pExpr Parser::EPrimary() {
       // todo: type initializer?
       // has to be (expression)
       current->Expect(TokenType::LParen);
-      auto expr = EExpression();
-      in_stream.Eat(Token(TokenType::RParen));
+      // todo: should actually be (expression), but the list part makes no sense
+      auto expr = EAssignment();
+      in_stream.Eat(TokenType::RParen);
       return expr;
     }
     default:
-      throw calyx::FormatExcept("Unexpected token: got %s", current->to_string().c_str());
+      throw cotyl::FormatExceptStr("Unexpected token: got %s", current->to_string());
   }
 }
 
@@ -42,8 +43,9 @@ pExpr Parser::EPostfix() {
       case TokenType::LBracket: {
         // array access
         in_stream.Skip();
-        auto right = EExpression();
-        in_stream.Eat(Token(TokenType::RBracket));
+        // todo: should actually be EExpression, but the commas make no sense
+        auto right = EAssignment();
+        in_stream.Eat(TokenType::RBracket);
         node = std::make_unique<ArrayAccess>(std::move(node), std::move(right));
         break;
       }
@@ -54,29 +56,29 @@ pExpr Parser::EPostfix() {
         while (in_stream.Peek(current) && current->type != TokenType::RParen) {
           func->AddArg(EAssignment());
         }
-        in_stream.Eat(Token(TokenType::RParen));
+        in_stream.Eat(TokenType::RParen);
         node = std::move(func);
         break;
       }
       case TokenType::Arrow:
-        node = std::make_unique<Unary>(&CType::Deref, std::move(node));
+        node = std::make_unique<Unary>(TokenType::Asterisk, std::move(node));
         // fallthrough
       case TokenType::Dot: {
         in_stream.Skip();
-        auto member = in_stream.Eat(Token(TokenType::Identifier));
+        auto member = in_stream.Eat(TokenType::Identifier);
         node = std::make_unique<MemberAccess>(std::move(node), std::dynamic_pointer_cast<tIdentifier>(member)->name);
         break;
       }
       case TokenType::Incr: {
         // expr++
         in_stream.Skip();
-        node = std::make_unique<PostFix>(&CType::Incr, std::move(node));
+        node = std::make_unique<PostFix>(TokenType::Incr, std::move(node));
         break;
       }
       case TokenType::Decr: {
         // expr--
         in_stream.Skip();
-        node = std::make_unique<PostFix>(&CType::Decr, std::move(node));
+        node = std::make_unique<PostFix>(TokenType::Decr, std::move(node));
         break;
       }
       default:
@@ -89,53 +91,18 @@ pExpr Parser::EPostfix() {
 pExpr Parser::EUnary() {
   auto current = in_stream.ForcePeek();
   switch (current->type) {
-    case TokenType::Incr: {
-      // ++expr
+    case TokenType::Incr: // ++expr
+    case TokenType::Decr: // --expr
+    case TokenType::Ampersand: // &expr
+    case TokenType::Asterisk: // *expr
+    case TokenType::Plus: // +expr
+    case TokenType::Minus: // -expr
+    case TokenType::Tilde: // ~expr
+    case TokenType::Exclamation: // !expr
+    {
       in_stream.Skip();
       auto right = EUnary();
-      return std::make_unique<Unary>(&CType::Incr, std::move(right));
-    }
-    case TokenType::Decr: {
-      // --expr
-      in_stream.Skip();
-      auto right = EUnary();
-      return std::make_unique<Unary>(&CType::Decr, std::move(right));
-    }
-    case TokenType::Ampersand: {
-      // &expr
-      in_stream.Skip();
-      auto right = EUnary();
-      return std::make_unique<Unary>(&CType::Ref, std::move(right));
-    }
-    case TokenType::Asterisk: {
-      // *expr
-      in_stream.Skip();
-      auto right = EUnary();
-      return std::make_unique<Unary>(&CType::Deref, std::move(right));
-    }
-    case TokenType::Plus: {
-      // +expr
-      in_stream.Skip();
-      auto right = EUnary();
-      return std::make_unique<Unary>(&CType::Pos, std::move(right));
-    }
-    case TokenType::Minus: {
-      // -expr
-      in_stream.Skip();
-      auto right = EUnary();
-      return std::make_unique<Unary>(&CType::Neg, std::move(right));
-    }
-    case TokenType::Tilde: {
-      // ~expr
-      in_stream.Skip();
-      auto right = EUnary();
-      return std::make_unique<Unary>(&CType::BinNot, std::move(right));
-    }
-    case TokenType::Exclamation: {
-      // !expr
-      in_stream.Skip();
-      auto right = EUnary();
-      return std::make_unique<Unary>(&CType::LLogNot, std::move(right));
+      return std::make_unique<Unary>(current->type, std::move(right));
     }
     case TokenType::Sizeof: {
       // sizeof(expr) / sizeof(typename)
@@ -159,21 +126,71 @@ pExpr Parser::ECast() {
   return EUnary();
 }
 
-//template<pExpr (Parser::*SubNode)(), enum TokenType... types>
-//pExpr Parser::EBinop() {
-//  pExpr node = (this->*SubNode)();
-//  while (!EndOfStream() && Is(Current()->Type).AnyOf<types...>()) {
-//    auto current = Current();
-//    Advance();
-//    auto right = (this->*SubNode)();
-//    node = MAKE_NODE(BinOpExpression)(
-//            current,
-//            BinOpExpression::TokenTypeToBinOp(current->Type),
-//            std::move(node),
-//            std::move(right)
-//    );
-//  }
-//  return node;
-//}
+template<pExpr (Parser::*SubNode)(), enum TokenType... types>
+pExpr Parser::EBinopImpl() {
+  pExpr node = (this->*SubNode)();
+  pToken current;
+  while (in_stream.Peek(current) && cotyl::Is(current->type).AnyOf<types...>()) {
+    in_stream.Skip();
+    node = std::make_unique<Binop>(std::move(node), current->type, (this->*SubNode)());
+  }
+  return node;
+}
+
+constexpr auto EMul = &Parser::EBinopImpl<&Parser::ECast, TokenType::Asterisk, TokenType::Div, TokenType::Mod>;
+constexpr auto EAdd = &Parser::EBinopImpl<EMul, TokenType::Plus, TokenType::Minus>;
+constexpr auto EShift = &Parser::EBinopImpl<EAdd, TokenType::LShift, TokenType::RShift>;
+constexpr auto ERelational = &Parser::EBinopImpl<EShift, TokenType::Less, TokenType::Greater, TokenType::LessEqual, TokenType::GreaterEqual>;
+constexpr auto EEquality = &Parser::EBinopImpl<ERelational, TokenType::Equal, TokenType::NotEqual>;
+constexpr auto EAnd = &Parser::EBinopImpl<EEquality, TokenType::Ampersand>;
+constexpr auto EOr = &Parser::EBinopImpl<EAnd, TokenType::BinOr>;
+constexpr auto EXor = &Parser::EBinopImpl<EOr, TokenType::BinXor>;
+constexpr auto ELogAnd = &Parser::EBinopImpl<EXor, TokenType::LogicalAnd>;
+constexpr auto ELogOr = &Parser::EBinopImpl<ELogAnd, TokenType::LogicalOr>;
+
+pExpr Parser::EBinop() {
+  return (this->*ELogOr)();
+}
+
+pExpr Parser::ETernary() {
+  auto left = EBinop();
+  if (in_stream.IsAfter(0, TokenType::Question)) {
+    in_stream.Skip();
+    auto _true = EAssignment();
+    in_stream.Eat(TokenType::Colon);
+    auto _false = ETernary();
+    return std::make_unique<Ternary>(std::move(left), std::move(_true), std::move(_false));
+  }
+  return left;
+}
+
+pExpr Parser::EAssignment() {
+  // for the left hand side this has to actually be a conditional expression,
+  // but if it's a proper assignment, that will happen regardless
+  auto left = ETernary();
+  pToken current;
+  if (in_stream.Peek(current)) {
+    switch (current->type) {
+      case TokenType::Equal:
+      case TokenType::IMul:
+      case TokenType::IDiv:
+      case TokenType::IMod:
+      case TokenType::IPlus:
+      case TokenType::IMinus:
+      case TokenType::ILShift:
+      case TokenType::IRShift:
+      case TokenType::IAnd:
+      case TokenType::IOr:
+      case TokenType::IXor: {
+        in_stream.Skip();
+        auto right = EAssignment();
+        return std::make_unique<Assignment>(std::move(left), current->type, std::move(right));
+      }
+      default:
+        break;
+    }
+  }
+  return left;
+}
 
 }

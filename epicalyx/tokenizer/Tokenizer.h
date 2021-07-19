@@ -7,10 +7,10 @@
 
 namespace epi {
 
-class Tokenizer : public calyx::pStream<Token> {
+class Tokenizer : public cotyl::pStream<Token> {
 public:
 
-  Tokenizer(calyx::Stream<char>& in_stream) :
+  Tokenizer(cotyl::Stream<char>& in_stream) :
       in_stream(in_stream) {
 
   }
@@ -21,7 +21,7 @@ protected:
 
 
 private:
-  calyx::Stream<char>& in_stream;
+  cotyl::Stream<char>& in_stream;
 
   void SkipBlanks();
   template<typename T, typename ...Args>

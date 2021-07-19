@@ -5,7 +5,7 @@
 
 namespace epi {
 
-struct File final : public calyx::Stream<char> {
+struct File final : public cotyl::Stream<char> {
 
   File(std::string filename);
   ~File();

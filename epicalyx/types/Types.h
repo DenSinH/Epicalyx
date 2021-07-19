@@ -317,7 +317,7 @@ struct ValueType : public CType {
     if (!Value.has_value()) {
       return type_string_v<T>;
     }
-    return calyx::Format("%s:%s", type_string_v<T>.c_str(), std::to_string(Value.value()).c_str());
+    return cotyl::Format("%s:%s", type_string_v<T>.c_str(), std::to_string(Value.value()).c_str());
   }
 
   pType<> Clone() const final {
@@ -460,7 +460,7 @@ struct PointerType : public CType {
   const pType<> contained;
 
   std::string ToString() const override {
-    return calyx::Format("(%s)*", contained->ToString().c_str());
+    return cotyl::Format("(%s)*", contained->ToString().c_str());
   }
 
   bool HasTruthiness() const final { return true; }
@@ -537,7 +537,7 @@ struct ArrayType : public PointerType {
   size_t size;
 
   std::string ToString() const override {
-    return calyx::Format("(%s)[%d]", contained->ToString().c_str(), size);
+    return cotyl::Format("(%s)[%d]", contained->ToString().c_str(), size);
   }
 
   pType<> Clone() const override {

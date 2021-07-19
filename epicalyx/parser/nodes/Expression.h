@@ -2,6 +2,7 @@
 
 #include "Node.h"
 #include "types/Types.h"
+#include "tokenizer/Token.h"
 
 #include <string>
 #include <utility>
@@ -14,7 +15,8 @@ namespace epi {
  * PRIMARY EXPRESSION
  * */
 
-struct Identifier : public Expr {
+struct Identifier final : public Expr {
+  ~Identifier() final = default;
 
   Identifier(std::string name) :
       name(std::move(name)) {
@@ -22,11 +24,14 @@ struct Identifier : public Expr {
   }
 
   const std::string name;
+
+  std::string to_string() const final { return name; };
 };
 
 
 template<typename T>
-struct NumericalConstant : public Expr {
+struct NumericalConstant final : public Expr {
+  ~NumericalConstant() final = default;
 
   NumericalConstant(T value) :
       value(value) {
@@ -34,10 +39,13 @@ struct NumericalConstant : public Expr {
   }
 
   const T value;
+
+  std::string to_string() const final { return std::to_string(value); };
 };
 
 
-struct StringConstant : public Expr {
+struct StringConstant final : public Expr {
+  ~StringConstant() final = default;
 
   StringConstant(std::string value) :
       value(std::move(value)) {
@@ -45,12 +53,15 @@ struct StringConstant : public Expr {
   }
 
   const std::string value;
+
+  std::string to_string() const final { return cotyl::FormatStr("\"%s\"", value); }
 };
 
 /*
  * POSTFIX EXPRESSION
  * */
-struct ArrayAccess : public Expr {
+struct ArrayAccess final : public Expr {
+  ~ArrayAccess() final = default;
 
   ArrayAccess(pExpr&& left, pExpr&& right) :
       left(std::move(left)),
@@ -59,10 +70,13 @@ struct ArrayAccess : public Expr {
   }
 
   const pExpr left, right;
+
+  std::string to_string() const final { return cotyl::FormatStr("(%s)[%s]", left->to_string(), right->to_string()); }
 };
 
 
-struct FunctionCall : public Expr {
+struct FunctionCall final : public Expr {
+  ~FunctionCall() final = default;
 
   FunctionCall(pExpr&& left) :
       left(std::move(left)) {
@@ -75,11 +89,14 @@ struct FunctionCall : public Expr {
 
   const pExpr left;
   std::vector<pExpr> args{};
+
+  std::string to_string() const final;
 };
 
 
+struct MemberAccess final : public Expr {
+  ~MemberAccess() final = default;
 
-struct MemberAccess : public Expr {
   MemberAccess(pExpr&& left, std::string member) :
       left(std::move(left)),
       member(std::move(member)) {
@@ -93,23 +110,28 @@ struct MemberAccess : public Expr {
 
   const pExpr left;
   const std::string member;
+
+  std::string to_string() const final { return cotyl::FormatStr("(%s).%s", left->to_string(), member); }
 };
 
 
-struct PostFix : public Expr {
+struct PostFix final : public Expr {
+  ~PostFix() final = default;
 
-  PostFix(pType<> (CType::*op)() const, pExpr&& left) :
+  PostFix(const TokenType op, pExpr&& left) :
       op(op),
       left(std::move(left)) {
 
   }
 
   const pExpr left;
-  pType<> (CType::*const op)() const;
+  const TokenType op;
+
+  std::string to_string() const final { return cotyl::FormatStr("(%s)%s", left->to_string(), Token(op).to_string()); }
 };
 
 // todo: nicely with initializer lists
-//struct Initializer : public Expr {
+//struct Initializer final : public Expr {
 //
 //
 //  const pExpr type_name;
@@ -117,20 +139,24 @@ struct PostFix : public Expr {
 //};
 
 
-struct Unary : public Expr {
+struct Unary final : public Expr {
+  ~Unary() final = default;
 
-  Unary(pType<> (CType::*op)() const, pExpr&& left) :
+  Unary(TokenType op, pExpr&& left) :
       op(op),
       left(std::move(left)) {
 
   }
 
   const pExpr left;
-  pType<> (CType::*const op)() const;
+  const TokenType op;
+
+  std::string to_string() const final { return cotyl::FormatStr("%s(%s)", Token(op).to_string(), left->to_string()); }
 };
 
 
-struct Cast : public Expr {
+struct Cast final : public Expr {
+  ~Cast() final = default;
 
   Cast(pNode<>&& type, pExpr&& expr) :
       type(std::move(type)),
@@ -141,12 +167,15 @@ struct Cast : public Expr {
   // todo:
   const pNode<> type;
   const pExpr expr;
+
+  std::string to_string() const final { return cotyl::FormatStr("(%s)(%s)", type->to_string(), expr->to_string()); }
 };
 
 
-struct Binop : public Expr {
+struct Binop final : public Expr {
+  ~Binop() final = default;
 
-  Binop(pExpr&& left, pType<> (CType::*op)() const, pExpr&& right) :
+  Binop(pExpr&& left, const TokenType op, pExpr&& right) :
       left(std::move(left)),
       op(op),
       right(std::move(right)) {
@@ -154,12 +183,17 @@ struct Binop : public Expr {
   }
 
   const pExpr left;
-  pType<> (CType::*const op)() const;
+  const TokenType op;
   const pExpr right;
+
+  std::string to_string() const final {
+    return cotyl::FormatStr("(%s) %s (%s)", left->to_string(), Token(op).to_string(), right->to_string());
+  }
 };
 
 
-struct Ternary : public Expr {
+struct Ternary final : public Expr {
+  ~Ternary() final = default;
 
   Ternary(pExpr&& cond, pExpr&& _true, pExpr&& _false) :
       cond(std::move(cond)),
@@ -171,12 +205,17 @@ struct Ternary : public Expr {
   const pExpr cond;
   const pExpr _true;
   const pExpr _false;
+
+  std::string to_string() const final {
+    return cotyl::FormatStr("(%s) ? (%s) : (%s)", cond->to_string(), _true->to_string(), _false->to_string());
+  }
 };
 
 
-struct Assignment : public Expr {
+struct Assignment final : public Expr {
+  ~Assignment() final = default;
 
-  Assignment(pExpr&& left, pType<> (CType::*op)(const CType& other), pExpr&& right) :
+  Assignment(pExpr&& left, const TokenType op, pExpr&& right) :
       left(std::move(left)),
       op(op),
       right(std::move(right)) {
@@ -184,8 +223,12 @@ struct Assignment : public Expr {
   }
 
   const pExpr left;
-  pType<> (CType::*const op)(const CType& other);
+  const TokenType op;
   const pExpr right;
+
+  std::string to_string() const final {
+    return cotyl::FormatStr("(%s) %s (%s)", left->to_string(), Token(op).to_string(), right->to_string());
+  }
 };
 
 }
