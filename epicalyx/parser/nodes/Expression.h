@@ -187,7 +187,7 @@ struct Binop final : public Expr {
   const pExpr right;
 
   std::string to_string() const final {
-    return cotyl::FormatStr("(%s) %s (%s)", left->to_string(), Token(op).to_string(), right->to_string());
+    return cotyl::FormatStr("(%s) %s (%s)", left, Token(op), right);
   }
 };
 
@@ -207,7 +207,7 @@ struct Ternary final : public Expr {
   const pExpr _false;
 
   std::string to_string() const final {
-    return cotyl::FormatStr("(%s) ? (%s) : (%s)", cond->to_string(), _true->to_string(), _false->to_string());
+    return cotyl::FormatStr("(%s) ? (%s) : (%s)", cond, _true->to_string(), _false);
   }
 };
 
@@ -227,7 +227,7 @@ struct Assignment final : public Expr {
   const pExpr right;
 
   std::string to_string() const final {
-    return cotyl::FormatStr("(%s) %s (%s)", left->to_string(), Token(op).to_string(), right->to_string());
+    return cotyl::FormatStr("(%s) %s (%s)", left, Token(op), right);
   }
 };
 

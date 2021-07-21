@@ -1,5 +1,5 @@
 add_library(Parser STATIC
-        Parser.h Parser.cpp ConstTokenVisitor.h ConstTokenVisitor.cpp)
+        Parser.h Parser.Expressions.cpp ConstTokenVisitor.h ConstTokenVisitor.cpp Parser.Declarations.cpp)
 
 set_target_properties(Parser PROPERTIES LINKER_LANGUAGE CXX)
 

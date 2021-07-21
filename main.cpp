@@ -1,21 +1,30 @@
 #include <iostream>
 
 #include "file/File.h"
+#include "file/SString.h"
 #include "tokenizer/Tokenizer.h"
 #include "types/Types.h"
 #include "parser/Parser.h"
 
+#include "nodes/Declarations.h"
+
 
 int main() {
   auto file = epi::File("examples/parsing/expressions/binary/combined.expr");
-  auto tokenizer = epi::Tokenizer(file);
+  auto string = epi::SString("void (*(*f[])())();");
+  auto tokenizer = epi::Tokenizer(string);
   auto parser = epi::Parser(tokenizer);
 
-  try {
-    std::cout << parser.EAssignment()->to_string();
-  }
-  catch (std::runtime_error e) {
-    std::cout << e.what();
+//  try {
+    std::cout << parser.DDeclarator()->type->to_string();
+//  }
+//  catch (std::runtime_error e) {
+//    std::cout << e.what();
+//  }
+  std::cout << parser.in_stream.Get()->to_string();
+
+  if (!parser.in_stream.EOS()) {
+    std::cout << "not EOS after parsing";
   }
 
 //  epi::pType<> Int = epi::MakeType<epi::ValueType<epi::i32>>(1, epi::CType::LValueNess::Assignable, 0);

@@ -1,22 +1,13 @@
 #pragma once
 
+#include "Format.h"
+
 #include <deque>
 #include <string>
 #include <iostream>
 
-#include "Format.h"
 
-
-namespace epi {
-
-template<typename T>
-static std::string to_string(const std::shared_ptr<T> p) {
-  using std::to_string;
-
-  return to_string(*p);
-}
-
-namespace cotyl {
+namespace epi::cotyl {
 
 template<typename T>
 struct Stream {
@@ -89,6 +80,16 @@ struct Stream {
     return IsAfter(amount, expect) && SequenceAfter(amount + 1, args...);
   }
 
+  void EatSequence(const T& expect) {
+    Eat(expect);
+  }
+
+  template<typename ...Args>
+  void EatSequence(const T& expect, const Args&... args) {
+    Eat(expect);
+    EatSequence(args...);
+  }
+
   template<typename Pred>
   bool PredicateAfter(size_t amount, Pred pred) {
     T value;
@@ -107,7 +108,7 @@ struct Stream {
 
     const T got = Get();
     if (got != expect) {
-      throw FormatExcept("Expected %s, got %s", to_string(expect).c_str(), to_string(got).c_str());
+      throw FormatExceptStr("Expected %s, got %s", expect, got);
     }
     return got;
   }
@@ -133,12 +134,17 @@ struct pStream : public Stream<std::shared_ptr<T>> {
     return IsAfter(amount, *expect);
   }
 
+  template<typename ...Args>
+  bool IsAfter(size_t amount, const T& expect, const Args&... args) {
+    return IsAfter(amount, expect) || IsAfter(amount, args...);
+  }
+
   std::shared_ptr<T> Eat(const T& expect) {
     using std::to_string;
 
     const auto got = Stream<std::shared_ptr<T>>::Get();
     if (!(*got == expect)) {
-      throw FormatExcept("Expected %s, got %s", to_string(expect).c_str(), to_string(*got).c_str());
+      throw FormatExceptStr("Expected %s, got %s", expect, got);
     }
     return got;
   }
@@ -146,8 +152,17 @@ struct pStream : public Stream<std::shared_ptr<T>> {
   std::shared_ptr<T> Eat(const std::shared_ptr<T>& expect) override {
     return Eat(*expect);
   }
-};
 
-}
+  void EatSequence(const T& expect) {
+    Eat(expect);
+  }
+
+  template<typename ...Args>
+  void EatSequence(const T& expect, const Args&... args) {
+    Eat(expect);
+    EatSequence(args...);
+  }
+
+};
 
 }

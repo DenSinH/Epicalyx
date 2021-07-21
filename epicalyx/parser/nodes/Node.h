@@ -14,11 +14,15 @@ struct Node {
 
 
 struct Expr : public Node {
-  virtual ~Expr() = default;
+//  virtual ~Expr() = default;
 
-  virtual std::string to_string() const override = 0;
 };
 
+struct Decl : public Node {
+//  virtual ~Decl() = default;
+
+  std::string to_string() const override { return ""; };
+};
 
 template<typename T = Node>
 using pNode = std::unique_ptr<T>;

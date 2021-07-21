@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <sstream>
 #include <optional>
 #include <stdexcept>
 #include <type_traits>
@@ -75,20 +76,11 @@ struct UnionType;
 
 struct CType {
 
-  enum StorageClass {
-    Typedef,
-    Extern,
-    Static,
-    ThreadLocal,
-    Register,
-    Auto,
-  };
-
-  enum QualifierFlags : unsigned {
-    QualifierConst = 0x1,
-    QualifierRestrict = 0x2,
-    QualifierVolatile = 0x4,
-    QualifierAtomic = 0x8,
+  enum Qualifier : u32 {
+    Const = 0x1,
+    Restrict = 0x2,
+    Volatile = 0x4,
+    Atomic = 0x8,
   };
 
   enum class LValueNess {
@@ -98,10 +90,8 @@ struct CType {
   };
 
   CType(LValueNess lvalue,
-        unsigned flags = 0,
-        StorageClass storage = StorageClass::Auto) :
+        u32 flags = 0) :
           lvalue(lvalue),
-          storage(storage),
           qualifiers(flags) {
 
   }
@@ -109,7 +99,7 @@ struct CType {
   virtual bool IsConstexpr() const { return false; }  // for optimizing branching
 
   virtual pType<ValueType<i32>> TruthinessAsCType() const {
-    throw std::runtime_error("Type does not have a truthiness value: " + ToString());
+    throw std::runtime_error("Type does not have a truthiness value: " + to_string());
   }
 
   virtual bool GetBoolValue() const {
@@ -118,7 +108,7 @@ struct CType {
 
   static pType<ValueType<i8>> ConstOne();
 
-  virtual std::string ToString() const {
+  virtual std::string to_string() const {
     throw std::runtime_error("Unimplemented ctype");
   };
 
@@ -193,13 +183,12 @@ public:
 
   virtual u64 ConstIntVal(bool _signed) const {
     // for array sizes
-    throw std::runtime_error("Type is not an integer value: " + ToString());
+    throw std::runtime_error("Type is not an integer value: " + to_string());
   }
 
   virtual pType<> Clone() const = 0;
 
-  const StorageClass storage;
-  unsigned qualifiers = 0;
+  u32 qualifiers = 0;
 
 protected:
   enum {
@@ -250,15 +239,12 @@ private:
 
 
 struct VoidType : public CType {
-  VoidType(unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
-          CType(LValueNess::None, flags, storage) {
+  VoidType(u32 flags = 0) :
+          CType(LValueNess::None, flags) {
 
   }
 
-  bool IsComplete() const final {
-    return false;
-  }
-
+  bool IsComplete() const final { return false; }
   bool CastableType(const CType& other) const final {
     // any type can be cast to void
     return true;
@@ -266,65 +252,58 @@ struct VoidType : public CType {
 
   OVERRIDE_BASE_EQ
 
-  std::string ToString() const final {
-    return "void";
-  };
+  std::string to_string() const final { return "void"; };
 
 protected:
-  bool EqualTypeImpl(const VoidType& other) const final {
-    return true;
-  }
-
-  pType<> Clone() const final {
-    return MakeType<VoidType>(qualifiers, storage);
-  }
+  bool EqualTypeImpl(const VoidType& other) const final { return true; }
+  pType<> Clone() const final { return MakeType<VoidType>(qualifiers); }
 };
 
 
 template<typename T>
 struct ValueType : public CType {
-  ValueType(LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
-          CType(lvalue, flags, storage),
-          Value() {
+  explicit ValueType(LValueNess lvalue = LValueNess::Assignable, u32 flags = 0) :
+          CType(lvalue, flags),
+          value() {
 
   }
 
-  ValueType(T value, LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
-          CType(lvalue, flags, storage),
-          Value(value) {
+  explicit ValueType(T value, LValueNess lvalue = LValueNess::Assignable, u32 flags = 0) :
+          CType(lvalue, flags),
+          value(value) {
 
   }
 
   bool GetBoolValue() const final {
-    if (Value.has_value()) {
-      return Value.value() != 0;
+    if (value.has_value()) {
+      return value.value() != 0;
     }
     throw std::runtime_error("Bool value requested from non-constant Get");
   }
 
   constexpr T Get() const {
-    return Value.value();
+    return value.value();
   }
 
   constexpr bool HasValue() const {
-    return Value.has_value();
+    return value.has_value();
   }
 
   bool IsConstexpr() const final { return HasValue(); }
   bool HasTruthiness() const final { return true; }
 
-  std::string ToString() const final {
-    if (!Value.has_value()) {
+  std::string to_string() const final {
+    if (!value.has_value()) {
       return type_string_v<T>;
     }
-    return cotyl::Format("%s:%s", type_string_v<T>.c_str(), std::to_string(Value.value()).c_str());
+    return cotyl::FormatStr("%s:%s", type_string_v<T>, value.value());
   }
 
   pType<> Clone() const final {
     if (HasValue()) {
-      return MakeType<ValueType<T>>(Get(), lvalue, qualifiers, storage);
+      return MakeType<ValueType<T>>(Get(), lvalue, qualifiers);
     }
-    return MakeType<ValueType<T>>(lvalue, qualifiers, storage);
+    return MakeType<ValueType<T>>(lvalue, qualifiers);
   }
 
   OVERRIDE_BASE_CASTABLE
@@ -361,12 +340,12 @@ struct ValueType : public CType {
     return MakeType<ValueType<u64>>(sizeof(T), LValueNess::None);
   }
 
-  std::optional<T> Value;
+  std::optional<T> value;
 
 protected:
   pType<ValueType<i32>> TruthinessAsCType() const final {
     if (HasValue()) {
-      return MakeBool(Value.value() != 0);
+      return MakeBool(value.value() != 0);
     }
     return MakeBool();
   }
@@ -382,7 +361,7 @@ protected:
   }
 
   void ForgetConstInfo() final {
-    Value = {};
+    value = {};
   }
 
 private:
@@ -450,17 +429,16 @@ private:
 
 
 struct PointerType : public CType {
-  PointerType(const pType<>& contained, LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto)
-          :
-          CType(lvalue, flags, storage),
-          contained(contained->Clone()) {
+  PointerType(const pType<>& contained, LValueNess lvalue = LValueNess::None, u32 flags = 0) :
+      CType(lvalue, flags),
+      contained(contained ? contained->Clone() : nullptr) {
 
   }
 
-  const pType<> contained;
+  pType<> contained;
 
-  std::string ToString() const override {
-    return cotyl::Format("(%s)*", contained->ToString().c_str());
+  std::string to_string() const override {
+    return cotyl::FormatStr("(%s)*", contained ? contained->to_string() : "%%");
   }
 
   bool HasTruthiness() const final { return true; }
@@ -483,7 +461,7 @@ struct PointerType : public CType {
   }
 
   pType<> Clone() const override {
-    return MakeType<PointerType>(contained->Clone(), lvalue, qualifiers, storage);
+    return MakeType<PointerType>(contained ? contained->Clone() : nullptr, lvalue, qualifiers);
   }
 
 private:
@@ -492,7 +470,7 @@ private:
   }
 
   void ForgetConstInfo() final {
-    contained->ForgetConstInfo();
+    if (contained) contained->ForgetConstInfo();
   }
 
   INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RAdd)
@@ -522,26 +500,20 @@ private:
 };
 
 struct ArrayType : public PointerType {
-  ArrayType(const pType<>& contained, const pType<>& size, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
-          PointerType(contained, LValueNess::LValue, flags, storage),
-          size(size->ConstIntVal(false)) {
-    // arrays are lvalues, but not assignable (besides the initializer)
-  }
-
-  ArrayType(const pType<>& contained, size_t size, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
-          PointerType(contained, LValueNess::LValue, flags, storage),
+  ArrayType(const pType<>& contained, size_t size, u32 flags = 0) :
+          PointerType(contained, LValueNess::LValue, flags),
           size(size) {
 
   }
 
   size_t size;
 
-  std::string ToString() const override {
-    return cotyl::Format("(%s)[%d]", contained->ToString().c_str(), size);
+  std::string to_string() const override {
+    return cotyl::FormatStr("(%s)[%s]", contained ? contained->to_string() : "%%", size);
   }
 
   pType<> Clone() const override {
-    return MakeType<ArrayType>(contained, size, qualifiers, storage);
+    return MakeType<ArrayType>(contained, size, qualifiers);
   }
 };
 
@@ -551,18 +523,13 @@ struct FunctionType : public PointerType {
           std::string symbol = "",
           bool variadic = false,
           LValueNess lvalue = LValueNess::LValue,
-          unsigned flags = 0,
-          StorageClass storage = StorageClass::Auto
+          u32 flags = 0
   ) :
-          PointerType(
-                  return_type,
-                  lvalue,
-                  flags,
-                  storage
-          ),
+          PointerType(return_type, lvalue, flags),
           symbol(std::move(symbol)),
           variadic(variadic) {
-    contained->ForgetConstInfo();
+
+    if (contained) contained->ForgetConstInfo();
     if (!symbol.empty()) {
       if (lvalue != LValueNess::LValue) {
         throw std::runtime_error("Bad function type initializer (symbol that is not an lvalue)");
@@ -587,16 +554,22 @@ struct FunctionType : public PointerType {
     return MakeBool();  // unknown, might be function pointer variable
   }
 
-  std::string ToString() const final {
-    std::string repr = contained->ToString() + " " + symbol + "(";
+  std::string to_string() const final {
+    std::stringstream repr{};
+    std::string formatted = cotyl::FormatStr("(%s)%s(", contained ? contained->to_string() : "%%", symbol);
+    repr << formatted;
     for (auto& a : arg_types) {
-      repr += a->ToString() + ",";
+      repr << a->to_string() << ", ";
     }
-    return repr + ")";
+    if (variadic) {
+      repr << "...";
+    }
+    repr << ')';
+    return repr.str();
   }
 
   pType<> Clone() const override {
-    auto clone = MakeType<FunctionType>(contained, symbol, variadic, lvalue, qualifiers, storage);
+    auto clone = MakeType<FunctionType>(contained, symbol, variadic, lvalue, qualifiers);
     for (const auto& arg : arg_types) {
       clone->AddArg(arg);
     }
@@ -662,8 +635,8 @@ private:
 
 template<int t>
 struct StructUnionType : public CType {
-  StructUnionType(LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
-          CType(lvalue, flags, storage) {
+  StructUnionType(LValueNess lvalue, u32 flags = 0) :
+          CType(lvalue, flags) {
 
   }
 
@@ -715,7 +688,7 @@ struct StructUnionType : public CType {
   }
 
   pType<> Clone() const final {
-    auto clone = MakeType<StructUnionType<t>>(lvalue, qualifiers, storage);
+    auto clone = MakeType<StructUnionType<t>>(lvalue, qualifiers);
     for (const auto& arg : fields) {
       clone->AddField(arg.name, arg.size, arg.type);
     }
@@ -767,12 +740,12 @@ protected:
 };
 
 struct StructType : public StructUnionType<CType::Struct> {
-  StructType(LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
-          StructUnionType(lvalue, flags, storage) {
+  StructType(LValueNess lvalue, u32 flags = 0) :
+          StructUnionType(lvalue, flags) {
 
   }
 
-  std::string ToString() const final {
+  std::string to_string() const final {
     return "struct";
   }
 
@@ -790,12 +763,12 @@ private:
 };
 
 struct UnionType : public StructUnionType<CType::Union> {
-  UnionType(LValueNess lvalue, unsigned flags = 0, StorageClass storage = StorageClass::Auto) :
-          StructUnionType(lvalue, flags, storage) {
+  UnionType(LValueNess lvalue, u32 flags = 0) :
+          StructUnionType(lvalue, flags) {
 
   }
 
-  std::string ToString() const final {
+  std::string to_string() const final {
     return "union";
   }
 

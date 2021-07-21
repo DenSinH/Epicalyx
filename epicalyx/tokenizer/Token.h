@@ -150,7 +150,7 @@ struct tNumericConstant final : public Token {
 
   pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
 
-  std::string to_string()  const final {
+  std::string to_string() const final {
     return std::to_string(value);
   }
 
@@ -171,7 +171,7 @@ struct tStringConstant : public Token {
 
   pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
 
-  std::string to_string()  const final {
+  std::string to_string() const final {
     return cotyl::Format("\"%s\"", value.c_str());
   }
 
@@ -181,10 +181,6 @@ struct tStringConstant : public Token {
 
   const std::string value;
 };
-
-static std::string to_string(const Token& t) {
-  return t.to_string();
-}
 
 using pToken = std::shared_ptr<Token>;
 

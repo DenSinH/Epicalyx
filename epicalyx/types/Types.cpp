@@ -274,7 +274,7 @@ pType<> StructUnionType<type>::MemberAccess(const std::string& member) const {
       return field.type->Clone();
     }
   }
-  throw std::runtime_error("No field named " + member + " in " + ToString());
+  throw std::runtime_error("No field named " + member + " in " + to_string());
 }
 
 #include "ValueTypeMethods.inl"
