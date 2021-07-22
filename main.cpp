@@ -6,22 +6,21 @@
 #include "types/Types.h"
 #include "parser/Parser.h"
 
-#include "nodes/Declarations.h"
+#include "nodes/Declaration.h"
 
 
 int main() {
   auto file = epi::File("examples/parsing/expressions/binary/combined.expr");
-  auto string = epi::SString("void (*(*f[])())();");
+  auto string = epi::SString("for (int i = 0; i < 12; i++) { int a = i + 1; (&a)[i] = 69; }");
   auto tokenizer = epi::Tokenizer(string);
   auto parser = epi::Parser(tokenizer);
 
 //  try {
-    std::cout << parser.DDeclarator()->type->to_string();
+    std::cout << parser.SStatement()->to_string();
 //  }
 //  catch (std::runtime_error e) {
 //    std::cout << e.what();
 //  }
-  std::cout << parser.in_stream.Get()->to_string();
 
   if (!parser.in_stream.EOS()) {
     std::cout << "not EOS after parsing";

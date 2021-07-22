@@ -8,7 +8,8 @@
 
 namespace epi {
 
-struct Declarator;
+struct Declaration;
+struct InitDeclaration;
 
 struct Parser {
 
@@ -26,11 +27,18 @@ struct Parser {
   pExpr EBinop();
   pExpr ETernary();
   pExpr EAssignment();
+  pExpr EExpression();
+  void EExpressionList(std::vector<pExpr>& dest);
 
   void DStaticAssert();
   pType<> DSpecifier();
   std::string DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest);
-  pNode<Declarator> DDeclarator();
+  pNode<Declaration> DDeclarator(pType<> ctype);
+  void DInitDeclaratorList(std::vector<pNode<Declaration>>& dest);
+  bool IsDeclarationSpecifier();
+
+  pNode<Stat> SStatement();
+  pNode<Stat> SCompound();
 
   cotyl::pStream<Token>& in_stream;
 };

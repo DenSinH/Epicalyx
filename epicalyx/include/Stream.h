@@ -71,6 +71,12 @@ struct Stream {
     return IsAfter(amount, expect) || IsAfter(amount, args...);
   }
 
+  void Expect(const T& expect) {
+    if (!IsAfter(0, expect)) {
+      throw cotyl::FormatExceptStr("Invalid token: expected %s, got %s", expect, Get());
+    }
+  }
+
   bool SequenceAfter(size_t amount) {
     return true;
   }
@@ -139,6 +145,12 @@ struct pStream : public Stream<std::shared_ptr<T>> {
     return IsAfter(amount, expect) || IsAfter(amount, args...);
   }
 
+  void Expect(const T& expect) {
+    if (!IsAfter(0, expect)) {
+      throw cotyl::FormatExceptStr("Invalid token: expected %s, got %s", expect, Stream<std::shared_ptr<T>>::Get());
+    }
+  }
+
   std::shared_ptr<T> Eat(const T& expect) {
     using std::to_string;
 
@@ -147,6 +159,14 @@ struct pStream : public Stream<std::shared_ptr<T>> {
       throw FormatExceptStr("Expected %s, got %s", expect, got);
     }
     return got;
+  }
+
+  bool EatIf(const T& expect) {
+    if (IsAfter(0, expect)) {
+      Stream<std::shared_ptr<T>>::Skip();
+      return true;
+    }
+    return false;
   }
 
   std::shared_ptr<T> Eat(const std::shared_ptr<T>& expect) override {

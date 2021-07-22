@@ -558,9 +558,7 @@ struct FunctionType : public PointerType {
     std::stringstream repr{};
     std::string formatted = cotyl::FormatStr("(%s)%s(", contained ? contained->to_string() : "%%", symbol);
     repr << formatted;
-    for (auto& a : arg_types) {
-      repr << a->to_string() << ", ";
-    }
+    repr << cotyl::Join(", ", arg_types);
     if (variadic) {
       repr << "...";
     }

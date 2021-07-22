@@ -18,7 +18,7 @@ add_executable(
         epicalyx
         main.cpp
         epicalyx/include/Stream.h
-        epicalyx/include/Format.h epicalyx/file/File.cpp epicalyx/file/File.h epicalyx/include/Is.h)
+        epicalyx/include/Format.h epicalyx/file/File.cpp epicalyx/file/File.h epicalyx/include/Is.h epicalyx/include/Scope.h)
 
 
 

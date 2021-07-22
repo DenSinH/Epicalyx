@@ -1,12 +1,60 @@
 #include "Parser.h"
 #include "Is.h"
-#include "nodes/Declarations.h"
+#include "nodes/Declaration.h"
 
 #include <optional>
 #include <iostream>
 
 
 namespace epi {
+
+bool Parser::IsDeclarationSpecifier() {
+  pToken current;
+  if (!in_stream.Peek(current)) {
+    return false;
+  }
+  switch (current->type) {
+    // storage class specifiers
+    case TokenType::Typedef:
+    case TokenType::Extern:
+    case TokenType::Static:
+    case TokenType::ThreadLocal:
+    case TokenType::Auto:
+    case TokenType::Register:
+    // type specifiers
+    case TokenType::Void:
+    case TokenType::Char:
+    case TokenType::Short:
+    case TokenType::Int:
+    case TokenType::Long:
+    case TokenType::Float:
+    case TokenType::Double:
+    case TokenType::Signed:
+    case TokenType::Unsigned:
+    case TokenType::Bool:
+    case TokenType::Complex:
+    case TokenType::Atomic:
+    case TokenType::Struct:
+    case TokenType::Union:
+    // function specifiers
+    case TokenType::Inline:
+    case TokenType::Noreturn:
+    // type qualifiers
+    case TokenType::Const:
+    case TokenType::Restrict:
+    case TokenType::Volatile:
+    // alignment specifier
+    case TokenType::Alignas: {
+      return true;
+    }
+    case TokenType::Identifier: {
+      // if typedef name exists: true
+      return false;
+    }
+    default:
+      return false;
+  }
+}
 
 void Parser::DStaticAssert() {
   in_stream.EatSequence(TokenType::StaticAssert, TokenType::LParen);
@@ -217,7 +265,7 @@ pType<> Parser::DSpecifier() {
       case TokenType::Identifier: {
         // todo: check if typedef name exists
         // if typedef name: type = blabla
-        // in both cases, specifiers may come after;
+        // otherwise: name is detected in declarator, was not a specifier
         was_specifier = false;
         break;
       }
@@ -371,13 +419,14 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
             // has to be a function declaration with at least one parameter
             auto type = MakeType<FunctionType>(std::move(ctype));
             do {
-              type->AddArg(DDeclarator()->type);
+              type->AddArg(DDeclarator(DSpecifier())->type);
               if (in_stream.IsAfter(0, TokenType::Comma)) {
                 in_stream.Skip();
-              }
-              else if (in_stream.IsAfter(0, TokenType::Ellipsis)) {
-                type->variadic = true;
-                in_stream.EatSequence(TokenType::Ellipsis, TokenType::RParen);
+                if (in_stream.IsAfter(0, TokenType::Ellipsis)) {
+                  type->variadic = true;
+                  in_stream.EatSequence(TokenType::Ellipsis, TokenType::RParen);
+                  break;
+                }
               }
               else {
                 break;
@@ -419,15 +468,13 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
           // for example: int (a) = 0;
           dest.push(std::move(ctype));
         }
-
         return name;
       }
     }
   }
 }
 
-pNode<Declarator> Parser::DDeclarator() {
-  pType<> ctype = DSpecifier();
+pNode<Declaration> Parser::DDeclarator(pType<> ctype) {
   std::string name;
   std::stack<pType<PointerType>> direct{};
 
@@ -445,7 +492,24 @@ pNode<Declarator> Parser::DDeclarator() {
     p->contained = ctype;
     ctype = std::move(ptr);
   }
-  return std::make_unique<Declarator>(ctype, name);
+  return std::make_unique<Declaration>(ctype, name);
+}
+
+
+void Parser::DInitDeclaratorList(std::vector<pNode<Declaration>>& dest) {
+  auto ctype = DSpecifier();
+
+  do {
+    pNode<Declaration> decl = DDeclarator(ctype);
+    if (in_stream.IsAfter(0, TokenType::Assign)) {
+      in_stream.Skip();
+      // todo: initializer list instead of assignment
+      dest.push_back(std::make_unique<InitDeclaration>(std::move(decl), EAssignment()));
+    }
+    else {
+      dest.push_back(std::move(decl));
+    }
+  } while (in_stream.EatIf(TokenType::Comma));
 }
 
 }

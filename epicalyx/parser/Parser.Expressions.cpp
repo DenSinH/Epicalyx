@@ -21,8 +21,8 @@ pExpr Parser::EPrimary() {
       // todo: type initializer?
       // has to be (expression)
       current->Expect(TokenType::LParen);
-      // todo: should actually be (expression), but the list part makes no sense
-      auto expr = EAssignment();
+      // todo: is (expression), but the list part makes no sense
+      auto expr = EExpression();
       in_stream.Eat(TokenType::RParen);
       return expr;
     }
@@ -43,8 +43,8 @@ pExpr Parser::EPostfix() {
       case TokenType::LBracket: {
         // array access
         in_stream.Skip();
-        // todo: should actually be EExpression, but the commas make no sense
-        auto right = EAssignment();
+        // todo: is EExpression, but the commas make no sense
+        auto right = EExpression();
         in_stream.Eat(TokenType::RBracket);
         node = std::make_unique<ArrayAccess>(std::move(node), std::move(right));
         break;
@@ -171,7 +171,7 @@ pExpr Parser::EAssignment() {
   pToken current;
   if (in_stream.Peek(current)) {
     switch (current->type) {
-      case TokenType::Equal:
+      case TokenType::Assign:
       case TokenType::IMul:
       case TokenType::IDiv:
       case TokenType::IMod:
@@ -191,6 +191,17 @@ pExpr Parser::EAssignment() {
     }
   }
   return left;
+}
+
+pExpr Parser::EExpression() {
+  // todo: commas
+  return EAssignment();
+}
+
+void Parser::EExpressionList(std::vector<pExpr>& dest) {
+  do {
+    dest.push_back(EExpression());
+  } while (in_stream.EatIf(TokenType::Comma));
 }
 
 }

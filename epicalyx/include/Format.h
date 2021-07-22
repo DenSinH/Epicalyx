@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <memory>
 #include <string>
+#include <sstream>
+#include <vector>
 
 
 namespace epi::cotyl {
@@ -17,11 +19,8 @@ static std::string to_string(const T& t) {
   }
 }
 
-template<typename T>
-static std::string to_string(const std::unique_ptr<T>& t) { return t->to_string(); }
-template<typename T>
-static std::string to_string(const std::shared_ptr<T>& t) { return t->to_string(); }
-
+template<typename T> static std::string to_string(const std::unique_ptr<T>& t) { return t->to_string(); }
+template<typename T> static std::string to_string(const std::shared_ptr<T>& t) { return t->to_string(); }
 static std::string to_string(const std::string& s) { return s; }
 
 template<typename... Args>
@@ -51,6 +50,42 @@ std::runtime_error FormatExcept(const std::string& format, const Args& ... args)
 template<typename... Args>
 std::runtime_error FormatExceptStr(const std::string& format, const Args& ... args) {
   return std::runtime_error(FormatStr(format, args...));
+}
+
+template<typename T>
+std::string Join(const std::string& delimiter, const std::vector<T>& values) {
+  if (values.empty()) return "";
+
+  std::stringstream result{};
+  for (int i = 0; i < values.size() - 1; i++) {
+    result << values[i].to_string() << ", ";
+  }
+  result << values.back().to_string();
+  return result.str();
+}
+
+template<typename T>
+std::string Join(const std::string& delimiter, const std::vector<std::unique_ptr<T>>& values) {
+  if (values.empty()) return "";
+
+  std::stringstream result{};
+  for (int i = 0; i < values.size() - 1; i++) {
+    result << values[i]->to_string() << ", ";
+  }
+  result << values.back()->to_string();
+  return result.str();
+}
+
+template<typename T>
+std::string Join(const std::string& delimiter, const std::vector<std::shared_ptr<T>>& values) {
+  if (values.empty()) return "";
+
+  std::stringstream result{};
+  for (int i = 0; i < values.size() - 1; i++) {
+    result << values[i]->to_string() << ", ";
+  }
+  result << values.back()->to_string();
+  return result.str();
 }
 
 }
