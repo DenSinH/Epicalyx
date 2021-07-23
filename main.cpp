@@ -12,7 +12,7 @@
 int main() {
   auto file = epi::File("examples/parsing/expressions/binary/combined.expr");
   auto string = epi::SString(
-          "{ for (int i = 0; i < 12; i++)"
+          "{ for (int i = {0}; i < 12; i++)"
           "{ int a = i + 1, (*b)() = c = 12 ? 1 > 2 : 3; (&a)[i] = 69; }"
           "{ typedef int i32; *(i32*)abc = (int){0, 1, 2, 3}; }"
           " return 12 * 12 * 12;}");

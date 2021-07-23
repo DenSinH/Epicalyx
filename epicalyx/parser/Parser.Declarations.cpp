@@ -525,8 +525,15 @@ void Parser::DInitDeclaratorList(std::vector<pNode<InitDeclaration>>& dest) {
     else {
       if (in_stream.IsAfter(0, TokenType::Assign)) {
         in_stream.Skip();
-        // todo: initializer list instead of assignment
-        dest.push_back(std::make_unique<InitDeclaration>(std::move(decl), EAssignment()));
+        if (in_stream.EatIf(TokenType::LBrace)) {
+          // initializer list
+          dest.push_back(std::make_unique<InitDeclaration>(std::move(decl), EInitializerList()));
+          in_stream.Eat(TokenType::RBrace);
+        }
+        else {
+          // assignment expression
+          dest.push_back(std::make_unique<InitDeclaration>(std::move(decl), EAssignment()));
+        }
       }
       else {
         dest.push_back(std::make_unique<InitDeclaration>(std::move(decl)));
