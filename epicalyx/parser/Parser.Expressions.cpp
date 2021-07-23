@@ -1,5 +1,6 @@
 #include "Parser.h"
 #include "nodes/Expression.h"
+#include "nodes/Declaration.h"
 #include "tokenizer/Token.h"
 #include "ConstTokenVisitor.h"
 #include "Is.h"
@@ -32,10 +33,11 @@ pExpr Parser::EPrimary() {
 }
 
 pExpr Parser::EPostfix() {
-  pToken current = in_stream.ForcePeek();
-  if (current->type == TokenType::LParen) {
-    // todo: check if typename
-  }
+  pToken current;
+  // type initializer is checked in cast expression
+//  = in_stream.ForcePeek();
+//  if (current->type == TokenType::LParen) {
+//  }
 
   auto node = EPrimary();
   while (in_stream.Peek(current)) {
@@ -101,7 +103,7 @@ pExpr Parser::EUnary() {
     case TokenType::Exclamation: // !expr
     {
       in_stream.Skip();
-      auto right = EUnary();
+      auto right = ECast();
       return std::make_unique<Unary>(current->type, std::move(right));
     }
     case TokenType::Sizeof: {
@@ -121,7 +123,32 @@ pExpr Parser::EUnary() {
 pExpr Parser::ECast() {
   auto current = in_stream.ForcePeek();
   if (current->type == TokenType::LParen) {
-    // potential cast expression
+    // potential cast expression or type initializer
+    if (IsDeclarationSpecifier(1)) {
+      in_stream.Skip();
+      auto ctype = DSpecifier();
+
+      if (ctype.second != StorageClass::Auto) {
+        throw std::runtime_error("Storage class not allowed here");
+      }
+
+      pNode<Declaration> decl = DDeclarator(ctype.first, StorageClass::Auto);
+      if (!decl->name.empty()) {
+        throw std::runtime_error("Name not allowed here");
+      }
+      in_stream.Eat(TokenType::RParen);
+
+      if (in_stream.EatIf(TokenType::LBrace)) {
+        // type initializer
+        pNode<InitializerList> list = EInitializerList();
+        in_stream.Eat(TokenType::RBrace);
+        return std::make_unique<TypeInitializer>(decl->type, std::move(list));
+      }
+      else {
+        // regular cast expression
+        return std::make_unique<Cast>(decl->type, ECast());
+      }
+    }
   }
   return EUnary();
 }
@@ -198,10 +225,54 @@ pExpr Parser::EExpression() {
   return EAssignment();
 }
 
+i64 Parser::EConstexpr() {
+  auto expr = ETernary();
+  // todo
+  return 0;
+}
+
 void Parser::EExpressionList(std::vector<pExpr>& dest) {
   do {
     dest.push_back(EExpression());
   } while (in_stream.EatIf(TokenType::Comma));
+}
+
+pNode<InitializerList> Parser::EInitializerList() {
+  pNode<InitializerList> list = std::make_unique<InitializerList>();
+  while (!in_stream.IsAfter(0, TokenType::RBrace)) {
+    auto current = in_stream.ForcePeek();
+    DesignatorList designator{};
+    switch (current->type) {
+      case TokenType::Dot: {
+        // .member
+        in_stream.Skip();
+        in_stream.Expect(TokenType::Identifier);
+        designator.emplace_back(std::dynamic_pointer_cast<tIdentifier>(in_stream.Get())->name);
+        break;
+      }
+      case TokenType::LBrace: {
+        // [constant-expression]
+        in_stream.Skip();
+        designator.emplace_back(EConstexpr());
+        in_stream.Eat(TokenType::RBrace);
+        break;
+      }
+      case TokenType::Assign: {
+        // initializer value
+        in_stream.Skip();
+      } // fallthrough
+      default: {
+        // no designator
+        list->Push(std::move(designator), EAssignment());
+      }
+    }
+
+    if (!in_stream.EatIf(TokenType::Comma)) {
+      // initializer list ends if no other comma is present
+      in_stream.Expect(TokenType::RBrace);
+    }
+  }
+  return list;
 }
 
 }

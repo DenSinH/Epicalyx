@@ -542,7 +542,7 @@ struct FunctionType : public PointerType {
   const std::string symbol;  // if there is a symbol here, the function is a global definition
   std::vector<pType<>> arg_types;
 
-  void AddArg(const pType<>& arg) {
+  void AddArg(const pType<const CType>& arg) {
     arg_types.push_back(arg->Clone());
     arg_types.back()->ForgetConstInfo();  // constant info is nonsense for arguments
   }

@@ -3,12 +3,13 @@
 #include "Node.h"
 #include "types/Types.h"
 #include "Format.h"
+#include "Expression.h"
 
 #include <utility>
 
 namespace epi {
 
-enum StorageClass {
+enum class StorageClass {
   Typedef,
   Extern,
   Static,
@@ -20,6 +21,7 @@ enum StorageClass {
 struct Declaration;
 using AbstractDeclarator = Declaration;
 
+
 struct Declaration : public Decl {
 
   Declaration(pType<> type, std::string name, StorageClass storage = StorageClass::Auto) :
@@ -30,7 +32,7 @@ struct Declaration : public Decl {
   }
 
   std::string name;
-  pType<> type;  // empty if abstract
+  pType<const CType> type;  // empty if abstract
   StorageClass storage;
 
   std::string to_string() const override { return cotyl::FormatStr("%s %s", type, name); }
@@ -38,15 +40,15 @@ struct Declaration : public Decl {
 
 struct InitDeclaration : public Declaration {
 
-  InitDeclaration(pNode<Declaration>&& decl, pExpr value) :
+  InitDeclaration(pNode<Declaration>&& decl, std::optional<Initializer> value = {}) :
           Declaration(*decl),
           value(std::move(value)) {
 
   }
 
-  pExpr value;
+  std::optional<Initializer> value;
 
-  std::string to_string() const final { return cotyl::FormatStr("%s %s = %s", type, name, value); }
+  std::string to_string() const final;
 };
 
 }

@@ -8,9 +8,9 @@
 
 namespace epi {
 
-bool Parser::IsDeclarationSpecifier() {
+bool Parser::IsDeclarationSpecifier(int after) {
   pToken current;
-  if (!in_stream.Peek(current)) {
+  if (!in_stream.Peek(current, after)) {
     return false;
   }
   switch (current->type) {
@@ -49,7 +49,7 @@ bool Parser::IsDeclarationSpecifier() {
     }
     case TokenType::Identifier: {
       // if typedef name exists: true
-      return false;
+      return typedefs.Has(std::dynamic_pointer_cast<tIdentifier>(current)->name);
     }
     default:
       return false;
@@ -64,7 +64,8 @@ void Parser::DStaticAssert() {
   // todo: consteval expression
 }
 
-pType<> Parser::DSpecifier() {
+
+std::pair<pType<>, StorageClass> Parser::DSpecifier() {
   std::optional<StorageClass> storage{};
   enum class Type {
     Void, Char, Short, Long, LongLong, Int, ShortInt, LongInt, LongLongInt, Float, Double, StructUnionEnum
@@ -263,10 +264,17 @@ pType<> Parser::DSpecifier() {
       }
 
       case TokenType::Identifier: {
-        // todo: check if typedef name exists
-        // if typedef name: type = blabla
-        // otherwise: name is detected in declarator, was not a specifier
-        was_specifier = false;
+        std::string ident_name = std::dynamic_pointer_cast<tIdentifier>(current)->name;
+        if (typedefs.Has(ident_name)) {
+          if (ctype) {
+            throw std::runtime_error("Bad declaration");
+          }
+          ctype = typedefs.Get(ident_name)->Clone();
+        }
+        else {
+          // otherwise: name is detected in declarator, was not a specifier
+          was_specifier = false;
+        }
         break;
       }
 
@@ -325,7 +333,7 @@ pType<> Parser::DSpecifier() {
       }
     }
   }
-  return ctype;
+  return std::make_pair(ctype, storage ? storage.value() : StorageClass::Auto);
 }
 
 std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) {
@@ -405,30 +413,40 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
           }
           case TokenType::Identifier: {
             // (typedef name) or (name)
-            // if not typdef name: direct declarator name
-            if (!name.empty()) {
-              throw std::runtime_error("Double name in declaration");
-            }
-            name = std::dynamic_pointer_cast<tIdentifier>(in_stream.Get())->name;
-            break;
+            std::string ident_name = std::dynamic_pointer_cast<tIdentifier>(in_stream.Get())->name;
+            if (typedefs.Has(ident_name)) {
 
-            // otherwise: fallthrough
+              // fallthrough (function argument type)
+            }
+            else {
+              // if not typdef name: direct declarator name
+              if (!name.empty()) {
+                throw std::runtime_error("Double name in declaration");
+              }
+              name = std::move(ident_name);
+              break;
+            }
           }
           default: {
             function_call:
             // has to be a function declaration with at least one parameter
             auto type = MakeType<FunctionType>(std::move(ctype));
             do {
-              type->AddArg(DDeclarator(DSpecifier())->type);
-              if (in_stream.IsAfter(0, TokenType::Comma)) {
-                in_stream.Skip();
-                if (in_stream.IsAfter(0, TokenType::Ellipsis)) {
+              auto arg_specifier = DSpecifier();
+              if (arg_specifier.second != StorageClass::Auto) {
+                throw std::runtime_error("Bad storage specifier on function argument");
+              }
+
+              type->AddArg(DDeclarator(arg_specifier.first, StorageClass::Auto)->type);
+              if (in_stream.EatIf(TokenType::Comma)) {
+                if (in_stream.EatIf(TokenType::Ellipsis)) {
                   type->variadic = true;
-                  in_stream.EatSequence(TokenType::Ellipsis, TokenType::RParen);
+                  in_stream.Eat(TokenType::RParen);
                   break;
                 }
               }
               else {
+                in_stream.Eat(TokenType::RParen);
                 break;
               }
             } while (true);
@@ -474,7 +492,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
   }
 }
 
-pNode<Declaration> Parser::DDeclarator(pType<> ctype) {
+pNode<Declaration> Parser::DDeclarator(pType<> ctype, StorageClass storage) {
   std::string name;
   std::stack<pType<PointerType>> direct{};
 
@@ -492,22 +510,27 @@ pNode<Declaration> Parser::DDeclarator(pType<> ctype) {
     p->contained = ctype;
     ctype = std::move(ptr);
   }
-  return std::make_unique<Declaration>(ctype, name);
+  return std::make_unique<Declaration>(ctype, name, storage);
 }
 
 
-void Parser::DInitDeclaratorList(std::vector<pNode<Declaration>>& dest) {
+void Parser::DInitDeclaratorList(std::vector<pNode<InitDeclaration>>& dest) {
   auto ctype = DSpecifier();
 
   do {
-    pNode<Declaration> decl = DDeclarator(ctype);
-    if (in_stream.IsAfter(0, TokenType::Assign)) {
-      in_stream.Skip();
-      // todo: initializer list instead of assignment
-      dest.push_back(std::make_unique<InitDeclaration>(std::move(decl), EAssignment()));
+    pNode<Declaration> decl = DDeclarator(ctype.first, ctype.second);
+    if (decl->storage == StorageClass::Typedef) {
+      typedefs.Set(decl->name, decl->type);
     }
     else {
-      dest.push_back(std::move(decl));
+      if (in_stream.IsAfter(0, TokenType::Assign)) {
+        in_stream.Skip();
+        // todo: initializer list instead of assignment
+        dest.push_back(std::make_unique<InitDeclaration>(std::move(decl), EAssignment()));
+      }
+      else {
+        dest.push_back(std::make_unique<InitDeclaration>(std::move(decl)));
+      }
     }
   } while (in_stream.EatIf(TokenType::Comma));
 }

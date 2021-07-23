@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <variant>
 
 
 namespace epi {
@@ -115,6 +116,39 @@ struct MemberAccess final : public Expr {
 };
 
 
+struct InitializerList;
+
+using Designator = std::variant<std::string, i32>;
+using DesignatorList = std::vector<Designator>;
+using Initializer = std::variant<pExpr, pNode<InitializerList>>;
+
+struct InitializerList {
+
+  void Push(DesignatorList&& member, pExpr&& value) {
+    list.emplace_back(std::move(member), std::move(value));
+  }
+
+  std::vector<std::pair<DesignatorList, pExpr>> list;
+
+  std::string to_string() const;
+};
+
+
+struct TypeInitializer : public Expr {
+
+  TypeInitializer(pType<const CType> type, pNode<InitializerList>&& list) :
+      type(std::move(type)),
+      list(std::move(list)) {
+
+  }
+
+  pType<const CType> type;
+  pNode<InitializerList> list;
+
+  std::string to_string() const final { return cotyl::FormatStr("(%s)%s", type->to_string(), list->to_string()); }
+};
+
+
 struct PostFix final : public Expr {
   ~PostFix() final = default;
 
@@ -129,14 +163,6 @@ struct PostFix final : public Expr {
 
   std::string to_string() const final { return cotyl::FormatStr("(%s)%s", left->to_string(), Token(op).to_string()); }
 };
-
-// todo: nicely with initializer lists
-//struct Initializer final : public Expr {
-//
-//
-//  const pExpr type_name;
-//  const pExpr
-//};
 
 
 struct Unary final : public Expr {
@@ -158,14 +184,13 @@ struct Unary final : public Expr {
 struct Cast final : public Expr {
   ~Cast() final = default;
 
-  Cast(pNode<>&& type, pExpr&& expr) :
+  Cast(pType<const CType> type, pExpr&& expr) :
       type(std::move(type)),
       expr(std::move(expr)) {
 
   }
 
-  // todo:
-  const pNode<> type;
+  const pType<const CType> type;
   const pExpr expr;
 
   std::string to_string() const final { return cotyl::FormatStr("(%s)(%s)", type->to_string(), expr->to_string()); }

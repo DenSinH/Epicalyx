@@ -47,7 +47,7 @@ pNode<Stat> Parser::SStatement() {
     }
     case TokenType::For: {
       in_stream.EatSequence(TokenType::For, TokenType::LParen);
-      std::vector<pNode<Declaration>> declarations;
+      std::vector<pNode<InitDeclaration>> declarations;
       if (IsDeclarationSpecifier()) {
         DInitDeclaratorList(declarations);
       }
@@ -138,7 +138,7 @@ pNode<Stat> Parser::SCompound() {
   auto compound =  std::make_unique<Compound>();
   while (!in_stream.IsAfter(0, TokenType::RBrace)) {
     if (IsDeclarationSpecifier()) {
-      std::vector<pNode<Declaration>> decl_list;
+      std::vector<pNode<InitDeclaration>> decl_list;
       DInitDeclaratorList(decl_list);
       in_stream.Eat(TokenType::SemiColon);
       for (auto& decl : decl_list) {

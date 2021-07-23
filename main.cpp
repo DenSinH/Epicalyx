@@ -11,20 +11,24 @@
 
 int main() {
   auto file = epi::File("examples/parsing/expressions/binary/combined.expr");
-  auto string = epi::SString("for (int i = 0; i < 12; i++) { int a = i + 1; (&a)[i] = 69; }");
+  auto string = epi::SString(
+          "{ for (int i = 0; i < 12; i++)"
+          "{ int a = i + 1, (*b)() = c = 12 ? 1 > 2 : 3; (&a)[i] = 69; }"
+          "{ typedef int i32; *(i32*)abc = (int){0, 1, 2, 3}; }"
+          " return 12 * 12 * 12;}");
   auto tokenizer = epi::Tokenizer(string);
   auto parser = epi::Parser(tokenizer);
 
 //  try {
     std::cout << parser.SStatement()->to_string();
+    if (!parser.in_stream.EOS()) {
+      std::cout << "not EOS after parsing";
+    }
 //  }
 //  catch (std::runtime_error e) {
 //    std::cout << e.what();
 //  }
 
-  if (!parser.in_stream.EOS()) {
-    std::cout << "not EOS after parsing";
-  }
 
 //  epi::pType<> Int = epi::MakeType<epi::ValueType<epi::i32>>(1, epi::CType::LValueNess::Assignable, 0);
 //  epi::pType<> UnknownInt = epi::MakeType<epi::ValueType<epi::i32>>(epi::CType::LValueNess::None, 0);

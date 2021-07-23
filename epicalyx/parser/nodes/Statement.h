@@ -56,7 +56,7 @@ struct DoWhile : public Stat {
 
 struct For : public Stat {
 
-  For(std::vector<pNode<Declaration>>&& decl,
+  For(std::vector<pNode<InitDeclaration>>&& decl,
       std::vector<pExpr>&& init,
       pExpr&& cond,
       std::vector<pExpr>&& update,
@@ -70,7 +70,7 @@ struct For : public Stat {
   }
 
 
-  std::vector<pNode<Declaration>> decl{};
+  std::vector<pNode<InitDeclaration>> decl{};
   std::vector<pExpr> init{};
   pExpr cond;
   std::vector<pExpr> update{};

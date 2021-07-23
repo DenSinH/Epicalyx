@@ -18,11 +18,14 @@ struct Scope {
   }
 
   void Set(const K& key, const V& value) {
+    if (scope.back().contains(key)) {
+      throw cotyl::FormatExceptStr("Redefintion of %s", key);
+    }
     scope.back()[key] = value;
   }
 
   bool Has(const K& key) const {
-    for (auto& s = scope.rbegin(); s != scope.rend(); s++) {
+    for (auto s = scope.rbegin(); s != scope.rend(); s++) {
       if (s->contains(key)) {
         return true;
       }
@@ -31,7 +34,7 @@ struct Scope {
   }
 
   V Get(const K& key) const {
-    for (auto& s = scope.rbegin(); s != scope.rend(); s++) {
+    for (auto s = scope.rbegin(); s != scope.rend(); s++) {
       if (s->contains(key)) {
         return s->at(key);
       }
@@ -40,7 +43,7 @@ struct Scope {
   }
 
 private:
-  std::vector<std::map<K, V>> scope{};
+  std::vector<std::map<K, V>> scope{{}};
 };
 
 
