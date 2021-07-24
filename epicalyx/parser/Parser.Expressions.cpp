@@ -13,7 +13,13 @@ pExpr Parser::EPrimary() {
   auto current = in_stream.Get();
   auto visitor = ConstTokenVisitor();
   switch (current->Class()) {
-    case TokenClass::Identifier:
+    case TokenClass::Identifier: {
+      std::string name = std::static_pointer_cast<tIdentifier>(current)->name;
+      if (enum_values.Has(name)) {
+        // replace enum values with constants immediately
+        return std::make_unique<NumericalConstant<enum_type>>(enum_values.Get(name));
+      }
+    } [[fallthrough]];
     case TokenClass::StringConstant:
     case TokenClass::NumericalConstant: {
       return current->GetConst(visitor);
@@ -28,7 +34,7 @@ pExpr Parser::EPrimary() {
       return expr;
     }
     default:
-      throw cotyl::FormatExceptStr("Unexpected token: got %s", current->to_string());
+      throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", current->to_string());
   }
 }
 
@@ -64,11 +70,11 @@ pExpr Parser::EPostfix() {
       }
       case TokenType::Arrow:
         node = std::make_unique<Unary>(TokenType::Asterisk, std::move(node));
-        // fallthrough
+        [[fallthrough]];
       case TokenType::Dot: {
         in_stream.Skip();
         auto member = in_stream.Eat(TokenType::Identifier);
-        node = std::make_unique<MemberAccess>(std::move(node), std::dynamic_pointer_cast<tIdentifier>(member)->name);
+        node = std::make_unique<MemberAccess>(std::move(node), std::static_pointer_cast<tIdentifier>(member)->name);
         break;
       }
       case TokenType::Incr: {
@@ -237,34 +243,49 @@ void Parser::EExpressionList(std::vector<pExpr>& dest) {
   } while (in_stream.EatIf(TokenType::Comma));
 }
 
+Initializer Parser::EInitializer() {
+  if (in_stream.EatIf(TokenType::LBrace)) {
+    // initializer list
+    auto value = EInitializerList();
+    in_stream.Eat(TokenType::RBrace);
+    return value;
+  }
+  else {
+    // assignment expression
+    return EAssignment();
+  }
+}
+
 pNode<InitializerList> Parser::EInitializerList() {
   pNode<InitializerList> list = std::make_unique<InitializerList>();
+
   while (!in_stream.IsAfter(0, TokenType::RBrace)) {
-    auto current = in_stream.ForcePeek();
     DesignatorList designator{};
-    switch (current->type) {
-      case TokenType::Dot: {
-        // .member
-        in_stream.Skip();
-        in_stream.Expect(TokenType::Identifier);
-        designator.emplace_back(std::dynamic_pointer_cast<tIdentifier>(in_stream.Get())->name);
-        break;
+    if (in_stream.IsAfter(0, TokenType::Dot, TokenType::LBracket)) {
+      while (true) {
+        if (in_stream.EatIf(TokenType::Dot)) {
+          // .member
+          in_stream.Expect(TokenType::Identifier);
+          designator.emplace_back(std::static_pointer_cast<tIdentifier>(in_stream.Get())->name);
+          if (in_stream.EatIf(TokenType::Assign)) {
+            list->Push(std::move(designator), EInitializer());
+            break;
+          }
+        }
+        else {
+          // [constant-expression]
+          in_stream.Skip();
+          designator.emplace_back(EConstexpr());
+          in_stream.Eat(TokenType::RBracket);
+          if (in_stream.EatIf(TokenType::Assign)) {
+            list->Push(std::move(designator), EInitializer());
+            break;
+          }
+        }
       }
-      case TokenType::LBrace: {
-        // [constant-expression]
-        in_stream.Skip();
-        designator.emplace_back(EConstexpr());
-        in_stream.Eat(TokenType::RBrace);
-        break;
-      }
-      case TokenType::Assign: {
-        // initializer value
-        in_stream.Skip();
-      } // fallthrough
-      default: {
-        // no designator
-        list->Push(std::move(designator), EAssignment());
-      }
+    }
+    else {
+      list->Push({}, EInitializer());
     }
 
     if (!in_stream.EatIf(TokenType::Comma)) {

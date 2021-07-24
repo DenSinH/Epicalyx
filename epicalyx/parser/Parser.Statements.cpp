@@ -110,11 +110,11 @@ pNode<Stat> Parser::SStatement() {
     case TokenType::Identifier: {
       if (in_stream.IsAfter(1, TokenType::Colon)) {
         // label
-        std::string name = std::dynamic_pointer_cast<Identifier>(in_stream.Get())->name;
+        std::string name = std::static_pointer_cast<tIdentifier>(in_stream.Get())->name;
         in_stream.Skip();
         return std::make_unique<Label>(std::move(name), SStatement());
       }
-    } // fallthrough
+    } [[fallthrough]];
     default: {
       // expression or declaration
       if (IsDeclarationSpecifier()) {

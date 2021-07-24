@@ -223,7 +223,6 @@ private:
   friend struct PointerType;
   friend struct ArrayType;
   friend struct FunctionType;
-  template<int>
   friend struct StructUnionType;
   friend struct StructType;
   friend struct UnionType;
@@ -499,6 +498,7 @@ private:
   }
 };
 
+
 struct ArrayType : public PointerType {
   ArrayType(const pType<>& contained, size_t size, u32 flags = 0) :
           PointerType(contained, LValueNess::LValue, flags),
@@ -631,12 +631,14 @@ private:
 };
 
 
-template<int t>
 struct StructUnionType : public CType {
-  StructUnionType(LValueNess lvalue, u32 flags = 0) :
+  StructUnionType(std::string name, LValueNess lvalue, u32 flags = 0) :
+          name(std::move(name)),
           CType(lvalue, flags) {
 
   }
+
+  const std::string name;
 
   struct Field {
     Field(std::string name, size_t size, const pType<>& contained) :
@@ -666,6 +668,8 @@ struct StructUnionType : public CType {
     fields.push_back(Field(name, contained));
   }
 
+  std::string to_string() const final;
+  virtual std::string BaseString() const = 0;
   pType<> MemberAccess(const std::string& member) const final;
 
   pType<ValueType<u64>> Sizeof() const final {
@@ -685,22 +689,14 @@ struct StructUnionType : public CType {
     return Sizeof();
   }
 
-  pType<> Clone() const final {
-    auto clone = MakeType<StructUnionType<t>>(lvalue, qualifiers);
-    for (const auto& arg : fields) {
-      clone->AddField(arg.name, arg.size, arg.type);
-    }
-    return clone;
-  }
-
   std::vector<Field> fields;  // empty if struct was only declared but never defined
 
 protected:
-  bool _CastableTypeImpl(const StructUnionType<t>& other) const {
+  bool _CastableTypeImpl(const StructUnionType& other) const {
     return _EqualTypeImpl(other);
   }
 
-  bool _EqualTypeImpl(const StructUnionType<t>& other) const {
+  bool _EqualTypeImpl(const StructUnionType& other) const {
     if (fields.size() != other.fields.size()) {
       return false;
     }
@@ -737,18 +733,25 @@ protected:
   }
 };
 
-struct StructType : public StructUnionType<CType::Struct> {
-  StructType(LValueNess lvalue, u32 flags = 0) :
-          StructUnionType(lvalue, flags) {
+
+struct StructType : public StructUnionType {
+  StructType(std::string name, LValueNess lvalue = LValueNess::None, u32 flags = 0) :
+          StructUnionType(std::move(name), lvalue, flags) {
 
   }
 
-  std::string to_string() const final {
-    return "struct";
-  }
+  std::string BaseString() const final { return "struct"; }
 
   OVERRIDE_BASE_CASTABLE
   OVERRIDE_BASE_EQ
+
+  pType<> Clone() const final {
+    auto clone = MakeType<StructType>(name, lvalue, qualifiers);
+    for (const auto& arg : fields) {
+      clone->AddField(arg.name, arg.size, arg.type);
+    }
+    return clone;
+  }
 
 private:
   bool CastableTypeImpl(const StructType& other) const final {
@@ -760,18 +763,25 @@ private:
   }
 };
 
-struct UnionType : public StructUnionType<CType::Union> {
-  UnionType(LValueNess lvalue, u32 flags = 0) :
-          StructUnionType(lvalue, flags) {
+
+struct UnionType : public StructUnionType {
+  UnionType(std::string name, LValueNess lvalue = LValueNess::None, u32 flags = 0) :
+          StructUnionType(std::move(name), lvalue, flags) {
 
   }
 
-  std::string to_string() const final {
-    return "union";
-  }
+  std::string BaseString() const final { return "struct"; }
 
   OVERRIDE_BASE_CASTABLE
   OVERRIDE_BASE_EQ
+
+  pType<> Clone() const final {
+    auto clone = MakeType<UnionType>(name, lvalue, qualifiers);
+    for (const auto& arg : fields) {
+      clone->AddField(arg.name, arg.size, arg.type);
+    }
+    return clone;
+  }
 
 private:
   bool CastableTypeImpl(const UnionType& other) const final {

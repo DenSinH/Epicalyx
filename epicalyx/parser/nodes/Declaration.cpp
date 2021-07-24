@@ -10,7 +10,10 @@ std::string InitDeclaration::to_string() const  {
     else
       return cotyl::FormatStr("%s %s = %s", type, name, std::get<pNode<InitializerList>>(value.value()));
   }
-  return cotyl::FormatStr("%s %s", type, name);
+  else if (!name.empty()) {
+    return cotyl::FormatStr("%s %s", type, name);
+  }
+  return type->to_string();
 }
 
 }

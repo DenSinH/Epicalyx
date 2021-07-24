@@ -9,6 +9,10 @@
 
 namespace epi::cotyl {
 
+struct Locatable {
+  virtual void PrintLoc() = 0;
+};
+
 template<typename T>
 struct Stream {
 

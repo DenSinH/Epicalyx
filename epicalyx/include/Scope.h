@@ -33,13 +33,17 @@ struct Scope {
     return false;
   }
 
+  bool HasTop(const K& key) const {
+    return scope.back().contains(key);
+  }
+
   V Get(const K& key) const {
     for (auto s = scope.rbegin(); s != scope.rend(); s++) {
       if (s->contains(key)) {
         return s->at(key);
       }
     }
-    throw std::runtime_error("Invalid scope access");
+    throw cotyl::FormatExceptStr("Invalid scope access: %s", key);
   }
 
 private:

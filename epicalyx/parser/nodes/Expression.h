@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Node.h"
+#include "Initializer.h"
 #include "types/Types.h"
 #include "tokenizer/Token.h"
 
@@ -113,24 +114,6 @@ struct MemberAccess final : public Expr {
   const std::string member;
 
   std::string to_string() const final { return cotyl::FormatStr("(%s).%s", left->to_string(), member); }
-};
-
-
-struct InitializerList;
-
-using Designator = std::variant<std::string, i32>;
-using DesignatorList = std::vector<Designator>;
-using Initializer = std::variant<pExpr, pNode<InitializerList>>;
-
-struct InitializerList {
-
-  void Push(DesignatorList&& member, pExpr&& value) {
-    list.emplace_back(std::move(member), std::move(value));
-  }
-
-  std::vector<std::pair<DesignatorList, pExpr>> list;
-
-  std::string to_string() const;
 };
 
 

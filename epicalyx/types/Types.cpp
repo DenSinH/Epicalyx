@@ -6,6 +6,25 @@
 
 namespace epi {
 
+std::string StructUnionType::to_string() const {
+  std::stringstream repr{};
+  repr << BaseString();
+  if (!name.empty()) {
+    repr << ' ' << name;
+  }
+  repr << " {";
+
+  for (const auto& field : fields) {
+    repr << "\n  " << field.type->to_string() << ' ' << field.name;
+    if (field.size) {
+      repr << " : " << field.size;
+    }
+    repr << ';';
+  }
+  repr << "\n}";
+  return repr.str();
+}
+
 UNOP_HANDLER(PointerType::Deref) {
   return contained->Clone();
 }
@@ -267,8 +286,7 @@ pType<ValueType<i8>> CType::ConstOne() {
   return MakeType<ValueType<i8>>(1, LValueNess::None);
 }
 
-template<int type>
-pType<> StructUnionType<type>::MemberAccess(const std::string& member) const {
+pType<> StructUnionType::MemberAccess(const std::string& member) const {
   for (auto& field : fields) {
     if (field.name == member) {
       return field.type->Clone();

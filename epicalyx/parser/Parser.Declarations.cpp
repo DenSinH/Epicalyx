@@ -36,6 +36,7 @@ bool Parser::IsDeclarationSpecifier(int after) {
     case TokenType::Atomic:
     case TokenType::Struct:
     case TokenType::Union:
+    case TokenType::Enum:
     // function specifiers
     case TokenType::Inline:
     case TokenType::Noreturn:
@@ -64,11 +65,115 @@ void Parser::DStaticAssert() {
   // todo: consteval expression
 }
 
+pType<> Parser::DEnum() {
+  in_stream.Eat(TokenType::Enum);
+  std::string name;
+  if (in_stream.IsAfter(0, TokenType::Identifier)) {
+    // enum name
+    name = std::dynamic_pointer_cast<tIdentifier>(in_stream.Get())->name;
+    if (!in_stream.EatIf(TokenType::LBrace)) {
+      // check if enum was defined before
+      if (!enums.Has(name)) {
+        throw cotyl::FormatExceptStr("Undefined enum %s", name);
+      }
+      return MakeType<ValueType<enum_type>>();
+    }
+  }
+  else {
+    in_stream.Eat(TokenType::LBrace);
+  }
+  // enum <name> { ... }
+
+  i64 counter = 0;
+  do {
+    in_stream.Expect(TokenType::Identifier);
+    std::string constant = std::dynamic_pointer_cast<tIdentifier>(in_stream.Get())->name;
+    if (in_stream.EatIf(TokenType::Assign)) {
+      // constant = value
+      // update counter
+      counter = EConstexpr();
+    }
+    enum_values.Set(constant, counter++);
+    if (!in_stream.EatIf(TokenType::Comma)) {
+      // no comma: expect end of enum declaration
+      in_stream.Eat(TokenType::RBrace);
+      break;
+    }
+  } while(!in_stream.EatIf(TokenType::RBrace));
+
+  enums.Set(name, true);
+  return MakeType<ValueType<enum_type>>();
+}
+
+pType<> Parser::DStruct() {
+  pType<StructUnionType> type;
+  std::string name;
+  bool is_struct = true;
+  if (!in_stream.EatIf(TokenType::Struct)) {
+    in_stream.Eat(TokenType::Union);
+    is_struct = false;
+  }
+
+  if (in_stream.IsAfter(0, TokenType::Identifier)) {
+    name = std::dynamic_pointer_cast<tIdentifier>(in_stream.Get())->name;
+    if (!in_stream.EatIf(TokenType::LBrace)) {
+      if (is_struct) {
+        return structdefs.Get(name)->Clone();
+      }
+      else {
+        return uniondefs.Get(name)->Clone();
+      }
+    }
+  }
+  else {
+    in_stream.Eat(TokenType::LBrace);
+  }
+
+  if (is_struct) {
+    type = MakeType<StructType>(name);
+  }
+  else {
+    type = MakeType<UnionType>(name);
+  }
+
+  while(!in_stream.EatIf(TokenType::RBrace)) {
+    if (in_stream.IsAfter(0, TokenType::StaticAssert)) {
+      DStaticAssert();
+    }
+    else {
+      auto ctype = DSpecifier();
+
+      do {
+        pNode<Declaration> decl = DDeclarator(ctype.first, ctype.second);
+        size_t size = 0;
+        if (decl->storage != StorageClass::Auto) {
+          // todo: don't allow storage class specifiers
+          throw std::runtime_error("Invalid storage class specifier in struct definition");
+        }
+        if (in_stream.EatIf(TokenType::Colon)) {
+          size = EConstexpr();
+        }
+        type->AddField(decl->name, size, decl->type->Clone());
+      } while (in_stream.EatIf(TokenType::Comma));
+      in_stream.Eat(TokenType::SemiColon);
+    }
+  }
+
+  if (!name.empty()) {
+    if (is_struct) {
+      structdefs.Set(name, type);
+    }
+    else {
+      uniondefs.Set(name, type);
+    }
+  }
+  return type;
+}
 
 std::pair<pType<>, StorageClass> Parser::DSpecifier() {
   std::optional<StorageClass> storage{};
   enum class Type {
-    Void, Char, Short, Long, LongLong, Int, ShortInt, LongInt, LongLongInt, Float, Double, StructUnionEnum
+    Void, Char, Short, Long, LongLong, Int, ShortInt, LongInt, LongLongInt, Float, Double
   };
 
   pType<> ctype;
@@ -91,6 +196,12 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
     }
   };
 
+  auto assert_no_ctype = [&ctype]() {
+    if (ctype) {
+      throw std::runtime_error("Double type in declaration");
+    }
+  };
+
   auto assert_no_sign = [&sign]() {
     if (sign.has_value()) {
       throw std::runtime_error("Double type specifier in declaration");
@@ -99,30 +210,33 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
 
   pToken current;
 
+  bool was_specifier = true;
   do {
     current = in_stream.ForcePeek();
-    bool was_specifier = true;
 
     switch (current->type) {
-      case TokenType::Typedef:     set_storage(StorageClass::Typedef); break;
-      case TokenType::Extern:      set_storage(StorageClass::Extern); break;
-      case TokenType::Static:      set_storage(StorageClass::Static); break;
-      case TokenType::ThreadLocal: set_storage(StorageClass::ThreadLocal); break;
-      case TokenType::Auto:        set_storage(StorageClass::Auto); break;
-      case TokenType::Register:    set_storage(StorageClass::Register); break;
+      case TokenType::Typedef:     in_stream.Skip(); set_storage(StorageClass::Typedef); break;
+      case TokenType::Extern:      in_stream.Skip(); set_storage(StorageClass::Extern); break;
+      case TokenType::Static:      in_stream.Skip(); set_storage(StorageClass::Static); break;
+      case TokenType::ThreadLocal: in_stream.Skip(); set_storage(StorageClass::ThreadLocal); break;
+      case TokenType::Auto:        in_stream.Skip(); set_storage(StorageClass::Auto); break;
+      case TokenType::Register:    in_stream.Skip(); set_storage(StorageClass::Register); break;
 
       case TokenType::Void: {
         assert_no_type();
         assert_no_sign();
+        in_stream.Skip();
         type = Type::Void;
         break;
       }
       case TokenType::Char: {
         assert_no_type();
+        in_stream.Skip();
         type = Type::Char;
         break;
       }
       case TokenType::Short: {
+        in_stream.Skip();
         if (type.has_value()) {
           if (type.value() == Type::Int) {
             type = Type::ShortInt;
@@ -137,6 +251,7 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
         break;
       }
       case TokenType::Long: {
+        in_stream.Skip();
         if (type.has_value()) {
           switch (type.value()) {
             case Type::Int: type = Type::LongInt; break;
@@ -153,6 +268,7 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
         break;
       }
       case TokenType::Int: {
+        in_stream.Skip();
         if (type.has_value()) {
           switch (type.value()) {
             case Type::Short: type = Type::ShortInt; break;
@@ -162,15 +278,19 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
               assert_no_type();
           }
         }
-        type = Type::Int;
+        else {
+          type = Type::Int;
+        }
         break;
       }
       case TokenType::Float: {
         assert_no_type();
+        in_stream.Skip();
         type = Type::Float;
         break;
       }
       case TokenType::Double: {
+        in_stream.Skip();
         if (type.has_value() && type.value() == Type::Long) {
           throw std::runtime_error("Unimplemented type: long double");
         }
@@ -178,35 +298,32 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
         break;
       }
       case TokenType::Bool: {
+        in_stream.Skip();
         throw std::runtime_error("Unimplemented type: _Bool");
       }
       case TokenType::Complex: {
+        in_stream.Skip();
         throw std::runtime_error("Unimplemented type: _Complex");
       }
 
-      case TokenType::Struct: {
-        assert_no_type();
-        assert_no_sign();
-        type = Type::StructUnionEnum;
-        // todo:
-        break;
-      }
+      case TokenType::Struct:
       case TokenType::Union: {
         assert_no_type();
         assert_no_sign();
-        type = Type::StructUnionEnum;
-        // todo:
+        assert_no_ctype();
+        ctype = DStruct();
         break;
       }
       case TokenType::Enum: {
         assert_no_type();
         assert_no_sign();
-        type = Type::StructUnionEnum;
-        // todo:
+        assert_no_ctype();
+        ctype = DEnum();
         break;
       }
 
       case TokenType::Signed: {
+        in_stream.Skip();
         if (!sign.has_value() || sign.value() == -1) {
           if (type.has_value() && !cotyl::Is(type.value()).AnyOf<
                   Type::Char, Type::Short, Type::Int, Type::Long, Type::LongLong,
@@ -222,6 +339,7 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
         break;
       }
       case TokenType::Unsigned: {
+        in_stream.Skip();
         if (!sign.has_value() || sign.value() == 1) {
           if (type.has_value() && !cotyl::Is(type.value()).AnyOf<
                   Type::Char, Type::Short, Type::Int, Type::Long, Type::LongLong,
@@ -237,10 +355,11 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
         break;
       }
 
-      case TokenType::Const: qualifiers |= CType::Qualifier::Const; break;
-      case TokenType::Restrict: qualifiers |= CType::Qualifier::Restrict; break;
-      case TokenType::Volatile: qualifiers |= CType::Qualifier::Volatile; break;
+      case TokenType::Const:    in_stream.Skip(); qualifiers |= CType::Qualifier::Const; break;
+      case TokenType::Restrict: in_stream.Skip(); qualifiers |= CType::Qualifier::Restrict; break;
+      case TokenType::Volatile: in_stream.Skip(); qualifiers |= CType::Qualifier::Volatile; break;
       case TokenType::Atomic: {
+        in_stream.Skip();
         if (in_stream.IsAfter(1, TokenType::LParen)) {
           throw std::runtime_error("Unimplemented specifier: _Atomic");
         }
@@ -249,17 +368,20 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
       }
 
       case TokenType::Inline: {
+        in_stream.Skip();
         // todo
         is_function = true;
         break;
       }
       case TokenType::Noreturn: {
+        in_stream.Skip();
         // todo
         is_function = true;
         break;
       }
 
       case TokenType::Alignas: {
+        in_stream.Skip();
         throw std::runtime_error("Unimplemented specifier: _Alignas");
       }
 
@@ -269,6 +391,7 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
           if (ctype) {
             throw std::runtime_error("Bad declaration");
           }
+          in_stream.Skip();
           ctype = typedefs.Get(ident_name)->Clone();
         }
         else {
@@ -283,10 +406,7 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
         break;
       }
     }
-
-    if (!was_specifier) break;
-    in_stream.Skip();
-  } while (true);
+  } while (was_specifier);
 
   int _sign = -1;
   if (sign.has_value()) {
@@ -328,9 +448,6 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
         ctype = MakeType<ValueType<float>>(CType::LValueNess::None, qualifiers); break;
       case Type::Double:
         ctype = MakeType<ValueType<double>>(CType::LValueNess::None, qualifiers); break;
-      case Type::StructUnionEnum: {
-        throw std::runtime_error("Unimplemented: struct / unions / enums");
-      }
     }
   }
   return std::make_pair(ctype, storage ? storage.value() : StorageClass::Auto);
@@ -374,7 +491,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
             if (in_stream.IsAfter(1, TokenType::RParen)) {
               // function(void)
               in_stream.Skip();
-//              [[fallthrough]];
+              [[fallthrough]];
             }
             else {
               goto function_call;
@@ -414,11 +531,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
           case TokenType::Identifier: {
             // (typedef name) or (name)
             std::string ident_name = std::dynamic_pointer_cast<tIdentifier>(in_stream.Get())->name;
-            if (typedefs.Has(ident_name)) {
-
-              // fallthrough (function argument type)
-            }
-            else {
+            if (!typedefs.Has(ident_name)) {
               // if not typdef name: direct declarator name
               if (!name.empty()) {
                 throw std::runtime_error("Double name in declaration");
@@ -426,7 +539,8 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
               name = std::move(ident_name);
               break;
             }
-          }
+            // else: (function argument type)
+          } [[fallthrough]];
           default: {
             function_call:
             // has to be a function declaration with at least one parameter
@@ -465,14 +579,13 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
       case TokenType::LBracket: {
         // array type
         in_stream.Skip();
-        pType<> size = nullptr;
+        size_t size = 0;
         while (in_stream.Peek(current) && current->type != TokenType::RBracket) {
           if (in_stream.IsAfter(0, TokenType::Const, TokenType::Restrict, TokenType::Volatile, TokenType::Atomic, TokenType::Static)) {
-            in_stream.Skip();  // todo
+            in_stream.Skip();  // todo: weird array[static type-specifier] declaration
           }
           else {
-            // todo: size consteval
-            // size = EAssignment();
+            size = EConstexpr();
             break;
           }
         }
@@ -520,22 +633,19 @@ void Parser::DInitDeclaratorList(std::vector<pNode<InitDeclaration>>& dest) {
   do {
     pNode<Declaration> decl = DDeclarator(ctype.first, ctype.second);
     if (decl->storage == StorageClass::Typedef) {
+      // store typedef names
+      if (decl->name.empty()) {
+        throw std::runtime_error("Typedef declaration must have a name");
+      }
       typedefs.Set(decl->name, decl->type);
     }
     else {
-      if (in_stream.IsAfter(0, TokenType::Assign)) {
-        in_stream.Skip();
-        if (in_stream.EatIf(TokenType::LBrace)) {
-          // initializer list
-          dest.push_back(std::make_unique<InitDeclaration>(std::move(decl), EInitializerList()));
-          in_stream.Eat(TokenType::RBrace);
-        }
-        else {
-          // assignment expression
-          dest.push_back(std::make_unique<InitDeclaration>(std::move(decl), EAssignment()));
-        }
+      if (in_stream.EatIf(TokenType::Assign)) {
+        // type var = <expression> or {initializer list}
+        dest.push_back(std::make_unique<InitDeclaration>(std::move(decl), EInitializer()));
       }
       else {
+        // type var, var2, var3
         dest.push_back(std::make_unique<InitDeclaration>(std::move(decl)));
       }
     }

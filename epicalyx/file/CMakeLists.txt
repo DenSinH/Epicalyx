@@ -1,5 +1,5 @@
 add_library(File STATIC
-        File.h File.cpp SString.h)
+        File.h File.cpp SString.h SString.cpp)
 
 set_target_properties(File PROPERTIES LINKER_LANGUAGE CXX)
 

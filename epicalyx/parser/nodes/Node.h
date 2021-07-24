@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Default.h"
+
 #include <memory>
 #include <string>
 
@@ -24,6 +26,8 @@ struct Stat : public Node {
 
 struct Expr : public Stat {
 
+  bool IsConstexpr() const { return false; }
+  i64 ConstEval() const { return 0; }
 };
 
 template<typename T = Node>
