@@ -12,9 +12,9 @@ pNode<Stat> Parser::SStatement() {
     }
     case TokenType::Case: {
       in_stream.Skip();
-      auto expr = ETernary();
+      auto expr = EConstexpr();
       in_stream.Eat(TokenType::Colon);
-      return std::make_unique<Case>(std::move(expr), SStatement());
+      return std::make_unique<Case>(expr, SStatement());
     }
     case TokenType::Default: {
       in_stream.EatSequence(TokenType::Default, TokenType::Colon);

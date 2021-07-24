@@ -21,11 +21,12 @@ struct Parser {
 
   }
 
-  using enum_type = i64;
+  using enum_type = i32;
 
   pExpr EPrimary();
   pExpr EPostfix();
   pExpr EUnary();
+  pType<const CType> ETypeName();
   pExpr ECast();
   template<pExpr (Parser::*SubNode)(), enum TokenType... types>
   pExpr EBinopImpl();

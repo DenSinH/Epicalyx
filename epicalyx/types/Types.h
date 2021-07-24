@@ -71,8 +71,11 @@ struct UnionType;
 #define VIRTUAL_CASTABLE(_, type) virtual bool CastableTypeImpl(const type& other) const { return false; }
 #define VIRTUAL_EQ(_, type) virtual bool EqualTypeImpl(const type& other) const { return false; }
 #define VIRTUAL_BINOP_HANDLER(handler, type) virtual BINOP_HANDLER(handler, type) { throw std::runtime_error("Invalid types for operand"); }
-#define VIRTUAL_BINOP(handler) public: virtual pType<> handler(const CType& other) const { throw std::runtime_error("Unimplemented binop handler"); }; protected: VIRTUAL_BINOP_HANDLERS(R ## handler)
+#define VIRTUAL_BINOP(handler) public: virtual pType<> handler(const CType& other) const { throw std::runtime_error("Unimplemented binop handler"); }; protected: VIRTUAL_BINOP_HANDLERS(R ## handler) public:
 #define VIRTUAL_UNOP(handler) public: virtual UNOP_HANDLER(handler) { throw std::runtime_error("Unimplemented unop handler"); }
+
+
+
 
 struct CType {
 
@@ -89,28 +92,21 @@ struct CType {
     Assignable,
   };
 
-  CType(LValueNess lvalue,
-        u32 flags = 0) :
+  CType(LValueNess lvalue, u32 flags = 0) :
           lvalue(lvalue),
           qualifiers(flags) {
 
   }
 
-  virtual bool IsConstexpr() const { return false; }  // for optimizing branching
-
-  virtual pType<ValueType<i32>> TruthinessAsCType() const {
-    throw std::runtime_error("Type does not have a truthiness value: " + to_string());
-  }
-
-  virtual bool GetBoolValue() const {
-    throw std::runtime_error("Type cannot be converted to bool");
-  }
+  u32 qualifiers = 0;
+  LValueNess lvalue;
 
   static pType<ValueType<i8>> ConstOne();
+  virtual bool IsConstexpr() const { return false; }  // for optimizing branching
+  virtual bool GetBoolValue() const { throw std::runtime_error("Type cannot be converted to bool"); }
+  pType<ValueType<i32>> TruthinessAsCType() const;
 
-  virtual std::string to_string() const {
-    throw std::runtime_error("Unimplemented ctype");
-  };
+  virtual std::string to_string() const = 0;
 
   VIRTUAL_BINOP(Add)
   VIRTUAL_BINOP(Sub)
@@ -121,7 +117,6 @@ struct CType {
   VIRTUAL_BINOP(BinAnd)
   VIRTUAL_BINOP(BinOr)
 
-public:
   pType<ValueType<i32>> LogAnd(const CType& other) const;
   pType<ValueType<i32>> LogOr(const CType& other) const;
   pType<ValueType<i32>> LogNot() const;
@@ -131,14 +126,12 @@ public:
   pType<> LLogNot() const;
 
   VIRTUAL_BINOP(Lt)
-  VIRTUAL_BINOP(Gt)
   VIRTUAL_BINOP(Eq)
-  VIRTUAL_BINOP(ArrayAccess) // todo: constant propagation
   VIRTUAL_BINOP(LShift)
   VIRTUAL_BINOP(RShift)
 
-public:
   // combinations of above functions
+  pType<> Gt(const CType& other) const;
   pType<> Le(const CType& other) const;
   pType<> Ge(const CType& other) const;
   pType<> Neq(const CType& other) const;
@@ -148,10 +141,11 @@ public:
   }
 
   virtual pType<> FunctionCall(const std::vector<pType<>>& args) const {
-    throw std::runtime_error("Expression is not a function pointer");
+    throw std::runtime_error("Expression is not a function");
   }
 
   VIRTUAL_UNOP(Deref)
+  pType<> ArrayAccess(const CType& other) const;
 
   UNOP_HANDLER(Ref);  // we want a different default here
   VIRTUAL_UNOP(Neg)
@@ -160,55 +154,17 @@ public:
   UNOP_HANDLER(Incr);
   UNOP_HANDLER(Decr);
 
-  virtual pType<ValueType<u64>> Sizeof() const {
-    throw std::runtime_error("Size of incomplete type");
-  }
-
-  virtual pType<ValueType<u64>> Alignof() const {
-    throw std::runtime_error("Align of incomplete type");
-  }
-
-public:
-  virtual bool CastableType(const CType& other) const {
-    return false;
-  }
-
-  // for checking actual equality:
-  virtual bool EqualType(const CType& other) const {
-    return false;
-  }
-
-  bool IsAssignable() const { return lvalue == LValueNess::Assignable; }  // if condition is used to assign to
-  virtual bool HasTruthiness() const { return false; }  // if expression is used as condition
-
-  virtual u64 ConstIntVal(bool _signed) const {
-    // for array sizes
-    throw std::runtime_error("Type is not an integer value: " + to_string());
-  }
-
+  virtual u64 Sizeof() const { throw std::runtime_error("Size of incomplete type"); }
+  virtual u64 Alignof() const { throw std::runtime_error("Align of incomplete type"); }
+  virtual bool CastableType(const CType& other) const { return false; }  // checking whether types are castable
+  virtual bool EqualType(const CType& other) const { return false; }  // for checking complete equality
+  virtual i64 ConstIntVal() const { throw std::runtime_error("Type is not an integer value: " + to_string()); }
   virtual pType<> Clone() const = 0;
 
-  u32 qualifiers = 0;
-
 protected:
-  enum {
-    Struct,
-    Union
-  };
+  virtual bool IsComplete() const { return false; }
 
-  LValueNess lvalue;
-
-  void SetNotLValue() { lvalue = LValueNess::None; }         // for example the result of expressions
-  void SetLValue() { lvalue = LValueNess::LValue; }          // for example for const function args / struct fields
-  void SetAssignable() { lvalue = LValueNess::Assignable; }  // for example for non-const function args / struct fields
-
-  virtual bool IsComplete() const {
-    return false;
-  }
-
-  virtual void ForgetConstInfo() {
-    // forget info on contained value (for example, adding an int to a pointer)
-  }
+  virtual void ForgetConstInfo() { }  // forget info on contained value (for example, adding an int to a pointer)
 
   static pType<ValueType<i32>> MakeBool(bool value);
   static pType<ValueType<i32>> MakeBool();
@@ -243,13 +199,10 @@ struct VoidType : public CType {
 
   }
 
-  bool IsComplete() const final { return false; }
-  bool CastableType(const CType& other) const final {
-    // any type can be cast to void
-    return true;
-  }
-
   OVERRIDE_BASE_EQ
+
+  bool IsComplete() const final { return false; }
+  bool CastableType(const CType& other) const final {  return true; }  // any type can be cast to void
 
   std::string to_string() const final { return "void"; };
 
@@ -273,29 +226,27 @@ struct ValueType : public CType {
 
   }
 
+  std::optional<T> value;
+
+  OVERRIDE_BASE_CASTABLE
+  OVERRIDE_BASE_EQ
+
+  constexpr T Get() const { return value.value(); }
+  constexpr bool HasValue() const { return value.has_value(); }
+  bool IsConstexpr() const final { return HasValue(); }
+
   bool GetBoolValue() const final {
-    if (value.has_value()) {
-      return value.value() != 0;
+    if (HasValue()) {
+      return Get() != 0;
     }
     throw std::runtime_error("Bool value requested from non-constant Get");
   }
 
-  constexpr T Get() const {
-    return value.value();
-  }
-
-  constexpr bool HasValue() const {
-    return value.has_value();
-  }
-
-  bool IsConstexpr() const final { return HasValue(); }
-  bool HasTruthiness() const final { return true; }
-
   std::string to_string() const final {
-    if (!value.has_value()) {
+    if (!HasValue()) {
       return type_string_v<T>;
     }
-    return cotyl::FormatStr("%s:%s", type_string_v<T>, value.value());
+    return cotyl::FormatStr("%s:%s", type_string_v<T>, Get());
   }
 
   pType<> Clone() const final {
@@ -304,9 +255,6 @@ struct ValueType : public CType {
     }
     return MakeType<ValueType<T>>(lvalue, qualifiers);
   }
-
-  OVERRIDE_BASE_CASTABLE
-  OVERRIDE_BASE_EQ
 
   OVERRIDE_BINOP(Add)
   OVERRIDE_BINOP(Sub)
@@ -321,68 +269,36 @@ struct ValueType : public CType {
   OVERRIDE_BINOP(RShift);
 
   OVERRIDE_BINOP(Lt);
-  OVERRIDE_BINOP(Gt);
   OVERRIDE_BINOP(Eq);
 
   OVERRIDE_UNOP(Pos);
   OVERRIDE_UNOP(Neg);
   OVERRIDE_UNOP(BinNot);
 
-  OVERRIDE_BINOP(ArrayAccess);
+  u64 Sizeof() const final { return sizeof(T); }
+  u64 Alignof() const final { return sizeof(T); }  // todo:
 
-  pType<ValueType<u64>> Sizeof() const final {
-    return MakeType<ValueType<u64>>(sizeof(T), LValueNess::None);
-  }
-
-  pType<ValueType<u64>> Alignof() const final {
-    // todo:
-    return MakeType<ValueType<u64>>(sizeof(T), LValueNess::None);
-  }
-
-  std::optional<T> value;
-
-protected:
-  pType<ValueType<i32>> TruthinessAsCType() const final {
-    if (HasValue()) {
-      return MakeBool(value.value() != 0);
-    }
-    return MakeBool();
-  }
-
-  u64 ConstIntVal(bool _signed) const final {
+  i64 ConstIntVal() const final {
     if constexpr(!std::is_integral_v<T>) {
       throw std::runtime_error("Floating point type is not an integral value");
     }
-    if (_signed != std::is_unsigned_v<T>) {
-      throw std::runtime_error("Expected " + (_signed ? std::string() : "un") + "signed value");
+    else {
+      if constexpr (std::is_unsigned_v<T>) {
+        return (std::make_signed_t<T>)Get();
+      }
+      return Get();
     }
-    return Get();
   }
 
-  void ForgetConstInfo() final {
-    value = {};
-  }
+  void ForgetConstInfo() final { value = {}; }
 
 private:
   // perform BinOp on other in reverse: so this.ValueTypeRBinOp<std::plus> <==> other + this
   template<typename L, template<typename t> class _handler, typename common_t = std::common_type_t<L, T>>
-  pType<> ValueTypeRBinOp(const ValueType<L>& other) const {
-    // results of binary expressions are never an lvalue
-    _handler<common_t> handler;
-    if (HasValue() && other.HasValue()) {
-      return MakeType<ValueType<common_t>>(handler(other.Get(), Get()), LValueNess::None, 0);
-    }
-    return MakeType<ValueType<common_t>>(LValueNess::None, 0);
-  }
+  pType<> ValueTypeRBinOp(const ValueType<L>& other) const;
 
   template<typename L, template<typename t> class _handler, typename common_t = std::common_type_t<L, T>>
-  pType<> ValueTypeRBoolBinOp(const ValueType<L>& other) const {
-    _handler<common_t> handler;
-    if (HasValue() && other.HasValue()) {
-      return MakeBool(handler(other.Get(), Get()));
-    }
-    return MakeBool();
-  }
+  pType<> ValueTypeRBoolBinOp(const ValueType<L>& other) const;
 
   NUMERIC_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RAdd)
   OVERRIDE_BINOP_HANDLER(RAdd, PointerType);
@@ -402,12 +318,8 @@ private:
 
   NUMERIC_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RLt)
   OVERRIDE_BINOP_HANDLER(RLt, PointerType);
-  NUMERIC_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RGt)
-  OVERRIDE_BINOP_HANDLER(RGt, PointerType);
   NUMERIC_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, REq)
   OVERRIDE_BINOP_HANDLER(REq, PointerType);
-
-  OVERRIDE_BINOP_HANDLER(RArrayAccess, PointerType);
 
 private:
   bool CastableTypeImpl(const ValueType<u8>& other) const final { return true; }
@@ -421,9 +333,7 @@ private:
   bool CastableTypeImpl(const ValueType<float>& other) const final { return true; }
   bool CastableTypeImpl(const ValueType<double>& other) const final { return true; }
 
-  bool EqualTypeImpl(const ValueType<T>& other) const final {
-    return true;
-  }
+  bool EqualTypeImpl(const ValueType<T>& other) const final { return true; }
 };
 
 
@@ -436,52 +346,31 @@ struct PointerType : public CType {
 
   pType<> contained;
 
-  std::string to_string() const override {
-    return cotyl::FormatStr("(%s)*", contained ? contained->to_string() : "%%");
-  }
-
-  bool HasTruthiness() const final { return true; }
+  std::string to_string() const override { return cotyl::FormatStr("(%s)*", contained); }
   bool CastableType(const CType& other) const override { return other.CastableType(*this); }
   bool EqualType(const CType& other) const override { return other.EqualTypeImpl(*this); }
 
   OVERRIDE_BINOP(Add)
   OVERRIDE_BINOP(Sub)
-
-  pType<> ArrayAccess(const CType& other) const override { return other.RArrayAccess(*this); }
   pType<> Deref() const override;
 
-  pType<ValueType<u64>> Sizeof() const final {
-    return MakeType<ValueType<u64>>(sizeof(u64), LValueNess::None);
-  }
-
-  pType<ValueType<u64>> Alignof() const final {
-    // todo:
-    return MakeType<ValueType<u64>>(sizeof(u64), LValueNess::None);
-  }
+  u64 Sizeof() const final { return sizeof(u64); }
+  u64 Alignof() const final { return sizeof(u64); }  // todo:
 
   pType<> Clone() const override {
     return MakeType<PointerType>(contained ? contained->Clone() : nullptr, lvalue, qualifiers);
   }
 
 private:
-  pType<ValueType<i32>> TruthinessAsCType() const override {
-    return MakeBool();
-  }
-
-  void ForgetConstInfo() final {
-    if (contained) contained->ForgetConstInfo();
-  }
+  void ForgetConstInfo() override { if (contained) contained->ForgetConstInfo(); }
 
   INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RAdd)
-  // we cannot do `int - ptr_type`, so we must not final this
+  // we cannot do `int - ptr_type`, so we must not override this
   OVERRIDE_BINOP_HANDLER(RSub, PointerType);
   OVERRIDE_BINOP_HANDLER(RLt, PointerType);
   INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RLt)
-  OVERRIDE_BINOP_HANDLER(RGt, PointerType);
-  INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RGt)
   OVERRIDE_BINOP_HANDLER(REq, PointerType);
   INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, REq)
-  INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RArrayAccess)
 
   bool CastableTypeImpl(const PointerType&) const override { return true; }
   bool CastableTypeImpl(const ValueType<i8>&) const override { return true; }
@@ -509,7 +398,7 @@ struct ArrayType : public PointerType {
   size_t size;
 
   std::string to_string() const override {
-    return cotyl::FormatStr("(%s)[%s]", contained ? contained->to_string() : "%%", size);
+    return cotyl::FormatStr("(%s)[%s]", contained, size);
   }
 
   pType<> Clone() const override {
@@ -530,73 +419,41 @@ struct FunctionType : public PointerType {
           variadic(variadic) {
 
     if (contained) contained->ForgetConstInfo();
+    // functions are assignable if they are variables, but not if they are global symbols
     if (!symbol.empty()) {
       if (lvalue != LValueNess::LValue) {
         throw std::runtime_error("Bad function type initializer (symbol that is not an lvalue)");
       }
     }
-    // functions are assignable if they are variables, but not if they are global symbols
   }
 
   bool variadic;
-  const std::string symbol;  // if there is a symbol here, the function is a global definition
-  std::vector<pType<>> arg_types;
-
-  void AddArg(const pType<const CType>& arg) {
-    arg_types.push_back(arg->Clone());
-    arg_types.back()->ForgetConstInfo();  // constant info is nonsense for arguments
-  }
-
-  pType<ValueType<i32>> TruthinessAsCType() const override {
-    if (!symbol.empty()) {
-      return MakeBool(true);  // always true
-    }
-    return MakeBool();  // unknown, might be function pointer variable
-  }
-
-  std::string to_string() const final {
-    std::stringstream repr{};
-    std::string formatted = cotyl::FormatStr("(%s)%s(", contained ? contained->to_string() : "%%", symbol);
-    repr << formatted;
-    repr << cotyl::Join(", ", arg_types);
-    if (variadic) {
-      repr << "...";
-    }
-    repr << ')';
-    return repr.str();
-  }
-
-  pType<> Clone() const override {
-    auto clone = MakeType<FunctionType>(contained, symbol, variadic, lvalue, qualifiers);
-    for (const auto& arg : arg_types) {
-      clone->AddArg(arg);
-    }
-    return clone;
-  }
+  std::string symbol;  // if there is a symbol here, the function is a global definition
+  std::vector<pType<const CType>> arg_types;
 
   OVERRIDE_BASE_CASTABLE
   OVERRIDE_BASE_EQ
 
+  void AddArg(const pType<const CType>& arg) {
+    auto _arg = arg->Clone();
+    _arg->ForgetConstInfo();
+    arg_types.push_back(_arg);  // constant info is nonsense for arguments
+  }
+
+  bool GetBoolValue() const override {
+    if (!symbol.empty()) {
+      return true;  // always true
+    }
+    throw std::runtime_error("Expression is not a constant");  // unknown, might be function pointer variable
+  }
+
+  std::string to_string() const final;
+  pType<> Clone() const final;
+  void ForgetConstInfo() final { symbol = ""; }
+
   OVERRIDE_UNOP(Deref)
 
-  pType<> ArrayAccess(const CType& other) const final {
-    throw std::runtime_error("Cannot access elements from function pointer");
-  }
-
-  pType<> FunctionCall(const std::vector<pType<>>& args) const final {
-    if (args.size() != arg_types.size()) {
-      if (!variadic || args.size() < arg_types.size()) {
-        throw std::runtime_error("Not enough arguments for function call");
-      }
-    }
-
-    for (int i = 0; i < arg_types.size(); i++) {
-      if (!arg_types[i]->CastableType(*args[i])) {
-        throw std::runtime_error("Cannot cast argument type");
-      }
-    }
-    return contained->Clone();
-  }
+  pType<> FunctionCall(const std::vector<pType<>>& args) const final;
 
 private:
   bool CastableTypeImpl(const FunctionType& other) const final { return true; }
@@ -605,29 +462,34 @@ private:
   bool CastableTypeImpl(const ValueType<u8>&) const final { return true; }
   bool CastableTypeImpl(const ValueType<i16>&) const final { return true; }
   bool CastableTypeImpl(const ValueType<u16>&) const final { return true; }
-
   bool CastableTypeImpl(const ValueType<i32>&) const final { return true; }
   bool CastableTypeImpl(const ValueType<u32>&) const final { return true; }
   bool CastableTypeImpl(const ValueType<i64>&) const final { return true; }
   bool CastableTypeImpl(const ValueType<u64>&) const final { return true; }
 
   bool EqualTypeImpl(const PointerType& other) const final { return false; }
-  bool EqualTypeImpl(const FunctionType& other) const final {
-    if (!(*contained).EqualType(*other.contained)) {
-      return false;
-    }
-    if (arg_types.size() != other.arg_types.size()) {
-      return false;
-    }
+  bool EqualTypeImpl(const FunctionType& other) const final;
+};
 
-    for (size_t i = 0; i < arg_types.size(); i++) {
-      if (!(*arg_types[i]).EqualType(*other.arg_types[i])) {
-        return false;
-      }
-    }
 
-    return true;
+struct StructField {
+  StructField(std::string name, size_t size, const pType<>& contained) :
+          name(std::move(name)),
+          size(size),
+          type(contained->Clone()) {
+
   }
+
+  StructField(std::string name, const pType<>& contained) :
+          name(std::move(name)),
+          size(0),
+          type(contained->Clone()) {
+
+  }
+
+  const std::string name;
+  const size_t size = 0;  // 0 means default size
+  pType<> type;
 };
 
 
@@ -639,88 +501,29 @@ struct StructUnionType : public CType {
   }
 
   const std::string name;
+  std::vector<StructField> fields;  // empty if struct was only declared but never defined
 
-  struct Field {
-    Field(std::string name, size_t size, const pType<>& contained) :
-            name(std::move(name)),
-            size(size),
-            type(contained->Clone()) {
-
-    }
-
-    Field(std::string name, const pType<>& contained) :
-            name(std::move(name)),
-            size(0),
-            type(contained->Clone()) {
-
-    }
-
-    const std::string name;
-    const size_t size = 0;  // 0 means default size
-    pType<> type;
-  };
-
-  void AddField(const std::string& name, size_t size, const pType<>& contained) {
-    fields.push_back(Field(name, size, contained));
+  void AddField(const std::string& _name, size_t size, const pType<>& contained) {
+    fields.emplace_back(_name, size, contained);
   }
 
-  void AddField(const std::string& name, const pType<>& contained) {
-    fields.push_back(Field(name, contained));
+  void AddField(const std::string& _name, const pType<>& contained) {
+    fields.emplace_back(_name, contained);
   }
 
   std::string to_string() const final;
   virtual std::string BaseString() const = 0;
   pType<> MemberAccess(const std::string& member) const final;
 
-  pType<ValueType<u64>> Sizeof() const final {
-    if (!IsComplete()) {
-      CType::Sizeof();
-      return nullptr;
-    }
-    u64 value = 0;
-    for (const auto& field : fields) {
-      value += field.type->Sizeof()->Get();
-    }
-    return MakeType<ValueType<u64>>(value, LValueNess::None);
-  }
-
-  pType<ValueType<u64>> Alignof() const final {
-    // todo:
-    return Sizeof();
-  }
-
-  std::vector<Field> fields;  // empty if struct was only declared but never defined
+  u64 Sizeof() const final;
+  u64 Alignof() const final { return Sizeof(); } // todo:
 
 protected:
   bool _CastableTypeImpl(const StructUnionType& other) const {
     return _EqualTypeImpl(other);
   }
 
-  bool _EqualTypeImpl(const StructUnionType& other) const {
-    if (fields.size() != other.fields.size()) {
-      return false;
-    }
-
-    if (!IsComplete()) {
-      return false;
-    }
-
-    for (size_t i = 0; i < fields.size(); i++) {
-      const auto& this_field = fields[i];
-      const auto& other_field = other.fields[i];
-      if (this_field.name != other_field.name) {
-        return false;
-      }
-      if (this_field.size != other_field.size) {
-        return false;
-      }
-      if (!(*this_field.type).EqualType(*other_field.type)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
+  bool _EqualTypeImpl(const StructUnionType& other) const;
 
   bool IsComplete() const final {
     return !fields.empty();
@@ -740,27 +543,22 @@ struct StructType : public StructUnionType {
 
   }
 
-  std::string BaseString() const final { return "struct"; }
-
   OVERRIDE_BASE_CASTABLE
   OVERRIDE_BASE_EQ
+
+  std::string BaseString() const final { return "struct"; }
 
   pType<> Clone() const final {
     auto clone = MakeType<StructType>(name, lvalue, qualifiers);
     for (const auto& arg : fields) {
-      clone->AddField(arg.name, arg.size, arg.type);
+      clone->AddField(arg.name, arg.size, arg.type->Clone());
     }
     return clone;
   }
 
 private:
-  bool CastableTypeImpl(const StructType& other) const final {
-    return _CastableTypeImpl(other);
-  }
-
-  bool EqualTypeImpl(const StructType& other) const final {
-    return _EqualTypeImpl(other);
-  }
+  bool CastableTypeImpl(const StructType& other) const final { return _CastableTypeImpl(other); }
+  bool EqualTypeImpl(const StructType& other) const final { return _EqualTypeImpl(other); }
 };
 
 
@@ -770,27 +568,22 @@ struct UnionType : public StructUnionType {
 
   }
 
-  std::string BaseString() const final { return "struct"; }
-
   OVERRIDE_BASE_CASTABLE
   OVERRIDE_BASE_EQ
+
+  std::string BaseString() const final { return "struct"; }
 
   pType<> Clone() const final {
     auto clone = MakeType<UnionType>(name, lvalue, qualifiers);
     for (const auto& arg : fields) {
-      clone->AddField(arg.name, arg.size, arg.type);
+      clone->AddField(arg.name, arg.size, arg.type->Clone());
     }
     return clone;
   }
 
 private:
-  bool CastableTypeImpl(const UnionType& other) const final {
-    return _CastableTypeImpl(other);
-  }
-
-  bool EqualTypeImpl(const UnionType& other) const final {
-    return _EqualTypeImpl(other);
-  }
+  bool CastableTypeImpl(const UnionType& other) const final { return _CastableTypeImpl(other); }
+  bool EqualTypeImpl(const UnionType& other) const final { return _EqualTypeImpl(other); }
 };
 
 }

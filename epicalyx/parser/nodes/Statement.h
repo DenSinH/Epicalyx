@@ -94,13 +94,13 @@ struct Label : public Stat {
 
 struct Case : public Stat {
 
-  Case(pExpr&& expr, pNode<Stat>&& stat) :
-      expr(std::move(expr)),
+  Case(i64 expr, pNode<Stat>&& stat) :
+      expr(expr),
       stat(std::move(stat)) {
 
   }
 
-  pExpr expr;
+  i64 expr;
   pNode<Stat> stat;
 
   std::string to_string() const final { return cotyl::FormatStr("case %s: %s", expr, stat); }

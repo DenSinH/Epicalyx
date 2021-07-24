@@ -14,6 +14,7 @@ pExpr Parser::EPrimary() {
   auto visitor = ConstTokenVisitor();
   switch (current->Class()) {
     case TokenClass::Identifier: {
+      // identifier might be enum value
       std::string name = std::static_pointer_cast<tIdentifier>(current)->name;
       if (enum_values.Has(name)) {
         // replace enum values with constants immediately
@@ -25,8 +26,8 @@ pExpr Parser::EPrimary() {
       return current->GetConst(visitor);
     }
     case TokenClass::Punctuator: {
-      // todo: type initializer?
       // has to be (expression)
+      // type initializer caught in cast expression
       current->Expect(TokenType::LParen);
       // todo: is (expression), but the list part makes no sense
       auto expr = EExpression();
@@ -40,10 +41,6 @@ pExpr Parser::EPrimary() {
 
 pExpr Parser::EPostfix() {
   pToken current;
-  // type initializer is checked in cast expression
-//  = in_stream.ForcePeek();
-//  if (current->type == TokenType::LParen) {
-//  }
 
   auto node = EPrimary();
   while (in_stream.Peek(current)) {
@@ -69,9 +66,11 @@ pExpr Parser::EPostfix() {
         break;
       }
       case TokenType::Arrow:
+        // indirect member access
         node = std::make_unique<Unary>(TokenType::Asterisk, std::move(node));
         [[fallthrough]];
       case TokenType::Dot: {
+        // direct member access
         in_stream.Skip();
         auto member = in_stream.Eat(TokenType::Identifier);
         node = std::make_unique<MemberAccess>(std::move(node), std::static_pointer_cast<tIdentifier>(member)->name);
@@ -99,13 +98,13 @@ pExpr Parser::EPostfix() {
 pExpr Parser::EUnary() {
   auto current = in_stream.ForcePeek();
   switch (current->type) {
-    case TokenType::Incr: // ++expr
-    case TokenType::Decr: // --expr
-    case TokenType::Ampersand: // &expr
-    case TokenType::Asterisk: // *expr
-    case TokenType::Plus: // +expr
-    case TokenType::Minus: // -expr
-    case TokenType::Tilde: // ~expr
+    case TokenType::Incr:        // ++expr
+    case TokenType::Decr:        // --expr
+    case TokenType::Ampersand:   // &expr
+    case TokenType::Asterisk:    // *expr
+    case TokenType::Plus:        // +expr
+    case TokenType::Minus:       // -expr
+    case TokenType::Tilde:       // ~expr
     case TokenType::Exclamation: // !expr
     {
       in_stream.Skip();
@@ -114,16 +113,31 @@ pExpr Parser::EUnary() {
     }
     case TokenType::Sizeof: {
       // sizeof(expr) / sizeof(typename)
-      throw std::runtime_error("unimplemented");
+      // todo: return constant node
+      throw std::runtime_error("unimplemented: sizeof");
     }
     case TokenType::Alignof: {
       // _Alignof(expr)
-      throw std::runtime_error("unimplemented");
+      throw std::runtime_error("unimplemented: _Alignof");
     }
     default: {
       return EPostfix();
     }
   }
+}
+
+pType<const CType> Parser::ETypeName() {
+  auto ctype = DSpecifier();
+
+  if (ctype.second != StorageClass::Auto) {
+    throw std::runtime_error("Storage class not allowed here");
+  }
+
+  pNode<Declaration> decl = DDeclarator(ctype.first, StorageClass::Auto);
+  if (!decl->name.empty()) {
+    throw std::runtime_error("Name not allowed in type name");
+  }
+  return decl->type;
 }
 
 pExpr Parser::ECast() {
@@ -132,27 +146,18 @@ pExpr Parser::ECast() {
     // potential cast expression or type initializer
     if (IsDeclarationSpecifier(1)) {
       in_stream.Skip();
-      auto ctype = DSpecifier();
-
-      if (ctype.second != StorageClass::Auto) {
-        throw std::runtime_error("Storage class not allowed here");
-      }
-
-      pNode<Declaration> decl = DDeclarator(ctype.first, StorageClass::Auto);
-      if (!decl->name.empty()) {
-        throw std::runtime_error("Name not allowed here");
-      }
+      auto type_name = ETypeName();
       in_stream.Eat(TokenType::RParen);
 
       if (in_stream.EatIf(TokenType::LBrace)) {
         // type initializer
         pNode<InitializerList> list = EInitializerList();
         in_stream.Eat(TokenType::RBrace);
-        return std::make_unique<TypeInitializer>(decl->type, std::move(list));
+        return std::make_unique<TypeInitializer>(type_name, std::move(list));
       }
       else {
         // regular cast expression
-        return std::make_unique<Cast>(decl->type, ECast());
+        return std::make_unique<Cast>(type_name, ECast());
       }
     }
   }
@@ -263,6 +268,7 @@ pNode<InitializerList> Parser::EInitializerList() {
     DesignatorList designator{};
     if (in_stream.IsAfter(0, TokenType::Dot, TokenType::LBracket)) {
       while (true) {
+        // keep fetching nested declarators
         if (in_stream.EatIf(TokenType::Dot)) {
           // .member
           in_stream.Expect(TokenType::Identifier);

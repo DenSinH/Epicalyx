@@ -25,6 +25,98 @@ std::string StructUnionType::to_string() const {
   return repr.str();
 }
 
+u64 StructUnionType::Sizeof() const {
+  // todo: different for union
+  if (!IsComplete()) {
+    CType::Sizeof();
+    return 0;
+  }
+  u64 value = 0;
+  for (const auto& field : fields) {
+    value += field.type->Sizeof();
+  }
+  return value;
+}
+
+
+bool StructUnionType::_EqualTypeImpl(const StructUnionType& other) const {
+  if (fields.size() != other.fields.size()) {
+    return false;
+  }
+
+  if (!IsComplete()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < fields.size(); i++) {
+    const auto& this_field = fields[i];
+    const auto& other_field = other.fields[i];
+    if (this_field.name != other_field.name) {
+      return false;
+    }
+    if (this_field.size != other_field.size) {
+      return false;
+    }
+    if (!(*this_field.type).EqualType(*other_field.type)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+std::string FunctionType::to_string() const {
+  std::stringstream repr{};
+  std::string formatted = cotyl::FormatStr("(%s)%s(", contained ? contained->to_string() : "%%", symbol);
+  repr << formatted;
+  repr << cotyl::Join(", ", arg_types);
+  if (variadic) {
+    repr << "...";
+  }
+  repr << ')';
+  return repr.str();
+}
+
+pType<> FunctionType::FunctionCall(const std::vector<pType<>>& args) const {
+  if (args.size() != arg_types.size()) {
+    if (!variadic || args.size() < arg_types.size()) {
+      throw std::runtime_error("Not enough arguments for function call");
+    }
+  }
+
+  for (int i = 0; i < arg_types.size(); i++) {
+    if (!arg_types[i]->CastableType(*args[i])) {
+      throw std::runtime_error("Cannot cast argument type");
+    }
+  }
+  return contained->Clone();
+}
+
+bool FunctionType::EqualTypeImpl(const FunctionType& other) const {
+  if (!(*contained).EqualType(*other.contained)) {
+    return false;
+  }
+  if (arg_types.size() != other.arg_types.size()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < arg_types.size(); i++) {
+    if (!(*arg_types[i]).EqualType(*other.arg_types[i])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+pType<> FunctionType::Clone() const {
+  auto clone = MakeType<FunctionType>(contained, symbol, variadic, lvalue, qualifiers);
+  for (const auto& arg : arg_types) {
+    clone->AddArg(arg->Clone());
+  }
+  return clone;
+}
+
 UNOP_HANDLER(PointerType::Deref) {
   return contained->Clone();
 }
@@ -44,113 +136,56 @@ BINOP_HANDLER(PointerType::RSub, PointerType) {
 BINOP_HANDLER(PointerType::RAdd, ValueType<i8>) {
   auto same_type = Clone();
   same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
+  same_type->lvalue = LValueNess::None;
   return same_type;
 }
 
 BINOP_HANDLER(PointerType::RAdd, ValueType<u8>) {
   auto same_type = Clone();
   same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
+  same_type->lvalue = LValueNess::None;
   return same_type;
 }
 
 BINOP_HANDLER(PointerType::RAdd, ValueType<u16>) {
   auto same_type = Clone();
   same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
+  same_type->lvalue = LValueNess::None;
   return same_type;
 }
 
 BINOP_HANDLER(PointerType::RAdd, ValueType<i16>) {
   auto same_type = Clone();
   same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
+  same_type->lvalue = LValueNess::None;
   return same_type;
 }
 
 BINOP_HANDLER(PointerType::RAdd, ValueType<u32>) {
   auto same_type = Clone();
   same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
+  same_type->lvalue = LValueNess::None;
   return same_type;
 }
 
 BINOP_HANDLER(PointerType::RAdd, ValueType<i32>) {
   auto same_type = Clone();
   same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
+  same_type->lvalue = LValueNess::None;
   return same_type;
 }
 
 BINOP_HANDLER(PointerType::RAdd, ValueType<u64>) {
   auto same_type = Clone();
   same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
+  same_type->lvalue = LValueNess::None;
   return same_type;
 }
 
 BINOP_HANDLER(PointerType::RAdd, ValueType<i64>) {
   auto same_type = Clone();
   same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
-  return same_type;
-}
-
-
-BINOP_HANDLER(PointerType::RArrayAccess, ValueType<i8>) {
-  auto same_type = contained->Clone();
-  same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RArrayAccess, ValueType<u8>) {
-  auto same_type = contained->Clone();
-  same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RArrayAccess, ValueType<u16>) {
-  auto same_type = contained->Clone();
-  same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RArrayAccess, ValueType<i16>) {
-  auto same_type = contained->Clone();
-  same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RArrayAccess, ValueType<u32>) {
-  auto same_type = contained->Clone();
-  same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RArrayAccess, ValueType<i32>) {
-  auto same_type = contained->Clone();
-  same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RArrayAccess, ValueType<u64>) {
-  auto same_type = contained->Clone();
-  same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RArrayAccess, ValueType<i64>) {
-  auto same_type = contained->Clone();
-  same_type->ForgetConstInfo();
-  same_type->SetNotLValue();
+  same_type->lvalue = LValueNess::None;
   return same_type;
 }
 
@@ -169,22 +204,6 @@ BINOP_HANDLER(PointerType::RLt, ValueType<u32>) { return MakeBool(); }
 BINOP_HANDLER(PointerType::RLt, ValueType<i32>) { return MakeBool(); }
 BINOP_HANDLER(PointerType::RLt, ValueType<u64>) { return MakeBool(); }
 BINOP_HANDLER(PointerType::RLt, ValueType<i64>) { return MakeBool(); }
-
-BINOP_HANDLER(PointerType::RGt, PointerType) {
-  if ((*this).EqualType(other)) {
-    return MakeBool();
-  }
-  throw std::runtime_error("Cannot compare pointers of non-compatible types");
-}
-
-BINOP_HANDLER(PointerType::RGt, ValueType<i8>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::RGt, ValueType<u8>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::RGt, ValueType<u16>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::RGt, ValueType<i16>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::RGt, ValueType<u32>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::RGt, ValueType<i32>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::RGt, ValueType<u64>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::RGt, ValueType<i64>) { return MakeBool(); }
 
 BINOP_HANDLER(PointerType::REq, PointerType) {
   if ((*this).EqualType(other)) {
@@ -216,6 +235,13 @@ pType<ValueType<i32>> CType::MakeBool(bool value) {
 pType<ValueType<i32>> CType::MakeBool() {
   // make bool without value
   return MakeType<ValueType<i32>>(LValueNess::None, 0);
+}
+
+pType<ValueType<i32>> CType::TruthinessAsCType() const {
+  if (IsConstexpr()) {
+    return MakeType<ValueType<i32>>(GetBoolValue() ? 1 : 0, LValueNess::None, 0);
+  }
+  return MakeBool();
 }
 
 pType<ValueType<i32>> CType::LogAnd(const CType& other) const {
@@ -257,12 +283,20 @@ UNOP_HANDLER(CType::Ref) {
   return MakeType<PointerType>(Clone(), LValueNess::None);
 }
 
+pType<> CType::ArrayAccess(const CType& other) const {
+  return Add(other)->Deref();
+}
+
 UNOP_HANDLER(CType::Incr) {
   return Add(*ConstOne());
 }
 
 UNOP_HANDLER(CType::Decr) {
   return Sub(*ConstOne());
+}
+
+pType<> CType::Gt(const CType& other) const {
+  return Le(other)->LogNot();  // !(<=)
 }
 
 pType<> CType::Le(const CType& other) const {
