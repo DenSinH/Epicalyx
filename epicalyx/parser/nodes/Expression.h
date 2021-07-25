@@ -28,6 +28,7 @@ struct Identifier final : public Expr {
   const std::string name;
 
   std::string to_string() const final { return name; };
+  pType<const CType> GetType(Parser& parser) const final;
 };
 
 
@@ -43,6 +44,7 @@ struct NumericalConstant final : public Expr {
   const T value;
 
   std::string to_string() const final { return std::to_string(value); };
+  pType<const CType> GetType(Parser& parser) const final;
 };
 
 
@@ -57,6 +59,7 @@ struct StringConstant final : public Expr {
   const std::string value;
 
   std::string to_string() const final { return cotyl::FormatStr("\"%s\"", value); }
+  pType<const CType> GetType(Parser& parser) const final;
 };
 
 /*
@@ -74,6 +77,7 @@ struct ArrayAccess final : public Expr {
   const pExpr left, right;
 
   std::string to_string() const final { return cotyl::FormatStr("(%s)[%s]", left->to_string(), right->to_string()); }
+  pType<const CType> GetType(Parser& parser) const final;
 };
 
 
@@ -93,6 +97,7 @@ struct FunctionCall final : public Expr {
   std::vector<pExpr> args{};
 
   std::string to_string() const final;
+  pType<const CType> GetType(Parser& parser) const final;
 };
 
 
@@ -114,6 +119,7 @@ struct MemberAccess final : public Expr {
   const std::string member;
 
   std::string to_string() const final { return cotyl::FormatStr("(%s).%s", left->to_string(), member); }
+  pType<const CType> GetType(Parser& parser) const final;
 };
 
 
@@ -129,6 +135,7 @@ struct TypeInitializer : public Expr {
   pNode<InitializerList> list;
 
   std::string to_string() const final { return cotyl::FormatStr("(%s)%s", type->to_string(), list->to_string()); }
+  pType<const CType> GetType(Parser& parser) const final;
 };
 
 
@@ -145,6 +152,7 @@ struct PostFix final : public Expr {
   const TokenType op;
 
   std::string to_string() const final { return cotyl::FormatStr("(%s)%s", left->to_string(), Token(op).to_string()); }
+  pType<const CType> GetType(Parser& parser) const final;
 };
 
 
@@ -161,6 +169,7 @@ struct Unary final : public Expr {
   const TokenType op;
 
   std::string to_string() const final { return cotyl::FormatStr("%s(%s)", Token(op).to_string(), left->to_string()); }
+  pType<const CType> GetType(Parser& parser) const final;
 };
 
 
@@ -177,6 +186,7 @@ struct Cast final : public Expr {
   const pExpr expr;
 
   std::string to_string() const final { return cotyl::FormatStr("(%s)(%s)", type->to_string(), expr->to_string()); }
+  pType<const CType> GetType(Parser& parser) const final;
 };
 
 
@@ -197,6 +207,7 @@ struct Binop final : public Expr {
   std::string to_string() const final {
     return cotyl::FormatStr("(%s) %s (%s)", left, Token(op), right);
   }
+  pType<const CType> GetType(Parser& parser) const final;
 };
 
 
@@ -217,6 +228,7 @@ struct Ternary final : public Expr {
   std::string to_string() const final {
     return cotyl::FormatStr("(%s) ? (%s) : (%s)", cond, _true->to_string(), _false);
   }
+  pType<const CType> GetType(Parser& parser) const final;
 };
 
 
@@ -237,6 +249,7 @@ struct Assignment final : public Expr {
   std::string to_string() const final {
     return cotyl::FormatStr("(%s) %s (%s)", left, Token(op), right);
   }
+  pType<const CType> GetType(Parser& parser) const final;
 };
 
 }

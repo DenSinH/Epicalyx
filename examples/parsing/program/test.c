@@ -11,10 +11,11 @@ static char is_prime(const int n) {
 extern void bruh(), yo(), more_functions(int lol);
 
 int test(int a) {
+    _Static_assert(1, "This assertion passes");
     switch(a) {
         case 0:
             return 12;
-        case 12:
+        case 12 + 2 + 3 + 4 * 3 << 12 & 0 - 10 / 4 ^ 2:
             return 12123;
         case 1 + 3 + 4:
             return 1;

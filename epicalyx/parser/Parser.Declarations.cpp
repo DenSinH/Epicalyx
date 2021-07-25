@@ -66,8 +66,7 @@ void Parser::DStaticAssert() {
   auto str = std::static_pointer_cast<tStringConstant>(in_stream.Get())->value;
   in_stream.EatSequence(TokenType::RParen, TokenType::SemiColon);
 
-  // todo: consteval expression
-  if (false && !expr->ConstEval()) {
+  if (!expr->ConstEval(*this)) {
     throw cotyl::FormatExceptStr("Static assertion failed: %s", str);
   }
 }
@@ -663,6 +662,10 @@ void Parser::DInitDeclaratorList(std::vector<pNode<InitDeclaration>>& dest) {
 }
 
 pNode<FunctionDefinition> Parser::ExternalDeclaration(std::vector<pNode<Decl>>& dest) {
+  if (in_stream.IsAfter(0, TokenType::StaticAssert)) {
+    DStaticAssert();
+    return nullptr;
+  }
   auto ctype = DSpecifier();
   pNode<Declaration> decl = DDeclarator(ctype.first, ctype.second);
 

@@ -140,7 +140,7 @@ struct CType {
     throw std::runtime_error("Cannot access member of non-struct/union type");
   }
 
-  virtual pType<> FunctionCall(const std::vector<pType<>>& args) const {
+  virtual pType<> FunctionCall(const std::vector<pType<const CType>>& args) const {
     throw std::runtime_error("Expression is not a function");
   }
 
@@ -446,7 +446,7 @@ struct FunctionType : public PointerType {
 
   OVERRIDE_UNOP(Deref)
 
-  pType<> FunctionCall(const std::vector<pType<>>& args) const final;
+  pType<> FunctionCall(const std::vector<pType<const CType>>& args) const final;
 
 private:
   bool CastableTypeImpl(const FunctionType& other) const final { return true; }

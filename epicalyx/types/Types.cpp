@@ -84,7 +84,7 @@ std::string FunctionType::to_string() const {
   return repr.str();
 }
 
-pType<> FunctionType::FunctionCall(const std::vector<pType<>>& args) const {
+pType<> FunctionType::FunctionCall(const std::vector<pType<const CType>>& args) const {
   if (args.size() != arg_types.size()) {
     if (!variadic || args.size() < arg_types.size()) {
       throw std::runtime_error("Not enough arguments for function call");

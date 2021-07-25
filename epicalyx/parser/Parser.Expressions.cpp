@@ -112,13 +112,22 @@ pExpr Parser::EUnary() {
       return std::make_unique<Unary>(current->type, std::move(right));
     }
     case TokenType::Sizeof: {
-      // sizeof(expr) / sizeof(typename)
-      // todo: return constant node
-      throw std::runtime_error("unimplemented: sizeof");
+      // sizeof(expr) / sizeof(type-name)
+      in_stream.Skip();
+      if (in_stream.IsAfter(0, TokenType::LParen) && IsDeclarationSpecifier(1)) {
+        in_stream.Skip();
+        auto type = ETypeName();
+        in_stream.Eat(TokenType::RParen);
+        return std::make_unique<NumericalConstant<u64>>(type->Sizeof());
+      }
+      return std::make_unique<NumericalConstant<u64>>(EExpression()->GetType(*this)->Sizeof());
     }
     case TokenType::Alignof: {
-      // _Alignof(expr)
-      throw std::runtime_error("unimplemented: _Alignof");
+      // _Alignof(type-name)
+      in_stream.EatSequence(TokenType::Alignof, TokenType::LParen);
+      auto type = ETypeName();
+      in_stream.Eat(TokenType::RParen);
+      return std::make_unique<NumericalConstant<u64>>(type->Alignof());
     }
     default: {
       return EPostfix();
@@ -129,11 +138,11 @@ pExpr Parser::EUnary() {
 pType<const CType> Parser::ETypeName() {
   auto ctype = DSpecifier();
 
-  if (ctype.second != StorageClass::Auto) {
+  if (ctype.second != StorageClass::None) {
     throw std::runtime_error("Storage class not allowed here");
   }
 
-  pNode<Declaration> decl = DDeclarator(ctype.first, StorageClass::Auto);
+  pNode<Declaration> decl = DDeclarator(ctype.first, StorageClass::None);
   if (!decl->name.empty()) {
     throw std::runtime_error("Name not allowed in type name");
   }
@@ -238,8 +247,7 @@ pExpr Parser::EExpression() {
 
 i64 Parser::EConstexpr() {
   auto expr = ETernary();
-  // todo
-  return 0;
+  return expr->ConstEval(*this);
 }
 
 void Parser::EExpressionList(std::vector<pExpr>& dest) {

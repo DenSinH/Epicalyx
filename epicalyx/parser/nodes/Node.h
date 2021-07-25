@@ -29,9 +29,10 @@ struct Stat : public Node {
 
 struct Expr : public Stat {
 
-  virtual pType<const CType> GetType(Parser&) { return MakeType<VoidType>(); };  // performs semantic analysis
-  virtual bool IsConstexpr() const { return false; }
-  virtual i64 ConstEval() const { return 0; }
+  // performs semantic analysis
+  virtual pType<const CType> GetType(Parser&) const = 0;
+  bool IsConstexpr(Parser& parser) const { return GetType(parser)->IsConstexpr(); }
+  i64 ConstEval(Parser& parser) const { return GetType(parser)->ConstIntVal(); }
 };
 
 template<typename T = Node>
