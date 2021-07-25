@@ -82,7 +82,7 @@ pType<> Parser::DEnum() {
       if (!enums.Has(name)) {
         throw cotyl::FormatExceptStr("Undefined enum %s", name);
       }
-      return MakeType<ValueType<enum_type>>();
+      return MakeType<ValueType<enum_type>>(CType::LValueNess::None);
     }
   }
   else {
@@ -108,7 +108,7 @@ pType<> Parser::DEnum() {
   } while(!in_stream.EatIf(TokenType::RBrace));
 
   enums.Set(name, true);
-  return MakeType<ValueType<enum_type>>();
+  return MakeType<ValueType<enum_type>>(CType::LValueNess::None);
 }
 
 pType<> Parser::DStruct() {
@@ -136,10 +136,10 @@ pType<> Parser::DStruct() {
   }
 
   if (is_struct) {
-    type = MakeType<StructType>(name);
+    type = MakeType<StructType>(name, CType::LValueNess::Assignable);
   }
   else {
-    type = MakeType<UnionType>(name);
+    type = MakeType<UnionType>(name, CType::LValueNess::Assignable);
   }
 
   while(!in_stream.EatIf(TokenType::RBrace)) {
@@ -499,7 +499,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
           }
           case TokenType::RParen: {
             // function()
-            ctype = MakeType<FunctionType>(std::move(ctype));
+            ctype = MakeType<FunctionType>(std::move(ctype), false, CType::LValueNess::Assignable);
             in_stream.Skip();
             break;
           }
@@ -544,7 +544,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
           default: {
             function_call:
             // has to be a function declaration with at least one parameter
-            auto type = MakeType<FunctionType>(std::move(ctype));
+            auto type = MakeType<FunctionType>(std::move(ctype), false, CType::LValueNess::Assignable);
             do {
               auto arg_specifier = DSpecifier();
               if (arg_specifier.second != StorageClass::None) {
@@ -674,7 +674,9 @@ pNode<FunctionDefinition> Parser::ExternalDeclaration(std::vector<pNode<Decl>>& 
     if (!decl->type->IsFunction()) {
       throw std::runtime_error("Unexpected compound statement after external declaration");
     }
-    pType<const FunctionType> signature = std::static_pointer_cast<const FunctionType>(decl->type);
+    pType<FunctionType> signature = std::static_pointer_cast<FunctionType>(decl->type->Clone());
+    signature->lvalue = CType::LValueNess::None;
+
     std::string symbol = decl->name;
     if (symbol.empty()) {
       throw std::runtime_error("Missing name in function declaration");

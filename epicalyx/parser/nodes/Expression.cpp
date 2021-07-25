@@ -2,6 +2,7 @@
 #include "parser/Parser.h"
 #include "types/Types.h"
 
+
 #include <sstream>
 
 
@@ -142,7 +143,7 @@ pType<const CType> Ternary::GetType(Parser& parser) const {
 
 pType<const CType> Assignment::GetType(Parser& parser) const {
   auto left_t = left->GetType(parser);
-  if (left_t->lvalue != CType::LValueNess::Assignable) {
+  if (!left_t->IsAssignable()) {
     throw std::runtime_error("Cannot assign to expression");
   }
   auto right_t = right->GetType(parser);

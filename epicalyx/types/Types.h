@@ -105,6 +105,7 @@ struct CType {
   virtual bool IsConstexpr() const { return false; }  // for optimizing branching
   virtual bool GetBoolValue() const { throw std::runtime_error("Type cannot be converted to bool"); }
   pType<ValueType<i32>> TruthinessAsCType() const;
+  bool IsAssignable() const { return lvalue == LValueNess::Assignable && !(qualifiers & Qualifier::Const); }
 
   virtual std::string to_string() const = 0;
 
@@ -215,13 +216,13 @@ protected:
 
 template<typename T>
 struct ValueType : public CType {
-  explicit ValueType(LValueNess lvalue = LValueNess::Assignable, u32 flags = 0) :
+  explicit ValueType(LValueNess lvalue, u32 flags = 0) :
           CType(lvalue, flags),
           value() {
 
   }
 
-  explicit ValueType(T value, LValueNess lvalue = LValueNess::Assignable, u32 flags = 0) :
+  explicit ValueType(T value, LValueNess lvalue, u32 flags = 0) :
           CType(lvalue, flags),
           value(value) {
 
@@ -339,7 +340,7 @@ private:
 
 
 struct PointerType : public CType {
-  PointerType(const pType<>& contained, LValueNess lvalue = LValueNess::None, u32 flags = 0) :
+  PointerType(const pType<>& contained, LValueNess lvalue, u32 flags = 0) :
       CType(lvalue, flags),
       contained(contained ? contained->Clone() : nullptr) {
 
@@ -410,8 +411,8 @@ struct ArrayType : public PointerType {
 struct FunctionType : public PointerType {
   FunctionType(
           const pType<>& return_type,
-          bool variadic = false,
-          LValueNess lvalue = LValueNess::LValue,
+          bool variadic,
+          LValueNess lvalue,
           u32 flags = 0
   ) :
           PointerType(return_type, lvalue, flags),
@@ -505,13 +506,13 @@ struct StructUnionType : public CType {
   }
 
   std::string to_string() const final;
-  virtual std::string BaseString() const = 0;
   pType<> MemberAccess(const std::string& member) const final;
 
   u64 Sizeof() const final;
   u64 Alignof() const final { return Sizeof(); } // todo:
 
 protected:
+  virtual std::string BaseString() const = 0;
   bool _CastableTypeImpl(const StructUnionType& other) const {
     return _EqualTypeImpl(other);
   }
@@ -531,15 +532,13 @@ protected:
 
 
 struct StructType : public StructUnionType {
-  StructType(std::string name, LValueNess lvalue = LValueNess::None, u32 flags = 0) :
+  StructType(std::string name, LValueNess lvalue, u32 flags = 0) :
           StructUnionType(std::move(name), lvalue, flags) {
 
   }
 
   OVERRIDE_BASE_CASTABLE
   OVERRIDE_BASE_EQ
-
-  std::string BaseString() const final { return "struct"; }
 
   pType<> Clone() const final {
     auto clone = MakeType<StructType>(name, lvalue, qualifiers);
@@ -549,6 +548,9 @@ struct StructType : public StructUnionType {
     return clone;
   }
 
+protected:
+  std::string BaseString() const final { return "struct"; }
+
 private:
   bool CastableTypeImpl(const StructType& other) const final { return _CastableTypeImpl(other); }
   bool EqualTypeImpl(const StructType& other) const final { return _EqualTypeImpl(other); }
@@ -556,15 +558,13 @@ private:
 
 
 struct UnionType : public StructUnionType {
-  UnionType(std::string name, LValueNess lvalue = LValueNess::None, u32 flags = 0) :
+  UnionType(std::string name, LValueNess lvalue, u32 flags = 0) :
           StructUnionType(std::move(name), lvalue, flags) {
 
   }
 
   OVERRIDE_BASE_CASTABLE
   OVERRIDE_BASE_EQ
-
-  std::string BaseString() const final { return "struct"; }
 
   pType<> Clone() const final {
     auto clone = MakeType<UnionType>(name, lvalue, qualifiers);
@@ -573,6 +573,9 @@ struct UnionType : public StructUnionType {
     }
     return clone;
   }
+
+protected:
+  std::string BaseString() const final { return "struct"; }
 
 private:
   bool CastableTypeImpl(const UnionType& other) const final { return _CastableTypeImpl(other); }
