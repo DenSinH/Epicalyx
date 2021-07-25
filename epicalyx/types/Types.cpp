@@ -65,6 +65,13 @@ bool StructUnionType::_EqualTypeImpl(const StructUnionType& other) const {
   return true;
 }
 
+std::string FunctionType::Arg::to_string() const {
+  if (name.empty()) {
+    return type->to_string();
+  }
+  return cotyl::FormatStr("%s %s", type, name);
+}
+
 std::string FunctionType::to_string() const {
   std::stringstream repr{};
   std::string formatted = cotyl::FormatStr("(%s)(", contained ? contained->to_string() : "%%");
@@ -85,7 +92,7 @@ pType<> FunctionType::FunctionCall(const std::vector<pType<>>& args) const {
   }
 
   for (int i = 0; i < arg_types.size(); i++) {
-    if (!arg_types[i]->CastableType(*args[i])) {
+    if (!arg_types[i].type->CastableType(*args[i])) {
       throw std::runtime_error("Cannot cast argument type");
     }
   }
@@ -101,7 +108,7 @@ bool FunctionType::EqualTypeImpl(const FunctionType& other) const {
   }
 
   for (size_t i = 0; i < arg_types.size(); i++) {
-    if (!(*arg_types[i]).EqualType(*other.arg_types[i])) {
+    if (!(arg_types[i].type->EqualType(*other.arg_types[i].type))) {
       return false;
     }
   }
@@ -112,7 +119,7 @@ bool FunctionType::EqualTypeImpl(const FunctionType& other) const {
 pType<> FunctionType::Clone() const {
   auto clone = MakeType<FunctionType>(contained, variadic, lvalue, qualifiers);
   for (const auto& arg : arg_types) {
-    clone->AddArg(arg->Clone());
+    clone->AddArg(arg.name, arg.type);
   }
   return clone;
 }

@@ -11,7 +11,7 @@
 
 
 int main() {
-  auto file = epi::File("examples/parsing/program/typedefs.c");
+  auto file = epi::File("examples/parsing/program/test.c");
   auto string = epi::SString(
           "{ for (int i = {0}; i < 12; i++)"
           "{ int a = i + 1, (*b)() = c = 12 ? 1 > 2 : 3; (&a)[i] = 69; }"
@@ -22,7 +22,7 @@ int main() {
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
-#if 1
+#if 0
 #define try if (true)
 #define catch_e std::runtime_error e(""); if (false)
 #else
@@ -35,7 +35,7 @@ int main() {
   }
   catch_e {
     std::cout << e.what() << std::endl;
-//    string.PrintLoc();
+    file.PrintLoc();
   }
 
 //  epi::pType<> Int = epi::MakeType<epi::ValueType<epi::i32>>(1, epi::CType::LValueNess::Assignable, 0);

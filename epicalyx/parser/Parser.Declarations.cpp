@@ -61,9 +61,15 @@ bool Parser::IsDeclarationSpecifier(int after) {
 void Parser::DStaticAssert() {
   in_stream.EatSequence(TokenType::StaticAssert, TokenType::LParen);
   auto expr = Parser::ETernary();
+  in_stream.Eat(TokenType::Comma);
+  in_stream.Expect(TokenType::StringConstant);
+  auto str = std::static_pointer_cast<tStringConstant>(in_stream.Get())->value;
   in_stream.EatSequence(TokenType::RParen, TokenType::SemiColon);
 
   // todo: consteval expression
+  if (false && !expr->ConstEval()) {
+    throw cotyl::FormatExceptStr("Static assertion failed: %s", str);
+  }
 }
 
 pType<> Parser::DEnum() {
@@ -147,8 +153,7 @@ pType<> Parser::DStruct() {
       do {
         pNode<Declaration> decl = DDeclarator(ctype.first, ctype.second);
         size_t size = 0;
-        if (decl->storage != StorageClass::Auto) {
-          // todo: don't allow storage class specifiers
+        if (decl->storage != StorageClass::None) {
           throw std::runtime_error("Invalid storage class specifier in struct definition");
         }
         if (in_stream.EatIf(TokenType::Colon)) {
@@ -446,7 +451,7 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
         ctype = MakeType<ValueType<double>>(CType::LValueNess::None, qualifiers); break;
     }
   }
-  return std::make_pair(ctype, storage ? storage.value() : StorageClass::Auto);
+  return std::make_pair(ctype, storage ? storage.value() : StorageClass::None);
 }
 
 std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) {
@@ -543,11 +548,12 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
             auto type = MakeType<FunctionType>(std::move(ctype));
             do {
               auto arg_specifier = DSpecifier();
-              if (arg_specifier.second != StorageClass::Auto) {
+              if (arg_specifier.second != StorageClass::None) {
                 throw std::runtime_error("Bad storage specifier on function argument");
               }
 
-              type->AddArg(DDeclarator(arg_specifier.first, StorageClass::Auto)->type);
+              auto arg = DDeclarator(arg_specifier.first, StorageClass::Auto);
+              type->AddArg(arg->name, arg->type);
               if (in_stream.EatIf(TokenType::Comma)) {
                 if (in_stream.EatIf(TokenType::Ellipsis)) {
                   type->variadic = true;
@@ -638,11 +644,19 @@ void Parser::DInitDeclaratorList(std::vector<pNode<InitDeclaration>>& dest) {
     else {
       if (in_stream.EatIf(TokenType::Assign)) {
         // type var = <expression> or {initializer list}
+        if (decl->name.empty()) {
+          throw std::runtime_error("Cannot assign to nameless variable");
+        }
         dest.push_back(std::make_unique<InitDeclaration>(std::move(decl), EInitializer()));
       }
       else {
         // type var, var2, var3
-        dest.push_back(std::make_unique<InitDeclaration>(std::move(decl)));
+        if (!decl->name.empty()) {
+          dest.push_back(std::make_unique<InitDeclaration>(std::move(decl)));
+        }
+        else {
+          // warn: statement has no effect
+        }
       }
     }
   } while (in_stream.EatIf(TokenType::Comma));
@@ -652,6 +666,7 @@ pNode<FunctionDefinition> Parser::ExternalDeclaration(std::vector<pNode<Decl>>& 
   auto ctype = DSpecifier();
   pNode<Declaration> decl = DDeclarator(ctype.first, ctype.second);
 
+  // signature { body }
   if (in_stream.EatIf(TokenType::LBrace)) {
     if (!decl->type->IsFunction()) {
       throw std::runtime_error("Unexpected compound statement after external declaration");
@@ -661,12 +676,21 @@ pNode<FunctionDefinition> Parser::ExternalDeclaration(std::vector<pNode<Decl>>& 
     if (symbol.empty()) {
       throw std::runtime_error("Missing name in function declaration");
     }
+
+    for (const auto& arg : signature->arg_types) {
+      if (arg.name.empty()) {
+        throw std::runtime_error("Nameless argument in function definition");
+      }
+    }
+
     auto body = SCompound();
     in_stream.Eat(TokenType::RBrace);
     return std::make_unique<FunctionDefinition>(signature, symbol, std::move(body));
   }
 
+  // declaration
   do {
+
     if (decl->storage == StorageClass::Typedef) {
       // store typedef names
       if (decl->name.empty()) {

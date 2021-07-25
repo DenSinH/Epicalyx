@@ -13,6 +13,24 @@ Parser::Parser(cotyl::pStream<Token>& in_stream) :
 
 }
 
+void Parser::PushScope() {
+  variables.NewLayer();
+  typedefs.NewLayer();
+  structdefs.NewLayer();
+  uniondefs.NewLayer();
+  enums.NewLayer();
+  enum_values.NewLayer();
+}
+
+void Parser::PopScope() {
+  variables.PopLayer();
+  typedefs.PopLayer();
+  structdefs.PopLayer();
+  uniondefs.PopLayer();
+  enums.PopLayer();
+  enum_values.PopLayer();
+}
+
 void Parser::Parse() {
   while (!in_stream.EOS()) {
     auto function = ExternalDeclaration(declarations);
@@ -21,7 +39,6 @@ void Parser::Parse() {
     }
   }
 }
-
 
 void Parser::Data() {
   std::cout << "-- struct / union defs" << std::endl;

@@ -77,7 +77,7 @@ struct Stream {
 
   void Expect(const T& expect) {
     if (!IsAfter(0, expect)) {
-      throw cotyl::FormatExceptStr("Invalid token: expected %s, got %s", expect, Get());
+      throw cotyl::FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, Get());
     }
   }
 
@@ -118,7 +118,7 @@ struct Stream {
 
     const T got = Get();
     if (got != expect) {
-      throw FormatExceptStr("Expected %s, got %s", expect, got);
+      throw FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, got);
     }
     return got;
   }
@@ -151,7 +151,7 @@ struct pStream : public Stream<std::shared_ptr<T>> {
 
   void Expect(const T& expect) {
     if (!IsAfter(0, expect)) {
-      throw cotyl::FormatExceptStr("Invalid token: expected %s, got %s", expect, Stream<std::shared_ptr<T>>::Get());
+      throw cotyl::FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, Stream<std::shared_ptr<T>>::Get());
     }
   }
 
@@ -160,7 +160,7 @@ struct pStream : public Stream<std::shared_ptr<T>> {
 
     const auto got = Stream<std::shared_ptr<T>>::Get();
     if (!(*got == expect)) {
-      throw FormatExceptStr("Expected %s, got %s", expect, got);
+      throw FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, got);
     }
     return got;
   }

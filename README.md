@@ -1,9 +1,20 @@
 ## TODO:
- - referencing / dereferencing function pointer types
- - comments
  - pre-processor
+ - struct/union sized fields
+   
+## Unsupported
  - `_Generic` related statements
- - Identifier lists in K&R style functions not supported
+ - Empty argument names for external function definitions
+```C
+void func(int) {
+  return;
+}
+```
+ - Array size `static` and `type-specifier` declarations
+```C
+int test[static 12];
+```
+ - Identifier lists in K&R style functions
 ```C
 void func(identifier-list)
 declaration-list

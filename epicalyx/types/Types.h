@@ -421,16 +421,23 @@ struct FunctionType : public PointerType {
     // functions are assignable if they are variables, but not if they are global symbols
   }
 
+  struct Arg {
+    Arg(std::string name, pType<const CType> type) : name(std::move(name)), type(std::move(type)) { }
+    std::string to_string() const;
+    const std::string name;
+    pType<const CType> type;
+  };
+
   bool variadic;
-  std::vector<pType<const CType>> arg_types;
+  std::vector<Arg> arg_types;
 
   OVERRIDE_BASE_CASTABLE
   OVERRIDE_BASE_EQ
 
-  void AddArg(const pType<const CType>& arg) {
+  void AddArg(std::string name, const pType<const CType>& arg) {
     auto _arg = arg->Clone();
     _arg->ForgetConstInfo();
-    arg_types.push_back(_arg);  // constant info is nonsense for arguments
+    arg_types.emplace_back(std::move(name), _arg);  // constant info is nonsense for arguments
   }
 
   std::string to_string() const final;

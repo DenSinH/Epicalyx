@@ -1,5 +1,6 @@
 #include "File.h"
 
+#include <iostream>
 
 namespace epi {
 
@@ -12,6 +13,28 @@ File::~File() {
   file.close();
 }
 
+void File::PrintLoc() {
+  const std::streampos current = file.tellg() - (std::streampos)buf.size();
+  std::string l;
+
+  if (prev != -1) {
+    file.seekg(prev, std::ios::beg);
+    std::getline(file, l);
+    std::cout << l << std::endl;
+  }
+  else {
+    file.seekg(line, std::ios::beg);
+  }
+  std::getline(file, l);
+  std::cout << l << std::endl;
+  for (int i = 0; i < current - line; i++) {
+    std::cout << '~';
+  }
+  std::cout << '^' << std::endl;
+  std::getline(file, l);
+  std::cout << l << std::endl;
+}
+
 bool File::IsEOS() {
   if (file.eof()) {
     return true;
@@ -21,6 +44,11 @@ bool File::IsEOS() {
   if (!value && file.eof()) {
     return true;
   }
+  if (value == '\n') {
+    prev = line;
+    line = file.tellg();
+  }
+
   buf.push_back(value);
   return file.eof();
 }
@@ -28,6 +56,11 @@ bool File::IsEOS() {
 char File::GetNew() {
   char value;
   file.read(&value, 1);
+
+  if (value == '\n') {
+    prev = line;
+    line = file.tellg();
+  }
   if (!value && file.eof()) {
     throw std::runtime_error("Unexpected end of file");
   }

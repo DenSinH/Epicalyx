@@ -12,6 +12,7 @@ namespace epi {
 struct Compound;
 
 enum class StorageClass {
+  None,
   Typedef,
   Extern,
   Static,

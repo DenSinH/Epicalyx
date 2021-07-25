@@ -53,6 +53,9 @@ struct Parser {
 
   pNode<FunctionDefinition> ExternalDeclaration(std::vector<pNode<Decl>>& dest);
 
+  void PushScope();
+  void PopScope();
+
   void Parse();
   void Data();
 
@@ -63,6 +66,9 @@ struct Parser {
   cotyl::Scope<std::string, pType<const StructUnionType>> structdefs{};
   cotyl::Scope<std::string, pType<const StructUnionType>> uniondefs{};
 
+  cotyl::Scope<std::string, pType<const CType>> variables{};
+
+  // external results
   std::vector<pNode<FunctionDefinition>> functions{};
   std::vector<pNode<Decl>> declarations{};
 };

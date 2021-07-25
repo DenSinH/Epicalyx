@@ -143,8 +143,12 @@ pNode<Stat> Parser::SStatement() {
 
 pNode<Compound> Parser::SCompound() {
   auto compound =  std::make_unique<Compound>();
+  PushScope();
   while (!in_stream.IsAfter(0, TokenType::RBrace)) {
-    if (IsDeclarationSpecifier()) {
+    if (in_stream.IsAfter(0, TokenType::StaticAssert)) {
+      DStaticAssert();
+    }
+    else if (IsDeclarationSpecifier()) {
       std::vector<pNode<InitDeclaration>> decl_list;
       DInitDeclaratorList(decl_list);
       in_stream.Eat(TokenType::SemiColon);
@@ -156,6 +160,7 @@ pNode<Compound> Parser::SCompound() {
       compound->AddNode(SStatement());
     }
   }
+  PopScope();
   return compound;
 }
 
