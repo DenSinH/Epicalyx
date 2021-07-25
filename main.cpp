@@ -7,10 +7,11 @@
 #include "parser/Parser.h"
 
 #include "nodes/Declaration.h"
+#include "nodes/Statement.h"
 
 
 int main() {
-  auto file = epi::File("examples/parsing/expressions/binary/combined.expr");
+  auto file = epi::File("examples/parsing/program/typedefs.c");
   auto string = epi::SString(
           "{ for (int i = {0}; i < 12; i++)"
           "{ int a = i + 1, (*b)() = c = 12 ? 1 > 2 : 3; (&a)[i] = 69; }"
@@ -18,7 +19,7 @@ int main() {
           "{ const struct TestStruct{ int a, b: 2, *c;} x = {1, 2, {3}}; }"
           " enum a {x = 1, y, z }; "
           " return x * 12 * 12;}");
-  auto tokenizer = epi::Tokenizer(string);
+  auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
 #if 1
@@ -29,14 +30,12 @@ int main() {
 #endif
 
   try {
-    std::cout << parser.SStatement()->to_string();
-    if (!parser.in_stream.EOS()) {
-      std::cout << "not EOS after parsing";
-    }
+    parser.Parse();
+    parser.Data();
   }
   catch_e {
     std::cout << e.what() << std::endl;
-    string.PrintLoc();
+//    string.PrintLoc();
   }
 
 //  epi::pType<> Int = epi::MakeType<epi::ValueType<epi::i32>>(1, epi::CType::LValueNess::Assignable, 0);

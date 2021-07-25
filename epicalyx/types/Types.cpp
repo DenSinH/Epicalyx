@@ -67,11 +67,11 @@ bool StructUnionType::_EqualTypeImpl(const StructUnionType& other) const {
 
 std::string FunctionType::to_string() const {
   std::stringstream repr{};
-  std::string formatted = cotyl::FormatStr("(%s)%s(", contained ? contained->to_string() : "%%", symbol);
+  std::string formatted = cotyl::FormatStr("(%s)(", contained ? contained->to_string() : "%%");
   repr << formatted;
   repr << cotyl::Join(", ", arg_types);
   if (variadic) {
-    repr << "...";
+    repr << ", ...";
   }
   repr << ')';
   return repr.str();
@@ -110,7 +110,7 @@ bool FunctionType::EqualTypeImpl(const FunctionType& other) const {
 }
 
 pType<> FunctionType::Clone() const {
-  auto clone = MakeType<FunctionType>(contained, symbol, variadic, lvalue, qualifiers);
+  auto clone = MakeType<FunctionType>(contained, variadic, lvalue, qualifiers);
   for (const auto& arg : arg_types) {
     clone->AddArg(arg->Clone());
   }

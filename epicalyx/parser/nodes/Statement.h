@@ -92,6 +92,21 @@ struct Label : public Stat {
   std::string to_string() const final { return cotyl::FormatStr("%s: %s", name, stat); };
 };
 
+
+struct Switch : public Stat {
+
+  Switch(pExpr&& expr, pNode<Stat>&& stat) :
+          expr(std::move(expr)),
+          stat(std::move(stat)) {
+
+  }
+
+  pExpr expr;
+  pNode<Stat> stat;
+
+  std::string to_string() const final;
+};
+
 struct Case : public Stat {
 
   Case(i64 expr, pNode<Stat>&& stat) :

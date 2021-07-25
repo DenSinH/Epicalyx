@@ -20,10 +20,17 @@ pNode<Stat> Parser::SStatement() {
       in_stream.EatSequence(TokenType::Default, TokenType::Colon);
       return std::make_unique<Default>(SStatement());
     }
+    case TokenType::Switch: {
+      in_stream.EatSequence(TokenType::Switch, TokenType::LParen);
+      auto expr = EExpression();
+      in_stream.Eat(TokenType::RParen);
+      return std::make_unique<Switch>(std::move(expr), SStatement());
+    }
     case TokenType::If: {
       in_stream.EatSequence(TokenType::If, TokenType::LParen);
       // todo: commas?
       auto cond = EExpression();
+      in_stream.Eat(TokenType::RParen);
       auto stat = SStatement();
       if (!in_stream.IsAfter(0, TokenType::Else)) {
         return std::make_unique<If>(std::move(cond), std::move(stat));
@@ -134,7 +141,7 @@ pNode<Stat> Parser::SStatement() {
   }
 }
 
-pNode<Stat> Parser::SCompound() {
+pNode<Compound> Parser::SCompound() {
   auto compound =  std::make_unique<Compound>();
   while (!in_stream.IsAfter(0, TokenType::RBrace)) {
     if (IsDeclarationSpecifier()) {

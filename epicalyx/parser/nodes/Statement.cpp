@@ -42,6 +42,10 @@ std::string For::to_string() const {
   return result.str();
 }
 
+std::string Switch::to_string() const {
+  return cotyl::FormatStr("switch (%s) %s", expr, stat);
+}
+
 std::string Compound::to_string() const {
   std::stringstream repr{};
   repr << '{';

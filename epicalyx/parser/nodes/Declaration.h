@@ -9,6 +9,8 @@
 
 namespace epi {
 
+struct Compound;
+
 enum class StorageClass {
   Typedef,
   Extern,
@@ -47,6 +49,17 @@ struct InitDeclaration : public Declaration {
   }
 
   std::optional<Initializer> value;
+
+  std::string to_string() const final;
+};
+
+struct FunctionDefinition : public Decl {
+
+  FunctionDefinition(pType<const FunctionType> signature, std::string symbol, pNode<Compound>&& body);
+
+  pType<const FunctionType> signature;
+  const std::string symbol;
+  pNode<Compound> body;
 
   std::string to_string() const final;
 };

@@ -1,6 +1,7 @@
 #include "Parser.h"
 #include "Is.h"
 #include "nodes/Declaration.h"
+#include "nodes/Statement.h"
 
 #include <optional>
 #include <iostream>
@@ -84,7 +85,7 @@ pType<> Parser::DEnum() {
   }
   // enum <name> { ... }
 
-  i64 counter = 0;
+  enum_type counter = 0;
   do {
     in_stream.Expect(TokenType::Identifier);
     std::string constant = std::dynamic_pointer_cast<tIdentifier>(in_stream.Get())->name;
@@ -367,12 +368,7 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
         break;
       }
 
-      case TokenType::Inline: {
-        in_stream.Skip();
-        // todo
-        is_function = true;
-        break;
-      }
+      case TokenType::Inline:
       case TokenType::Noreturn: {
         in_stream.Skip();
         // todo
@@ -650,6 +646,50 @@ void Parser::DInitDeclaratorList(std::vector<pNode<InitDeclaration>>& dest) {
       }
     }
   } while (in_stream.EatIf(TokenType::Comma));
+}
+
+pNode<FunctionDefinition> Parser::ExternalDeclaration(std::vector<pNode<Decl>>& dest) {
+  auto ctype = DSpecifier();
+  pNode<Declaration> decl = DDeclarator(ctype.first, ctype.second);
+
+  if (in_stream.EatIf(TokenType::LBrace)) {
+    if (!decl->type->IsFunction()) {
+      throw std::runtime_error("Unexpected compound statement after external declaration");
+    }
+    pType<const FunctionType> signature = std::static_pointer_cast<const FunctionType>(decl->type);
+    std::string symbol = decl->name;
+    if (symbol.empty()) {
+      throw std::runtime_error("Missing name in function declaration");
+    }
+    auto body = SCompound();
+    in_stream.Eat(TokenType::RBrace);
+    return std::make_unique<FunctionDefinition>(signature, symbol, std::move(body));
+  }
+
+  do {
+    if (decl->storage == StorageClass::Typedef) {
+      // store typedef names
+      if (decl->name.empty()) {
+        throw std::runtime_error("Typedef declaration must have a name");
+      }
+      typedefs.Set(decl->name, decl->type);
+    }
+    else {
+      if (in_stream.EatIf(TokenType::Assign)) {
+        // type var = <expression> or {initializer list}
+        dest.push_back(std::make_unique<InitDeclaration>(std::move(decl), EInitializer()));
+      }
+      else {
+        // type var, var2, var3
+        dest.push_back(std::make_unique<InitDeclaration>(std::move(decl)));
+      }
+    }
+    if (in_stream.EatIf(TokenType::SemiColon)) {
+      return nullptr;
+    }
+    in_stream.Eat(TokenType::Comma);
+    decl = DDeclarator(ctype.first, ctype.second);
+  } while (true);
 }
 
 }

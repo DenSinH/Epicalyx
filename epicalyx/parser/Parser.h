@@ -13,13 +13,12 @@ namespace epi {
 struct Declaration;
 enum class StorageClass;
 struct InitDeclaration;
+struct Compound;
+struct FunctionDefinition;
 
 struct Parser {
 
-  Parser(cotyl::pStream<Token>& in_stream) :
-      in_stream(in_stream) {
-
-  }
+  Parser(cotyl::pStream<Token>& in_stream);
 
   using enum_type = i32;
 
@@ -50,14 +49,22 @@ struct Parser {
   bool IsDeclarationSpecifier(int after = 0);
 
   pNode<Stat> SStatement();
-  pNode<Stat> SCompound();
+  pNode<Compound> SCompound();
+
+  pNode<FunctionDefinition> ExternalDeclaration(std::vector<pNode<Decl>>& dest);
+
+  void Parse();
+  void Data();
 
   cotyl::pStream<Token>& in_stream;
   cotyl::Scope<std::string, enum_type> enum_values{};
   cotyl::Scope<std::string, bool> enums{};
   cotyl::Scope<std::string, pType<const CType>> typedefs{};
-  cotyl::Scope<std::string, pType<const CType>> structdefs{};
-  cotyl::Scope<std::string, pType<const CType>> uniondefs{};
+  cotyl::Scope<std::string, pType<const StructUnionType>> structdefs{};
+  cotyl::Scope<std::string, pType<const StructUnionType>> uniondefs{};
+
+  std::vector<pNode<FunctionDefinition>> functions{};
+  std::vector<pNode<Decl>> declarations{};
 };
 
 }

@@ -9,6 +9,10 @@ namespace epi::cotyl {
 template<typename K, typename V>
 struct Scope {
 
+  const std::map<K, V>& Base() {
+    return scope[0];
+  }
+
   void NewLayer() {
     scope.emplace_back();
   }

@@ -158,6 +158,7 @@ struct CType {
   virtual u64 Alignof() const { throw std::runtime_error("Align of incomplete type"); }
   virtual bool CastableType(const CType& other) const { return false; }  // checking whether types are castable
   virtual bool EqualType(const CType& other) const { return false; }  // for checking complete equality
+  virtual bool IsFunction() const { return false; }
   virtual i64 ConstIntVal() const { throw std::runtime_error("Type is not an integer value: " + to_string()); }
   virtual pType<> Clone() const = 0;
 
@@ -409,26 +410,18 @@ struct ArrayType : public PointerType {
 struct FunctionType : public PointerType {
   FunctionType(
           const pType<>& return_type,
-          std::string symbol = "",
           bool variadic = false,
           LValueNess lvalue = LValueNess::LValue,
           u32 flags = 0
   ) :
           PointerType(return_type, lvalue, flags),
-          symbol(std::move(symbol)),
           variadic(variadic) {
 
     if (contained) contained->ForgetConstInfo();
     // functions are assignable if they are variables, but not if they are global symbols
-    if (!symbol.empty()) {
-      if (lvalue != LValueNess::LValue) {
-        throw std::runtime_error("Bad function type initializer (symbol that is not an lvalue)");
-      }
-    }
   }
 
   bool variadic;
-  std::string symbol;  // if there is a symbol here, the function is a global definition
   std::vector<pType<const CType>> arg_types;
 
   OVERRIDE_BASE_CASTABLE
@@ -440,16 +433,9 @@ struct FunctionType : public PointerType {
     arg_types.push_back(_arg);  // constant info is nonsense for arguments
   }
 
-  bool GetBoolValue() const override {
-    if (!symbol.empty()) {
-      return true;  // always true
-    }
-    throw std::runtime_error("Expression is not a constant");  // unknown, might be function pointer variable
-  }
-
   std::string to_string() const final;
+  bool IsFunction() const final { return true; }
   pType<> Clone() const final;
-  void ForgetConstInfo() final { symbol = ""; }
 
   OVERRIDE_UNOP(Deref)
 
