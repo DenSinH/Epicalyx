@@ -9,6 +9,28 @@
 
 namespace epi::cotyl {
 
+namespace detail {
+
+template<typename T>
+struct base_type;
+
+template<typename T>
+struct base_type<std::unique_ptr<T>> {
+  using type = T;
+};
+
+template<typename T>
+struct base_type<std::shared_ptr<T>> {
+  using type = T;
+};
+
+template<typename T>
+struct base_type {
+  using type = std::decay_t<T>;
+};
+
+}
+
 struct Locatable {
   virtual void PrintLoc() = 0;
 };
@@ -16,15 +38,18 @@ struct Locatable {
 template<typename T>
 struct Stream {
 
+  using base_t = typename detail::base_type<T>::type;
+  static constexpr bool deref = !std::is_same_v<base_t, T>;
+
   bool EOS() {
     return buf.empty() && IsEOS();
   };
 
   [[nodiscard]] T Get() {
     if (!buf.empty()) {
-      T value = buf.front();
+      T value = std::move(buf.front());
       buf.pop_front();
-      return value;
+      return std::move(value);
     }
 
     return GetNew();
@@ -43,7 +68,16 @@ struct Stream {
     }
   }
 
-  bool Peek(T& dest, size_t amount = 0) {
+  bool Peek(base_t& dest, size_t amount = 0) {
+    const base_t* d;
+    if (!Peek(d, amount)) {
+      return false;
+    }
+    dest = *d;
+    return true;
+  }
+
+  bool Peek(const base_t*& dest, size_t amount = 0) {
     if (EOS()) {
       return false;
     }
@@ -53,29 +87,34 @@ struct Stream {
       }
       buf.push_back(GetNew());
     }
-    dest = buf[amount];
+    if constexpr(deref) {
+      dest = buf[amount].get();
+    }
+    else {
+      dest = &buf[amount];
+    }
     return true;
   }
 
-  T ForcePeek(size_t amount = 0) {
-    T value;
+  const base_t* ForcePeek(size_t amount = 0) {
+    const base_t* value;
     if (!Peek(value, amount)) {
       throw std::runtime_error("Unexpected end of stream");
     }
     return value;
   }
 
-  virtual bool IsAfter(size_t amount, const T& expect) {
-    T value;
-    return Peek(value, amount) && value == expect;
+  bool IsAfter(size_t amount, const base_t& expect) {
+    const base_t* value;
+    return Peek(value, amount) && *value == expect;
   }
 
   template<typename ...Args>
-  bool IsAfter(size_t amount, const T& expect, const Args& ... args) {
+  bool IsAfter(size_t amount, const base_t& expect, const Args& ... args) {
     return IsAfter(amount, expect) || IsAfter(amount, args...);
   }
 
-  void Expect(const T& expect) {
+  void Expect(const base_t& expect) {
     if (!IsAfter(0, expect)) {
       throw cotyl::FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, Get());
     }
@@ -86,24 +125,24 @@ struct Stream {
   }
 
   template<typename ...Args>
-  bool SequenceAfter(size_t amount, const T& expect, const Args& ... args) {
+  bool SequenceAfter(size_t amount, const base_t& expect, const Args& ... args) {
     return IsAfter(amount, expect) && SequenceAfter(amount + 1, args...);
   }
 
-  void EatSequence(const T& expect) {
+  void EatSequence(const base_t& expect) {
     Eat(expect);
   }
 
   template<typename ...Args>
-  void EatSequence(const T& expect, const Args&... args) {
+  void EatSequence(const base_t& expect, const Args&... args) {
     Eat(expect);
     EatSequence(args...);
   }
 
   template<typename Pred>
   bool PredicateAfter(size_t amount, Pred pred) {
-    T value;
-    return Peek(value, amount) && pred(value);
+    const base_t* value;
+    return Peek(value, amount) && pred(*value);
   }
 
   template<typename Pred>
@@ -113,14 +152,29 @@ struct Stream {
     }
   }
 
-  virtual T Eat(const T& expect) {
+  virtual T Eat(const base_t& expect) {
     using std::to_string;
 
-    const T got = Get();
-    if (got != expect) {
-      throw FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, got);
+    T got = Get();
+    if constexpr(deref) {
+      if (*got != expect) {
+        throw FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, got);
+      }
     }
-    return got;
+    else {
+      if (got != expect) {
+        throw FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, got);
+      }
+    }
+    return std::move(got);
+  }
+
+  bool EatIf(const base_t& expect) {
+    if (IsAfter(0, expect)) {
+      Skip();
+      return true;
+    }
+    return false;
   }
 
 protected:
@@ -132,61 +186,54 @@ protected:
 };
 
 
-template<typename T>
-struct pStream : public Stream<std::shared_ptr<T>> {
-
-  bool IsAfter(size_t amount, const T& expect) {
-    std::shared_ptr<T> value;
-    return Stream<std::shared_ptr<T>>::Peek(value, amount) && *value == expect;
-  }
-
-  bool IsAfter(size_t amount, const std::shared_ptr<T>& expect) override {
-    return IsAfter(amount, *expect);
-  }
-
-  template<typename ...Args>
-  bool IsAfter(size_t amount, const T& expect, const Args&... args) {
-    return IsAfter(amount, expect) || IsAfter(amount, args...);
-  }
-
-  void Expect(const T& expect) {
-    if (!IsAfter(0, expect)) {
-      throw cotyl::FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, Stream<std::shared_ptr<T>>::Get());
-    }
-  }
-
-  std::shared_ptr<T> Eat(const T& expect) {
-    using std::to_string;
-
-    const auto got = Stream<std::shared_ptr<T>>::Get();
-    if (!(*got == expect)) {
-      throw FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, got);
-    }
-    return got;
-  }
-
-  bool EatIf(const T& expect) {
-    if (IsAfter(0, expect)) {
-      Stream<std::shared_ptr<T>>::Skip();
-      return true;
-    }
-    return false;
-  }
-
-  std::shared_ptr<T> Eat(const std::shared_ptr<T>& expect) override {
-    return Eat(*expect);
-  }
-
-  void EatSequence(const T& expect) {
-    Eat(expect);
-  }
-
-  template<typename ...Args>
-  void EatSequence(const T& expect, const Args&... args) {
-    Eat(expect);
-    EatSequence(args...);
-  }
-
-};
+//template<typename T>
+//struct pStream : public Stream<std::shared_ptr<T>> {
+//
+//  bool IsAfter(size_t amount, const T& expect) {
+//    std::shared_ptr<T> value;
+//    return Stream<std::shared_ptr<T>>::Peek(value, amount) && *value == expect;
+//  }
+//
+//  bool IsAfter(size_t amount, const std::shared_ptr<T>& expect) override {
+//    return IsAfter(amount, *expect);
+//  }
+//
+//  template<typename ...Args>
+//  bool IsAfter(size_t amount, const T& expect, const Args&... args) {
+//    return IsAfter(amount, expect) || IsAfter(amount, args...);
+//  }
+//
+//  void Expect(const T& expect) {
+//    if (!IsAfter(0, expect)) {
+//      throw cotyl::FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, Stream<std::shared_ptr<T>>::Get());
+//    }
+//  }
+//
+//  std::shared_ptr<T> Eat(const T& expect) {
+//    using std::to_string;
+//
+//    const auto got = Stream<std::shared_ptr<T>>::Get();
+//    if (!(*got == expect)) {
+//      throw FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, got);
+//    }
+//    return got;
+//  }
+//
+//
+//  std::shared_ptr<T> Eat(const std::shared_ptr<T>& expect) override {
+//    return Eat(*expect);
+//  }
+//
+//  void EatSequence(const T& expect) {
+//    Eat(expect);
+//  }
+//
+//  template<typename ...Args>
+//  void EatSequence(const T& expect, const Args&... args) {
+//    Eat(expect);
+//    EatSequence(args...);
+//  }
+//
+//};
 
 }

@@ -21,6 +21,7 @@ enum class TokenClass {
 };
 
 enum class TokenType {
+  Invalid,
   Identifier,
 
   // constants
@@ -97,7 +98,9 @@ extern const std::map<TokenType, TokenInfo> TokenData;
 
 
 struct Token {
-  const TokenType type;
+  TokenType type;
+
+  Token() : type(TokenType::Invalid) { }
 
   Token(TokenType type) : type(type) {
 
@@ -128,7 +131,7 @@ struct tIdentifier final : public Token {
 
   pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
 
-  std::string to_string()  const final {
+  std::string to_string() const final {
     return name;
   }
 
@@ -182,6 +185,6 @@ struct tStringConstant : public Token {
   const std::string value;
 };
 
-using pToken = std::shared_ptr<Token>;
+using pToken = std::unique_ptr<Token>;
 
 }

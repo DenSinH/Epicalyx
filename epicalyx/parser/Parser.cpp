@@ -8,7 +8,7 @@
 
 namespace epi {
 
-Parser::Parser(cotyl::pStream<Token>& in_stream) :
+Parser::Parser(cotyl::Stream<pToken>& in_stream) :
         in_stream(in_stream) {
 
 }

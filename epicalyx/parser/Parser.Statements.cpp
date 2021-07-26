@@ -85,7 +85,7 @@ pNode<Stat> Parser::SStatement() {
     case TokenType::Goto: {
       in_stream.Skip();
       in_stream.Expect(TokenType::Identifier);
-      std::string name = std::dynamic_pointer_cast<Identifier>(in_stream.Get())->name;
+      std::string name = static_cast<const tIdentifier*>(in_stream.Get().get())->name;
       in_stream.Eat(TokenType::SemiColon);
       return std::make_unique<Goto>(std::move(name));
     }
@@ -117,7 +117,7 @@ pNode<Stat> Parser::SStatement() {
     case TokenType::Identifier: {
       if (in_stream.IsAfter(1, TokenType::Colon)) {
         // label
-        std::string name = std::static_pointer_cast<tIdentifier>(in_stream.Get())->name;
+        std::string name = static_cast<const tIdentifier*>(in_stream.Get().get())->name;
         in_stream.Skip();
         return std::make_unique<Label>(std::move(name), SStatement());
       }

@@ -7,7 +7,7 @@
 
 namespace epi {
 
-class Tokenizer : public cotyl::pStream<Token> {
+class Tokenizer : public cotyl::Stream<std::unique_ptr<Token>> {
 public:
 
   Tokenizer(cotyl::Stream<char>& in_stream) :
@@ -24,9 +24,10 @@ private:
   cotyl::Stream<char>& in_stream;
 
   void SkipBlanks();
+
   template<typename T, typename ...Args>
-  pToken Make(Args... args) {
-    return std::make_shared<T>(args...);
+  static pToken Make(Args... args) {
+    return std::make_unique<T>(args...);
   }
 
   std::string ReadString(const char delimiter);

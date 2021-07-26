@@ -10,7 +10,7 @@
 namespace epi {
 
 bool Parser::IsDeclarationSpecifier(int after) {
-  pToken current;
+  const Token* current;
   if (!in_stream.Peek(current, after)) {
     return false;
   }
@@ -51,7 +51,7 @@ bool Parser::IsDeclarationSpecifier(int after) {
     }
     case TokenType::Identifier: {
       // if typedef name exists: true
-      return typedefs.Has(std::dynamic_pointer_cast<tIdentifier>(current)->name);
+      return typedefs.Has(static_cast<const tIdentifier*>(current)->name);
     }
     default:
       return false;
@@ -63,7 +63,7 @@ void Parser::DStaticAssert() {
   auto expr = Parser::ETernary();
   in_stream.Eat(TokenType::Comma);
   in_stream.Expect(TokenType::StringConstant);
-  auto str = std::static_pointer_cast<tStringConstant>(in_stream.Get())->value;
+  auto str = static_cast<const tStringConstant*>(in_stream.Get().get())->value;
   in_stream.EatSequence(TokenType::RParen, TokenType::SemiColon);
 
   if (!expr->ConstEval(*this)) {
@@ -76,7 +76,7 @@ pType<> Parser::DEnum() {
   std::string name;
   if (in_stream.IsAfter(0, TokenType::Identifier)) {
     // enum name
-    name = std::dynamic_pointer_cast<tIdentifier>(in_stream.Get())->name;
+    name = static_cast<const tIdentifier*>(in_stream.Get().get())->name;
     if (!in_stream.EatIf(TokenType::LBrace)) {
       // check if enum was defined before
       if (!enums.Has(name)) {
@@ -93,7 +93,7 @@ pType<> Parser::DEnum() {
   enum_type counter = 0;
   do {
     in_stream.Expect(TokenType::Identifier);
-    std::string constant = std::dynamic_pointer_cast<tIdentifier>(in_stream.Get())->name;
+    std::string constant = static_cast<const tIdentifier*>(in_stream.Get().get())->name;
     if (in_stream.EatIf(TokenType::Assign)) {
       // constant = value
       // update counter
@@ -121,7 +121,7 @@ pType<> Parser::DStruct() {
   }
 
   if (in_stream.IsAfter(0, TokenType::Identifier)) {
-    name = std::dynamic_pointer_cast<tIdentifier>(in_stream.Get())->name;
+    name = static_cast<const tIdentifier*>(in_stream.Get().get())->name;
     if (!in_stream.EatIf(TokenType::LBrace)) {
       if (is_struct) {
         return structdefs.Get(name)->Clone();
@@ -213,7 +213,7 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
     }
   };
 
-  pToken current;
+  const Token* current;
 
   bool was_specifier = true;
   do {
@@ -386,7 +386,7 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
       }
 
       case TokenType::Identifier: {
-        std::string ident_name = std::dynamic_pointer_cast<tIdentifier>(current)->name;
+        std::string ident_name = static_cast<const tIdentifier*>(current)->name;
         if (typedefs.Has(ident_name)) {
           if (ctype) {
             throw std::runtime_error("Bad declaration");
@@ -458,7 +458,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
   std::string name;
   pType<PointerType> ctype;
 
-  pToken current;
+  const Token* current;
   while (true) {
     in_stream.Peek(current);
     // nested (abstract) declarators
@@ -530,7 +530,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
           }
           case TokenType::Identifier: {
             // (typedef name) or (name)
-            std::string ident_name = std::dynamic_pointer_cast<tIdentifier>(in_stream.Get())->name;
+            std::string ident_name = static_cast<const tIdentifier*>(in_stream.Get().get())->name;
             if (!typedefs.Has(ident_name)) {
               // if not typdef name: direct declarator name
               if (!name.empty()) {
@@ -574,7 +574,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
         if (!name.empty()) {
           throw std::runtime_error("Double name in declaration");
         }
-        name = std::dynamic_pointer_cast<tIdentifier>(in_stream.Get())->name;
+        name = static_cast<const tIdentifier*>(in_stream.Get().get())->name;
         break;
       }
       case TokenType::LBracket: {

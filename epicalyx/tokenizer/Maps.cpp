@@ -103,6 +103,7 @@ const std::map<const std::string, TokenType> Punctuators = {
 
 
 const std::map<TokenType, TokenInfo> TokenData = {
+        { TokenType::Invalid, { "<Invalid token>" } },
         { TokenType::Auto, { "auto", TokenClass::Keyword } },
         { TokenType::Break, { "break", TokenClass::Keyword } },
         { TokenType::Case, { "case", TokenClass::Keyword } },

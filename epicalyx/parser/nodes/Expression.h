@@ -247,7 +247,7 @@ struct Assignment final : public Expr {
   const pExpr right;
 
   std::string to_string() const final {
-    return cotyl::FormatStr("(%s) %s (%s)", left, Token(op), right);
+    return cotyl::FormatStr("%s %s (%s)", left, Token(op), right);
   }
   pType<const CType> GetType(Parser& parser) const final;
 };

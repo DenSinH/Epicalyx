@@ -16,9 +16,10 @@ struct InitDeclaration;
 struct Compound;
 struct FunctionDefinition;
 
+
 struct Parser {
 
-  Parser(cotyl::pStream<Token>& in_stream);
+  Parser(cotyl::Stream<pToken>& in_stream);
 
   using enum_type = i32;
 
@@ -59,7 +60,7 @@ struct Parser {
   void Parse();
   void Data();
 
-  cotyl::pStream<Token>& in_stream;
+  cotyl::Stream<pToken>& in_stream;
   cotyl::Scope<std::string, enum_type> enum_values{};
   cotyl::Scope<std::string, bool> enums{};
   cotyl::Scope<std::string, pType<const CType>> typedefs{};

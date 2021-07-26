@@ -15,7 +15,7 @@ pExpr Parser::EPrimary() {
   switch (current->Class()) {
     case TokenClass::Identifier: {
       // identifier might be enum value
-      std::string name = std::static_pointer_cast<tIdentifier>(current)->name;
+      std::string name = static_cast<const tIdentifier*>(current.get())->name;
       if (enum_values.Has(name)) {
         // replace enum values with constants immediately
         return std::make_unique<NumericalConstant<enum_type>>(enum_values.Get(name));
@@ -35,12 +35,12 @@ pExpr Parser::EPrimary() {
       return expr;
     }
     default:
-      throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", current->to_string());
+      throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", current);
   }
 }
 
 pExpr Parser::EPostfix() {
-  pToken current;
+  const Token* current;
 
   auto node = EPrimary();
   while (in_stream.Peek(current)) {
@@ -73,7 +73,7 @@ pExpr Parser::EPostfix() {
         // direct member access
         in_stream.Skip();
         auto member = in_stream.Eat(TokenType::Identifier);
-        node = std::make_unique<MemberAccess>(std::move(node), std::static_pointer_cast<tIdentifier>(member)->name);
+        node = std::make_unique<MemberAccess>(std::move(node), static_cast<const tIdentifier*>(member.get())->name);
         break;
       }
       case TokenType::Incr: {
@@ -96,8 +96,8 @@ pExpr Parser::EPostfix() {
 }
 
 pExpr Parser::EUnary() {
-  auto current = in_stream.ForcePeek();
-  switch (current->type) {
+  auto type = in_stream.ForcePeek()->type;
+  switch (type) {
     case TokenType::Incr:        // ++expr
     case TokenType::Decr:        // --expr
     case TokenType::Ampersand:   // &expr
@@ -109,25 +109,25 @@ pExpr Parser::EUnary() {
     {
       in_stream.Skip();
       auto right = ECast();
-      return std::make_unique<Unary>(current->type, std::move(right));
+      return std::make_unique<Unary>(type, std::move(right));
     }
     case TokenType::Sizeof: {
       // sizeof(expr) / sizeof(type-name)
       in_stream.Skip();
       if (in_stream.IsAfter(0, TokenType::LParen) && IsDeclarationSpecifier(1)) {
-        in_stream.Skip();
-        auto type = ETypeName();
+        in_stream.Eat(TokenType::LParen);
+        auto type_name = ETypeName();
         in_stream.Eat(TokenType::RParen);
-        return std::make_unique<NumericalConstant<u64>>(type->Sizeof());
+        return std::make_unique<NumericalConstant<u64>>(type_name->Sizeof());
       }
       return std::make_unique<NumericalConstant<u64>>(EExpression()->GetType(*this)->Sizeof());
     }
     case TokenType::Alignof: {
       // _Alignof(type-name)
       in_stream.EatSequence(TokenType::Alignof, TokenType::LParen);
-      auto type = ETypeName();
+      auto type_name = ETypeName();
       in_stream.Eat(TokenType::RParen);
-      return std::make_unique<NumericalConstant<u64>>(type->Alignof());
+      return std::make_unique<NumericalConstant<u64>>(type_name->Alignof());
     }
     default: {
       return EPostfix();
@@ -150,7 +150,7 @@ pType<const CType> Parser::ETypeName() {
 }
 
 pExpr Parser::ECast() {
-  auto current = in_stream.ForcePeek();
+  const Token* current = in_stream.ForcePeek();
   if (current->type == TokenType::LParen) {
     // potential cast expression or type initializer
     if (IsDeclarationSpecifier(1)) {
@@ -176,10 +176,10 @@ pExpr Parser::ECast() {
 template<pExpr (Parser::*SubNode)(), enum TokenType... types>
 pExpr Parser::EBinopImpl() {
   pExpr node = (this->*SubNode)();
-  pToken current;
+  const Token* current;
   while (in_stream.Peek(current) && cotyl::Is(current->type).AnyOf<types...>()) {
-    in_stream.Skip();
-    node = std::make_unique<Binop>(std::move(node), current->type, (this->*SubNode)());
+    auto type = in_stream.Get()->type;
+    node = std::make_unique<Binop>(std::move(node), type, (this->*SubNode)());
   }
   return node;
 }
@@ -215,9 +215,10 @@ pExpr Parser::EAssignment() {
   // for the left hand side this has to actually be a conditional expression,
   // but if it's a proper assignment, that will happen regardless
   auto left = ETernary();
-  pToken current;
+  const Token* current;
   if (in_stream.Peek(current)) {
-    switch (current->type) {
+    auto type = current->type;
+    switch (type) {
       case TokenType::Assign:
       case TokenType::IMul:
       case TokenType::IDiv:
@@ -231,7 +232,7 @@ pExpr Parser::EAssignment() {
       case TokenType::IXor: {
         in_stream.Skip();
         auto right = EAssignment();
-        return std::make_unique<Assignment>(std::move(left), current->type, std::move(right));
+        return std::make_unique<Assignment>(std::move(left), type, std::move(right));
       }
       default:
         break;
@@ -280,7 +281,7 @@ pNode<InitializerList> Parser::EInitializerList() {
         if (in_stream.EatIf(TokenType::Dot)) {
           // .member
           in_stream.Expect(TokenType::Identifier);
-          designator.emplace_back(std::static_pointer_cast<tIdentifier>(in_stream.Get())->name);
+          designator.emplace_back(static_cast<const tIdentifier*>(in_stream.Get().get())->name);
           if (in_stream.EatIf(TokenType::Assign)) {
             list->Push(std::move(designator), EInitializer());
             break;
