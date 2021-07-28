@@ -60,14 +60,21 @@ struct Parser {
   void Parse();
   void Data();
 
-  cotyl::Stream<pToken>& in_stream;
-  cotyl::Scope<std::string, enum_type> enum_values{};
-  cotyl::Scope<std::string, bool> enums{};
-  cotyl::Scope<std::string, pType<const CType>> typedefs{};
-  cotyl::Scope<std::string, pType<const StructUnionType>> structdefs{};
-  cotyl::Scope<std::string, pType<const StructUnionType>> uniondefs{};
+  enum class Loop {
+    For, While, DoWhile
+  };
 
-  cotyl::Scope<std::string, pType<const CType>> variables{};
+  cotyl::Stream<pToken>& in_stream;
+  cotyl::MapScope<std::string, enum_type> enum_values{};
+  cotyl::SetScope<std::string> enums{};
+  cotyl::MapScope<std::string, pType<const CType>> typedefs{};
+  cotyl::MapScope<std::string, pType<const StructUnionType>> structdefs{};
+  cotyl::MapScope<std::string, pType<const StructUnionType>> uniondefs{};
+
+  std::deque<Loop> loop_scope{};
+  cotyl::SetScope<i64> case_scope{};
+  std::unordered_set<std::string> labels{};
+  cotyl::MapScope<std::string, pType<const CType>> variables{};
 
   // external results
   std::vector<pNode<FunctionDefinition>> functions{};

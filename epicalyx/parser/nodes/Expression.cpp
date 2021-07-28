@@ -2,7 +2,6 @@
 #include "parser/Parser.h"
 #include "types/Types.h"
 
-
 #include <sstream>
 
 
@@ -99,7 +98,7 @@ pType<const CType> Unary::GetType(Parser& parser) const {
 }
 
 pType<const CType> Cast::GetType(Parser& parser) const {
-  if (!type->CastableType(*expr->GetType(parser))) {
+  if (!type->Cast(*expr->GetType(parser))) {
     throw std::runtime_error("Cannot cast expression to type");
   }
   return type;
@@ -138,7 +137,7 @@ pType<const CType> Ternary::GetType(Parser& parser) const {
     }
     return false_t;
   }
-  return true_t;
+  return true_t->CommonType(*false_t);
 }
 
 pType<const CType> Assignment::GetType(Parser& parser) const {
@@ -160,7 +159,7 @@ pType<const CType> Assignment::GetType(Parser& parser) const {
     case TokenType::IOr: return left_t->BinOr(*right_t);
     case TokenType::IXor: return left_t->Xor(*right_t);
     case TokenType::Assign: {
-      if (!left_t->CastableType(*right_t)) {
+      if (!left_t->Cast(*right_t)) {
         throw std::runtime_error("Cannot assign value to type");
       }
       return left_t;

@@ -10,6 +10,10 @@ namespace epi {
 
 struct Declaration;
 
+struct Empty : public Stat {
+  std::string to_string() const final { return ";"; }
+};
+
 struct If : public Stat {
 
   If(pExpr&& cond, pNode<Stat>&& stat, pNode<Stat>&& _else = nullptr) :

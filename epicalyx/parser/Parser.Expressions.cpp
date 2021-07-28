@@ -243,7 +243,9 @@ pExpr Parser::EAssignment() {
 
 pExpr Parser::EExpression() {
   // todo: commas
-  return EAssignment();
+  auto expr = EAssignment();
+  expr->Validate(*this);
+  return std::move(expr);
 }
 
 i64 Parser::EConstexpr() {
@@ -266,7 +268,9 @@ Initializer Parser::EInitializer() {
   }
   else {
     // assignment expression
-    return EAssignment();
+    auto expr = EAssignment();
+    expr->Validate(*this);
+    return std::move(expr);
   }
 }
 

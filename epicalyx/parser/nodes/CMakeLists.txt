@@ -1,5 +1,5 @@
 add_library(Nodes STATIC
-        Expression.h Expression.cpp Node.h Declaration.h Statement.cpp Statement.h Declaration.cpp Initializer.cpp Initializer.h)
+        Expression.h Expression.cpp Node.h Declaration.h Statement.cpp Statement.h Declaration.cpp Initializer.cpp Initializer.h Node.cpp)
 
 set_target_properties(Nodes PROPERTIES LINKER_LANGUAGE CXX)
 

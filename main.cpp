@@ -11,7 +11,7 @@
 
 
 int main() {
-  auto file = epi::File("examples/parsing/program/typedefs.c");
+  auto file = epi::File("examples/parsing/program/hello_world.c");
   auto string = epi::SString(
           "{ for (int i = {0}; i < 12; i++)"
           "{ int a = i + 1, (*b)() = c = 12 ? 1 > 2 : 3; (&a)[i] = 69; }"

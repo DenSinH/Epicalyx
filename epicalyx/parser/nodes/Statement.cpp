@@ -1,5 +1,6 @@
 #include "Statement.h"
 #include "Declaration.h"
+#include "parser/Parser.h"
 
 #include <regex>
 #include <sstream>

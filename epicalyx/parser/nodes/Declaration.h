@@ -1,11 +1,13 @@
 #pragma once
 
 #include "Node.h"
-#include "types/Types.h"
+#include "types/EpiCType.h"
 #include "Format.h"
 #include "Expression.h"
 
 #include <utility>
+#include <optional>
+
 
 namespace epi {
 
@@ -39,6 +41,7 @@ struct Declaration : public Decl {
   StorageClass storage;
 
   std::string to_string() const override { return cotyl::FormatStr("%s %s", type, name); }
+  void VerifyAndRecord(Parser& parser) override;
 };
 
 struct InitDeclaration : public Declaration {
@@ -52,6 +55,7 @@ struct InitDeclaration : public Declaration {
   std::optional<Initializer> value;
 
   std::string to_string() const final;
+  void VerifyAndRecord(Parser& parser) final;
 };
 
 struct FunctionDefinition : public Decl {
@@ -63,6 +67,7 @@ struct FunctionDefinition : public Decl {
   pNode<Compound> body;
 
   std::string to_string() const final;
+  void VerifyAndRecord(Parser& parser) final;
 };
 
 }

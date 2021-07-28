@@ -78,6 +78,11 @@ inline BINOP_HANDLER(ValueType<T>::RAdd, PointerType) {
 }
 
 template<typename T>
+inline BINOP_HANDLER(ValueType<T>::RCommonType, PointerType) {
+  return other.Clone();
+}
+
+template<typename T>
 inline UNOP_HANDLER(ValueType<T>::Pos) {
   auto same_type = Clone();
   same_type->lvalue = LValueNess::None;
@@ -104,6 +109,18 @@ inline UNOP_HANDLER(ValueType<T>::BinNot) {
     return MakeType<ValueType<T>>(LValueNess::None, 0);
   }
 }
+
+
+template<typename T> BINOP_HANDLER(ValueType<T>::RCommonType, ValueType<i8>) { return MakeType<ValueType<std::common_type_t<T, i8>>>(LValueNess::None); }
+template<typename T> BINOP_HANDLER(ValueType<T>::RCommonType, ValueType<u8>) { return MakeType<ValueType<std::common_type_t<T, u8>>>(LValueNess::None); }
+template<typename T> BINOP_HANDLER(ValueType<T>::RCommonType, ValueType<u16>) { return MakeType<ValueType<std::common_type_t<T, u16>>>(LValueNess::None); }
+template<typename T> BINOP_HANDLER(ValueType<T>::RCommonType, ValueType<i16>) { return MakeType<ValueType<std::common_type_t<T, i16>>>(LValueNess::None); }
+template<typename T> BINOP_HANDLER(ValueType<T>::RCommonType, ValueType<u32>) { return MakeType<ValueType<std::common_type_t<T, u32>>>(LValueNess::None); }
+template<typename T> BINOP_HANDLER(ValueType<T>::RCommonType, ValueType<i32>) { return MakeType<ValueType<std::common_type_t<T, i32>>>(LValueNess::None); }
+template<typename T> BINOP_HANDLER(ValueType<T>::RCommonType, ValueType<u64>) { return MakeType<ValueType<std::common_type_t<T, u64>>>(LValueNess::None); }
+template<typename T> BINOP_HANDLER(ValueType<T>::RCommonType, ValueType<i64>) { return MakeType<ValueType<std::common_type_t<T, i64>>>(LValueNess::None); }
+template<typename T> BINOP_HANDLER(ValueType<T>::RCommonType, ValueType<float>) { return MakeType<ValueType<std::common_type_t<T, float>>>(LValueNess::None); }
+template<typename T> BINOP_HANDLER(ValueType<T>::RCommonType, ValueType<double>) { return MakeType<ValueType<std::common_type_t<T, double>>>(LValueNess::None); }
 
 VALUE_TYPE_NUMERIC_TYPE_HANDLERS(VALUE_TYPE_BINOP_HANDLER, Add, std::plus)
 VALUE_TYPE_NUMERIC_TYPE_HANDLERS(VALUE_TYPE_BINOP_HANDLER, Sub, std::minus)

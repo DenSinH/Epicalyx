@@ -60,13 +60,13 @@ bool Parser::IsDeclarationSpecifier(int after) {
 
 void Parser::DStaticAssert() {
   in_stream.EatSequence(TokenType::StaticAssert, TokenType::LParen);
-  auto expr = Parser::ETernary();
+  auto expr = Parser::EConstexpr();
   in_stream.Eat(TokenType::Comma);
   in_stream.Expect(TokenType::StringConstant);
   auto str = static_cast<const tStringConstant*>(in_stream.Get().get())->value;
   in_stream.EatSequence(TokenType::RParen, TokenType::SemiColon);
 
-  if (!expr->ConstEval(*this)) {
+  if (!expr) {
     throw cotyl::FormatExceptStr("Static assertion failed: %s", str);
   }
 }
@@ -100,6 +100,7 @@ pType<> Parser::DEnum() {
       counter = EConstexpr();
     }
     enum_values.Set(constant, counter++);
+    variables.Set(constant, MakeType<ValueType<enum_type>>(counter, CType::LValueNess::None, CType::Qualifier::Const));
     if (!in_stream.EatIf(TokenType::Comma)) {
       // no comma: expect end of enum declaration
       in_stream.Eat(TokenType::RBrace);
@@ -107,7 +108,7 @@ pType<> Parser::DEnum() {
     }
   } while(!in_stream.EatIf(TokenType::RBrace));
 
-  enums.Set(name, true);
+  enums.Add(name);
   return MakeType<ValueType<enum_type>>(CType::LValueNess::None);
 }
 
@@ -695,7 +696,6 @@ pNode<FunctionDefinition> Parser::ExternalDeclaration(std::vector<pNode<Decl>>& 
 
   // declaration
   do {
-
     if (decl->storage == StorageClass::Typedef) {
       // store typedef names
       if (decl->name.empty()) {

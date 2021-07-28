@@ -1,6 +1,9 @@
 #include "Declaration.h"
 #include "Statement.h"
 
+#include "types/Types.h"
+#include "parser/Parser.h"
+
 
 namespace epi {
 
@@ -27,6 +30,36 @@ FunctionDefinition::FunctionDefinition(pType<const FunctionType> signature, std:
 
 std::string FunctionDefinition::to_string() const {
   return cotyl::FormatStr("%s %s %s", signature, symbol, body);
+}
+
+void Declaration::VerifyAndRecord(Parser& parser) {
+  if (!name.empty()) {
+    if (parser.variables.HasTop(name)) {
+      if (!parser.variables.Get(name)->EqualType(*type)) {
+        throw cotyl::FormatExceptStr("Redefinition of symbol %s", name);
+      }
+    }
+    else {
+      parser.variables.Set(name, type);
+    }
+  }
+}
+
+void InitDeclaration::VerifyAndRecord(Parser& parser) {
+  // todo: verify initializer
+
+  Declaration::VerifyAndRecord(parser);
+}
+
+void FunctionDefinition::VerifyAndRecord(Parser& parser) {
+  if (parser.variables.Has(symbol)) {
+    if (!parser.variables.Get(symbol)->EqualType(*signature)) {
+      throw cotyl::FormatExceptStr("Redefinition of function: %s", symbol);
+    }
+  }
+  else {
+    parser.variables.Set(symbol, signature);
+  }
 }
 
 }

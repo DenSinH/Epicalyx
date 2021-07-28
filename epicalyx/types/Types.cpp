@@ -1,4 +1,5 @@
 #include "Types.h"
+#include "Log.h"
 
 
 #include <functional>
@@ -92,7 +93,7 @@ pType<> FunctionType::FunctionCall(const std::vector<pType<const CType>>& args) 
   }
 
   for (int i = 0; i < arg_types.size(); i++) {
-    if (!arg_types[i].type->CastableType(*args[i])) {
+    if (!arg_types[i].type->Cast(*args[i])) {
       throw std::runtime_error("Cannot cast argument type");
     }
   }
@@ -233,6 +234,29 @@ BINOP_HANDLER(PointerType::REq, ValueType<u32>) { return MakeBool(); }
 BINOP_HANDLER(PointerType::REq, ValueType<i32>) { return MakeBool(); }
 BINOP_HANDLER(PointerType::REq, ValueType<u64>) { return MakeBool(); }
 BINOP_HANDLER(PointerType::REq, ValueType<i64>) { return MakeBool(); }
+
+BINOP_HANDLER(PointerType::RCommonType, ValueType<i8>) { return Clone(); }
+BINOP_HANDLER(PointerType::RCommonType, ValueType<u8>) { return Clone(); }
+BINOP_HANDLER(PointerType::RCommonType, ValueType<u16>) { return Clone(); }
+BINOP_HANDLER(PointerType::RCommonType, ValueType<i16>) { return Clone(); }
+BINOP_HANDLER(PointerType::RCommonType, ValueType<u32>) { return Clone(); }
+BINOP_HANDLER(PointerType::RCommonType, ValueType<i32>) { return Clone(); }
+BINOP_HANDLER(PointerType::RCommonType, ValueType<u64>) { return Clone(); }
+BINOP_HANDLER(PointerType::RCommonType, ValueType<i64>) { return Clone(); }
+
+pType<> CType::Cast(const CType& other) const {
+  u32 flagdiff = other.qualifiers & ~other.qualifiers;
+  if (flagdiff & Qualifier::Const) {
+    Log::Warn("Casting drops 'const' qualifier");
+  }
+  if (flagdiff & Qualifier::Volatile) {
+    Log::Warn("Casting drops 'volatile' qualifier");
+  }
+  // todo: restrict/thread local
+  auto cast = DoCast(other);
+  cast->lvalue = LValueNess::None;
+  return cast;
+}
 
 pType<ValueType<i32>> CType::MakeBool(bool value) {
   // make bool with value

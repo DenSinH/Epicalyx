@@ -33,9 +33,25 @@ void Parser::PopScope() {
 
 void Parser::Parse() {
   while (!in_stream.EOS()) {
-    auto function = ExternalDeclaration(declarations);
+    std::vector<pNode<Decl>> decls;
+    auto function = ExternalDeclaration(decls);
+
+    if (variables.Depth() != 1) [[unlikely]] {
+      throw std::runtime_error("Scope not handled properly");
+    }
+
     if (function) {
+      function->VerifyAndRecord(*this);
+      if (!decls.empty()) {
+        throw std::runtime_error("Bad parsing: unexpected declaration");
+      }
       functions.push_back(std::move(function));
+    }
+    else {
+      for (auto& decl : decls) {
+        decl->VerifyAndRecord(*this);
+        declarations.push_back(std::move(decl));
+      }
     }
   }
 }

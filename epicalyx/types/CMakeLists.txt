@@ -1,5 +1,5 @@
 add_library(Types STATIC
-        Types.h Types.cpp)
+        Types.h Types.cpp EpiCType.h)
 
 set_target_properties(Types PROPERTIES LINKER_LANGUAGE CXX)
 

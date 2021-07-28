@@ -2,7 +2,7 @@
 
 #include "Node.h"
 #include "Initializer.h"
-#include "types/Types.h"
+#include "types/EpiCType.h"
 #include "tokenizer/Token.h"
 
 #include <string>
