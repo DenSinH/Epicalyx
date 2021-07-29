@@ -32,7 +32,7 @@ struct VoidType final : public CType {
   pType<> DoCast(const CType& other) const final { return MakeType<VoidType>(); }
   void Visit(TypeVisitor& v) const final { v.Visit(*this); }
 
-  std::string to_string() const final { return "void"; };
+  std::string ToString() const final { return "void"; };
 
 protected:
   bool EqualTypeImpl(const VoidType& other) const final { return true; }
@@ -79,7 +79,7 @@ struct ValueType final : public CType {
     throw std::runtime_error("Bool value requested from non-constant Get");
   }
 
-  std::string to_string() const final {
+  std::string ToString() const final {
     if (!HasValue()) {
       return type_string_v<T>;
     }
@@ -190,7 +190,7 @@ struct PointerType : public CType {
   OVERRIDE_BASE_CASTABLE_NOFINAL
   OVERRIDE_BASE_EQ_NOFINAL
 
-  std::string to_string() const override { return cotyl::FormatStr("(%s)*", contained); }
+  std::string ToString() const override { return cotyl::FormatStr("(%s)*", contained); }
   bool HasTruthiness() const final { return true; }
 
   OVERRIDE_BINOP(Add)
@@ -242,7 +242,7 @@ struct ArrayType : public PointerType {
 
   size_t size;
 
-  std::string to_string() const override {
+  std::string ToString() const override {
     return cotyl::FormatStr("(%s)[%s]", contained, size);
   }
 
@@ -268,7 +268,7 @@ struct FunctionType : public PointerType {
 
   struct Arg {
     Arg(std::string name, pType<const CType> type) : name(std::move(name)), type(std::move(type)) { }
-    std::string to_string() const;
+    std::string ToString() const;
     const std::string name;
     pType<const CType> type;
   };
@@ -285,7 +285,7 @@ struct FunctionType : public PointerType {
     arg_types.emplace_back(std::move(name), _arg);  // constant info is nonsense for arguments
   }
 
-  std::string to_string() const final;
+  std::string ToString() const final;
   bool IsFunction() const final { return true; }
   pType<> Clone() const final;
   void Visit(TypeVisitor& v) const final { v.Visit(*this); }
@@ -350,14 +350,14 @@ struct StructUnionType : public CType {
     fields.emplace_back(_name, contained);
   }
 
-  std::string to_string() const final;
+  std::string ToString() const final;
   pType<> MemberAccess(const std::string& member) const final;
 
   u64 Sizeof() const final;
 
 protected:
   virtual std::string BaseString() const = 0;
-  pType<> _CastToImpl(const StructUnionType& other) const {
+  pType<> CastToImpl(const StructUnionType& other) const {
     if (_EqualTypeImpl(other)) {
       return other.Clone();
     }
@@ -400,7 +400,7 @@ protected:
   std::string BaseString() const final { return "struct"; }
 
 private:
-  pType<> CastTo(const StructType& other) const final { return _CastToImpl(other); }
+  pType<> CastTo(const StructType& other) const final { return CastToImpl(other); }
   bool EqualTypeImpl(const StructType& other) const final { return _EqualTypeImpl(other); }
 };
 
@@ -427,7 +427,7 @@ protected:
   std::string BaseString() const final { return "struct"; }
 
 private:
-  pType<> CastTo(const UnionType& other) const final { return _CastToImpl(other); }
+  pType<> CastTo(const UnionType& other) const final { return CastToImpl(other); }
   bool EqualTypeImpl(const UnionType& other) const final { return _EqualTypeImpl(other); }
 };
 

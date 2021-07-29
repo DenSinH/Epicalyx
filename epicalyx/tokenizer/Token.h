@@ -109,7 +109,7 @@ struct Token {
   virtual pExpr GetConst(ConstTokenVisitor& v) const { return v.Visit(*this); }
   void Expect(TokenType t) const;
 
-  virtual std::string to_string()  const {
+  virtual std::string ToString() const {
     return TokenData.at(type).name;
   }
 
@@ -131,7 +131,7 @@ struct tIdentifier final : public Token {
 
   pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
 
-  std::string to_string() const final {
+  std::string ToString() const final {
     return name;
   }
 
@@ -153,7 +153,7 @@ struct tNumericConstant final : public Token {
 
   pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
 
-  std::string to_string() const final {
+  std::string ToString() const final {
     return std::to_string(value);
   }
 
@@ -174,7 +174,7 @@ struct tStringConstant : public Token {
 
   pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
 
-  std::string to_string() const final {
+  std::string ToString() const final {
     return cotyl::Format("\"%s\"", value.c_str());
   }
 

@@ -14,7 +14,7 @@ FunctionDefinition::FunctionDefinition(pType<const FunctionType> signature, std:
 
 }
 
-std::string Declaration::to_string() const {
+std::string Declaration::ToString() const {
   if (value.has_value()) {
     if (std::holds_alternative<pExpr>(value.value()))
       return cotyl::FormatStr("%s %s = %s", type, name, std::get<pExpr>(value.value()));
@@ -24,10 +24,10 @@ std::string Declaration::to_string() const {
   else if (!name.empty()) {
     return cotyl::FormatStr("%s %s", type, name);
   }
-  return type->to_string();
+  return type->ToString();
 }
 
-std::string FunctionDefinition::to_string() const {
+std::string FunctionDefinition::ToString() const {
   return cotyl::FormatStr("%s %s %s", signature, symbol, body);
 }
 

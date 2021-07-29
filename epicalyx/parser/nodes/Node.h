@@ -20,7 +20,7 @@ using pExpr = pNode<Expr>;
 struct Node {
   virtual ~Node() = default;
 
-  virtual std::string to_string() const = 0;
+  virtual std::string ToString() const = 0;
   virtual pNode<> Reduce(const Parser& parser) = 0;
   virtual bool IsDeclaration() const { return false; }
   virtual bool IsStatement() const { return false; }

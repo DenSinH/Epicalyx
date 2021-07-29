@@ -60,7 +60,7 @@ struct Identifier final : public Expr {
 
   const std::string name;
 
-  std::string to_string() const final { return name; };
+  std::string ToString() const final { return name; };
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final { return nullptr; }
 };
@@ -77,7 +77,7 @@ struct NumericalConstant final : public Expr {
 
   const T value;
 
-  std::string to_string() const final { return std::to_string(value); };
+  std::string ToString() const final { return std::to_string(value); };
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final { return nullptr; }
 };
@@ -93,7 +93,7 @@ struct StringConstant final : public Expr {
 
   const std::string value;
 
-  std::string to_string() const final { return cotyl::FormatStr("\"%s\"", cotyl::Escape(value)); }
+  std::string ToString() const final { return cotyl::FormatStr("\"%s\"", cotyl::Escape(value)); }
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final { return nullptr; }
 };
@@ -112,7 +112,7 @@ struct ArrayAccess final : public Expr {
 
   pExpr left, right;
 
-  std::string to_string() const final { return cotyl::FormatStr("(%s)[%s]", left->to_string(), right->to_string()); }
+  std::string ToString() const final { return cotyl::FormatStr("(%s)[%s]", left, right); }
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final;
 };
@@ -130,10 +130,10 @@ struct FunctionCall final : public Expr {
     args.emplace_back(std::move(arg));
   }
 
-  const pExpr left;
+  pExpr left;
   std::vector<pExpr> args{};
 
-  std::string to_string() const final;
+  std::string ToString() const final;
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final;
 };
@@ -142,18 +142,20 @@ struct FunctionCall final : public Expr {
 struct MemberAccess final : public Expr {
   ~MemberAccess() final = default;
 
-  MemberAccess(pExpr&& left, std::string member) :
+  MemberAccess(pExpr&& left, bool direct, std::string member) :
       left(std::move(left)),
+      direct(direct),
       member(std::move(member)) {
 
   }
 
-  const pExpr left;
+  pExpr left;
+  bool direct;
   const std::string member;
 
-  std::string to_string() const final { return cotyl::FormatStr("(%s).%s", left->to_string(), member); }
+  std::string ToString() const final;
   pType<const CType> GetType(const Parser& parser) const final;
-  pExpr EReduce(const Parser& parser) final { return nullptr; }
+  pExpr EReduce(const Parser& parser) final;
 };
 
 
@@ -168,7 +170,7 @@ struct TypeInitializer : public Expr {
   pType<const CType> type;
   pNode<InitializerList> list;
 
-  std::string to_string() const final { return cotyl::FormatStr("(%s)%s", type->to_string(), list->to_string()); }
+  std::string ToString() const final { return cotyl::FormatStr("(%s)%s", type, list); }
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final;
 };
@@ -186,7 +188,7 @@ struct PostFix final : public Expr {
   const pExpr left;
   const TokenType op;
 
-  std::string to_string() const final { return cotyl::FormatStr("(%s)%s", left->to_string(), Token(op).to_string()); }
+  std::string ToString() const final { return cotyl::FormatStr("(%s)%s", left, Token(op)); }
   pType<const CType> GetType(const Parser& parser) const final;
   // EReduce is just the constant node from the postfix operation (will always be nullptr)
 };
@@ -204,7 +206,7 @@ struct Unary final : public Expr {
   const pExpr left;
   const TokenType op;
 
-  std::string to_string() const final { return cotyl::FormatStr("%s(%s)", Token(op).to_string(), left->to_string()); }
+  std::string ToString() const final { return cotyl::FormatStr("%s(%s)", Token(op), left); }
   pType<const CType> GetType(const Parser& parser) const final;
   // EReduce is just the constant node from the unary operation
 };
@@ -222,7 +224,7 @@ struct Cast final : public Expr {
   const pType<const CType> type;
   const pExpr expr;
 
-  std::string to_string() const final { return cotyl::FormatStr("(%s)(%s)", type->to_string(), expr->to_string()); }
+  std::string ToString() const final { return cotyl::FormatStr("(%s)(%s)", type, expr); }
   pType<const CType> GetType(const Parser& parser) const final;
   // EReduce is just the constant node from the cast
 };
@@ -242,7 +244,7 @@ struct Binop final : public Expr {
   const TokenType op;
   pExpr right;
 
-  std::string to_string() const final {
+  std::string ToString() const final {
     return cotyl::FormatStr("(%s) %s (%s)", left, Token(op), right);
   }
   pType<const CType> GetType(const Parser& parser) const final;
@@ -264,8 +266,8 @@ struct Ternary final : public Expr {
   pExpr _true;
   pExpr _false;
 
-  std::string to_string() const final {
-    return cotyl::FormatStr("(%s) ? (%s) : (%s)", cond, _true->to_string(), _false);
+  std::string ToString() const final {
+    return cotyl::FormatStr("(%s) ? (%s) : (%s)", cond, _true->ToString(), _false);
   }
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final;
@@ -286,7 +288,7 @@ struct Assignment final : public Expr {
   const TokenType op;
   pExpr right;
 
-  std::string to_string() const final {
+  std::string ToString() const final {
     return cotyl::FormatStr("%s %s (%s)", left, Token(op), right);
   }
   pType<const CType> GetType(const Parser& parser) const final;

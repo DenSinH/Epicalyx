@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits>
+
 
 namespace epi::cotyl {
 
@@ -18,5 +20,7 @@ private:
 
 template <typename T, typename ...Ts>
 inline constexpr bool are_all_same_v = std::conjunction_v<std::is_same<T,Ts>...>;
+template <typename T, typename ...Ts>
+inline constexpr bool is_in_v = std::disjunction_v<std::is_same<T,Ts>...>;
 
 }

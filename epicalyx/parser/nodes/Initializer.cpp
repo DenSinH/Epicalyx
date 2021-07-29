@@ -10,7 +10,7 @@
 namespace epi {
 
 
-std::string InitializerList::to_string() const {
+std::string InitializerList::ToString() const {
   std::stringstream repr{};
   repr << '{';
   for (const auto& init : list) {
@@ -27,10 +27,10 @@ std::string InitializerList::to_string() const {
       repr << " = ";
     }
     if (std::holds_alternative<pExpr>(init.second)) {
-      repr << std::get<pExpr>(init.second)->to_string() << ',';
+      repr << std::get<pExpr>(init.second)->ToString() << ',';
     }
     else {
-      repr << std::get<pNode<InitializerList>>(init.second)->to_string() << ',';
+      repr << std::get<pNode<InitializerList>>(init.second)->ToString() << ',';
     }
   }
   std::string result = std::regex_replace(repr.str(), std::regex("\n"), "\n  ");

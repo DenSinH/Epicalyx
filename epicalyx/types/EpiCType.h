@@ -125,7 +125,7 @@ struct CType {
   pType<ValueType<i32>> TruthinessAsCType() const;
   bool IsAssignable() const { return lvalue == LValueNess::Assignable && !(qualifiers & Qualifier::Const); }
 
-  virtual std::string to_string() const = 0;
+  virtual std::string ToString() const = 0;
 
   VIRTUAL_BINOP(Add)
   VIRTUAL_BINOP(Sub)
@@ -185,7 +185,7 @@ struct CType {
   virtual bool EqualType(const CType& other) const { return false; }  // for checking complete equality
   virtual bool IsFunction() const { return false; }
   virtual bool IsIntegral() const { return false; }
-  virtual i64 ConstIntVal() const { throw std::runtime_error("Type is not an integer value: " + to_string()); }
+  virtual i64 ConstIntVal() const { throw std::runtime_error("Type is not an integer value: " + ToString()); }
   virtual pType<> Clone() const = 0;
   virtual void Visit(TypeVisitor& v) const = 0;
 

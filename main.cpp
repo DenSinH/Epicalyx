@@ -9,6 +9,8 @@
 #include "nodes/Declaration.h"
 #include "nodes/Statement.h"
 
+#include "Log.h"
+
 
 int main() {
   auto file = epi::File("examples/parsing/program/hello_world.c");
@@ -34,6 +36,7 @@ int main() {
     parser.Data();
   }
   catch_e {
+    Log::ConsoleColor<Log::Color::Red>();
     std::cout << e.what() << std::endl;
     file.PrintLoc();
   }

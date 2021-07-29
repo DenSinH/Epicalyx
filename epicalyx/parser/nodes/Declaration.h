@@ -38,7 +38,7 @@ struct Declaration final : public Decl {
   StorageClass storage;
   std::optional<Initializer> value;
 
-  std::string to_string() const final;
+  std::string ToString() const final;
   void VerifyAndRecord(Parser& parser) override;
   void DReduce(const Parser &parser);
 };
@@ -51,7 +51,7 @@ struct FunctionDefinition final : public Decl {
   const std::string symbol;
   pNode<Compound> body;
 
-  std::string to_string() const final;
+  std::string ToString() const final;
   void VerifyAndRecord(Parser& parser) final;
 };
 

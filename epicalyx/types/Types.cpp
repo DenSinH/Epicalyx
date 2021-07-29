@@ -6,7 +6,7 @@
 
 namespace epi {
 
-std::string StructUnionType::to_string() const {
+std::string StructUnionType::ToString() const {
   std::stringstream repr{};
   repr << BaseString();
   if (!name.empty()) {
@@ -15,7 +15,7 @@ std::string StructUnionType::to_string() const {
   repr << " {";
 
   for (const auto& field : fields) {
-    repr << "\n  " << field.type->to_string() << ' ' << field.name;
+    repr << "\n  " << field.type->ToString() << ' ' << field.name;
     if (field.size) {
       repr << " : " << field.size;
     }
@@ -71,16 +71,16 @@ bool StructUnionType::_EqualTypeImpl(const StructUnionType& other) const {
   return true;
 }
 
-std::string FunctionType::Arg::to_string() const {
+std::string FunctionType::Arg::ToString() const {
   if (name.empty()) {
-    return type->to_string();
+    return type->ToString();
   }
   return cotyl::FormatStr("%s %s", type, name);
 }
 
-std::string FunctionType::to_string() const {
+std::string FunctionType::ToString() const {
   std::stringstream repr{};
-  std::string formatted = cotyl::FormatStr("(%s)(", contained ? contained->to_string() : "%%");
+  std::string formatted = cotyl::FormatStr("(%s)(", contained ? contained->ToString() : "%%");
   repr << formatted;
   repr << cotyl::Join(", ", arg_types);
   if (variadic) {
@@ -368,7 +368,7 @@ pType<> StructUnionType::MemberAccess(const std::string& member) const {
       return field.type->Clone();
     }
   }
-  throw std::runtime_error("No field named " + member + " in " + to_string());
+  throw std::runtime_error("No field named " + member + " in " + ToString());
 }
 
 #include "ValueTypeMethods.inl"

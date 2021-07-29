@@ -11,7 +11,7 @@ namespace epi {
 struct Declaration;
 
 struct Empty : public Stat {
-  std::string to_string() const final { return ";"; }
+  std::string ToString() const final { return ";"; }
 };
 
 struct If : public Stat {
@@ -27,7 +27,7 @@ struct If : public Stat {
   pNode<Stat> stat;
   pNode<Stat> _else;
 
-  std::string to_string() const final;
+  std::string ToString() const final;
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -42,7 +42,7 @@ struct While : public Stat {
   pExpr cond;
   pNode<Stat> stat;
 
-  std::string to_string() const final;
+  std::string ToString() const final;
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -57,7 +57,7 @@ struct DoWhile : public Stat {
   pNode<Stat> stat;
   pExpr cond;
 
-  std::string to_string() const final;
+  std::string ToString() const final;
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -83,7 +83,7 @@ struct For : public Stat {
   std::vector<pExpr> updates{};
   pNode<Stat> stat;
 
-  std::string to_string() const final;
+  std::string ToString() const final;
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -97,7 +97,7 @@ struct Label : public Stat {
   const std::string name;
   pNode<Stat> stat;
 
-  std::string to_string() const final { return cotyl::FormatStr("%s: %s", name, stat); }
+  std::string ToString() const final { return cotyl::FormatStr("%s: %s", name, stat); }
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -113,7 +113,7 @@ struct Switch : public Stat {
   pExpr expr;
   pNode<Stat> stat;
 
-  std::string to_string() const final;
+  std::string ToString() const final;
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -128,7 +128,7 @@ struct Case : public Stat {
   i64 expr;
   pNode<Stat> stat;
 
-  std::string to_string() const final { return cotyl::FormatStr("case %s: %s", expr, stat); }
+  std::string ToString() const final { return cotyl::FormatStr("case %s: %s", expr, stat); }
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -140,7 +140,7 @@ struct Default : public Stat {
 
   pNode<Stat> stat;
 
-  std::string to_string() const final { return cotyl::FormatStr("default: %s", stat); }
+  std::string ToString() const final { return cotyl::FormatStr("default: %s", stat); }
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -150,7 +150,7 @@ struct Goto : public Stat {
 
   const std::string label;
 
-  std::string to_string() const final { return cotyl::FormatStr("goto %s;", label); }
+  std::string ToString() const final { return cotyl::FormatStr("goto %s;", label); }
 };
 
 struct Return : public Stat {
@@ -161,18 +161,18 @@ struct Return : public Stat {
 
   pExpr expr;
 
-  std::string to_string() const final;
+  std::string ToString() const final;
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
 struct Break : public Stat {
 
-  std::string to_string() const final { return "break;"; }
+  std::string ToString() const final { return "break;"; }
 };
 
 struct Continue : public Stat {
 
-  std::string to_string() const final { return "continue;"; }
+  std::string ToString() const final { return "continue;"; }
 };
 
 struct Compound : public Stat {
@@ -182,7 +182,7 @@ struct Compound : public Stat {
   }
 
   std::vector<pNode<Node>> stats{};
-  std::string to_string() const final;
+  std::string ToString() const final;
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 

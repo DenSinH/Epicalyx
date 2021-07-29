@@ -10,10 +10,13 @@ typedef struct s_test_struct {
 
 int assign(int a, int* b) {
   *b = a;
+  s_test_struct x;
+  return x.x;
 }
 
 int main() {
   int* a = {0, 0};
+  int (*func_ptr)(int, int) = assign;
 
   s_test_struct x;
   x.x = (int){0 + 1 + 1.2 * 0.5};

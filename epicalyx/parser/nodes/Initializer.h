@@ -24,7 +24,7 @@ struct InitializerList {
 
   std::vector<std::pair<DesignatorList, Initializer>> list;
 
-  std::string to_string() const;
+  std::string ToString() const;
 };
 
 

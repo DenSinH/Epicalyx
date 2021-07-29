@@ -65,15 +65,18 @@ pExpr Parser::EPostfix() {
         node = std::move(func);
         break;
       }
-      case TokenType::Arrow:
+      case TokenType::Arrow: {
         // indirect member access
-        node = std::make_unique<Unary>(TokenType::Asterisk, std::move(node));
-        [[fallthrough]];
+        in_stream.Skip();
+        auto member = in_stream.Eat(TokenType::Identifier);
+        node = std::make_unique<MemberAccess>(std::move(node), false, static_cast<const tIdentifier*>(member.get())->name);
+        break;
+      }
       case TokenType::Dot: {
         // direct member access
         in_stream.Skip();
         auto member = in_stream.Eat(TokenType::Identifier);
-        node = std::make_unique<MemberAccess>(std::move(node), static_cast<const tIdentifier*>(member.get())->name);
+        node = std::make_unique<MemberAccess>(std::move(node), true, static_cast<const tIdentifier*>(member.get())->name);
         break;
       }
       case TokenType::Incr: {

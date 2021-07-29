@@ -25,11 +25,11 @@ void ConstTypeVisitor::Visit(const ValueType<u64>& type) { VisitValueType(type);
 void ConstTypeVisitor::Visit(const ValueType<float>& type) { VisitValueType(type); }
 void ConstTypeVisitor::Visit(const ValueType<double>& type) { VisitValueType(type); }
 
-std::string FunctionCall::to_string() const {
+std::string FunctionCall::ToString() const {
   std::stringstream result{};
-  result << left->to_string() << '(';
+  result << left->ToString() << '(';
   for (int i = 0; i < args.size(); i++) {
-    result << args[i]->to_string();
+    result << args[i]->ToString();
     if (i != args.size() - 1) {
       result << ", ";
     }
@@ -38,6 +38,12 @@ std::string FunctionCall::to_string() const {
   return result.str();
 }
 
+std::string MemberAccess::ToString() const {
+  if (direct) {
+    return cotyl::FormatStr("(%s).%s", left, member);
+  }
+  return cotyl::FormatStr("(%s)->%s", left, member);
+}
 
 pType<const CType> Identifier::GetType(const Parser& parser) const {
   if (parser.enum_values.Has(name)) {
@@ -83,7 +89,10 @@ pType<const CType> FunctionCall::GetType(const Parser& parser) const {
 }
 
 pType<const CType> MemberAccess::GetType(const Parser& parser) const {
-  return left->GetType(parser)->MemberAccess(member);
+  if (direct) {
+    return left->GetType(parser)->MemberAccess(member);
+  }
+  return left->GetType(parser)->Deref()->MemberAccess(member);
 }
 
 pType<const CType> TypeInitializer::GetType(const Parser& parser) const {
@@ -185,6 +194,13 @@ pType<const CType> Assignment::GetType(const Parser& parser) const {
   }
 }
 
+pExpr MemberAccess::EReduce(const Parser& parser) {
+  auto n_left = left->EReduce(parser);
+  if (n_left) left = std::move(n_left);
+  // todo: constant struct lookup
+  return nullptr;
+}
+
 pExpr ArrayAccess::EReduce(const Parser& parser) {
   auto n_left = left->EReduce(parser);
   if (n_left) left = std::move(n_left);
@@ -195,6 +211,9 @@ pExpr ArrayAccess::EReduce(const Parser& parser) {
 }
 
 pExpr FunctionCall::EReduce(const Parser& parser) {
+  auto n_left = left->EReduce(parser);
+  if (n_left) left = std::move(n_left);
+
   for (auto& arg : args) {
     auto n_arg = arg->EReduce(parser);
     if (n_arg) arg = std::move(n_arg);

@@ -15,12 +15,12 @@ static std::string to_string(const T& t) {
     return std::to_string(t);
   }
   else {
-    return t.to_string();
+    return t.ToString();
   }
 }
 
-template<typename T> static std::string to_string(const std::unique_ptr<T>& t) { return t->to_string(); }
-template<typename T> static std::string to_string(const std::shared_ptr<T>& t) { return t->to_string(); }
+template<typename T> static std::string to_string(const std::unique_ptr<T>& t) { return t->ToString(); }
+template<typename T> static std::string to_string(const std::shared_ptr<T>& t) { return t->ToString(); }
 static std::string to_string(const std::string& s) { return s; }
 
 template<typename... Args>
@@ -33,7 +33,6 @@ std::string Format(const std::string& format, const Args& ... args) {
   std::snprintf(buf.get(), buf_size + 1, format.c_str(), args...);
   return std::string(buf.get(), buf.get() + buf_size);
 }
-
 
 template<typename ...Args>
 std::string FormatStr(const std::string& format, const Args& ... args) {
@@ -58,9 +57,9 @@ std::string Join(const std::string& delimiter, const std::vector<T>& values) {
 
   std::stringstream result{};
   for (int i = 0; i < values.size() - 1; i++) {
-    result << values[i].to_string() << ", ";
+    result << values[i].ToString() << ", ";
   }
-  result << values.back().to_string();
+  result << values.back().ToString();
   return result.str();
 }
 
@@ -70,9 +69,9 @@ std::string Join(const std::string& delimiter, const std::vector<std::unique_ptr
 
   std::stringstream result{};
   for (int i = 0; i < values.size() - 1; i++) {
-    result << values[i]->to_string() << ", ";
+    result << values[i]->ToString() << ", ";
   }
-  result << values.back()->to_string();
+  result << values.back()->ToString();
   return result.str();
 }
 
