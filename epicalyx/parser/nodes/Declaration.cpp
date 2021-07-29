@@ -70,7 +70,7 @@ void FunctionDefinition::VerifyAndRecord(Parser& parser) {
   }
 }
 
-void InitDeclaration::DReduce(Parser &parser) {
+void InitDeclaration::DReduce(const Parser &parser) {
   if (value.has_value()) {
     auto& init = value.value();
     if (std::holds_alternative<pExpr>(init)) {

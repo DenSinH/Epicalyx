@@ -185,7 +185,7 @@ pType<const CType> Assignment::GetType(const Parser& parser) const {
   }
 }
 
-pExpr ArrayAccess::EReduce(Parser& parser) {
+pExpr ArrayAccess::EReduce(const Parser& parser) {
   auto n_left = left->EReduce(parser);
   if (n_left) left = std::move(n_left);
   auto n_right = right->EReduce(parser);
@@ -194,7 +194,7 @@ pExpr ArrayAccess::EReduce(Parser& parser) {
   return nullptr;
 }
 
-pExpr FunctionCall::EReduce(Parser& parser) {
+pExpr FunctionCall::EReduce(const Parser& parser) {
   for (auto& arg : args) {
     auto n_arg = arg->EReduce(parser);
     if (n_arg) arg = std::move(n_arg);
@@ -203,11 +203,11 @@ pExpr FunctionCall::EReduce(Parser& parser) {
   return nullptr;
 }
 
-pExpr TypeInitializer::EReduce(Parser& parser) {
+pExpr TypeInitializer::EReduce(const Parser& parser) {
   return ReduceInitializerListVisitor(parser, *list).Reduce(*type);
 }
 
-pExpr Binop::EReduce(Parser& parser) {
+pExpr Binop::EReduce(const Parser& parser) {
   auto n_left = left->EReduce(parser);
   if (n_left) left = std::move(n_left);
   auto n_right = right->EReduce(parser);
@@ -215,7 +215,7 @@ pExpr Binop::EReduce(Parser& parser) {
   return Expr::EReduce(parser);
 }
 
-pExpr Ternary::EReduce(Parser& parser) {
+pExpr Ternary::EReduce(const Parser& parser) {
   auto n_cond = cond->EReduce(parser);
   if (n_cond) cond = std::move(n_cond);
   auto n_true = _true->EReduce(parser);
@@ -225,7 +225,7 @@ pExpr Ternary::EReduce(Parser& parser) {
   return Expr::EReduce(parser);
 }
 
-pExpr Assignment::EReduce(Parser& parser) {
+pExpr Assignment::EReduce(const Parser& parser) {
   auto n_left = left->EReduce(parser);
   if (n_left) left = std::move(n_left);
   auto n_right = right->EReduce(parser);

@@ -61,7 +61,7 @@ std::string Compound::to_string() const {
   return result + "\n}";
 }
 
-pNode<Stat> If::SReduce(Parser& parser) {
+pNode<Stat> If::SReduce(const Parser& parser) {
   auto n_cond = cond->EReduce(parser);
   if (n_cond) cond = std::move(cond);
   auto n_stat = stat->SReduce(parser);
@@ -87,7 +87,7 @@ pNode<Stat> If::SReduce(Parser& parser) {
   return nullptr;
 }
 
-pNode<Stat> While::SReduce(Parser& parser) {
+pNode<Stat> While::SReduce(const Parser& parser) {
   auto n_cond = cond->EReduce(parser);
   if (n_cond) cond = std::move(cond);
   auto n_stat = stat->SReduce(parser);
@@ -101,7 +101,7 @@ pNode<Stat> While::SReduce(Parser& parser) {
   return nullptr;
 }
 
-pNode<Stat> DoWhile::SReduce(Parser& parser) {
+pNode<Stat> DoWhile::SReduce(const Parser& parser) {
   auto n_cond = cond->EReduce(parser);
   if (n_cond) cond = std::move(cond);
   auto n_stat = stat->SReduce(parser);
@@ -115,7 +115,7 @@ pNode<Stat> DoWhile::SReduce(Parser& parser) {
   return nullptr;
 }
 
-pNode<Stat> For::SReduce(Parser& parser) {
+pNode<Stat> For::SReduce(const Parser& parser) {
   for (auto& decl : decls) {
     decl->DReduce(parser);
   }
@@ -142,7 +142,7 @@ pNode<Stat> For::SReduce(Parser& parser) {
   return nullptr;
 }
 
-pNode<Stat> Switch::SReduce(Parser& parser) {
+pNode<Stat> Switch::SReduce(const Parser& parser) {
   auto n_expr = expr->EReduce(parser);
   if (n_expr) expr = std::move(n_expr);
   auto n_stat = stat->SReduce(parser);
@@ -150,31 +150,31 @@ pNode<Stat> Switch::SReduce(Parser& parser) {
   return nullptr;
 }
 
-pNode<Stat> Label::SReduce(Parser& parser) {
+pNode<Stat> Label::SReduce(const Parser& parser) {
   auto n_stat = stat->SReduce(parser);
   if (n_stat) stat = std::move(stat);
   return nullptr;
 }
 
-pNode<Stat> Case::SReduce(Parser& parser) {
+pNode<Stat> Case::SReduce(const Parser& parser) {
   auto n_stat = stat->SReduce(parser);
   if (n_stat) stat = std::move(stat);
   return nullptr;
 }
 
-pNode<Stat> Default::SReduce(Parser& parser) {
+pNode<Stat> Default::SReduce(const Parser& parser) {
   auto n_stat = stat->SReduce(parser);
   if (n_stat) stat = std::move(stat);
   return nullptr;
 }
 
-pNode<Stat> Return::SReduce(Parser& parser) {
+pNode<Stat> Return::SReduce(const Parser& parser) {
   auto n_expr = expr->EReduce(parser);
   if (n_expr) expr = std::move(n_expr);
   return nullptr;
 }
 
-pNode<Stat> Compound::SReduce(Parser& parser) {
+pNode<Stat> Compound::SReduce(const Parser& parser) {
   // reduced when added
 //  for (auto& node : stats) {
 //    if (node->IsStatement()) {

@@ -6,7 +6,7 @@
 
 namespace epi {
 
-pExpr Expr::EReduce(Parser& parser) {
+pExpr Expr::EReduce(const Parser& parser) {
   return ConstTypeVisitor(parser).GetConstNode(*GetType(parser));
 }
 

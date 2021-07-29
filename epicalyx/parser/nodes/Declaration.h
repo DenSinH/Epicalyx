@@ -56,7 +56,7 @@ struct InitDeclaration final : public Declaration {
 
   std::string to_string() const final;
   void VerifyAndRecord(Parser& parser) final;
-  void DReduce(Parser &parser);
+  void DReduce(const Parser &parser);
 };
 
 struct FunctionDefinition final : public Decl {

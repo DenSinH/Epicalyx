@@ -13,10 +13,10 @@ int main() {
   int* a = {0, 0};
 
   s_test_struct x;
-  x.x = 0;
+  x.x = (int){0 + 1 + 1.2 * 0.5};
   x.p[0] = 'h';
 
-  if (1) printf("Sup\n");
+  if (0) printf("Sup\n");
   printf("hello world!");
   return 1;
 }
