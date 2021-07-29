@@ -23,39 +23,23 @@ enum class StorageClass {
   Auto,
 };
 
-struct Declaration;
-using AbstractDeclarator = Declaration;
+struct Declaration final : public Decl {
 
-
-struct Declaration : public Decl {
-
-  Declaration(pType<> type, std::string name, StorageClass storage = StorageClass::Auto) :
+  Declaration(pType<> type, std::string name, StorageClass storage = StorageClass::Auto, std::optional<Initializer> value = {}) :
       name(std::move(name)),
       type(std::move(type)),
-      storage(storage) {
+      storage(storage),
+      value(std::move(value)) {
 
   }
 
   std::string name;
   pType<const CType> type;  // empty if abstract
   StorageClass storage;
-
-  std::string to_string() const override { return cotyl::FormatStr("%s %s", type, name); }
-  void VerifyAndRecord(Parser& parser) override;
-};
-
-struct InitDeclaration final : public Declaration {
-
-  InitDeclaration(pNode<Declaration>&& decl, std::optional<Initializer> value = {}) :
-          Declaration(*decl),
-          value(std::move(value)) {
-
-  }
-
   std::optional<Initializer> value;
 
   std::string to_string() const final;
-  void VerifyAndRecord(Parser& parser) final;
+  void VerifyAndRecord(Parser& parser) override;
   void DReduce(const Parser &parser);
 };
 

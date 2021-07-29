@@ -13,6 +13,10 @@ Parser::Parser(cotyl::Stream<pToken>& in_stream) :
 
 }
 
+void Parser::PrintLoc() const {
+  in_stream.PrintLoc();
+}
+
 void Parser::PushScope() {
   variables.NewLayer();
   typedefs.NewLayer();
@@ -33,7 +37,7 @@ void Parser::PopScope() {
 
 void Parser::Parse() {
   while (!in_stream.EOS()) {
-    std::vector<pNode<Decl>> decls;
+    std::vector<pNode<Declaration>> decls;
     auto function = ExternalDeclaration(decls);
 
     if (variables.Depth() != 1) [[unlikely]] {

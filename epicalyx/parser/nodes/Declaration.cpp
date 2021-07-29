@@ -14,7 +14,7 @@ FunctionDefinition::FunctionDefinition(pType<const FunctionType> signature, std:
 
 }
 
-std::string InitDeclaration::to_string() const {
+std::string Declaration::to_string() const {
   if (value.has_value()) {
     if (std::holds_alternative<pExpr>(value.value()))
       return cotyl::FormatStr("%s %s = %s", type, name, std::get<pExpr>(value.value()));
@@ -33,6 +33,7 @@ std::string FunctionDefinition::to_string() const {
 
 void Declaration::VerifyAndRecord(Parser& parser) {
   if (!name.empty()) {
+    // todo: check enum/struct/typdef
     if (parser.variables.HasTop(name)) {
       if (!parser.variables.Get(name)->EqualType(*type)) {
         throw cotyl::FormatExceptStr("Redefinition of symbol %s", name);
@@ -42,10 +43,6 @@ void Declaration::VerifyAndRecord(Parser& parser) {
       parser.variables.Set(name, type);
     }
   }
-}
-
-void InitDeclaration::VerifyAndRecord(Parser& parser) {
-  Declaration::VerifyAndRecord(parser);
 
   if (value.has_value()) {
     const auto& val = value.value();
@@ -70,7 +67,7 @@ void FunctionDefinition::VerifyAndRecord(Parser& parser) {
   }
 }
 
-void InitDeclaration::DReduce(const Parser &parser) {
+void Declaration::DReduce(const Parser &parser) {
   if (value.has_value()) {
     auto& init = value.value();
     if (std::holds_alternative<pExpr>(init)) {

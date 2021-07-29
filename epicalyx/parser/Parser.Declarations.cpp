@@ -628,8 +628,7 @@ pNode<Declaration> Parser::DDeclarator(pType<> ctype, StorageClass storage) {
   return std::make_unique<Declaration>(ctype, name, storage);
 }
 
-
-void Parser::DInitDeclaratorList(std::vector<pNode<InitDeclaration>>& dest) {
+void Parser::DInitDeclaratorList(std::vector<pNode<Declaration>>& dest) {
   auto ctype = DSpecifier();
 
   do {
@@ -647,12 +646,13 @@ void Parser::DInitDeclaratorList(std::vector<pNode<InitDeclaration>>& dest) {
         if (decl->name.empty()) {
           throw std::runtime_error("Cannot assign to nameless variable");
         }
-        dest.push_back(std::make_unique<InitDeclaration>(std::move(decl), EInitializer()));
+        decl->value = EInitializer();
+        dest.push_back(std::move(decl));
       }
       else {
         // type var, var2, var3
         if (!decl->name.empty()) {
-          dest.push_back(std::make_unique<InitDeclaration>(std::move(decl)));
+          dest.push_back(std::move(decl));
         }
         else {
           // warn: statement has no effect
@@ -662,7 +662,7 @@ void Parser::DInitDeclaratorList(std::vector<pNode<InitDeclaration>>& dest) {
   } while (in_stream.EatIf(TokenType::Comma));
 }
 
-pNode<FunctionDefinition> Parser::ExternalDeclaration(std::vector<pNode<Decl>>& dest) {
+pNode<FunctionDefinition> Parser::ExternalDeclaration(std::vector<pNode<Declaration>>& dest) {
   if (in_stream.IsAfter(0, TokenType::StaticAssert)) {
     DStaticAssert();
     return nullptr;
@@ -683,18 +683,22 @@ pNode<FunctionDefinition> Parser::ExternalDeclaration(std::vector<pNode<Decl>>& 
       throw std::runtime_error("Missing name in function declaration");
     }
 
+    variables.NewLayer();
     for (const auto& arg : signature->arg_types) {
       if (arg.name.empty()) {
         throw std::runtime_error("Nameless argument in function definition");
       }
+      variables.Set(arg.name, arg.type);
     }
-
+    function_return = signature->contained;
     auto body = SCompound();
+    function_return = nullptr;
+    variables.PopLayer();
     in_stream.Eat(TokenType::RBrace);
     return std::make_unique<FunctionDefinition>(signature, symbol, std::move(body));
   }
 
-  // declaration
+  // normal declaration
   do {
     if (decl->storage == StorageClass::Typedef) {
       // store typedef names
@@ -706,11 +710,12 @@ pNode<FunctionDefinition> Parser::ExternalDeclaration(std::vector<pNode<Decl>>& 
     else {
       if (in_stream.EatIf(TokenType::Assign)) {
         // type var = <expression> or {initializer list}
-        dest.push_back(std::make_unique<InitDeclaration>(std::move(decl), EInitializer()));
+        decl->value = EInitializer();
+        dest.push_back(std::move(decl));
       }
       else {
         // type var, var2, var3
-        dest.push_back(std::make_unique<InitDeclaration>(std::move(decl)));
+        dest.push_back(std::move(decl));
       }
     }
     if (in_stream.EatIf(TokenType::SemiColon)) {

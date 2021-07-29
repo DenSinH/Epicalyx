@@ -33,6 +33,12 @@ u64 StructUnionType::Sizeof() const {
   }
   u64 value = 0;
   for (const auto& field : fields) {
+    u64 align = field.type->Alignof();
+
+    // padding
+    if (value & (align - 1)) {
+      value += align - (value & (align - 1));
+    }
     value += field.type->Sizeof();
   }
   return value;

@@ -8,6 +8,9 @@ typedef struct s_test_struct {
   char* const p;
 } s_test_struct;
 
+int assign(int a, int* b) {
+  *b = a;
+}
 
 int main() {
   int* a = {0, 0};

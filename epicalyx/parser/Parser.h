@@ -12,7 +12,6 @@ namespace epi {
 
 struct Declaration;
 enum class StorageClass;
-struct InitDeclaration;
 struct Compound;
 struct FunctionDefinition;
 
@@ -20,7 +19,8 @@ struct FunctionDefinition;
 struct Parser final : public cotyl::Locatable {
 
   Parser(cotyl::Stream<pToken>& in_stream);
-  void PrintLoc() const final { in_stream.PrintLoc(); };
+
+  void PrintLoc() const final;
 
   using enum_type = i32;
 
@@ -47,13 +47,13 @@ struct Parser final : public cotyl::Locatable {
   pType<> DStruct();
   std::string DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest);
   pNode<Declaration> DDeclarator(pType<> ctype, StorageClass storage);
-  void DInitDeclaratorList(std::vector<pNode<InitDeclaration>>& dest);
+  void DInitDeclaratorList(std::vector<pNode<Declaration>>& dest);
   bool IsDeclarationSpecifier(int after = 0);
 
   pNode<Stat> SStatement();
   pNode<Compound> SCompound();
 
-  pNode<FunctionDefinition> ExternalDeclaration(std::vector<pNode<Decl>>& dest);
+  pNode<FunctionDefinition> ExternalDeclaration(std::vector<pNode<Declaration>>& dest);
 
   void PushScope();
   void PopScope();
@@ -72,6 +72,8 @@ struct Parser final : public cotyl::Locatable {
   cotyl::MapScope<std::string, pType<const StructUnionType>> structdefs{};
   cotyl::MapScope<std::string, pType<const StructUnionType>> uniondefs{};
 
+  pType<const CType> function_return{};
+
   std::deque<Loop> loop_scope{};
   cotyl::SetScope<i64> case_scope{};
   std::unordered_set<std::string> labels{};
@@ -79,7 +81,7 @@ struct Parser final : public cotyl::Locatable {
 
   // external results
   std::vector<pNode<FunctionDefinition>> functions{};
-  std::vector<pNode<Decl>> declarations{};
+  std::vector<pNode<Declaration>> declarations{};
 };
 
 }

@@ -98,9 +98,9 @@ pNode<Stat> Parser::SStatement() {
 
       // new scope for for loop declarations
       PushScope();
-      std::vector<pNode<InitDeclaration>> declarations;
+      std::vector<pNode<Declaration>> decl_list;
       if (IsDeclarationSpecifier()) {
-        DInitDeclaratorList(declarations);
+        DInitDeclaratorList(decl_list);
       }
 
       std::vector<pExpr> init{};
@@ -125,7 +125,7 @@ pNode<Stat> Parser::SStatement() {
 
       PopScope();
       return std::make_unique<For>(
-          std::move(declarations),
+          std::move(decl_list),
           std::move(init),
           std::move(cond),
           std::move(update),
@@ -161,7 +161,6 @@ pNode<Stat> Parser::SStatement() {
       return std::make_unique<Break>();
     }
     case TokenType::Return: {
-      // todo: check function return type
       in_stream.Skip();
       if (in_stream.IsAfter(0, TokenType::SemiColon)) {
         in_stream.Skip();
@@ -169,6 +168,10 @@ pNode<Stat> Parser::SStatement() {
       }
       auto expr = EExpression();
       in_stream.Eat(TokenType::SemiColon);
+
+      // check function return type
+      function_return->Cast(*expr->GetType(*this));
+
       return std::make_unique<Return>(std::move(expr));
     }
     case TokenType::LBrace: {
@@ -218,7 +221,7 @@ pNode<Compound> Parser::SCompound() {
       DStaticAssert();
     }
     else if (IsDeclarationSpecifier()) {
-      std::vector<pNode<InitDeclaration>> decl_list;
+      std::vector<pNode<Declaration>> decl_list;
       DInitDeclaratorList(decl_list);
       in_stream.Eat(TokenType::SemiColon);
       for (auto& decl : decl_list) {
