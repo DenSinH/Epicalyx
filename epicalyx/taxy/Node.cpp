@@ -4,7 +4,7 @@
 #include "parser/Parser.h"
 
 
-namespace epi {
+namespace epi::taxy {
 
 pExpr Expr::EReduce(const Parser& parser) {
   return ConstTypeVisitor(parser).GetConstNode(*GetType(parser));

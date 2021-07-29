@@ -6,7 +6,7 @@
 #include "Declaration.h"
 
 
-namespace epi {
+namespace epi::taxy {
 
 struct Declaration;
 

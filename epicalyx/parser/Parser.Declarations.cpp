@@ -1,7 +1,7 @@
 #include "Parser.h"
 #include "Is.h"
-#include "nodes/Declaration.h"
-#include "nodes/Statement.h"
+#include "taxy/Declaration.h"
+#include "taxy/Statement.h"
 
 #include <optional>
 #include <iostream>

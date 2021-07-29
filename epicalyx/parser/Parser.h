@@ -4,16 +4,22 @@
 #include "Scope.h"
 #include "tokenizer/Token.h"
 #include "types/Types.h"
-#include "parser/nodes/Initializer.h"
+#include "taxy/Initializer.h"
 
 #include <stack>
 
 namespace epi {
 
+namespace taxy {
+
 struct Declaration;
 enum class StorageClass;
 struct Compound;
 struct FunctionDefinition;
+
+}
+
+using namespace taxy;
 
 
 struct Parser final : public cotyl::Locatable {

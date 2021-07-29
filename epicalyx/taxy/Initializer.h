@@ -9,6 +9,10 @@
 #include <string>
 
 namespace epi {
+struct StructUnionType;
+}
+
+namespace epi::taxy {
 
 struct InitializerList;
 
@@ -27,8 +31,6 @@ struct InitializerList {
   std::string ToString() const;
 };
 
-
-struct StructUnionType;
 
 struct InitializerListVisitor : public TypeVisitor {
   InitializerListVisitor(const Parser& parser, InitializerList& list) : parser(parser), list(list) { }

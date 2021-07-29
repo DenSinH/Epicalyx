@@ -6,8 +6,8 @@
 #include "types/Types.h"
 #include "parser/Parser.h"
 
-#include "nodes/Declaration.h"
-#include "nodes/Statement.h"
+#include "taxy/Declaration.h"
+#include "taxy/Statement.h"
 
 #include "Log.h"
 

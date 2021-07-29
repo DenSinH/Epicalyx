@@ -6,10 +6,12 @@
 #include <memory>
 #include <string>
 
-
 namespace epi {
-
 struct Parser;
+}
+
+namespace epi::taxy {
+
 struct Expr;
 struct Node;
 

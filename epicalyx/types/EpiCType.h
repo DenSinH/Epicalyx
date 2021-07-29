@@ -12,7 +12,9 @@
 
 namespace epi {
 
+namespace taxy {
 struct InitializerList;
+}
 struct Parser;
 struct CType;
 

@@ -1,8 +1,10 @@
 #pragma once
 
-#include "nodes/Node.h"
+#include "taxy/Node.h"
 
 namespace epi {
+
+using namespace taxy;
 
 struct Token;
 struct tIdentifier;
