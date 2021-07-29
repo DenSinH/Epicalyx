@@ -5,12 +5,12 @@
 
 namespace epi {
 
-struct SString final : public cotyl::Stream<char>, cotyl::Locatable {
+struct SString final : public cotyl::Stream<char> {
 
   SString(std::string string) : string(std::move(string)) { };
   ~SString() = default;
 
-  void PrintLoc() final;
+  void PrintLoc() const final;
 
 protected:
   char GetNew() final { return string[position++]; }

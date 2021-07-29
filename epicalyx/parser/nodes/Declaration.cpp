@@ -7,6 +7,13 @@
 
 namespace epi {
 
+FunctionDefinition::FunctionDefinition(pType<const FunctionType> signature, std::string symbol, pNode<Compound>&& body) :
+    signature(std::move(signature)),
+    symbol(std::move(symbol)),
+    body(std::move(body)) {
+
+}
+
 std::string InitDeclaration::to_string() const {
   if (value.has_value()) {
     if (std::holds_alternative<pExpr>(value.value()))
@@ -18,14 +25,6 @@ std::string InitDeclaration::to_string() const {
     return cotyl::FormatStr("%s %s", type, name);
   }
   return type->to_string();
-}
-
-
-FunctionDefinition::FunctionDefinition(pType<const FunctionType> signature, std::string symbol, pNode<Compound>&& body) :
-    signature(std::move(signature)),
-    symbol(std::move(symbol)),
-    body(std::move(body)) {
-
 }
 
 std::string FunctionDefinition::to_string() const {
@@ -46,9 +45,18 @@ void Declaration::VerifyAndRecord(Parser& parser) {
 }
 
 void InitDeclaration::VerifyAndRecord(Parser& parser) {
-  // todo: verify initializer
-
   Declaration::VerifyAndRecord(parser);
+
+  if (value.has_value()) {
+    const auto& val = value.value();
+    if (holds_alternative<pExpr>(val)) {
+      type->Cast(*std::get<pExpr>(val)->GetType(parser));
+    }
+    else {
+      auto visitor = ValidInitializerListVisitor(parser, *std::get<pNode<InitializerList>>(val));
+      type->Visit(visitor);
+    }
+  }
 }
 
 void FunctionDefinition::VerifyAndRecord(Parser& parser) {
@@ -59,6 +67,20 @@ void FunctionDefinition::VerifyAndRecord(Parser& parser) {
   }
   else {
     parser.variables.Set(symbol, signature);
+  }
+}
+
+void InitDeclaration::DReduce(Parser &parser) {
+  if (value.has_value()) {
+    auto& init = value.value();
+    if (std::holds_alternative<pExpr>(init)) {
+      auto n_expr = std::get<pExpr>(init)->EReduce(parser);
+      if (n_expr) value = std::move(n_expr);
+    }
+    else {
+      auto n_expr = ReduceInitializerListVisitor(parser, *std::get<pNode<InitializerList>>(init)).Reduce(*type);
+      if (n_expr) value = std::move(n_expr);
+    }
   }
 }
 

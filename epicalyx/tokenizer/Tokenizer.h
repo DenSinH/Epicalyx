@@ -7,13 +7,14 @@
 
 namespace epi {
 
-class Tokenizer : public cotyl::Stream<std::unique_ptr<Token>> {
+class Tokenizer final : public cotyl::Stream<std::unique_ptr<Token>> {
 public:
 
   Tokenizer(cotyl::Stream<char>& in_stream) :
       in_stream(in_stream) {
 
   }
+  void PrintLoc() const final { in_stream.PrintLoc(); };
 
 protected:
   pToken GetNew() final;

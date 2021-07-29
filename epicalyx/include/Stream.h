@@ -32,11 +32,11 @@ struct base_type {
 }
 
 struct Locatable {
-  virtual void PrintLoc() = 0;
+  virtual void PrintLoc() const = 0;
 };
 
 template<typename T>
-struct Stream {
+struct Stream : public Locatable {
 
   using base_t = typename detail::base_type<T>::type;
   static constexpr bool deref = !std::is_same_v<base_t, T>;

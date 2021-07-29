@@ -44,7 +44,7 @@ struct Declaration : public Decl {
   void VerifyAndRecord(Parser& parser) override;
 };
 
-struct InitDeclaration : public Declaration {
+struct InitDeclaration final : public Declaration {
 
   InitDeclaration(pNode<Declaration>&& decl, std::optional<Initializer> value = {}) :
           Declaration(*decl),
@@ -56,11 +56,12 @@ struct InitDeclaration : public Declaration {
 
   std::string to_string() const final;
   void VerifyAndRecord(Parser& parser) final;
+  void DReduce(Parser &parser);
 };
 
-struct FunctionDefinition : public Decl {
+struct FunctionDefinition final : public Decl {
 
-  FunctionDefinition(pType<const FunctionType> signature, std::string symbol, pNode<Compound>&& body);
+  FunctionDefinition(pType<const FunctionType> signature, std::string symbol, pNode<Compound>&& body) ;
 
   pType<const FunctionType> signature;
   const std::string symbol;

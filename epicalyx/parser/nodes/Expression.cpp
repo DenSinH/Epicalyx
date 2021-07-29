@@ -1,11 +1,29 @@
 #include "Expression.h"
 #include "parser/Parser.h"
-#include "types/Types.h"
 
 #include <sstream>
 
 
 namespace epi {
+
+
+template<typename T>
+void ConstTypeVisitor::VisitValueType(const ValueType<T>& type) {
+  if (type.HasValue()) {
+    reduced = std::make_unique<NumericalConstant<T>>(type.Get());
+  }
+}
+
+void ConstTypeVisitor::Visit(const ValueType<i8>& type) { VisitValueType(type); }
+void ConstTypeVisitor::Visit(const ValueType<u8>& type) { VisitValueType(type); }
+void ConstTypeVisitor::Visit(const ValueType<i16>& type) { VisitValueType(type); }
+void ConstTypeVisitor::Visit(const ValueType<u16>& type) { VisitValueType(type); }
+void ConstTypeVisitor::Visit(const ValueType<i32>& type) { VisitValueType(type); }
+void ConstTypeVisitor::Visit(const ValueType<u32>& type) { VisitValueType(type); }
+void ConstTypeVisitor::Visit(const ValueType<i64>& type) { VisitValueType(type); }
+void ConstTypeVisitor::Visit(const ValueType<u64>& type) { VisitValueType(type); }
+void ConstTypeVisitor::Visit(const ValueType<float>& type) { VisitValueType(type); }
+void ConstTypeVisitor::Visit(const ValueType<double>& type) { VisitValueType(type); }
 
 std::string FunctionCall::to_string() const {
   std::stringstream result{};
@@ -21,7 +39,7 @@ std::string FunctionCall::to_string() const {
 }
 
 
-pType<const CType> Identifier::GetType(Parser& parser) const {
+pType<const CType> Identifier::GetType(const Parser& parser) const {
   if (parser.enum_values.Has(name)) {
     return MakeType<ValueType<Parser::enum_type>>(
             parser.enum_values.Get(name),
@@ -38,13 +56,13 @@ pType<const CType> Identifier::GetType(Parser& parser) const {
 }
 
 template<typename T>
-pType<const CType> NumericalConstant<T>::GetType(Parser&) const {
+pType<const CType> NumericalConstant<T>::GetType(const Parser&) const {
   return MakeType<ValueType<T>>(
           value, CType::LValueNess::None, CType::Qualifier::Const
   );
 }
 
-pType<const CType> StringConstant::GetType(Parser&) const {
+pType<const CType> StringConstant::GetType(const Parser&) const {
   return MakeType<PointerType>(
           MakeType<ValueType<i8>>(CType::LValueNess::Assignable, CType::Qualifier::Const),
           CType::LValueNess::None,
@@ -52,11 +70,11 @@ pType<const CType> StringConstant::GetType(Parser&) const {
   );
 }
 
-pType<const CType> ArrayAccess::GetType(Parser& parser) const {
+pType<const CType> ArrayAccess::GetType(const Parser& parser) const {
   return left->GetType(parser)->ArrayAccess(*right->GetType(parser));
 }
 
-pType<const CType> FunctionCall::GetType(Parser& parser) const {
+pType<const CType> FunctionCall::GetType(const Parser& parser) const {
   std::vector<pType<const CType>> call_args{};
   for (const auto& arg : args) {
     call_args.push_back(arg->GetType(parser));
@@ -64,16 +82,17 @@ pType<const CType> FunctionCall::GetType(Parser& parser) const {
   return left->GetType(parser)->FunctionCall(call_args);
 }
 
-pType<const CType> MemberAccess::GetType(Parser& parser) const {
+pType<const CType> MemberAccess::GetType(const Parser& parser) const {
   return left->GetType(parser)->MemberAccess(member);
 }
 
-pType<const CType> TypeInitializer::GetType(Parser&) const {
-  // todo: check initializer list correctness
+pType<const CType> TypeInitializer::GetType(const Parser& parser) const {
+  auto visitor = ValidInitializerListVisitor(parser, *list);
+  type->Visit(visitor);
   return type;
 }
 
-pType<const CType> PostFix::GetType(Parser& parser) const {
+pType<const CType> PostFix::GetType(const Parser& parser) const {
   switch (op) {
     case TokenType::Incr: return left->GetType(parser)->Incr();
     case TokenType::Decr: return left->GetType(parser)->Decr();
@@ -82,7 +101,7 @@ pType<const CType> PostFix::GetType(Parser& parser) const {
   }
 }
 
-pType<const CType> Unary::GetType(Parser& parser) const {
+pType<const CType> Unary::GetType(const Parser& parser) const {
   switch (op) {
     case TokenType::Incr: return left->GetType(parser)->Incr();
     case TokenType::Decr: return left->GetType(parser)->Decr();
@@ -97,14 +116,11 @@ pType<const CType> Unary::GetType(Parser& parser) const {
   }
 }
 
-pType<const CType> Cast::GetType(Parser& parser) const {
-  if (!type->Cast(*expr->GetType(parser))) {
-    throw std::runtime_error("Cannot cast expression to type");
-  }
-  return type;
+pType<const CType> Cast::GetType(const Parser& parser) const {
+  return type->Cast(*expr->GetType(parser));
 }
 
-pType<const CType> Binop::GetType(Parser& parser) const {
+pType<const CType> Binop::GetType(const Parser& parser) const {
   switch (op) {
     case TokenType::Asterisk: return left->GetType(parser)->Mul(*right->GetType(parser));
     case TokenType::Div: return left->GetType(parser)->Div(*right->GetType(parser));
@@ -125,12 +141,12 @@ pType<const CType> Binop::GetType(Parser& parser) const {
   }
 }
 
-pType<const CType> Ternary::GetType(Parser& parser) const {
+pType<const CType> Ternary::GetType(const Parser& parser) const {
   auto cond_t = cond->GetType(parser);
   auto true_t = _true->GetType(parser);
   auto false_t = _false->GetType(parser);
 
-  // todo: type conversions
+  // todo: type conversions for constexpr
   if (cond_t->IsConstexpr()) {
     if (cond_t->ConstIntVal()) {
       return true_t;
@@ -140,7 +156,7 @@ pType<const CType> Ternary::GetType(Parser& parser) const {
   return true_t->CommonType(*false_t);
 }
 
-pType<const CType> Assignment::GetType(Parser& parser) const {
+pType<const CType> Assignment::GetType(const Parser& parser) const {
   auto left_t = left->GetType(parser);
   if (!left_t->IsAssignable()) {
     throw std::runtime_error("Cannot assign to expression");
@@ -169,9 +185,62 @@ pType<const CType> Assignment::GetType(Parser& parser) const {
   }
 }
 
+pExpr ArrayAccess::EReduce(Parser& parser) {
+  auto n_left = left->EReduce(parser);
+  if (n_left) left = std::move(n_left);
+  auto n_right = right->EReduce(parser);
+  if (n_right) right = std::move(n_right);
+  // todo: constant array lookup
+  return nullptr;
+}
+
+pExpr FunctionCall::EReduce(Parser& parser) {
+  for (auto& arg : args) {
+    auto n_arg = arg->EReduce(parser);
+    if (n_arg) arg = std::move(n_arg);
+  }
+  // todo: consteval functions
+  return nullptr;
+}
+
+pExpr TypeInitializer::EReduce(Parser& parser) {
+  return ReduceInitializerListVisitor(parser, *list).Reduce(*type);
+}
+
+pExpr Binop::EReduce(Parser& parser) {
+  auto n_left = left->EReduce(parser);
+  if (n_left) left = std::move(n_left);
+  auto n_right = right->EReduce(parser);
+  if (n_right) right = std::move(n_right);
+  return Expr::EReduce(parser);
+}
+
+pExpr Ternary::EReduce(Parser& parser) {
+  auto n_cond = cond->EReduce(parser);
+  if (n_cond) cond = std::move(n_cond);
+  auto n_true = _true->EReduce(parser);
+  if (n_true) _true = std::move(n_true);
+  auto n_false = _false->EReduce(parser);
+  if (n_false) _false = std::move(n_false);
+  return Expr::EReduce(parser);
+}
+
+pExpr Assignment::EReduce(Parser& parser) {
+  auto n_left = left->EReduce(parser);
+  if (n_left) left = std::move(n_left);
+  auto n_right = right->EReduce(parser);
+  if (n_right) right = std::move(n_right);
+  // assignment may never be replaced
+  return nullptr;
+}
+
+template struct NumericalConstant<i8>;
+template struct NumericalConstant<u8>;
+template struct NumericalConstant<i16>;
+template struct NumericalConstant<u16>;
 template struct NumericalConstant<i32>;
-template struct NumericalConstant<i64>;
 template struct NumericalConstant<u32>;
+template struct NumericalConstant<i64>;
 template struct NumericalConstant<u64>;
 template struct NumericalConstant<float>;
 template struct NumericalConstant<double>;

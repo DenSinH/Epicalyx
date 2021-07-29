@@ -223,11 +223,21 @@ pNode<Compound> Parser::SCompound() {
       in_stream.Eat(TokenType::SemiColon);
       for (auto& decl : decl_list) {
         decl->VerifyAndRecord(*this);
+        decl->DReduce(*this);
         compound->AddNode(std::move(decl));
       }
     }
     else {
-      compound->AddNode(SStatement());
+      auto stat = SStatement();
+      if (stat) {
+        auto n_stat = stat->SReduce(*this);
+        if (n_stat) {
+          compound->AddNode(std::move(n_stat));
+        }
+        else {
+          compound->AddNode(std::move(stat));
+        }
+      }
     }
   }
   PopScope();

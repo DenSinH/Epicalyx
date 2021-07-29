@@ -4,7 +4,7 @@
 #include "Scope.h"
 #include "tokenizer/Token.h"
 #include "types/Types.h"
-#include "nodes/Initializer.h"
+#include "parser/nodes/Initializer.h"
 
 #include <stack>
 
@@ -17,9 +17,10 @@ struct Compound;
 struct FunctionDefinition;
 
 
-struct Parser {
+struct Parser final : public cotyl::Locatable {
 
   Parser(cotyl::Stream<pToken>& in_stream);
+  void PrintLoc() const final { in_stream.PrintLoc(); };
 
   using enum_type = i32;
 

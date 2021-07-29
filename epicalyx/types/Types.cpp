@@ -1,7 +1,6 @@
 #include "Types.h"
 #include "Log.h"
 
-
 #include <functional>
 #include <utility>
 
@@ -319,10 +318,16 @@ pType<> CType::ArrayAccess(const CType& other) const {
 }
 
 UNOP_HANDLER(CType::Incr) {
+  if (!IsAssignable()) {
+    throw std::runtime_error("Cannot increment non-assignable expression");
+  }
   return Add(*ConstOne());
 }
 
 UNOP_HANDLER(CType::Decr) {
+  if (!IsAssignable()) {
+    throw std::runtime_error("Cannot decrement non-assignable expression");
+  }
   return Sub(*ConstOne());
 }
 

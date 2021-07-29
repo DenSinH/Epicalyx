@@ -418,8 +418,8 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
   }
 
   auto make = [=]<typename T>() -> pType<> {
-    if (_sign == -1) return MakeType<ValueType<T>>(CType::LValueNess::None, qualifiers);
-    return MakeType<ValueType<std::make_unsigned_t<T>>>(CType::LValueNess::None, qualifiers);
+    if (_sign == -1) return MakeType<ValueType<T>>(CType::LValueNess::Assignable, qualifiers);
+    return MakeType<ValueType<std::make_unsigned_t<T>>>(CType::LValueNess::Assignable, qualifiers);
   };
 
   if (!type.has_value()) {

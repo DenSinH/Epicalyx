@@ -13,7 +13,8 @@ File::~File() {
   file.close();
 }
 
-void File::PrintLoc() {
+void File::PrintLoc() const {
+  const std::streampos restore = file.tellg();
   const std::streampos current = file.tellg() - (std::streampos)buf.size();
   std::string l;
 
@@ -33,6 +34,7 @@ void File::PrintLoc() {
   std::cout << '^' << std::endl;
   std::getline(file, l);
   std::cout << l << std::endl;
+  file.seekg(restore);
 }
 
 bool File::IsEOS() {

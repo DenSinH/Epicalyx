@@ -12,6 +12,8 @@
 
 namespace epi {
 
+struct InitializerList;
+struct Parser;
 struct CType;
 
 template<typename T = CType>
@@ -37,6 +39,25 @@ struct ArrayType;
 struct FunctionType;
 struct StructType;
 struct UnionType;
+
+struct TypeVisitor {
+  virtual void Visit(const VoidType& type) = 0;
+  virtual void Visit(const ValueType<i8>& type) = 0;
+  virtual void Visit(const ValueType<u8>& type) = 0;
+  virtual void Visit(const ValueType<i16>& type) = 0;
+  virtual void Visit(const ValueType<u16>& type) = 0;
+  virtual void Visit(const ValueType<i32>& type) = 0;
+  virtual void Visit(const ValueType<u32>& type) = 0;
+  virtual void Visit(const ValueType<i64>& type) = 0;
+  virtual void Visit(const ValueType<u64>& type) = 0;
+  virtual void Visit(const ValueType<float>& type) = 0;
+  virtual void Visit(const ValueType<double>& type) = 0;
+  virtual void Visit(const PointerType& type) = 0;
+  virtual void Visit(const ArrayType& type) = 0;
+  virtual void Visit(const FunctionType& type) = 0;
+  virtual void Visit(const StructType& type) = 0;
+  virtual void Visit(const UnionType& type) = 0;
+};
 
 #define INTEGRAL_TYPE_SIGNATURES(MACRO, ...) \
     MACRO(__VA_ARGS__, ValueType<u8>) \
@@ -154,7 +175,10 @@ struct CType {
 
   VIRTUAL_BINOP(CommonType)
   virtual u64 Sizeof() const { throw std::runtime_error("Size of incomplete type"); }
-  virtual u64 Alignof() const { throw std::runtime_error("Align of incomplete type"); }
+  u64 Alignof() const {
+    u64 size = Sizeof();
+    return size < 3 ? size : 4;
+  }
   // type.Cast(other) = (type)(other)
   pType<> Cast(const CType& other) const;
   virtual pType<> DoCast(const CType& other) const { throw std::runtime_error("Bad cast"); }  // checking whether types are castable
@@ -163,6 +187,7 @@ struct CType {
   virtual bool IsIntegral() const { return false; }
   virtual i64 ConstIntVal() const { throw std::runtime_error("Type is not an integer value: " + to_string()); }
   virtual pType<> Clone() const = 0;
+  virtual void Visit(TypeVisitor& v) const = 0;
 
 protected:
   virtual bool IsComplete() const { return false; }

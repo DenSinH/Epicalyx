@@ -5,12 +5,12 @@
 
 namespace epi {
 
-struct File final : public cotyl::Stream<char>, cotyl::Locatable {
+struct File final : public cotyl::Stream<char> {
 
   File(std::string filename);
   ~File();
 
-  void PrintLoc() final;
+  void PrintLoc() const final;
 
 protected:
   char GetNew() final;
@@ -19,7 +19,7 @@ protected:
 private:
   std::streampos prev = -1;
   std::streampos line = 0;
-  std::ifstream file;
+  mutable std::ifstream file;
 };
 
 }

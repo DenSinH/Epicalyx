@@ -20,7 +20,7 @@ namespace epi {
 #define OVERRIDE_BASE_EQ_NOFINAL bool EqualType(const CType& other) const override { return other.EqualTypeImpl(*this); }
 
 
-struct VoidType : public CType {
+struct VoidType final : public CType {
   VoidType(u32 flags = 0) :
           CType(LValueNess::None, flags) {
 
@@ -30,6 +30,7 @@ struct VoidType : public CType {
 
   bool IsComplete() const final { return false; }
   pType<> DoCast(const CType& other) const final { return MakeType<VoidType>(); }
+  void Visit(TypeVisitor& v) const final { v.Visit(*this); }
 
   std::string to_string() const final { return "void"; };
 
@@ -40,7 +41,7 @@ protected:
 
 
 template<typename T>
-struct ValueType : public CType {
+struct ValueType final : public CType {
   explicit ValueType(LValueNess lvalue, u32 flags = 0) :
           CType(lvalue, flags),
           value() {
@@ -69,6 +70,7 @@ struct ValueType : public CType {
   bool IsConstexpr() const final { return HasValue(); }
   bool HasTruthiness() const final { return true; }
   bool IsIntegral() const final { return std::is_integral_v<T>; }
+  void Visit(TypeVisitor& v) const final { v.Visit(*this); }
 
   bool GetBoolValue() const final {
     if (HasValue()) {
@@ -112,7 +114,6 @@ struct ValueType : public CType {
 
   OVERRIDE_BINOP(CommonType);
   u64 Sizeof() const final { return sizeof(T); }
-  u64 Alignof() const final { return sizeof(T); }  // todo:
 
   i64 ConstIntVal() const final {
     if constexpr(!std::is_integral_v<T>) {
@@ -198,11 +199,11 @@ struct PointerType : public CType {
 
   OVERRIDE_BINOP(CommonType)
   u64 Sizeof() const final { return sizeof(u64); }
-  u64 Alignof() const final { return sizeof(u64); }  // todo:
 
   pType<> Clone() const override {
     return MakeType<PointerType>(contained ? contained->Clone() : nullptr, lvalue, qualifiers);
   }
+  void Visit(TypeVisitor& v) const override { v.Visit(*this); }
 
 private:
   void ForgetConstInfo() override { if (contained) contained->ForgetConstInfo(); }
@@ -248,6 +249,7 @@ struct ArrayType : public PointerType {
   pType<> Clone() const override {
     return MakeType<ArrayType>(contained, size, qualifiers);
   }
+  void Visit(TypeVisitor& v) const final { v.Visit(*this); }
 };
 
 struct FunctionType : public PointerType {
@@ -286,6 +288,7 @@ struct FunctionType : public PointerType {
   std::string to_string() const final;
   bool IsFunction() const final { return true; }
   pType<> Clone() const final;
+  void Visit(TypeVisitor& v) const final { v.Visit(*this); }
 
   OVERRIDE_UNOP(Deref)
 
@@ -351,7 +354,6 @@ struct StructUnionType : public CType {
   pType<> MemberAccess(const std::string& member) const final;
 
   u64 Sizeof() const final;
-  u64 Alignof() const final { return Sizeof(); } // todo:
 
 protected:
   virtual std::string BaseString() const = 0;
@@ -392,6 +394,7 @@ struct StructType : public StructUnionType {
     }
     return clone;
   }
+  void Visit(TypeVisitor& v) const final { v.Visit(*this); }
 
 protected:
   std::string BaseString() const final { return "struct"; }
@@ -418,6 +421,7 @@ struct UnionType : public StructUnionType {
     }
     return clone;
   }
+  void Visit(TypeVisitor& v) const final { v.Visit(*this); }
 
 protected:
   std::string BaseString() const final { return "struct"; }

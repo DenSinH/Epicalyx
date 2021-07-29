@@ -21,36 +21,44 @@ template<> void ConsoleColor<Color::Red>();
 template<> void ConsoleColor<Color::Pink>();
 template<> void ConsoleColor<Color::White>();
 
-[[noreturn]] static void Fatal(const char* format, ...) {
-  ConsoleColor<Color::Red>();
-  va_list args;
-  va_start(args, format);
-  std::printf("[FATAL] ");
-  std::vprintf(format, args);
-  std::printf("\n");
-  va_end(args);
-  exit(1);
-}
+struct Note {
+  Note([[maybe_unused]] const char* format, ...) {
+    ConsoleColor<Color::Blue>();
+    va_list args;
+    va_start(args, format);
+    std::printf("[NOTE] ");
+    std::vprintf(format, args);
+    std::printf("\n");
+    va_end(args);
+    ConsoleColor();
+  }
 
-static void Note([[maybe_unused]] const char* format, ...) {
-  ConsoleColor<Color::Blue>();
-  va_list args;
-  va_start(args, format);
-  std::printf("[NOTE] ");
-  std::vprintf(format, args);
-  std::printf("\n");
-  va_end(args);
-  ConsoleColor();
-}
+  template<typename T>
+  void operator<<(const T& callable) {
+    ConsoleColor<Color::Blue>();
+    callable();
+    ConsoleColor();
+  }
+};
 
-static void Warn(const char* format, ...) {
-  ConsoleColor<Color::Yellow>();
-  va_list args;
-  va_start(args, format);
-  std::printf("[WARN] ");
-  std::vprintf(format, args);
-  std::printf("\n");
-  va_end(args);
-  ConsoleColor();
-}
+struct Warn {
+  Warn(const char* format, ...) {
+    ConsoleColor<Color::Yellow>();
+    va_list args;
+    va_start(args, format);
+    std::printf("[WARN] ");
+    std::vprintf(format, args);
+    std::printf("\n");
+    va_end(args);
+    ConsoleColor();
+  }
+
+  template<typename T>
+  void operator<<(const T& callable) {
+    ConsoleColor<Color::Yellow>();
+    callable();
+    ConsoleColor();
+  }
+};
+
 }

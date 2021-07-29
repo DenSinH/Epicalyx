@@ -1,9 +1,15 @@
 #include "Node.h"
 #include "Statement.h"
+#include "Expression.h"
 #include "parser/Parser.h"
 
 
 namespace epi {
+
+pExpr Expr::EReduce(Parser& parser) {
+  return ConstTypeVisitor(parser).GetConstNode(*GetType(parser));
+}
+
 
 //pNode<Stat> Stat::Analyze(Parser& parser) {
 //  auto impl = AnalyzeImpl(parser);
