@@ -70,6 +70,12 @@ struct ValueType final : public CType {
   bool IsConstexpr() const final { return HasValue(); }
   bool HasTruthiness() const final { return true; }
   bool IsIntegral() const final { return std::is_integral_v<T>; }
+  bool IsSigned() const final {
+    if constexpr(std::is_integral_v<T>) {
+      return std::is_signed_v<T>;
+    }
+    throw std::runtime_error("Type is not integral");
+  }
   void Visit(TypeVisitor& v) const final { v.Visit(*this); }
 
   bool GetBoolValue() const final {
@@ -198,7 +204,8 @@ struct PointerType : public CType {
   pType<> Deref() const override;
 
   OVERRIDE_BINOP(CommonType)
-  u64 Sizeof() const final { return sizeof(u64); }
+  u64 Sizeof() const override { return sizeof(u64); }
+  bool IsPointer() const final { return true; }
 
   pType<> Clone() const override {
     return MakeType<PointerType>(contained ? contained->Clone() : nullptr, lvalue, qualifiers);
@@ -241,6 +248,9 @@ struct ArrayType : public PointerType {
   }
 
   size_t size;
+
+  bool IsArray() const final { return true; }
+  u64 Sizeof() const final { return size * contained->Sizeof(); }
 
   std::string ToString() const override {
     return cotyl::FormatStr("(%s)[%s]", contained, size);
@@ -354,6 +364,7 @@ struct StructUnionType : public CType {
   pType<> MemberAccess(const std::string& member) const final;
 
   u64 Sizeof() const final;
+  bool IsStructlike() const final { return true; }
 
 protected:
   virtual std::string BaseString() const = 0;

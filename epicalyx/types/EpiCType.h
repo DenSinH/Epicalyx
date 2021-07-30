@@ -185,8 +185,12 @@ struct CType {
   pType<> Cast(const CType& other) const;
   virtual pType<> DoCast(const CType& other) const { throw std::runtime_error("Bad cast"); }  // checking whether types are castable
   virtual bool EqualType(const CType& other) const { return false; }  // for checking complete equality
+  virtual bool IsPointer() const { return false; }
   virtual bool IsFunction() const { return false; }
+  virtual bool IsArray() const { return false; }
+  virtual bool IsStructlike() const { return false; }
   virtual bool IsIntegral() const { return false; }
+  virtual bool IsSigned() const { throw std::runtime_error("Expression is not integral"); }
   virtual i64 ConstIntVal() const { throw std::runtime_error("Type is not an integer value: " + ToString()); }
   virtual pType<> Clone() const = 0;
   virtual void Visit(TypeVisitor& v) const = 0;

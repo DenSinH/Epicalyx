@@ -1,23 +1,15 @@
 #pragma once
 
 #include "calyx/Calyx.h"
-#include "Scope.h"
 #include "taxy/Node.h"
 
 #include <vector>
-#include <stack>
 
 namespace epi::phyte {
 
 struct Emitter {
 
-  enum class State {
-    Assign,
-    Address,
-    Read,
-  };
-
-  // todo: microblocks
+  // todo: blocks
   template<typename T, typename... Args>
   calyx::var_index_t EmitExpr(Args... args) {
     auto expr_idx = ir_counter++;
@@ -36,8 +28,7 @@ struct Emitter {
   calyx::var_index_t ir_counter = 1;
   calyx::var_index_t c_counter = 1;
 
-  std::stack<State> state{};
-  cotyl::MapScope<std::string, calyx::CVar> variables{};
+
   std::vector<calyx::pIROp> program{};
 };
 

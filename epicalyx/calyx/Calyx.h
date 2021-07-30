@@ -82,7 +82,10 @@ enum class Unop {
   BinNot
 };
 
+template<typename T>
 struct IRBinop : public IRExpr {
+  static_assert(is_calyx_type_v<T>);
+
   IRBinop(var_index_t idx, var_index_t left, Binop op, var_index_t right) :
       IRExpr(idx), left_idx(left), op(op), right_idx(right) {
 
@@ -109,7 +112,10 @@ struct IRImm : public IRExpr {
   std::string ToString() const final;
 };
 
+template<typename T>
 struct IRUnop : public IRExpr {
+  static_assert(is_calyx_type_v<T>);
+
   IRUnop(var_index_t idx, Unop op, var_index_t right) :
           IRExpr(idx), op(op), right_idx(right) {
 
@@ -132,14 +138,26 @@ struct IRLoadCVar : public IRExpr {
   var_index_t c_idx;
   i32 offset;  // struct fields
 
-  std::string ToString() const final { return ""; };
+  std::string ToString() const final;
+};
+
+struct IRLoadCVarAddr : public IRExpr {
+
+  IRLoadCVarAddr(var_index_t idx, var_index_t c_idx) :
+          IRExpr(idx), c_idx(c_idx){
+
+  }
+
+  var_index_t c_idx;
+
+  std::string ToString() const final;
 };
 
 template<typename T>
-struct IRStoreCVar : public IROp {
+struct IRStoreCVar : public IRExpr {
 
-  IRStoreCVar(var_index_t c_idx, var_index_t src, i32 offset = 0) :
-      IROp(Class::Store), c_idx(c_idx), src(src), offset(offset) {
+  IRStoreCVar(var_index_t idx, var_index_t c_idx, var_index_t src, i32 offset = 0) :
+      IRExpr(idx), c_idx(c_idx), src(src), offset(offset) {
 
   }
 
@@ -147,7 +165,7 @@ struct IRStoreCVar : public IROp {
   var_index_t src;
   i32 offset;  // struct fields
 
-  std::string ToString() const final { return ""; };
+  std::string ToString() const final;
 };
 
 struct IRAllocateCVar : public IROp {

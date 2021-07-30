@@ -2,7 +2,9 @@
 
 #include "taxy/NodeVisitor.h"
 #include "calyx/Calyx.h"
+#include "Scope.h"
 
+#include <stack>
 
 namespace epi::phyte {
 
@@ -15,6 +17,17 @@ struct ASTWalker : public taxy::NodeVisitor {
       emitter(emitter) {
 
   }
+
+  enum class State {
+    Assign,
+    Address,
+    Read,
+    Condition,
+  };
+
+  std::stack<std::pair<State, calyx::var_index_t>> state{};
+  cotyl::MapScope<std::string, calyx::CVar> variables{};
+  cotyl::MapScope<std::string, pType<const CType>> c_variables{};
 
   calyx::var_index_t current;
   Emitter& emitter;

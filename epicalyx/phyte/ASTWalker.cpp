@@ -1,6 +1,7 @@
 #include "ASTWalker.h"
 #include "Emitter.h"
 #include "calyx/Calyx.h"
+#include "types/EpiCType.h"
 #include "taxy/Declaration.h"
 #include "taxy/Statement.h"
 #include "taxy/Expression.h"
@@ -8,16 +9,52 @@
 
 namespace epi::phyte {
 
+template<template<typename T> class IROp, typename... Args>
+struct EmitterTypeVisitor : TypeVisitor {
+
+  EmitterTypeVisitor(ASTWalker& walker, const Args&... args) :
+      walker(walker), args(std::make_tuple(args...)) {
+
+  }
+
+  ASTWalker& walker;
+  std::tuple<Args...> args;
+
+  template<typename T>
+  void VisitImpl(const ValueType<T>& type) {
+    walker.current = std::apply([&](Args... _args){ return walker.emitter.EmitExpr<IROp<T>>(_args...); }, args);
+  }
+
+  void Visit(const VoidType& type) final { throw std::runtime_error("Incomplete type"); }
+  void Visit(const ValueType<i8>& type) final { VisitImpl(type); }
+  void Visit(const ValueType<u8>& type) final { VisitImpl(type); }
+  void Visit(const ValueType<i16>& type) final { VisitImpl(type); }
+  void Visit(const ValueType<u16>& type) final { VisitImpl(type); }
+  void Visit(const ValueType<i32>& type) final { VisitImpl(type); }
+  void Visit(const ValueType<u32>& type) final { VisitImpl(type); }
+  void Visit(const ValueType<i64>& type) final { VisitImpl(type); }
+  void Visit(const ValueType<u64>& type) final { VisitImpl(type); }
+  void Visit(const ValueType<float>& type) final { VisitImpl(type); }
+  void Visit(const ValueType<double>& type) final { VisitImpl(type); }
+  void Visit(const PointerType& type) final { walker.current = std::apply([&](Args... _args){ return walker.emitter.EmitExpr<IROp<u64>>(_args...); }, args); }
+  void Visit(const ArrayType& type) final { walker.current = std::apply([&](Args... _args){ return walker.emitter.EmitExpr<IROp<u64>>(_args...); }, args); }
+  void Visit(const FunctionType& type) final { walker.current = std::apply([&](Args... _args){ return walker.emitter.EmitExpr<IROp<u64>>(_args...); }, args); }
+  void Visit(const StructType& type) final { throw std::runtime_error("Unimplemented"); }
+  void Visit(const UnionType& type) final { throw std::runtime_error("Unimplemented"); }
+};
+
+
 void ASTWalker::Visit(epi::taxy::Declaration& decl) {
-  if (emitter.variables.Depth() == 1) {
+  if (variables.Depth() == 1) {
     // global symbols
   }
   else {
     auto c_idx = emitter.c_counter++;
     u64 size = decl.type->Sizeof();
-    emitter.variables.Set(decl.name, calyx::CVar{
+    variables.Set(decl.name, calyx::CVar{
             c_idx, calyx::CVar::Location::Either, size
     });
+    c_variables.Set(decl.name, decl.type);
     emitter.Emit<calyx::IRAllocateCVar>(c_idx, size);
 
     if (decl.value.has_value()) {
@@ -28,25 +65,47 @@ void ASTWalker::Visit(epi::taxy::Declaration& decl) {
 
 void ASTWalker::Visit(epi::taxy::FunctionDefinition& decl) {
   // same as normal compound statement besides arguments
-  emitter.variables.NewLayer();
+  variables.NewLayer();
   // todo: arguments etc
   for (const auto& node : decl.body->stats) {
     node->Visit(*this);
   }
-  for (const auto& var : emitter.variables.Top()) {
+  for (const auto& var : variables.Top()) {
     emitter.Emit<calyx::IRDeallocateCVar>(var.second.idx, var.second.size);
   }
-  emitter.variables.PopLayer();
+  variables.PopLayer();
 }
 
 void ASTWalker::Visit(Identifier& decl) {
   // after the AST, the only identifiers left are C variables
-  switch (emitter.state.top()) {
-    case Emitter::State::Read: {
+  auto type = c_variables.Get(decl.name);
+  auto cvar = variables.Get(decl.name);
+  switch (state.top().first) {
+    case State::Read: {
+      if (type->IsArray()) {
+        current = emitter.EmitExpr<calyx::IRLoadCVarAddr>(cvar.idx);
+      }
+      else {
+        auto visitor = EmitterTypeVisitor<calyx::IRLoadCVar, calyx::var_index_t>(*this, cvar.idx);
+        type->Visit(visitor);
+      }
       break;
     }
+    case State::Assign: {
+      auto visitor = EmitterTypeVisitor<calyx::IRStoreCVar, calyx::var_index_t, calyx::var_index_t>(*this, cvar.idx, state.top().second);
+      type->Visit(visitor);
+      break;
+    }
+    case State::Address: {
+      // we can't get the address of a variable that is not on the stack
+      variables.Get(decl.name).loc = calyx::CVar::Location::Stack;
+      current = emitter.EmitExpr<calyx::IRLoadCVarAddr>(cvar.idx);
+      break;
+    }
+    default: {
+      throw std::runtime_error("Unimplemented");
+    }
   }
-  throw std::runtime_error("Unimplemented");
 }
 
 void ASTWalker::Visit(NumericalConstant<i8>& expr) {
@@ -131,7 +190,13 @@ void ASTWalker::Visit(Ternary& expr) {
 }
 
 void ASTWalker::Visit(Assignment& expr) {
-  throw std::runtime_error("unimplemented");
+  state.emplace(State::Read, 0);
+  expr.right->Visit(*this);
+  state.pop();
+  // current now holds the expression id that we want to assign with
+  state.emplace(State::Assign, current);
+  expr.left->Visit(*this);
+  state.pop();
 }
 
 void ASTWalker::Visit(Empty& stat) {
@@ -193,14 +258,14 @@ void ASTWalker::Visit(Continue& stat) {
 }
 
 void ASTWalker::Visit(Compound& stat) {
-  emitter.variables.NewLayer();
+  variables.NewLayer();
   for (const auto& node : stat.stats) {
     node->Visit(*this);
   }
-  for (const auto& var : emitter.variables.Top()) {
+  for (const auto& var : variables.Top()) {
     emitter.Emit<calyx::IRDeallocateCVar>(var.second.idx, var.second.size);
   }
-  emitter.variables.PopLayer();
+  variables.PopLayer();
 }
 
 
