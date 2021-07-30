@@ -41,7 +41,7 @@ void Parser::Parse() {
     auto function = ExternalDeclaration(decls);
 
     if (variables.Depth() != 1) [[unlikely]] {
-      throw std::runtime_error("Scope not handled properly");
+      throw cotyl::FormatExceptStr("Scope not handled properly: depth %s", variables.Depth());
     }
 
     if (function) {
@@ -49,7 +49,7 @@ void Parser::Parse() {
       if (!decls.empty()) {
         throw std::runtime_error("Bad parsing: unexpected declaration");
       }
-      functions.push_back(std::move(function));
+      declarations.push_back(std::move(function));
     }
     else {
       for (auto& decl : decls) {
@@ -80,10 +80,6 @@ void Parser::Data() {
   std::cout << std::endl << "-- declarations" << std::endl;
   for (const auto& decl : declarations) {
     std::cout << decl->ToString() << std::endl;
-  }
-  std::cout << std::endl << "-- functions" << std::endl;
-  for (const auto& func : functions) {
-    std::cout << func->ToString() << std::endl << std::endl;
   }
 }
 

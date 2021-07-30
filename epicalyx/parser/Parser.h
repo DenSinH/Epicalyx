@@ -86,8 +86,7 @@ struct Parser final : public cotyl::Locatable {
   cotyl::MapScope<std::string, pType<const CType>> variables{};
 
   // external results
-  std::vector<pNode<FunctionDefinition>> functions{};
-  std::vector<pNode<Declaration>> declarations{};
+  std::vector<pNode<Decl>> declarations{};
 };
 
 }

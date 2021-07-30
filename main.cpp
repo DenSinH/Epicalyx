@@ -5,6 +5,7 @@
 #include "tokenizer/Tokenizer.h"
 #include "types/Types.h"
 #include "parser/Parser.h"
+#include "phyte/Emitter.h"
 
 #include "taxy/Declaration.h"
 #include "taxy/Statement.h"
@@ -13,7 +14,7 @@
 
 
 int main() {
-  auto file = epi::File("examples/parsing/program/hello_world.c");
+  auto file = epi::File("examples/emitting/first.c");
   auto string = epi::SString(
           "{ for (int i = {0}; i < 12; i++)"
           "{ int a = i + 1, (*b)() = c = 12 ? 1 > 2 : 3; (&a)[i] = 69; }"
@@ -24,9 +25,9 @@ int main() {
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
-#if 0
+#if 1
 #define try if (true)
-#define catch_e std::runtime_error e(""); if (false)
+#define catch_e ; for (std::runtime_error e(""); false;)
 #else
 #define catch_e catch (std::runtime_error& e)
 #endif
@@ -37,8 +38,24 @@ int main() {
   }
   catch_e {
     Log::ConsoleColor<Log::Color::Red>();
+    std::cout << "Parser error:" << std::endl << std::endl;
     std::cout << e.what() << std::endl;
     file.PrintLoc();
+  }
+
+  try {
+    auto emitter = epi::phyte::Emitter();
+    emitter.MakeProgram(parser.declarations);
+    std::cout << std::endl << std::endl;
+    std::cout << "-- program" << std::endl;
+    for (const auto& op : emitter.program) {
+      std::cout << op->ToString() << std::endl;
+    }
+  }
+  catch_e {
+    Log::ConsoleColor<Log::Color::Red>();
+    std::cout << "Emitter error:" << std::endl << std::endl;
+    std::cout << e.what() << std::endl;
   }
 
 //  epi::pType<> Int = epi::MakeType<epi::ValueType<epi::i32>>(1, epi::CType::LValueNess::Assignable, 0);

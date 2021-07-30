@@ -25,7 +25,7 @@ add_executable(
         epicalyx/include/Scope.h
         epicalyx/include/Log.h
         epicalyx/include/Log.cpp
-        epicalyx/include/Escape.h)
+        epicalyx/include/Escape.h epicalyx/include/Cast.h)
 
 
 

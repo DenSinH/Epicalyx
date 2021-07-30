@@ -1,6 +1,8 @@
 #include "Parser.h"
 
 #include "taxy/Statement.h"
+#include "taxy/Declaration.h"
+#include "Cast.h"
 
 namespace epi {
 
@@ -135,7 +137,7 @@ pNode<Stat> Parser::SStatement() {
     case TokenType::Goto: {
       in_stream.Skip();
       in_stream.Expect(TokenType::Identifier);
-      std::string label = static_cast<const tIdentifier*>(in_stream.Get().get())->name;
+      std::string label = cotyl::unique_ptr_cast<tIdentifier>(in_stream.Get())->name;
       in_stream.Eat(TokenType::SemiColon);
 
       // validation
@@ -184,7 +186,7 @@ pNode<Stat> Parser::SStatement() {
     case TokenType::Identifier: {
       if (in_stream.IsAfter(1, TokenType::Colon)) {
         // label
-        std::string name = static_cast<const tIdentifier*>(in_stream.Get().get())->name;
+        std::string name = cotyl::unique_ptr_cast<tIdentifier>(in_stream.Get())->name;
         in_stream.Skip();
         if (labels.contains(name)) {
           throw cotyl::FormatExceptStr("Duplicate label: %s", name);

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Node.h"
-#include "Expression.h"
+//#include "Expression.h"
 #include "Format.h"
-#include "Declaration.h"
+#include "NodeVisitor.h"
 
 
 namespace epi::taxy {
@@ -12,6 +12,7 @@ struct Declaration;
 
 struct Empty : public Stat {
   std::string ToString() const final { return ";"; }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 
 struct If : public Stat {
@@ -28,6 +29,7 @@ struct If : public Stat {
   pNode<Stat> _else;
 
   std::string ToString() const final;
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -43,6 +45,7 @@ struct While : public Stat {
   pNode<Stat> stat;
 
   std::string ToString() const final;
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -58,23 +61,19 @@ struct DoWhile : public Stat {
   pExpr cond;
 
   std::string ToString() const final;
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
 struct For : public Stat {
 
-  For(std::vector<pNode<Declaration>>&& decls,
+  For(
+      std::vector<pNode<Declaration>>&& decls,
       std::vector<pExpr>&& inits,
       pExpr&& cond,
       std::vector<pExpr>&& updates,
-      pNode<Stat>&& stat) :
-          decls(std::move(decls)),
-          inits(std::move(inits)),
-          cond(std::move(cond)),
-          updates(std::move(updates)),
-          stat(std::move(stat)) {
-
-  }
+      pNode<Stat>&& stat
+  );
 
 
   std::vector<pNode<Declaration>> decls{};
@@ -84,6 +83,7 @@ struct For : public Stat {
   pNode<Stat> stat;
 
   std::string ToString() const final;
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -98,6 +98,7 @@ struct Label : public Stat {
   pNode<Stat> stat;
 
   std::string ToString() const final { return cotyl::FormatStr("%s: %s", name, stat); }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -114,6 +115,7 @@ struct Switch : public Stat {
   pNode<Stat> stat;
 
   std::string ToString() const final;
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -129,6 +131,7 @@ struct Case : public Stat {
   pNode<Stat> stat;
 
   std::string ToString() const final { return cotyl::FormatStr("case %s: %s", expr, stat); }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -141,6 +144,7 @@ struct Default : public Stat {
   pNode<Stat> stat;
 
   std::string ToString() const final { return cotyl::FormatStr("default: %s", stat); }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
@@ -151,6 +155,7 @@ struct Goto : public Stat {
   const std::string label;
 
   std::string ToString() const final { return cotyl::FormatStr("goto %s;", label); }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 
 struct Return : public Stat {
@@ -162,17 +167,20 @@ struct Return : public Stat {
   pExpr expr;
 
   std::string ToString() const final;
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 
 struct Break : public Stat {
 
   std::string ToString() const final { return "break;"; }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 
 struct Continue : public Stat {
 
   std::string ToString() const final { return "continue;"; }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 
 struct Compound : public Stat {
@@ -183,6 +191,7 @@ struct Compound : public Stat {
 
   std::vector<pNode<Node>> stats{};
   std::string ToString() const final;
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pNode<Stat> SReduce(const Parser& parser) final;
 };
 

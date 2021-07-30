@@ -35,6 +35,7 @@ void Declaration::VerifyAndRecord(Parser& parser) {
   if (!name.empty()) {
     // todo: check enum/struct/typdef
     if (parser.variables.HasTop(name)) {
+      // gets the first scoped value (which will be the top one)
       if (!parser.variables.Get(name)->EqualType(*type)) {
         throw cotyl::FormatExceptStr("Redefinition of symbol %s", name);
       }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Node.h"
+#include "NodeVisitor.h"
 #include "Initializer.h"
 #include "types/EpiCType.h"
 #include "tokenizer/Token.h"
@@ -61,6 +62,7 @@ struct Identifier final : public Expr {
   const std::string name;
 
   std::string ToString() const final { return name; };
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final { return nullptr; }
 };
@@ -78,6 +80,7 @@ struct NumericalConstant final : public Expr {
   const T value;
 
   std::string ToString() const final { return std::to_string(value); };
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final { return nullptr; }
 };
@@ -94,6 +97,7 @@ struct StringConstant final : public Expr {
   const std::string value;
 
   std::string ToString() const final { return cotyl::FormatStr("\"%s\"", cotyl::Escape(value)); }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final { return nullptr; }
 };
@@ -113,6 +117,7 @@ struct ArrayAccess final : public Expr {
   pExpr left, right;
 
   std::string ToString() const final { return cotyl::FormatStr("(%s)[%s]", left, right); }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final;
 };
@@ -134,6 +139,7 @@ struct FunctionCall final : public Expr {
   std::vector<pExpr> args{};
 
   std::string ToString() const final;
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final;
 };
@@ -154,6 +160,7 @@ struct MemberAccess final : public Expr {
   const std::string member;
 
   std::string ToString() const final;
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final;
 };
@@ -171,6 +178,7 @@ struct TypeInitializer : public Expr {
   pNode<InitializerList> list;
 
   std::string ToString() const final { return cotyl::FormatStr("(%s)%s", type, list); }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final;
 };
@@ -189,6 +197,7 @@ struct PostFix final : public Expr {
   const TokenType op;
 
   std::string ToString() const final { return cotyl::FormatStr("(%s)%s", left, Token(op)); }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pType<const CType> GetType(const Parser& parser) const final;
   // EReduce is just the constant node from the postfix operation (will always be nullptr)
 };
@@ -207,6 +216,7 @@ struct Unary final : public Expr {
   const TokenType op;
 
   std::string ToString() const final { return cotyl::FormatStr("%s(%s)", Token(op), left); }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pType<const CType> GetType(const Parser& parser) const final;
   // EReduce is just the constant node from the unary operation
 };
@@ -225,6 +235,7 @@ struct Cast final : public Expr {
   const pExpr expr;
 
   std::string ToString() const final { return cotyl::FormatStr("(%s)(%s)", type, expr); }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pType<const CType> GetType(const Parser& parser) const final;
   // EReduce is just the constant node from the cast
 };
@@ -247,6 +258,7 @@ struct Binop final : public Expr {
   std::string ToString() const final {
     return cotyl::FormatStr("(%s) %s (%s)", left, Token(op), right);
   }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final;
 };
@@ -269,6 +281,7 @@ struct Ternary final : public Expr {
   std::string ToString() const final {
     return cotyl::FormatStr("(%s) ? (%s) : (%s)", cond, _true->ToString(), _false);
   }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final;
 };
@@ -291,6 +304,7 @@ struct Assignment final : public Expr {
   std::string ToString() const final {
     return cotyl::FormatStr("%s %s (%s)", left, Token(op), right);
   }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pType<const CType> GetType(const Parser& parser) const final;
   pExpr EReduce(const Parser& parser) final;
 };

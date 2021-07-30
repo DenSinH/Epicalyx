@@ -3,7 +3,8 @@
 #include "Node.h"
 #include "types/EpiCType.h"
 #include "Format.h"
-#include "Expression.h"
+#include "Initializer.h"
+#include "NodeVisitor.h"
 
 #include <utility>
 #include <optional>
@@ -39,6 +40,7 @@ struct Declaration final : public Decl {
   std::optional<Initializer> value;
 
   std::string ToString() const final;
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   void VerifyAndRecord(Parser& parser) override;
   void DReduce(const Parser &parser);
 };
@@ -53,6 +55,7 @@ struct FunctionDefinition final : public Decl {
 
   std::string ToString() const final;
   void VerifyAndRecord(Parser& parser) final;
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*body); }
 };
 
 }

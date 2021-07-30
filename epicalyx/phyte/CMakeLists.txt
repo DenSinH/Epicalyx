@@ -1,3 +1,3 @@
 add_library(Phyte STATIC
         Emitter.cpp
-        Emitter.h)
+        Emitter.h ASTWalker.cpp ASTWalker.h)

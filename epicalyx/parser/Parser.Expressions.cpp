@@ -4,6 +4,7 @@
 #include "tokenizer/Token.h"
 #include "ConstTokenVisitor.h"
 #include "Is.h"
+#include "Cast.h"
 
 
 namespace epi {
@@ -16,7 +17,7 @@ pExpr Parser::EPrimary() {
   switch (current->Class()) {
     case TokenClass::Identifier: {
       // identifier might be enum value
-      std::string name = static_cast<const tIdentifier*>(current.get())->name;
+      std::string name = cotyl::unique_ptr_cast<tIdentifier>(current)->name;
       if (enum_values.Has(name)) {
         // replace enum values with constants immediately
         return std::make_unique<NumericalConstant<enum_type>>(enum_values.Get(name));
@@ -70,14 +71,14 @@ pExpr Parser::EPostfix() {
         // indirect member access
         in_stream.Skip();
         auto member = in_stream.Eat(TokenType::Identifier);
-        node = std::make_unique<MemberAccess>(std::move(node), false, static_cast<const tIdentifier*>(member.get())->name);
+        node = std::make_unique<MemberAccess>(std::move(node), false, cotyl::unique_ptr_cast<tIdentifier>(member)->name);
         break;
       }
       case TokenType::Dot: {
         // direct member access
         in_stream.Skip();
         auto member = in_stream.Eat(TokenType::Identifier);
-        node = std::make_unique<MemberAccess>(std::move(node), true, static_cast<const tIdentifier*>(member.get())->name);
+        node = std::make_unique<MemberAccess>(std::move(node), true, cotyl::unique_ptr_cast<tIdentifier>(member)->name);
         break;
       }
       case TokenType::Incr: {
@@ -289,7 +290,7 @@ pNode<InitializerList> Parser::EInitializerList() {
         if (in_stream.EatIf(TokenType::Dot)) {
           // .member
           in_stream.Expect(TokenType::Identifier);
-          designator.emplace_back(static_cast<const tIdentifier*>(in_stream.Get().get())->name);
+          designator.emplace_back(cotyl::unique_ptr_cast<tIdentifier>(in_stream.Get())->name);
           if (in_stream.EatIf(TokenType::Assign)) {
             list->Push(std::move(designator), EInitializer());
             break;

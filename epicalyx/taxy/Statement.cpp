@@ -7,6 +7,19 @@
 
 namespace epi::taxy {
 
+For::For(std::vector<pNode<Declaration>>&& decls,
+         std::vector<pExpr>&& inits,
+         pExpr&& cond,
+         std::vector<pExpr>&& updates,
+         pNode<Stat>&& stat) :
+      decls(std::move(decls)),
+      inits(std::move(inits)),
+      cond(std::move(cond)),
+      updates(std::move(updates)),
+      stat(std::move(stat)) {
+
+}
+
 std::string If::ToString() const {
   if (_else) {
     return cotyl::FormatStr("if (%s) %s\nelse %s", cond, stat, _else);
