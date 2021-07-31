@@ -25,7 +25,7 @@ int main() {
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
-#if 1
+#if 0
 #define try if (true)
 #define catch_e ; for (std::runtime_error e(""); false;)
 #else

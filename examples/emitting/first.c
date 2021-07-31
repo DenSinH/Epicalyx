@@ -4,5 +4,7 @@ int main() {
   y = x = 2;
   z = y;
   y = z;
+  float k;
+  k = z;
   return 1;
 }

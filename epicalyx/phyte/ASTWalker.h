@@ -27,7 +27,7 @@ struct ASTWalker : public taxy::NodeVisitor {
 
   std::stack<std::pair<State, calyx::var_index_t>> state{};
   cotyl::MapScope<std::string, calyx::CVar> variables{};
-  cotyl::MapScope<std::string, pType<const CType>> c_variables{};
+  cotyl::MapScope<std::string, pType<const CType>> c_types{};
 
   calyx::var_index_t current;
   Emitter& emitter;

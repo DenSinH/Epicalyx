@@ -11,7 +11,8 @@ struct Emitter {
 
   // todo: blocks
   template<typename T, typename... Args>
-  calyx::var_index_t EmitExpr(Args... args) {
+  calyx::var_index_t EmitExpr(calyx::Var var, Args... args) {
+    vars.emplace_back(var);
     auto expr_idx = ir_counter++;
     program.push_back(std::make_unique<T>(expr_idx, args...));
     return expr_idx;
@@ -28,7 +29,8 @@ struct Emitter {
   calyx::var_index_t ir_counter = 1;
   calyx::var_index_t c_counter = 1;
 
-
+  // first var is special
+  std::vector<calyx::Var> vars{{calyx::Var::Type::I32}};
   std::vector<calyx::pIROp> program{};
 };
 

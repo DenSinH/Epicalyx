@@ -447,9 +447,9 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
       case Type::Void:
         ctype = MakeType<VoidType>(qualifiers); break;
       case Type::Float:
-        ctype = MakeType<ValueType<float>>(CType::LValueNess::None, qualifiers); break;
+        ctype = MakeType<ValueType<float>>(CType::LValueNess::Assignable, qualifiers); break;
       case Type::Double:
-        ctype = MakeType<ValueType<double>>(CType::LValueNess::None, qualifiers); break;
+        ctype = MakeType<ValueType<double>>(CType::LValueNess::Assignable, qualifiers); break;
     }
   }
   return std::make_pair(ctype, storage ? storage.value() : StorageClass::None);
@@ -480,7 +480,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
               break;
           }
         }
-        ctype = MakeType<PointerType>(std::move(ctype), CType::LValueNess::None, ptr_qualifiers);
+        ctype = MakeType<PointerType>(std::move(ctype), CType::LValueNess::Assignable, ptr_qualifiers);
         break;
       }
       case TokenType::LParen: {

@@ -10,14 +10,24 @@
 namespace epi::calyx {
 
 using var_index_t = u64;
-using pointer_t = u64;
+
+struct Pointer;
+struct Struct;
 
 template<typename T>
 struct is_calyx_type {
-  static constexpr bool value = epi::cotyl::is_in_v<T, i32, u32, i64, u64, float, double>;
+  static constexpr bool value = epi::cotyl::is_in_v<T, i32, u32, i64, u64, float, double, Struct, Pointer>;
 };
 template<typename T>
 constexpr bool is_calyx_type_v = is_calyx_type<T>::value;
+
+template<typename T> struct calyx_upcast { using type = T; };
+template<> struct calyx_upcast<i8> { using type = i32; };
+template<> struct calyx_upcast<u8> { using type = u32; };
+template<> struct calyx_upcast<i16> { using type = i32; };
+template<> struct calyx_upcast<u16> { using type = u32; };
+template<typename T>
+using calyx_upcast_t = typename calyx_upcast<T>::type;
 
 struct CVar {
   enum class Location {
@@ -30,6 +40,21 @@ struct CVar {
   Location loc;
   u64 size;
 };
+
+struct Var {
+  enum class Type {
+    I32, U32, I64, U64, Float, Double, Pointer, Struct
+  };
+
+  Var(Type type, u64 stride = 0) :
+      type(type), stride(stride) {
+
+  }
+
+  Type type;
+  u64 stride;  // for pointers
+};
+
 
 struct IROp {
   enum class Class {
@@ -51,7 +76,10 @@ struct IROp {
   virtual std::string ToString() const = 0;
 };
 
-struct IRExpr : public IROp {
+template<typename T>
+struct IRExpr : IROp {
+  static_assert(is_calyx_type_v<T>);
+  
   IRExpr(var_index_t idx) :
     IROp(Class::Expression),
     idx(idx) {
@@ -82,12 +110,24 @@ enum class Unop {
   BinNot
 };
 
+template<typename To, typename From>
+struct IRCast : IRExpr<calyx_upcast_t<To>> {
+  IRCast(var_index_t idx, var_index_t right_idx) :
+      IRExpr<calyx_upcast_t<To>>(idx), right_idx(right_idx) {
+
+  }
+
+  var_index_t right_idx;
+
+  std::string ToString() const final;
+};
+
 template<typename T>
-struct IRBinop : public IRExpr {
+struct IRBinop : IRExpr<T> {
   static_assert(is_calyx_type_v<T>);
 
   IRBinop(var_index_t idx, var_index_t left, Binop op, var_index_t right) :
-      IRExpr(idx), left_idx(left), op(op), right_idx(right) {
+      IRExpr<T>(idx), left_idx(left), op(op), right_idx(right) {
 
   }
 
@@ -99,11 +139,11 @@ struct IRBinop : public IRExpr {
 };
 
 template<typename T>
-struct IRImm : public IRExpr {
+struct IRImm : IRExpr<T> {
   static_assert(is_calyx_type_v<T>);
 
   IRImm(var_index_t idx, T value) :
-      IRExpr(idx), value(value) {
+      IRExpr<T>(idx), value(value) {
 
   }
 
@@ -113,11 +153,11 @@ struct IRImm : public IRExpr {
 };
 
 template<typename T>
-struct IRUnop : public IRExpr {
+struct IRUnop : IRExpr<T> {
   static_assert(is_calyx_type_v<T>);
 
   IRUnop(var_index_t idx, Unop op, var_index_t right) :
-          IRExpr(idx), op(op), right_idx(right) {
+      IRExpr<T>(idx), op(op), right_idx(right) {
 
   }
 
@@ -128,10 +168,10 @@ struct IRUnop : public IRExpr {
 };
 
 template<typename T>
-struct IRLoadCVar : public IRExpr {
+struct IRLoadCVar : IRExpr<calyx_upcast_t<T>> {
 
   IRLoadCVar(var_index_t idx, var_index_t c_idx, i32 offset = 0) :
-      IRExpr(idx), c_idx(c_idx), offset(offset) {
+      IRExpr<calyx_upcast_t<T>>(idx), c_idx(c_idx), offset(offset) {
 
   }
 
@@ -141,10 +181,10 @@ struct IRLoadCVar : public IRExpr {
   std::string ToString() const final;
 };
 
-struct IRLoadCVarAddr : public IRExpr {
+struct IRLoadCVarAddr : IRExpr<Pointer> {
 
   IRLoadCVarAddr(var_index_t idx, var_index_t c_idx) :
-          IRExpr(idx), c_idx(c_idx){
+          IRExpr<Pointer>(idx), c_idx(c_idx){
 
   }
 
@@ -154,10 +194,10 @@ struct IRLoadCVarAddr : public IRExpr {
 };
 
 template<typename T>
-struct IRStoreCVar : public IRExpr {
+struct IRStoreCVar : IRExpr<calyx_upcast_t<T>> {
 
   IRStoreCVar(var_index_t idx, var_index_t c_idx, var_index_t src, i32 offset = 0) :
-      IRExpr(idx), c_idx(c_idx), src(src), offset(offset) {
+      IRExpr<calyx_upcast_t<T>>(idx), c_idx(c_idx), src(src), offset(offset) {
 
   }
 
@@ -168,7 +208,7 @@ struct IRStoreCVar : public IRExpr {
   std::string ToString() const final;
 };
 
-struct IRAllocateCVar : public IROp {
+struct IRAllocateCVar : IROp {
   IRAllocateCVar(var_index_t c_idx, u64 size) :
     IROp(Class::Stack), c_idx(c_idx), size(size) {
 
@@ -180,7 +220,7 @@ struct IRAllocateCVar : public IROp {
   std::string ToString() const final;
 };
 
-struct IRDeallocateCVar : public IROp {
+struct IRDeallocateCVar : IROp {
   IRDeallocateCVar(var_index_t c_idx, u64 size) :
       IROp(Class::Stack), c_idx(c_idx), size(size) {
 
@@ -192,11 +232,11 @@ struct IRDeallocateCVar : public IROp {
 };
 
 template<typename T>
-struct IRLoadFromPointer : public IRExpr {
+struct IRLoadFromPointer : IRExpr<T> {
   static_assert(is_calyx_type_v<T>);
 
   IRLoadFromPointer(var_index_t idx, var_index_t ptr_idx, i32 offset = 0) :
-          IRExpr(idx), ptr_idx(ptr_idx), offset(offset) {
+      IRExpr<T>(idx), ptr_idx(ptr_idx), offset(offset) {
 
   }
 
@@ -207,7 +247,7 @@ struct IRLoadFromPointer : public IRExpr {
 };
 
 template<typename T>
-struct IRStoreToPointer : public IROp {
+struct IRStoreToPointer : IROp {
   static_assert(is_calyx_type_v<T>);
 
   IRStoreToPointer(var_index_t ptr_idx, var_index_t idx, i32 offset = 0) :
@@ -222,7 +262,7 @@ struct IRStoreToPointer : public IROp {
   std::string ToString() const final { return ""; }
 };
 
-struct IRReturn : public IROp {
+struct IRReturn : IROp {
   IRReturn(var_index_t idx) :
       IROp(Class::Branch), idx(idx) {
 
