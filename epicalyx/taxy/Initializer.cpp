@@ -74,9 +74,13 @@ void ReduceInitializerListVisitor::VisitScalar(const CType& type) {
     auto n_expr = expr->EReduce(parser);
     if (n_expr) {
       reduced = std::make_unique<Cast>(type.Clone(), std::move(n_expr));
+      auto n_reduced = reduced->EReduce(parser);
+      if (n_reduced) reduced = std::move(n_reduced);
     }
     else {
       reduced = std::make_unique<Cast>(type.Clone(), std::move(expr));
+      auto n_reduced = reduced->EReduce(parser);
+      if (n_reduced) reduced = std::move(n_reduced);
     }
   }
 }

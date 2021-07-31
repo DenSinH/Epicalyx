@@ -30,7 +30,7 @@ template<> const std::string type_string<Pointer>::value = "pointer";
 template<typename To, typename From>
 std::string IRCast<To, From>::ToString() const {
   return cotyl::FormatStr(
-          "cast  v%s <%s> <- <%s>v%s", this->idx, detail::type_string<To>::value, detail::type_string<From>::value, right_idx
+      "cast  v%s <%s> <- <%s>v%s", this->idx, detail::type_string<To>::value, detail::type_string<From>::value, right_idx
   );
 }
 
@@ -50,7 +50,12 @@ std::string IRBinop<T>::ToString() const {
     case Binop::BinOr: op_str = "|"; break;
     case Binop::BinXor: op_str = "^"; break;
   }
-  return cotyl::FormatStr("assgn v%s = v%s %s<%s> v%s", this->idx, left_idx, op_str, detail::type_string<T>::value, right_idx);
+  return cotyl::FormatStr("binop v%s = v%s %s<%s> v%s", this->idx, left_idx, op_str, detail::type_string<T>::value, right_idx);
+}
+
+template<typename T>
+std::string IRAddToPointer<T>::ToString() const {
+  return cotyl::FormatStr("ptrad v% = v%s + %s * v%s", this->idx, ptr_idx, stride, right_idx);
 }
 
 template<typename T>
@@ -105,12 +110,18 @@ template struct IRBinop<float>;
 template struct IRBinop<double>;
 template struct IRBinop<Pointer>;
 
+template struct IRAddToPointer<i32>;
+template struct IRAddToPointer<u32>;
+template struct IRAddToPointer<i64>;
+template struct IRAddToPointer<u64>;
+
 template struct IRUnop<i32>;
 template struct IRUnop<u32>;
 template struct IRUnop<i64>;
 template struct IRUnop<u64>;
 template struct IRUnop<float>;
 template struct IRUnop<double>;
+template struct IRUnop<Pointer>;  // should be unused
 
 template struct IRImm<i32>;
 template struct IRImm<u32>;

@@ -32,6 +32,11 @@ struct ASTWalker : public taxy::NodeVisitor {
   calyx::var_index_t current;
   Emitter& emitter;
 
+  template<template<typename T> class Op, typename... Args>
+  void EmitExpr(calyx::Var::Type type, Args... args);
+
+  void BinopHelper(calyx::var_index_t left, calyx::Binop op, calyx::var_index_t right);
+
   void Visit(Declaration& decl) final;
   void Visit(FunctionDefinition& decl) final;
   void Visit(Identifier& decl) final;

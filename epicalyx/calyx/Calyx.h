@@ -139,6 +139,22 @@ struct IRBinop : IRExpr<T> {
 };
 
 template<typename T>
+struct IRAddToPointer : IRExpr<Pointer> {
+  static_assert(is_calyx_type_v<Pointer>);
+
+  IRAddToPointer(var_index_t idx, var_index_t left, u64 stride, var_index_t right) :
+      IRExpr<Pointer>(idx), ptr_idx(left), stride(stride), right_idx(right) {
+
+  }
+
+  var_index_t ptr_idx;
+  u64 stride;
+  var_index_t right_idx;
+
+  std::string ToString() const final;
+};
+
+template<typename T>
 struct IRImm : IRExpr<T> {
   static_assert(is_calyx_type_v<T>);
 

@@ -140,6 +140,10 @@ pType<const CType> Binop::GetType(const Parser& parser) const {
     case TokenType::RShift: return left->GetType(parser)->RShift(*right->GetType(parser));
     case TokenType::Equal: return left->GetType(parser)->Eq(*right->GetType(parser));
     case TokenType::NotEqual: return left->GetType(parser)->Neq(*right->GetType(parser));
+    case TokenType::Less: return left->GetType(parser)->Lt(*right->GetType(parser));
+    case TokenType::LessEqual: return left->GetType(parser)->Le(*right->GetType(parser));
+    case TokenType::Greater: return left->GetType(parser)->Gt(*right->GetType(parser));
+    case TokenType::GreaterEqual: return left->GetType(parser)->Ge(*right->GetType(parser));
     case TokenType::Ampersand: return left->GetType(parser)->BinAnd(*right->GetType(parser));
     case TokenType::BinOr: return left->GetType(parser)->BinOr(*right->GetType(parser));
     case TokenType::BinXor: return left->GetType(parser)->Xor(*right->GetType(parser));

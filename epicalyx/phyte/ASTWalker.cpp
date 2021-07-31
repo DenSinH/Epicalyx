@@ -6,6 +6,8 @@
 #include "taxy/Statement.h"
 #include "taxy/Expression.h"
 
+#include "Assert.h"
+
 
 namespace epi::phyte {
 
@@ -129,7 +131,173 @@ struct LoadCVarAddrEmitter {
   }
 };
 
+}
 
+template<template<typename T> class Op, typename... Args>
+void ASTWalker::EmitExpr(calyx::Var::Type type, Args... args) {
+  switch (type) {
+    case calyx::Var::Type::I32: current = emitter.EmitExpr<Op<i32>>({ type }, args...); break;
+    case calyx::Var::Type::U32: current = emitter.EmitExpr<Op<u32>>({ type }, args...); break;
+    case calyx::Var::Type::I64: current = emitter.EmitExpr<Op<i64>>({ type }, args...); break;
+    case calyx::Var::Type::U64: current = emitter.EmitExpr<Op<u64>>({ type }, args...); break;
+    case calyx::Var::Type::Float: current = emitter.EmitExpr<Op<float>>({ type }, args...); break;
+    case calyx::Var::Type::Double: current = emitter.EmitExpr<Op<double>>({ type }, args...); break;
+    case calyx::Var::Type::Pointer: current = emitter.EmitExpr<Op<calyx::Pointer>>({ type }, args...); break;
+    case calyx::Var::Type::Struct: throw std::runtime_error("Unimplemented");
+  }
+}
+
+void ASTWalker::BinopHelper(calyx::var_index_t left, calyx::Binop op, calyx::var_index_t right) {
+  auto left_t = emitter.vars[left].type;
+  auto right_t = emitter.vars[right].type;
+  if (left_t == right_t) {
+    EmitExpr<calyx::IRBinop>({ left_t }, left, op, right);
+    return;
+  }
+
+  switch (left_t) {
+    case calyx::Var::Type::I32: {
+      switch (right_t) {
+        case calyx::Var::Type::U32:
+          current = emitter.EmitExpr<calyx::IRCast<i32, u32>>({ left_t }, right);
+          EmitExpr<calyx::IRBinop>({ left_t }, left, op, current);
+          return;
+        case calyx::Var::Type::I64:
+          current = emitter.EmitExpr<calyx::IRCast<i64, i32>>({ right_t }, left);
+          break;
+        case calyx::Var::Type::U64:
+          current = emitter.EmitExpr<calyx::IRCast<u64, i32>>({ right_t }, left);
+          break;
+        case calyx::Var::Type::Float:
+          current = emitter.EmitExpr<calyx::IRCast<float, i32>>({ right_t }, left);
+          break;
+        case calyx::Var::Type::Double:
+          current = emitter.EmitExpr<calyx::IRCast<double, i32>>({ right_t }, left);
+          break;
+        default: throw std::runtime_error("Bad binop");
+      }
+      EmitExpr<calyx::IRBinop>({ right_t }, current, op, right);
+      return;
+    }
+    case calyx::Var::Type::U32: {
+      switch (right_t) {
+        case calyx::Var::Type::I32:
+          current = emitter.EmitExpr<calyx::IRCast<i32, u32>>({ right_t }, left);
+          break;
+        case calyx::Var::Type::I64:
+          current = emitter.EmitExpr<calyx::IRCast<i64, u32>>({ right_t }, left);
+          break;
+        case calyx::Var::Type::U64:
+          current = emitter.EmitExpr<calyx::IRCast<u64, u32>>({ right_t }, left);
+          break;
+        case calyx::Var::Type::Float:
+          current = emitter.EmitExpr<calyx::IRCast<float, u32>>({ right_t }, left);
+          break;
+        case calyx::Var::Type::Double:
+          current = emitter.EmitExpr<calyx::IRCast<double, u32>>({ right_t }, left);
+          break;
+        default: throw std::runtime_error("Bad binop");
+      }
+      EmitExpr<calyx::IRBinop>({ right_t }, current, op, right);
+      return;
+    }
+    case calyx::Var::Type::I64: {
+      switch (right_t) {
+        case calyx::Var::Type::I32:
+          current = emitter.EmitExpr<calyx::IRCast<i64, i32>>({ left_t }, right);
+          EmitExpr<calyx::IRBinop>({ left_t }, left, op, current);
+          return;
+        case calyx::Var::Type::U32:
+          current = emitter.EmitExpr<calyx::IRCast<i64, u32>>({ left_t }, right);
+          EmitExpr<calyx::IRBinop>({ left_t }, left, op, current);
+          return;
+        case calyx::Var::Type::U64:
+          current = emitter.EmitExpr<calyx::IRCast<i64, u64>>({ left_t }, right);
+          EmitExpr<calyx::IRBinop>({ left_t }, left, op, current);
+          return;
+        case calyx::Var::Type::Float:
+          current = emitter.EmitExpr<calyx::IRCast<float, i64>>({ right_t }, left);
+          EmitExpr<calyx::IRBinop>({ right_t }, current, op, right);
+          return;
+        case calyx::Var::Type::Double:
+          current = emitter.EmitExpr<calyx::IRCast<double, i64>>({ right_t }, left);
+          EmitExpr<calyx::IRBinop>({ right_t }, current, op, right);
+          return;
+        default: throw std::runtime_error("Bad binop");
+      }
+    }
+    case calyx::Var::Type::U64: {
+      switch (right_t) {
+        case calyx::Var::Type::I32:
+          current = emitter.EmitExpr<calyx::IRCast<u64, i32>>({left_t}, right);
+          EmitExpr<calyx::IRBinop>({ left_t }, left, op, current);
+          return;
+        case calyx::Var::Type::U32:
+          current = emitter.EmitExpr<calyx::IRCast<u64, u32>>({left_t}, right);
+          EmitExpr<calyx::IRBinop>({ left_t }, left, op, current);
+          return;
+        case calyx::Var::Type::I64:
+          current = emitter.EmitExpr<calyx::IRCast<i64, u64>>({right_t}, left);
+          EmitExpr<calyx::IRBinop>({ right_t }, current, op, right);
+          return;
+        case calyx::Var::Type::Float:
+          current = emitter.EmitExpr<calyx::IRCast<float, u64>>({right_t}, left);
+          EmitExpr<calyx::IRBinop>({ right_t }, current, op, right);
+          return;
+        case calyx::Var::Type::Double:
+          current = emitter.EmitExpr<calyx::IRCast<double, u64>>({right_t}, left);
+          EmitExpr<calyx::IRBinop>({ right_t }, current, op, right);
+          return;
+        default: throw std::runtime_error("Bad binop");
+      }
+    }
+    case calyx::Var::Type::Float: {
+      switch (right_t) {
+        case calyx::Var::Type::Double:
+          current = emitter.EmitExpr<calyx::IRCast<double, float>>({right_t}, left);
+          EmitExpr<calyx::IRBinop>({ right_t }, current, op, right);
+          return;
+        case calyx::Var::Type::I32:
+          current = emitter.EmitExpr<calyx::IRCast<float, i32>>({left_t}, right);
+          break;
+        case calyx::Var::Type::U32:
+          current = emitter.EmitExpr<calyx::IRCast<float, u32>>({left_t}, right);
+          break;
+        case calyx::Var::Type::I64:
+          current = emitter.EmitExpr<calyx::IRCast<float, i64>>({left_t}, right);
+          break;
+        case calyx::Var::Type::U64:
+          current = emitter.EmitExpr<calyx::IRCast<float, u64>>({left_t}, right);
+          break;
+        default: throw std::runtime_error("Bad binop");
+      }
+      EmitExpr<calyx::IRBinop>({ left_t }, left, op, current);
+      return;
+    }
+    case calyx::Var::Type::Double: {
+      switch (right_t) {
+        case calyx::Var::Type::I32:
+          current = emitter.EmitExpr<calyx::IRCast<double, i32>>({left_t}, right);
+          break;
+        case calyx::Var::Type::U32:
+          current = emitter.EmitExpr<calyx::IRCast<double, u32>>({left_t}, right);
+          break;
+        case calyx::Var::Type::I64:
+          current = emitter.EmitExpr<calyx::IRCast<double, i64>>({left_t}, right);
+          break;
+        case calyx::Var::Type::U64:
+          current = emitter.EmitExpr<calyx::IRCast<double, u64>>({left_t}, right);
+          break;
+        case calyx::Var::Type::Float:
+          current = emitter.EmitExpr<calyx::IRCast<double, float>>({left_t}, right);
+          break;
+        default: throw std::runtime_error("Bad binop");
+      }
+      EmitExpr<calyx::IRBinop>({ left_t }, left, op, current);
+      return;
+    }
+    default: throw std::runtime_error("Bad binop");
+  }
 }
 
 void ASTWalker::Visit(epi::taxy::Declaration& decl) {
@@ -146,7 +314,19 @@ void ASTWalker::Visit(epi::taxy::Declaration& decl) {
     emitter.Emit<calyx::IRAllocateCVar>(c_idx, size);
 
     if (decl.value.has_value()) {
-      throw std::runtime_error("Unimplemented");
+      if (std::holds_alternative<pExpr>(decl.value.value())) {
+        state.emplace(State::Read, 0);
+        std::get<pExpr>(decl.value.value())->Visit(*this);
+        state.pop();
+        // current now holds the expression id that we want to assign with
+        state.emplace(State::Assign, current);
+        Identifier(decl.name).Visit(*this);
+        state.pop();
+      }
+      else {
+        // todo: handle initializer list
+        throw std::runtime_error("Unimplemented");
+      }
     }
   }
 }
@@ -162,11 +342,6 @@ void ASTWalker::Visit(epi::taxy::FunctionDefinition& decl) {
     emitter.Emit<calyx::IRDeallocateCVar>(var.second.idx, var.second.size);
   }
   variables.PopLayer();
-}
-
-template<typename T>
-void EmitLoadCVar(calyx::var_index_t idx) {
-
 }
 
 void ASTWalker::Visit(Identifier& decl) {
@@ -270,7 +445,33 @@ void ASTWalker::Visit(PostFix& expr) {
 }
 
 void ASTWalker::Visit(Unary& expr) {
-  throw std::runtime_error("unimplemented");
+  switch (expr.op) {
+    case TokenType::Minus: {
+      cotyl::Assert(state.top().first == State::Read);
+
+      // no need to push a new state
+      expr.left->Visit(*this);
+      EmitExpr<calyx::IRUnop>(emitter.vars[current].type, calyx::Unop::Neg, current);
+      return;
+    }
+    case TokenType::Plus: {
+      cotyl::Assert(state.top().first == State::Read);
+      // no need to push a new state
+      // does nothing
+      expr.left->Visit(*this);
+      return;
+    }
+    case TokenType::Tilde: {
+      cotyl::Assert(state.top().first == State::Read);
+      // no need to push a new state
+      expr.left->Visit(*this);
+      EmitExpr<calyx::IRUnop>(emitter.vars[current].type, calyx::Unop::BinNot, current);
+      return;
+    }
+    default: {
+      throw std::runtime_error("unimplemented unop");
+    }
+  }
 }
 
 void ASTWalker::Visit(Cast& expr) {
@@ -278,6 +479,45 @@ void ASTWalker::Visit(Cast& expr) {
 }
 
 void ASTWalker::Visit(Binop& expr) {
+  cotyl::Assert(state.top().first == State::Read);
+  // no need to push new state
+  expr.left->Visit(*this);
+  auto left = current;
+  expr.right->Visit(*this);
+  auto right = current;
+  switch (expr.op) {
+    case TokenType::Asterisk: BinopHelper(left, calyx::Binop::Mul, right); return;
+    case TokenType::Div: BinopHelper(left, calyx::Binop::Div, right); return;
+    case TokenType::Mod: BinopHelper(left, calyx::Binop::Mod, right); return;
+    case TokenType::Ampersand: BinopHelper(left, calyx::Binop::BinAnd, right); return;
+    case TokenType::BinOr: BinopHelper(left, calyx::Binop::BinOr, right); return;
+    case TokenType::BinXor: BinopHelper(left, calyx::Binop::BinXor, right); return;
+    case TokenType::Plus: {
+      if (emitter.vars[left].type == calyx::Var::Type::Pointer) {
+        throw std::runtime_error("Unimplemented: pointer add");
+      }
+      if (emitter.vars[right].type == calyx::Var::Type::Pointer) {
+        throw std::runtime_error("Unimplemented: pointer add");
+      }
+
+      BinopHelper(left, calyx::Binop::Add, right);
+      return;
+    }
+    case TokenType::Minus: {
+      if (emitter.vars[left].type == calyx::Var::Type::Pointer) {
+        throw std::runtime_error("Unimplemented: pointer sub");
+      }
+      if (emitter.vars[right].type == calyx::Var::Type::Pointer) {
+        throw std::runtime_error("Unimplemented: pointer sub");
+      }
+
+      BinopHelper(left, calyx::Binop::Sub, right);
+      return;
+    }
+    default:
+      break;
+  }
+  // todo: shifts, comparisons, logical and/or
   throw std::runtime_error("unimplemented");
 }
 
@@ -286,13 +526,15 @@ void ASTWalker::Visit(Ternary& expr) {
 }
 
 void ASTWalker::Visit(Assignment& expr) {
-  state.emplace(State::Read, 0);
-  expr.right->Visit(*this);
-  state.pop();
-  // current now holds the expression id that we want to assign with
-  state.emplace(State::Assign, current);
-  expr.left->Visit(*this);
-  state.pop();
+  if (expr.op == TokenType::Assign) {
+    state.emplace(State::Read, 0);
+    expr.right->Visit(*this);
+    state.pop();
+    // current now holds the expression id that we want to assign with
+    state.emplace(State::Assign, current);
+    expr.left->Visit(*this);
+    state.pop();
+  }
 }
 
 void ASTWalker::Visit(Empty& stat) {
@@ -337,8 +579,11 @@ void ASTWalker::Visit(Goto& stat) {
 
 void ASTWalker::Visit(Return& stat) {
   if (stat.expr) {
+    state.emplace(State::Read, 0);
     stat.expr->Visit(*this);
     emitter.Emit<calyx::IRReturn>(current);
+    // todo: cast to return type
+    state.pop();
   }
   else {
     emitter.Emit<calyx::IRReturn>(0);
