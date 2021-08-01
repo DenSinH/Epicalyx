@@ -227,7 +227,7 @@ pNode<Compound> Parser::SCompound() {
       DInitDeclaratorList(decl_list);
       in_stream.Eat(TokenType::SemiColon);
       for (auto& decl : decl_list) {
-        decl->VerifyAndRecord(*this);
+//        decl->VerifyAndRecord(*this);
         decl->DReduce(*this);
         compound->AddNode(std::move(decl));
       }

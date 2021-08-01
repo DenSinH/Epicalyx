@@ -642,6 +642,7 @@ void Parser::DInitDeclaratorList(std::vector<pNode<Declaration>>& dest) {
       typedefs.Set(decl->name, decl->type);
     }
     else {
+      decl->VerifyAndRecord(*this);
       if (in_stream.EatIf(TokenType::Assign)) {
         // type var = <expression> or {initializer list}
         if (decl->name.empty()) {
