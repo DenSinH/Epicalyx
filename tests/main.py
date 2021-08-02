@@ -33,6 +33,8 @@ class Generator:
         "binop",
     }
 
+    NUMBER_BOUND = 100
+
     def __init__(self):
         self.vars = []
 
@@ -52,9 +54,9 @@ class Generator:
         if depth == 0:
             if self.rand_bool() or not self.has_vars():
                 if type == "integral":
-                    return str(random.randint(-1000000, 1000000))
+                    return str(random.randint(-Generator.NUMBER_BOUND, Generator.NUMBER_BOUND))
                 else:
-                    return str(10000 * random.uniform(-1, 1))
+                    return str(Generator.NUMBER_BOUND * random.uniform(-1, 1))
             else:
                 if type == "integral":
                     if self.has_vars():
@@ -63,7 +65,7 @@ class Generator:
                             if self.vars[i] in Generator.INTEGRAL_TYPES:
                                 return f"v{i}"
                     # no integral variable found
-                    return str(random.randint(-1000000, 1000000))
+                    return str(random.randint(-Generator.NUMBER_BOUND, Generator.NUMBER_BOUND))
                 else:
                     var = self.rand_var_idx()
                     return f"v{var}"
@@ -135,19 +137,22 @@ class Generator:
             if not self.has_vars():
                 return ""
             var = random.randint(0, self.max_var_idx())
-            expr_depth = random.randint(2, 6)
+            expr_depth = random.randint(2, 4)
             type = random.choice(list(Generator.EXPRESSION_TYPES))
             return f"v{var} = {self.generate_expression(expr_depth, type)};"
         else:
             return ""
 
     def generate_main(self):
-        result = "int main() {"
-        for i in range(random.randint(30, 50)):
-            result += "\n    " + self.generate_statement()
-        result += "\n    return " + " + ".join(f"v{i}" for i in random.sample(range(len(self.vars)), 3)) + ";"
-        result += "\n}"
-        return result
+        try:
+            result = "int main() {"
+            for i in range(random.randint(10, 20)):
+                result += "\n    " + self.generate_statement()
+            result += "\n    return " + " + ".join(f"v{i}" for i in random.sample(range(len(self.vars)), 3)) + ";"
+            result += "\n}"
+            return result
+        except Exception:
+            return "int main() { return 0; }"
 
 
 if __name__ == "__main__":
@@ -155,10 +160,19 @@ if __name__ == "__main__":
         with open("test.c", "w+") as f:
             f.write(Generator().generate_main())
         subprocess.check_output("clang -O0 test.c -o test.exe")
-        proc = subprocess.run("test")
+        proc0 = subprocess.run("test")
+        subprocess.check_output("clang -O2 test.c -o test.exe")
+        proc2 = subprocess.run("test")
+        if proc0.returncode != proc2.returncode:
+            print("Bad clang output")
+            continue
+
         epicalyx = subprocess.run(r".\cmake-build-debug\epicalyx.exe", stdout=subprocess.PIPE, cwd=os.path.abspath("../"), shell=True)
-        result = re.findall(r"return (.*)", epicalyx.stdout.decode("utf-8"))[-1]
-        print("expect", proc.returncode)
+        result = int(re.findall(r"return (.*)", epicalyx.stdout.decode("utf-8"))[-1])
+        print("expect", proc0.returncode)
+        if result < 0:
+            result = 0x1_0000_0000 + result
+
         print("got", result)
-        if result != proc.returncode:
+        if result != proc0.returncode:
             raise Exception("Bad output!")

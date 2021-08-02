@@ -26,7 +26,7 @@ void Interpreter::Emit(AllocateCVar& op) {
 void Interpreter::Emit(DeallocateCVar& op) {
   u64 value = 0;
   memcpy(&value, &stack[c_vars[op.c_idx]], op.size);
-  std::cout << 'c' << op.c_idx << " = " << std::hex << value << " on dealloc" << std::endl;
+//  std::cout << 'c' << op.c_idx << " = " << std::hex << value << " on dealloc" << std::endl;
 //  stack.resize(stack.size() - op.size);
 }
 

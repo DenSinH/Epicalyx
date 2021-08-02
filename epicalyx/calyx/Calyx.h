@@ -25,9 +25,9 @@ constexpr bool is_calyx_type_v = is_calyx_type<T>::value;
 
 template<typename T> struct calyx_upcast { using type = T; };
 template<> struct calyx_upcast<i8> { using type = i32; };
-template<> struct calyx_upcast<u8> { using type = u32; };
+template<> struct calyx_upcast<u8> { using type = i32; };
 template<> struct calyx_upcast<i16> { using type = i32; };
-template<> struct calyx_upcast<u16> { using type = u32; };
+template<> struct calyx_upcast<u16> { using type = i32; };
 template<typename T>
 using calyx_upcast_t = typename calyx_upcast<T>::type;
 

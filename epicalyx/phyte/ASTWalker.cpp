@@ -438,19 +438,19 @@ void ASTWalker::Visit(Identifier& decl) {
 }
 
 void ASTWalker::Visit(NumericalConstant<i8>& expr) {
-  current = emitter.EmitExpr<calyx::Imm<i32>>({ detail::calyx_type_v<calyx::calyx_upcast_t<i8>> }, expr.value);
+  current = emitter.EmitExpr<calyx::Imm<calyx::calyx_upcast_t<i8>>>({ detail::calyx_type_v<calyx::calyx_upcast_t<i8>> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<u8>& expr) {
-  current = emitter.EmitExpr<calyx::Imm<u32>>({ detail::calyx_type_v<calyx::calyx_upcast_t<u8>> }, expr.value);
+  current = emitter.EmitExpr<calyx::Imm<calyx::calyx_upcast_t<u8>>>({ detail::calyx_type_v<calyx::calyx_upcast_t<u8>> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<i16>& expr) {
-  current = emitter.EmitExpr<calyx::Imm<i32>>({ detail::calyx_type_v<calyx::calyx_upcast_t<i16>> }, expr.value);
+  current = emitter.EmitExpr<calyx::Imm<calyx::calyx_upcast_t<i16>>>({ detail::calyx_type_v<calyx::calyx_upcast_t<i16>> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<u16>& expr) {
-  current = emitter.EmitExpr<calyx::Imm<u32>>({ detail::calyx_type_v<calyx::calyx_upcast_t<u16>> }, expr.value);
+  current = emitter.EmitExpr<calyx::Imm<calyx::calyx_upcast_t<u16>>>({ detail::calyx_type_v<calyx::calyx_upcast_t<u16>> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<i32>& expr) {
