@@ -31,7 +31,7 @@ struct Emitter {
 
   // first var is special
   std::vector<calyx::Var> vars{{calyx::Var::Type::I32}};
-  std::vector<calyx::pIROp> program{};
+  std::vector<calyx::pDirective> program{};
 };
 
 }
