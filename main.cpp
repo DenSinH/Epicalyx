@@ -5,16 +5,17 @@
 #include "tokenizer/Tokenizer.h"
 #include "types/Types.h"
 #include "parser/Parser.h"
-#include "phyte/Emitter.h"
-
 #include "taxy/Declaration.h"
 #include "taxy/Statement.h"
+#include "phyte/Emitter.h"
+#include "calyx/backend/interpreter/Interpreter.h"
+
 
 #include "Log.h"
 
 
 int main() {
-  auto file = epi::File("examples/emitting/binop.c");
+  auto file = epi::File("tests/test.c");
   auto string = epi::SString(
           "{ for (int i = {0}; i < 12; i++)"
           "{ int a = i + 1, (*b)() = c = 12 ? 1 > 2 : 3; (&a)[i] = 69; }"
@@ -43,8 +44,8 @@ int main() {
     file.PrintLoc();
   }
 
+  auto emitter = epi::phyte::Emitter();
   try {
-    auto emitter = epi::phyte::Emitter();
     emitter.MakeProgram(parser.declarations);
     std::cout << std::endl << std::endl;
     std::cout << "-- program" << std::endl;
@@ -58,36 +59,18 @@ int main() {
     std::cout << e.what() << std::endl;
   }
 
-//  epi::pType<> Int = epi::MakeType<epi::ValueType<epi::i32>>(1, epi::CType::LValueNess::Assignable, 0);
-//  epi::pType<> UnknownInt = epi::MakeType<epi::ValueType<epi::i32>>(epi::CType::LValueNess::None, 0);
-//  epi::pType<> Float = epi::MakeType<epi::ValueType<float>>(1.2, epi::CType::LValueNess::None, 0);
-//  epi::pType<> FloatPtr = epi::MakeType<epi::PointerType>(
-//          Float, epi::CType::LValueNess::None
-//  );
-//  epi::pType<> IntPtr = epi::MakeType<epi::PointerType>(Int, epi::CType::LValueNess::None);
-//  epi::pType<> IntArray = epi::MakeType<epi::ArrayType>(Int, Int);
-//  epi::pType<> FuncPtr = epi::MakeType<epi::FunctionType>(Int, std::string{"my_function"});
-//
-//  auto shifted = (*Int).RShift(*Int);
-//  auto equal = (*UnknownInt).Eq(*Int);
-//  auto notequal = (*Int).Neq(*Int);
-//  auto ptr_sub = (*IntPtr).Sub(*IntPtr);
-//  auto array_add = (*Int).Add(*IntArray);
-//  auto valid_ref = (*Int).Ref();
-//// auto invalid_ref = (*Float).Ref();  // not lvalue, throws exception
-//// auto invalid = (*Float).Mod(*Int);  // throws exception
-//
-//  std::cout << IntPtr->ToString() << std::endl;
-//  std::cout << IntArray->EqualType(*IntPtr) << std::endl;
-//  std::cout << valid_ref->ToString() << std::endl;
-//  std::cout << shifted->ToString() << std::endl;
-//  std::cout << equal->ToString() << std::endl;
-//  std::cout << notequal->ToString() << std::endl;
-//  std::cout << ptr_sub->ToString() << std::endl;
-//  std::cout << array_add->ToString() << std::endl;
-//  std::cout << IntPtr->Deref()->ToString() << std::endl;
-//  std::cout << IntPtr->Deref()->Ref()->Deref()->Ref()->Deref()->Ref()->Deref()->ToString() << std::endl;
-//  std::cout << FuncPtr->Deref()->Deref()->Deref()->Deref()->Deref()->Deref()->ToString() << std::endl;
+  try {
+    auto interpreter = epi::calyx::Interpreter();
+    std::cout << std::endl << std::endl;
+    std::cout << "-- interpreted" << std::endl;
+    interpreter.EmitProgram(emitter.program);
+    std::cout << std::endl << std::endl;
+  }
+  catch_e {
+    Log::ConsoleColor<Log::Color::Red>();
+    std::cout << "Interpreter error:" << std::endl << std::endl;
+    std::cout << e.what() << std::endl;
+  }
 
   return 0;
 }

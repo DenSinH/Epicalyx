@@ -55,7 +55,7 @@ struct FunctionDefinition final : public Decl {
 
   std::string ToString() const final;
   void VerifyAndRecord(Parser& parser) final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*body); }
+  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 
 }

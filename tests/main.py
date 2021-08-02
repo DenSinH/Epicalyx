@@ -1,5 +1,7 @@
 import random
 import os
+import subprocess
+import re
 
 
 class Generator:
@@ -149,7 +151,14 @@ class Generator:
 
 
 if __name__ == "__main__":
-    with open("test.c", "w+") as f:
-        f.write(Generator().generate_main())
-    os.system("clang -O0 test.c -o test.exe")
-    print(os.system("test"))
+    for i in range(100):
+        with open("test.c", "w+") as f:
+            f.write(Generator().generate_main())
+        subprocess.check_output("clang -O0 test.c -o test.exe")
+        proc = subprocess.run("test")
+        epicalyx = subprocess.run(r".\cmake-build-debug\epicalyx.exe", stdout=subprocess.PIPE, cwd=os.path.abspath("../"), shell=True)
+        result = re.findall(r"return (.*)", epicalyx.stdout.decode("utf-8"))[-1]
+        print("expect", proc.returncode)
+        print("got", result)
+        if result != proc.returncode:
+            raise Exception("Bad output!")

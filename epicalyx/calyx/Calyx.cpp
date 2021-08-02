@@ -96,9 +96,10 @@ std::string LoadCVarAddr::ToString() const {
   return cotyl::FormatStr("addrss v%s <- c%s", idx, c_idx);
 }
 
-std::string Return::ToString() const {
+template<typename T>
+std::string Return<T>::ToString() const {
   if (idx) {
-    return cotyl::FormatStr("retrn v%s", idx);
+    return cotyl::FormatStr("retrn [%s]v%s", detail::type_string<T>::value, idx);
   }
   return "retrn void";
 }
@@ -161,7 +162,8 @@ void StoreToPointer<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
-void Return::Emit(Backend& backend) {
+template<typename T>
+void Return<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
@@ -171,7 +173,15 @@ template struct Binop<i64>;
 template struct Binop<u64>;
 template struct Binop<float>;
 template struct Binop<double>;
-template struct Binop<Pointer>;
+
+template struct Return<i32>;
+template struct Return<u32>;
+template struct Return<i64>;
+template struct Return<u64>;
+template struct Return<float>;
+template struct Return<double>;
+template struct Return<Pointer>;
+template struct Return<Struct>;
 
 template struct AddToPointer<i32>;
 template struct AddToPointer<u32>;
@@ -184,7 +194,6 @@ template struct Unop<i64>;
 template struct Unop<u64>;
 template struct Unop<float>;
 template struct Unop<double>;
-template struct Unop<Pointer>;  // should be unused
 
 template struct Imm<i32>;
 template struct Imm<u32>;

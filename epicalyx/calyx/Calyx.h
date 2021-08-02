@@ -293,7 +293,10 @@ struct StoreToPointer : Directive {
   void Emit(Backend& backend) final;
 };
 
+template<typename T>
 struct Return : Directive {
+  static_assert(is_calyx_type_v<T>);
+
   Return(var_index_t idx) :
           Directive(Class::Branch), idx(idx) {
 

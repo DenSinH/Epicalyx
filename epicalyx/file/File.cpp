@@ -6,6 +6,9 @@ namespace epi {
 
 File::File(std::string filename) {
   file = std::ifstream(filename, std::ios::binary);
+  if (!file.good()) {
+    throw std::runtime_error("Failed to open file!");
+  }
   file.seekg(0, std::ios::beg);
 }
 

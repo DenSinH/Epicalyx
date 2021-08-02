@@ -14,7 +14,6 @@ struct Backend {
   virtual void Emit(AllocateCVar& op) = 0;
   virtual void Emit(DeallocateCVar& op) = 0;
   virtual void Emit(LoadCVarAddr& op) = 0;
-  virtual void Emit(Return& op) = 0;
 
   virtual void Emit(Binop<i32>& op) = 0;
   virtual void Emit(Binop<u32>& op) = 0;
@@ -22,7 +21,6 @@ struct Backend {
   virtual void Emit(Binop<u64>& op) = 0;
   virtual void Emit(Binop<float>& op) = 0;
   virtual void Emit(Binop<double>& op) = 0;
-  virtual void Emit(Binop<Pointer>& op) = 0;
   virtual void Emit(AddToPointer<i32>& op) = 0;
   virtual void Emit(AddToPointer<u32>& op) = 0;
   virtual void Emit(AddToPointer<i64>& op) = 0;
@@ -33,7 +31,6 @@ struct Backend {
   virtual void Emit(Unop<u64>& op) = 0;
   virtual void Emit(Unop<float>& op) = 0;
   virtual void Emit(Unop<double>& op) = 0;
-  virtual void Emit(Unop<Pointer>& op) = 0;
   virtual void Emit(Imm<i32>& op) = 0;
   virtual void Emit(Imm<u32>& op) = 0;
   virtual void Emit(Imm<i64>& op) = 0;
@@ -64,6 +61,14 @@ struct Backend {
   virtual void Emit(StoreCVar<double>& op) = 0;
   virtual void Emit(StoreCVar<Struct>& op) = 0;
   virtual void Emit(StoreCVar<Pointer>& op) = 0;
+  virtual void Emit(Return<i32>& op) = 0;
+  virtual void Emit(Return<u32>& op) = 0;
+  virtual void Emit(Return<i64>& op) = 0;
+  virtual void Emit(Return<u64>& op) = 0;
+  virtual void Emit(Return<float>& op) = 0;
+  virtual void Emit(Return<double>& op) = 0;
+  virtual void Emit(Return<Struct>& op) = 0;
+  virtual void Emit(Return<Pointer>& op) = 0;
   virtual void Emit(Cast<i8, i32>& op) = 0;
   virtual void Emit(Cast<i8, u32>& op) = 0;
   virtual void Emit(Cast<i8, i64>& op) = 0;
