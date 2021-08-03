@@ -21,6 +21,7 @@ class Generator:
     STATEMENTS = {
         "decl",
         "assignment",
+        "crement",
     }
 
     EXPRESSION_TYPES = {
@@ -63,19 +64,37 @@ class Generator:
                         var = self.rand_var_idx()
                         for i in range(var, self.max_var_idx() + 1):
                             if self.vars[i] in Generator.INTEGRAL_TYPES:
-                                return f"v{i}"
+                                if self.rand_bool():
+                                    return f"v{i}"
+                                elif self.rand_bool():
+                                    return f"v{i}++"
+                                elif self.rand_bool():
+                                    return f"v{i}--"
+                                elif self.rand_bool():
+                                    return f"++v{i}"
+                                else:
+                                    return f"--v{i}"
                     # no integral variable found
                     return str(random.randint(-Generator.NUMBER_BOUND, Generator.NUMBER_BOUND))
                 else:
                     var = self.rand_var_idx()
-                    return f"v{var}"
+                    if self.rand_bool():
+                        return f"v{var}"
+                    elif self.rand_bool():
+                        return f"v{var}++"
+                    elif self.rand_bool():
+                        return f"v{var}--"
+                    elif self.rand_bool():
+                        return f"++v{var}"
+                    else:
+                        return f"--v{var}"
 
         expr_type = random.choice(list(Generator.EXPRESSIONS))
         if expr_type == "binop":
             left = self.generate_expression(depth - 1, type)
             if type == "integral":
                 op = random.choice([
-                    "+", "-", "*", "/", "%", "|", "^", "&"
+                    "+", "-", "*", "/", "%", "|", "^", "&", ">>", "<<"
                 ])
             else:
                 op = random.choice([
@@ -85,6 +104,8 @@ class Generator:
             if op == "/" or op == "%":
                 # prevent division by zero
                 right = str(random.randint(1, 20))
+            elif op == ">>" or op == "<<":
+                right = str(random.randint(1, 7))
             else:
                 right = self.generate_expression(depth - 1, type)
 
@@ -140,6 +161,20 @@ class Generator:
             expr_depth = random.randint(2, 4)
             type = random.choice(list(Generator.EXPRESSION_TYPES))
             return f"v{var} = {self.generate_expression(expr_depth, type)};"
+        elif type == "crement":
+            if not self.has_vars():
+                return ""
+            var = random.randint(0, self.max_var_idx())
+            if self.rand_bool():
+                return f"v{var};"
+            elif self.rand_bool():
+                return f"v{var}++;"
+            elif self.rand_bool():
+                return f"v{var}--;"
+            elif self.rand_bool():
+                return f"++v{var};"
+            else:
+                return f"--v{var};"
         else:
             return ""
 
@@ -159,6 +194,7 @@ if __name__ == "__main__":
     for i in range(100):
         with open("test.c", "w+") as f:
             f.write(Generator().generate_main())
+        print("running test", i)
         subprocess.check_output("clang -O0 test.c -o test.exe")
         proc0 = subprocess.run("test")
         subprocess.check_output("clang -O2 test.c -o test.exe")

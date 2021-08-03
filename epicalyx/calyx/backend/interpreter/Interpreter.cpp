@@ -51,6 +51,7 @@ void Interpreter::EmitCast(Cast<To, From>& op) {
         value = (To)from;
       }
       else {
+        // out of bounds is UB anyway...
         value = std::clamp<From>(from, std::numeric_limits<To>::min(), std::numeric_limits<To>::max());
       }
     }
@@ -149,11 +150,6 @@ void Interpreter::EmitBinop(Binop<T>& op) {
         throw std::runtime_error("Float operands for mod expression");
       }
     }
-    case BinopType::Lsl:
-    case BinopType::Lsr:
-    case BinopType::Asr: {
-      throw std::runtime_error("Unimplemented: shifts");
-    }
     case BinopType::BinAnd:{
       if constexpr(std::is_integral_v<T>) {
         result = left & right;
@@ -186,6 +182,74 @@ void Interpreter::EmitBinop(Binop<T>& op) {
 }
 
 template<typename T>
+void Interpreter::EmitBinopImm(BinopImm<T>& op) {
+  cotyl::Assert(op.idx == vars.size(), op.ToString());
+  T left = std::get<T>(vars[op.left_idx]);
+  T result;
+  switch (op.op) {
+    case BinopType::Add: result = left + op.right; break;
+    case BinopType::Sub: result = left - op.right; break;
+    case BinopType::Mul: result = left * op.right; break;
+    case BinopType::Div: result = left / op.right; break;
+    case BinopType::Mod: {
+      if constexpr(std::is_integral_v<T>) {
+        result = left % op.right;
+        break;
+      }
+      else {
+        throw std::runtime_error("Float operands for mod expression");
+      }
+    }
+    case BinopType::BinAnd:{
+      if constexpr(std::is_integral_v<T>) {
+        result = left & op.right;
+        break;
+      }
+      else {
+        throw std::runtime_error("Float operands for bin and expression");
+      }
+    }
+    case BinopType::BinOr: {
+      if constexpr(std::is_integral_v<T>) {
+        result = left | op.right;
+        break;
+      }
+      else {
+        throw std::runtime_error("Float operands for bin or expression");
+      }
+    }
+    case BinopType::BinXor:{
+      if constexpr(std::is_integral_v<T>) {
+        result = left ^ op.right;
+        break;
+      }
+      else {
+        throw std::runtime_error("Float operands for bin xor expression");
+      }
+    }
+  }
+  vars.push_back(result);
+}
+
+template<typename T>
+void Interpreter::EmitShift(Shift<T>& op) {
+  cotyl::Assert(op.idx == vars.size(), op.ToString());
+  T left = std::get<T>(vars[op.left_idx]);
+  u32 right = std::get<u32>(vars[op.right_idx]);
+  switch (op.op) {
+    case calyx::ShiftType::Left: {
+      left <<= right;
+      break;
+    }
+    case calyx::ShiftType::Right: {
+      left >>= right;
+      break;
+    }
+  }
+  vars.push_back(left);
+}
+
+template<typename T>
 void Interpreter::EmitAddToPointer(AddToPointer<T>& op) {
 
 }
@@ -197,6 +261,16 @@ void Interpreter::Emit(Binop<i64>& op) { EmitBinop(op); }
 void Interpreter::Emit(Binop<u64>& op) { EmitBinop(op); }
 void Interpreter::Emit(Binop<float>& op) { EmitBinop(op); }
 void Interpreter::Emit(Binop<double>& op) { EmitBinop(op); }
+void Interpreter::Emit(BinopImm<i32>& op) { EmitBinopImm(op); }
+void Interpreter::Emit(BinopImm<u32>& op) { EmitBinopImm(op); }
+void Interpreter::Emit(BinopImm<i64>& op) { EmitBinopImm(op); }
+void Interpreter::Emit(BinopImm<u64>& op) { EmitBinopImm(op); }
+void Interpreter::Emit(BinopImm<float>& op) { EmitBinopImm(op); }
+void Interpreter::Emit(BinopImm<double>& op) { EmitBinopImm(op); }
+void Interpreter::Emit(Shift<i32>& op) { EmitShift(op); }
+void Interpreter::Emit(Shift<u32>& op) { EmitShift(op); }
+void Interpreter::Emit(Shift<i64>& op) { EmitShift(op); }
+void Interpreter::Emit(Shift<u64>& op) { EmitShift(op); }
 void Interpreter::Emit(AddToPointer<i32>& op) { EmitAddToPointer(op); }
 void Interpreter::Emit(AddToPointer<u32>& op) { EmitAddToPointer(op); }
 void Interpreter::Emit(AddToPointer<i64>& op) { EmitAddToPointer(op); }

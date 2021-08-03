@@ -55,6 +55,16 @@ void Example::EmitBinop(Binop<T>& op) {
 }
 
 template<typename T>
+void Example::EmitBinopImm(BinopImm<T>& op) {
+
+}
+
+template<typename T>
+void Example::EmitShift(Shift<T>& op) {
+
+}
+
+template<typename T>
 void Example::EmitAddToPointer(AddToPointer<T>& op) {
 
 }
@@ -66,6 +76,16 @@ void Example::Emit(Binop<i64>& op) { EmitBinop(op); }
 void Example::Emit(Binop<u64>& op) { EmitBinop(op); }
 void Example::Emit(Binop<float>& op) { EmitBinop(op); }
 void Example::Emit(Binop<double>& op) { EmitBinop(op); }
+void Example::Emit(BinopImm<i32>& op) { EmitBinopImm(op); }
+void Example::Emit(BinopImm<u32>& op) { EmitBinopImm(op); }
+void Example::Emit(BinopImm<i64>& op) { EmitBinopImm(op); }
+void Example::Emit(BinopImm<u64>& op) { EmitBinopImm(op); }
+void Example::Emit(BinopImm<float>& op) { EmitBinopImm(op); }
+void Example::Emit(BinopImm<double>& op) { EmitBinopImm(op); }
+void Example::Emit(Shift<i32>& op) { EmitShift(op); }
+void Example::Emit(Shift<u32>& op) { EmitShift(op); }
+void Example::Emit(Shift<i64>& op) { EmitShift(op); }
+void Example::Emit(Shift<u64>& op) { EmitShift(op); }
 void Example::Emit(AddToPointer<i32>& op) { EmitAddToPointer(op); }
 void Example::Emit(AddToPointer<u32>& op) { EmitAddToPointer(op); }
 void Example::Emit(AddToPointer<i64>& op) { EmitAddToPointer(op); }

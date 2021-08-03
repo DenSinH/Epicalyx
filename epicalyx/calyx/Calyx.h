@@ -100,12 +100,14 @@ enum class BinopType {
   Mul,
   Div,
   Mod,
-  Lsl,
-  Lsr,
-  Asr,
   BinAnd,
   BinOr,
   BinXor,
+};
+
+enum class ShiftType {
+  Left,
+  Right,
 };
 
 enum class UnopType {
@@ -137,6 +139,40 @@ struct Binop : Expr<T> {
 
   var_index_t left_idx;
   BinopType op;
+  var_index_t right_idx;
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+template<typename T>
+struct BinopImm : Expr<T> {
+  static_assert(is_calyx_type_v<T>);
+
+  BinopImm(var_index_t idx, var_index_t left, BinopType op, T right) :
+      Expr<T>(idx), left_idx(left), op(op), right(right) {
+
+  }
+
+  var_index_t left_idx;
+  BinopType op;
+  T right;
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+template<typename T>
+struct Shift : Expr<T> {
+  static_assert(is_calyx_type_v<T>);
+
+  Shift(var_index_t idx, var_index_t left, ShiftType op, var_index_t right) :
+      Expr<T>(idx), left_idx(left), op(op), right_idx(right) {
+
+  }
+
+  var_index_t left_idx;
+  ShiftType op;
   var_index_t right_idx;
 
   std::string ToString() const final;

@@ -130,7 +130,7 @@ VALUE_TYPE_NUMERIC_TYPE_HANDLERS(VALUE_TYPE_BINOP_HANDLER, Div, std::divides)
 VALUE_TYPE_INTEGRAL_TYPE_HANDLERS(INTEGRAL_VALUE_TYPE_BINOP_HANDLER, Mod, std::modulus)
 
 template<typename T> struct lshift { T operator()(const T& l, const T& r) const { return l << r; }};
-template<typename T> struct rshift { T operator()(const T& l, const T& r) const { return l << r; }};
+template<typename T> struct rshift { T operator()(const T& l, const T& r) const { return l >> r; }};
 
 VALUE_TYPE_INTEGRAL_TYPE_HANDLERS(INTEGRAL_VALUE_TYPE_BINOP_HANDLER, LShift, lshift)
 VALUE_TYPE_INTEGRAL_TYPE_HANDLERS(INTEGRAL_VALUE_TYPE_BINOP_HANDLER, RShift, rshift)

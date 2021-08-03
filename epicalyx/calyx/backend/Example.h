@@ -28,6 +28,10 @@ struct Example : Backend {
   template<typename T>
   void EmitBinop(Binop<T>& op);
   template<typename T>
+  void EmitBinopImm(BinopImm<T>& op);
+  template<typename T>
+  void EmitShift(Shift<T>& op);
+  template<typename T>
   void EmitAddToPointer(AddToPointer<T>& op);
 
   void Emit(Binop<i32>& op) final;
@@ -36,6 +40,16 @@ struct Example : Backend {
   void Emit(Binop<u64>& op) final;
   void Emit(Binop<float>& op) final;
   void Emit(Binop<double>& op) final;
+  void Emit(BinopImm<i32>& op) final;
+  void Emit(BinopImm<u32>& op) final;
+  void Emit(BinopImm<i64>& op) final;
+  void Emit(BinopImm<u64>& op) final;
+  void Emit(BinopImm<float>& op) final;
+  void Emit(BinopImm<double>& op) final;
+  void Emit(Shift<i32>& op) final;
+  void Emit(Shift<u32>& op) final;
+  void Emit(Shift<i64>& op) final;
+  void Emit(Shift<u64>& op) final;
   void Emit(AddToPointer<i32>& op) final;
   void Emit(AddToPointer<u32>& op) final;
   void Emit(AddToPointer<i64>& op) final;

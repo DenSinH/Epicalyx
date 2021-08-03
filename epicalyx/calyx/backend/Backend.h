@@ -21,6 +21,16 @@ struct Backend {
   virtual void Emit(Binop<u64>& op) = 0;
   virtual void Emit(Binop<float>& op) = 0;
   virtual void Emit(Binop<double>& op) = 0;
+  virtual void Emit(BinopImm<i32>& op) = 0;
+  virtual void Emit(BinopImm<u32>& op) = 0;
+  virtual void Emit(BinopImm<i64>& op) = 0;
+  virtual void Emit(BinopImm<u64>& op) = 0;
+  virtual void Emit(BinopImm<float>& op) = 0;
+  virtual void Emit(BinopImm<double>& op) = 0;
+  virtual void Emit(Shift<i32>& op) = 0;
+  virtual void Emit(Shift<u32>& op) = 0;
+  virtual void Emit(Shift<i64>& op) = 0;
+  virtual void Emit(Shift<u64>& op) = 0;
   virtual void Emit(AddToPointer<i32>& op) = 0;
   virtual void Emit(AddToPointer<u32>& op) = 0;
   virtual void Emit(AddToPointer<i64>& op) = 0;

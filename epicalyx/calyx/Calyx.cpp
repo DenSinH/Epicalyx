@@ -44,14 +44,37 @@ std::string Binop<T>::ToString() const {
     case BinopType::Mul: op_str = "*"; break;
     case BinopType::Div: op_str = "/"; break;
     case BinopType::Mod: op_str = "%"; break;
-    case BinopType::Lsl: op_str = "<<"; break;
-    case BinopType::Lsr: op_str = "l>>"; break;
-    case BinopType::Asr: op_str = "a>>"; break;
     case BinopType::BinAnd: op_str = "&"; break;
     case BinopType::BinOr: op_str = "|"; break;
     case BinopType::BinXor: op_str = "^"; break;
   }
   return cotyl::FormatStr("binop v%s = v%s %s<%s> v%s", this->idx, left_idx, op_str, detail::type_string<T>::value, right_idx);
+}
+
+template<typename T>
+std::string BinopImm<T>::ToString() const {
+  std::string op_str;
+  switch (op) {
+    case BinopType::Add: op_str = "+"; break;
+    case BinopType::Sub: op_str = "-"; break;
+    case BinopType::Mul: op_str = "*"; break;
+    case BinopType::Div: op_str = "/"; break;
+    case BinopType::Mod: op_str = "%"; break;
+    case BinopType::BinAnd: op_str = "&"; break;
+    case BinopType::BinOr: op_str = "|"; break;
+    case BinopType::BinXor: op_str = "^"; break;
+  }
+  return cotyl::FormatStr("binim v%s = v%s %s<%s> %s", this->idx, left_idx, op_str, detail::type_string<T>::value, right);
+}
+
+template<typename T>
+std::string Shift<T>::ToString() const {
+  std::string op_str;
+  switch (op) {
+    case ShiftType::Left: op_str = "<<"; break;
+    case ShiftType::Right: op_str = ">>"; break;
+  }
+  return cotyl::FormatStr("shift v%s = v%s %s<%s> v%s", this->idx, left_idx, op_str, detail::type_string<T>::value, right_idx);
 }
 
 template<typename T>
@@ -116,6 +139,16 @@ void Binop<T>::Emit(Backend& backend) {
 }
 
 template<typename T>
+void BinopImm<T>::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+template<typename T>
+void Shift<T>::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+template<typename T>
 void Unop<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
@@ -173,6 +206,18 @@ template struct Binop<i64>;
 template struct Binop<u64>;
 template struct Binop<float>;
 template struct Binop<double>;
+
+template struct BinopImm<i32>;
+template struct BinopImm<u32>;
+template struct BinopImm<i64>;
+template struct BinopImm<u64>;
+template struct BinopImm<float>;
+template struct BinopImm<double>;
+
+template struct Shift<i32>;
+template struct Shift<u32>;
+template struct Shift<i64>;
+template struct Shift<u64>;
 
 template struct Return<i32>;
 template struct Return<u32>;
