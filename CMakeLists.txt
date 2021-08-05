@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.17)
 project(epicalyx)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # set( CMAKE_VERBOSE_MAKEFILE on )
 
@@ -36,6 +37,7 @@ add_subdirectory(epicalyx/types)
 add_subdirectory(epicalyx/taxy)
 add_subdirectory(epicalyx/parser)
 add_subdirectory(epicalyx/calyx)
+add_subdirectory(epicalyx/cycle)
 add_subdirectory(epicalyx/phyte)
 
 target_link_libraries(epicalyx File)
@@ -44,4 +46,5 @@ target_link_libraries(epicalyx Types)
 target_link_libraries(epicalyx Taxy)
 target_link_libraries(epicalyx Parser)
 target_link_libraries(epicalyx Calyx)
+target_link_libraries(epicalyx Cycle)
 target_link_libraries(epicalyx Phyte)

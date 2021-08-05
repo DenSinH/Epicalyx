@@ -9,6 +9,7 @@
 #include "taxy/Statement.h"
 #include "phyte/Emitter.h"
 #include "calyx/backend/interpreter/Interpreter.h"
+#include "cycle/Cycle.h"
 
 
 #include "Log.h"
@@ -71,6 +72,10 @@ int main() {
     std::cout << "Interpreter error:" << std::endl << std::endl;
     std::cout << e.what() << std::endl;
   }
+
+  epi::cycle::Graph graph{};
+  graph.Visualize();
+  graph.Join();
 
   return 0;
 }
