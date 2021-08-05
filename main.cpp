@@ -74,6 +74,18 @@ int main() {
   }
 
   epi::cycle::Graph graph{};
+  graph.n(0)->n(1)->n(2);
+  graph.n(4)->n(6, "gt");
+  graph.n(4)->n(7, "le");
+  graph.n(0, "string");
+  graph.n(0, "string");
+  graph.n(1, "node 1");
+  graph.n(1, "node 1");
+  graph.n(1, "node 1");
+  graph.n(2, "node 2");
+  graph.n(3, "node 3");
+  graph.n(3, "node 3");
+
   graph.Visualize();
   graph.Join();
 

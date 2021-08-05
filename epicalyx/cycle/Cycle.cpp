@@ -9,6 +9,7 @@
 #include <imnodes/ImNodesEz.h>
 #include <glad/glad.h>
 #include <thread>
+#include <unordered_set>
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
@@ -88,6 +89,17 @@ void Graph::VisualizeImpl() {
   canvas->Style.CurveThickness = 1.0f;
   canvas->Style.ConnectionIndent = 0.0f;
 
+  auto sort = FindOrder();
+  ImVec2 pos{50, 100};
+  for (const auto& layer : sort) {
+    pos.y = 100;
+    pos.x += 200;
+    for (const auto& id : layer) {
+      nodes.at(id).pos = pos;
+      pos.y += (1 + nodes.at(id).body.size()) * 20 + 30;
+    }
+  }
+
   while (true) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -119,7 +131,7 @@ void Graph::VisualizeImpl() {
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    Render(*canvas);
+    Render(*canvas, sort);
 
     ImGui::Render();
 
@@ -131,7 +143,58 @@ void Graph::VisualizeImpl() {
   }
 }
 
-void Graph::Render(ImNodes::CanvasState& canvas) const {
+Graph::top_sort_t Graph::FindOrder() {
+  std::vector<std::vector<u64>> result{};
+  std::unordered_set<u64> todo{};
+  result.push_back({});
+  for (const auto &[id, node] : nodes) {
+    // first layer is only nodes that have no inputs
+    if (!edges.contains(id)) {
+      result.back().push_back(id);
+    }
+    else {
+      todo.insert(id);
+    }
+  }
+
+  if (result.back().empty()) [[unlikely]] {
+    // possible if only loops exist in fist layer
+    result.pop_back();
+  }
+
+  while (!todo.empty()) {
+    result.push_back({});
+    for (const auto& id : todo) {
+      // check if all inputs are done
+      bool allow_add = true;
+      for (const auto& e : edges[id]) {
+        // ignore backwards edges
+        if (e.from < id) {
+          if (todo.contains(e.from)) {
+            allow_add = false;
+            break;
+          }
+        }
+      }
+
+      if (allow_add) {
+        result.back().push_back(id);
+      }
+    }
+
+#ifndef NDEBUG
+    cotyl::Assert(!result.back().empty(), "Graph cannot be topologically sorted");
+#endif
+
+    for (const auto& id : result.back()) {
+      todo.erase(id);
+    }
+  }
+
+  return std::move(result);
+}
+
+void Graph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort) {
   ImGui::SetNextWindowSize(ImVec2(WINDOW_WIDTH, WINDOW_HEIGHT));
   ImGui::SetNextWindowPos(ImVec2(0, 0));
   if (ImGui::Begin(
@@ -144,37 +207,45 @@ void Graph::Render(ImNodes::CanvasState& canvas) const {
   {
     ImNodes::BeginCanvas(&canvas);
 
-    struct Node
-    {
-      ImVec2 pos{};
-      bool selected{};
-      ImNodes::Ez::SlotInfo inputs[1];
-      ImNodes::Ez::SlotInfo outputs[1];
-    };
+    ImNodes::Ez::SlotInfo input = {"", 1};
+    for (const auto& layer : sort) {
+      for (const auto& id : layer) {
+        auto& node = nodes.at(id);
+        if (ImNodes::Ez::BeginNode(&node.id, std::to_string(id).c_str(), &node.pos, &node.selected))
+        {
+          if (edges.contains(id)) [[likely]] {
+            // blocks only contain one input
+            ImNodes::Ez::InputSlots(&input, 1);
+          }
+          else {
+            ImNodes::Ez::InputSlots(nullptr, 0);
+          }
 
-    static Node nodes[3] = {
-            {{50, 100}, false, {{"", 1}}, {{"le", 1}}},
-            {{500, 50}, false, {{"", 1}}, {{"", 1}}},
-            {{250, 100}, false, {{"", 1}}, {{"", 1}}},
-    };
+          for (const auto& line : node.body) {
+            ImGui::Text(line.c_str());
+          }
 
-    for (Node& node : nodes)
-    {
-      if (ImNodes::Ez::BeginNode(&node, "Node Title", &node.pos, &node.selected))
-      {
-        ImNodes::Ez::InputSlots(node.inputs, 1);
-        ImGui::Text("Test text");
-        ImGui::Text("Test text");
-        ImGui::Text("Test text");
-        ImNodes::Ez::OutputSlots(node.outputs, 1);
-        ImNodes::Ez::EndNode();
+          if (!node.outputs.empty()) [[likely]] {
+            std::vector<ImNodes::Ez::SlotInfo> outputs{};
+            for (const auto& output : node.outputs) {
+              outputs.push_back({output.c_str(), 1});
+            }
+            ImNodes::Ez::OutputSlots(outputs.data(), outputs.size());
+          }
+          else {
+            ImNodes::Ez::OutputSlots(nullptr, 0);
+          }
+
+          ImNodes::Ez::EndNode();
+        }
       }
     }
 
-    ImNodes::Connection(&nodes[1], "", &nodes[0], "le");
-    ImNodes::Connection(&nodes[2], "", &nodes[0], "le");
-    ImNodes::Connection(&nodes[1], "", &nodes[2], "");
-
+    for (const auto &[to, to_edges] : edges) {
+      for (const auto& edge : to_edges) {
+        ImNodes::Connection(&nodes.at(to), "", &nodes.at(edge.from), edge.output.c_str());
+      }
+    }
     ImNodes::EndCanvas();
   }
   ImGui::End();
