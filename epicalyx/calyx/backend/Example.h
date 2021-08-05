@@ -32,6 +32,10 @@ struct Example : Backend {
   template<typename T>
   void EmitShift(Shift<T>& op);
   template<typename T>
+  void EmitBranchCompare(BranchCompare<T>& op);
+  template<typename T>
+  void EmitBranchCompareImm(BranchCompareImm<T>& op);
+  template<typename T>
   void EmitAddToPointer(AddToPointer<T>& op);
 
   void Emit(Binop<i32>& op) final;
@@ -50,6 +54,20 @@ struct Example : Backend {
   void Emit(Shift<u32>& op) final;
   void Emit(Shift<i64>& op) final;
   void Emit(Shift<u64>& op) final;
+  void Emit(UnconditionalBranch& op) final;
+  void Emit(BranchCompare<i32>& op) final;
+  void Emit(BranchCompare<u32>& op) final;
+  void Emit(BranchCompare<i64>& op) final;
+  void Emit(BranchCompare<u64>& op) final;
+  void Emit(BranchCompare<float>& op) final;
+  void Emit(BranchCompare<double>& op) final;
+  void Emit(BranchCompare<Pointer>& op) final;
+  void Emit(BranchCompareImm<i32>& op) final;
+  void Emit(BranchCompareImm<u32>& op) final;
+  void Emit(BranchCompareImm<i64>& op) final;
+  void Emit(BranchCompareImm<u64>& op) final;
+  void Emit(BranchCompareImm<float>& op) final;
+  void Emit(BranchCompareImm<double>& op) final;
   void Emit(AddToPointer<i32>& op) final;
   void Emit(AddToPointer<u32>& op) final;
   void Emit(AddToPointer<i64>& op) final;

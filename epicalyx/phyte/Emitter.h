@@ -14,7 +14,7 @@ struct Emitter {
   calyx::var_index_t EmitExpr(calyx::Var var, Args... args) {
     vars.emplace_back(var);
     auto expr_idx = ir_counter++;
-    program.push_back(std::make_unique<T>(expr_idx, args...));
+    Emit<T>(expr_idx, args...);
     return expr_idx;
   }
 

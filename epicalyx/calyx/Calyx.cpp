@@ -77,6 +77,39 @@ std::string Shift<T>::ToString() const {
   return cotyl::FormatStr("shift v%s = v%s %s<%s> v%s", this->idx, left_idx, op_str, detail::type_string<T>::value, right_idx);
 }
 
+static std::string cmp_string(CmpType type) {
+  switch (type) {
+    case CmpType::Eq: return "==";
+    case CmpType::Ne: return "!=";
+    case CmpType::Lt: return "<";
+    case CmpType::Le: return "<=";
+    case CmpType::Gt: return ">";
+    case CmpType::Ge: return ">=";
+  }
+}
+
+std::string UnconditionalBranch::ToString() const {
+  return cotyl::FormatStr("branch L%s", this->dest);
+}
+
+template<typename T>
+std::string BranchCompare<T>::ToString() const {
+  return cotyl::FormatStr(
+          "branch L%s : v%s %s<%s> v%s",
+          this->dest, left_idx, cmp_string(op),
+          detail::type_string<T>::value, right_idx
+  );
+}
+
+template<typename T>
+std::string BranchCompareImm<T>::ToString() const {
+  return cotyl::FormatStr(
+          "branch L%s : v%s %s<%s> imm(%s)",
+          this->dest, left_idx, cmp_string(op),
+          detail::type_string<T>::value, right
+  );
+}
+
 template<typename T>
 std::string AddToPointer<T>::ToString() const {
   return cotyl::FormatStr("ptrad v% = v%s + %s * v%s", this->idx, ptr_idx, stride, right_idx);
@@ -145,6 +178,20 @@ void BinopImm<T>::Emit(Backend& backend) {
 
 template<typename T>
 void Shift<T>::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+void UnconditionalBranch::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+template<typename T>
+void BranchCompare<T>::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+template<typename T>
+void BranchCompareImm<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
@@ -218,6 +265,21 @@ template struct Shift<i32>;
 template struct Shift<u32>;
 template struct Shift<i64>;
 template struct Shift<u64>;
+
+template struct BranchCompare<i32>;
+template struct BranchCompare<u32>;
+template struct BranchCompare<i64>;
+template struct BranchCompare<u64>;
+template struct BranchCompare<float>;
+template struct BranchCompare<double>;
+template struct BranchCompare<Pointer>;
+
+template struct BranchCompareImm<i32>;
+template struct BranchCompareImm<u32>;
+template struct BranchCompareImm<i64>;
+template struct BranchCompareImm<u64>;
+template struct BranchCompareImm<float>;
+template struct BranchCompareImm<double>;
 
 template struct Return<i32>;
 template struct Return<u32>;

@@ -64,6 +64,20 @@ void Example::EmitShift(Shift<T>& op) {
 
 }
 
+void Example::Emit(UnconditionalBranch& op) {
+
+}
+
+template<typename T>
+void Example::EmitBranchCompare(BranchCompare<T>& op) {
+
+}
+
+template<typename T>
+void Example::EmitBranchCompareImm(BranchCompareImm<T>& op) {
+
+}
+
 template<typename T>
 void Example::EmitAddToPointer(AddToPointer<T>& op) {
 
@@ -86,6 +100,19 @@ void Example::Emit(Shift<i32>& op) { EmitShift(op); }
 void Example::Emit(Shift<u32>& op) { EmitShift(op); }
 void Example::Emit(Shift<i64>& op) { EmitShift(op); }
 void Example::Emit(Shift<u64>& op) { EmitShift(op); }
+void Example::Emit(BranchCompare<i32>& op) { EmitBranchCompare(op); }
+void Example::Emit(BranchCompare<u32>& op) { EmitBranchCompare(op); }
+void Example::Emit(BranchCompare<i64>& op) { EmitBranchCompare(op); }
+void Example::Emit(BranchCompare<u64>& op) { EmitBranchCompare(op); }
+void Example::Emit(BranchCompare<float>& op) { EmitBranchCompare(op); }
+void Example::Emit(BranchCompare<double>& op) { EmitBranchCompare(op); }
+void Example::Emit(BranchCompare<Pointer>& op) { EmitBranchCompare(op); }
+void Example::Emit(BranchCompareImm<i32>& op) { EmitBranchCompareImm(op); }
+void Example::Emit(BranchCompareImm<u32>& op) { EmitBranchCompareImm(op); }
+void Example::Emit(BranchCompareImm<i64>& op) { EmitBranchCompareImm(op); }
+void Example::Emit(BranchCompareImm<u64>& op) { EmitBranchCompareImm(op); }
+void Example::Emit(BranchCompareImm<float>& op) { EmitBranchCompareImm(op); }
+void Example::Emit(BranchCompareImm<double>& op) { EmitBranchCompareImm(op); }
 void Example::Emit(AddToPointer<i32>& op) { EmitAddToPointer(op); }
 void Example::Emit(AddToPointer<u32>& op) { EmitAddToPointer(op); }
 void Example::Emit(AddToPointer<i64>& op) { EmitAddToPointer(op); }

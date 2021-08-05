@@ -3,6 +3,7 @@
 #include "calyx/backend/Backend.h"
 
 #include <variant>
+#include <map>
 
 
 namespace epi::calyx {
@@ -12,8 +13,8 @@ struct Interpreter : Backend {
   std::vector<u8> stack{};
 
   // id 0 is special
-  std::vector<u64> c_vars{0};
-  std::vector<std::variant<i32, u32, i64, u64, float, double>> vars{{}};
+  std::map<calyx::var_index_t, u64> c_vars{};
+  std::map<calyx::var_index_t, std::variant<i32, u32, i64, u64, float, double>> vars{};
 
   void EmitProgram(std::vector<calyx::pDirective>& program) final;
 
@@ -38,6 +39,10 @@ struct Interpreter : Backend {
   template<typename T>
   void EmitBinopImm(BinopImm<T>& op);
   template<typename T>
+  void EmitBranchCompare(BranchCompare<T>& op);
+  template<typename T>
+  void EmitBranchCompareImm(BranchCompareImm<T>& op);
+  template<typename T>
   void EmitShift(Shift<T>& op);
   template<typename T>
   void EmitAddToPointer(AddToPointer<T>& op);
@@ -58,6 +63,20 @@ struct Interpreter : Backend {
   void Emit(Shift<u32>& op) final;
   void Emit(Shift<i64>& op) final;
   void Emit(Shift<u64>& op) final;
+  void Emit(UnconditionalBranch& op) final;
+  void Emit(BranchCompare<i32>& op) final;
+  void Emit(BranchCompare<u32>& op) final;
+  void Emit(BranchCompare<i64>& op) final;
+  void Emit(BranchCompare<u64>& op) final;
+  void Emit(BranchCompare<float>& op) final;
+  void Emit(BranchCompare<double>& op) final;
+  void Emit(BranchCompare<Pointer>& op) final;
+  void Emit(BranchCompareImm<i32>& op) final;
+  void Emit(BranchCompareImm<u32>& op) final;
+  void Emit(BranchCompareImm<i64>& op) final;
+  void Emit(BranchCompareImm<u64>& op) final;
+  void Emit(BranchCompareImm<float>& op) final;
+  void Emit(BranchCompareImm<double>& op) final;
   void Emit(AddToPointer<i32>& op) final;
   void Emit(AddToPointer<u32>& op) final;
   void Emit(AddToPointer<i64>& op) final;

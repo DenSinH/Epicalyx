@@ -18,8 +18,8 @@ void Interpreter::EmitProgram(std::vector<calyx::pDirective>& program) {
 }
 
 void Interpreter::Emit(AllocateCVar& op) {
-  cotyl::Assert(op.c_idx == c_vars.size(), op.ToString());
-  c_vars.push_back(stack.size());
+  cotyl::Assert(!c_vars.contains(op.c_idx), op.ToString());
+  c_vars[op.c_idx] = stack.size();
   stack.resize(stack.size() + op.size);
 }
 
@@ -36,7 +36,7 @@ void Interpreter::Emit(LoadCVarAddr& op) {
 
 template<typename To, typename From>
 void Interpreter::EmitCast(Cast<To, From>& op) {
-  cotyl::Assert(op.idx == vars.size(), op.ToString());
+  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<To, Pointer>) {
 
   }
@@ -58,13 +58,13 @@ void Interpreter::EmitCast(Cast<To, From>& op) {
     else {
       value = from;
     }
-    vars.push_back((calyx::calyx_upcast_t<To>)value);
+    vars[op.idx] = (calyx::calyx_upcast_t<To>)value;
   }
 }
 
 template<typename T>
 void Interpreter::EmitLoadCVar(LoadCVar<T>& op) {
-  cotyl::Assert(op.idx == vars.size(), op.ToString());
+  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<T, Pointer>) {
 
   }
@@ -74,13 +74,13 @@ void Interpreter::EmitLoadCVar(LoadCVar<T>& op) {
   else {
     T value;
     memcpy(&value, &stack[c_vars[op.c_idx]], sizeof(T));
-    vars.push_back((calyx_upcast_t<T>)value);
+    vars[op.idx] = (calyx_upcast_t<T>)value;
   }
 }
 
 template<typename T>
 void Interpreter::EmitStoreCVar(StoreCVar<T>& op) {
-  cotyl::Assert(op.idx == vars.size(), op.ToString());
+  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<T, Pointer>) {
 
   }
@@ -90,7 +90,7 @@ void Interpreter::EmitStoreCVar(StoreCVar<T>& op) {
   else {
     T value = (T)std::get<calyx_upcast_t<T>>(vars[op.src]);
     memcpy(&stack[c_vars[op.c_idx]], &value, sizeof(T));
-    vars.push_back((calyx_upcast_t<T>)value);
+    vars[op.idx] = (calyx_upcast_t<T>)value;
   }
 }
 
@@ -109,20 +109,20 @@ void Interpreter::EmitReturn(Return<T>& op) {
 
 template<typename T>
 void Interpreter::EmitImm(Imm<T>& op) {
-  cotyl::Assert(op.idx == vars.size(), op.ToString());
-  vars.push_back(op.value);
+  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+  vars[op.idx] = op.value;
 }
 
 template<typename T>
 void Interpreter::EmitUnop(Unop<T>& op) {
-  cotyl::Assert(op.idx == vars.size(), op.ToString());
+  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T right = std::get<T>(vars[op.right_idx]);
   switch (op.op) {
     case UnopType::Neg:
-      vars.push_back((T)-right); break;
+      vars[op.idx] = (T)-right; break;
     case UnopType::BinNot:
       if constexpr(std::is_integral_v<T>) {
-        vars.push_back((T)~right); break;
+        vars[op.idx] = (T)~right; break;
       }
       else {
         throw std::runtime_error("floating point operand for binary not");
@@ -132,7 +132,7 @@ void Interpreter::EmitUnop(Unop<T>& op) {
 
 template<typename T>
 void Interpreter::EmitBinop(Binop<T>& op) {
-  cotyl::Assert(op.idx == vars.size(), op.ToString());
+  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T left = std::get<T>(vars[op.left_idx]);
   T right = std::get<T>(vars[op.right_idx]);
   T result;
@@ -178,12 +178,12 @@ void Interpreter::EmitBinop(Binop<T>& op) {
       }
     }
   }
-  vars.push_back(result);
+  vars[op.idx] = result;
 }
 
 template<typename T>
 void Interpreter::EmitBinopImm(BinopImm<T>& op) {
-  cotyl::Assert(op.idx == vars.size(), op.ToString());
+  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T left = std::get<T>(vars[op.left_idx]);
   T result;
   switch (op.op) {
@@ -228,12 +228,12 @@ void Interpreter::EmitBinopImm(BinopImm<T>& op) {
       }
     }
   }
-  vars.push_back(result);
+  vars[op.idx] = result;
 }
 
 template<typename T>
 void Interpreter::EmitShift(Shift<T>& op) {
-  cotyl::Assert(op.idx == vars.size(), op.ToString());
+  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T left = std::get<T>(vars[op.left_idx]);
   u32 right = std::get<u32>(vars[op.right_idx]);
   switch (op.op) {
@@ -246,7 +246,21 @@ void Interpreter::EmitShift(Shift<T>& op) {
       break;
     }
   }
-  vars.push_back(left);
+  vars[op.idx] = left;
+}
+
+void Interpreter::Emit(UnconditionalBranch& op) {
+
+}
+
+template<typename T>
+void Interpreter::EmitBranchCompare(BranchCompare<T>& op) {
+
+}
+
+template<typename T>
+void Interpreter::EmitBranchCompareImm(BranchCompareImm<T>& op) {
+
 }
 
 template<typename T>
@@ -271,6 +285,19 @@ void Interpreter::Emit(Shift<i32>& op) { EmitShift(op); }
 void Interpreter::Emit(Shift<u32>& op) { EmitShift(op); }
 void Interpreter::Emit(Shift<i64>& op) { EmitShift(op); }
 void Interpreter::Emit(Shift<u64>& op) { EmitShift(op); }
+void Interpreter::Emit(BranchCompare<i32>& op) { EmitBranchCompare(op); }
+void Interpreter::Emit(BranchCompare<u32>& op) { EmitBranchCompare(op); }
+void Interpreter::Emit(BranchCompare<i64>& op) { EmitBranchCompare(op); }
+void Interpreter::Emit(BranchCompare<u64>& op) { EmitBranchCompare(op); }
+void Interpreter::Emit(BranchCompare<float>& op) { EmitBranchCompare(op); }
+void Interpreter::Emit(BranchCompare<double>& op) { EmitBranchCompare(op); }
+void Interpreter::Emit(BranchCompare<Pointer>& op) { EmitBranchCompare(op); }
+void Interpreter::Emit(BranchCompareImm<i32>& op) { EmitBranchCompareImm(op); }
+void Interpreter::Emit(BranchCompareImm<u32>& op) { EmitBranchCompareImm(op); }
+void Interpreter::Emit(BranchCompareImm<i64>& op) { EmitBranchCompareImm(op); }
+void Interpreter::Emit(BranchCompareImm<u64>& op) { EmitBranchCompareImm(op); }
+void Interpreter::Emit(BranchCompareImm<float>& op) { EmitBranchCompareImm(op); }
+void Interpreter::Emit(BranchCompareImm<double>& op) { EmitBranchCompareImm(op); }
 void Interpreter::Emit(AddToPointer<i32>& op) { EmitAddToPointer(op); }
 void Interpreter::Emit(AddToPointer<u32>& op) { EmitAddToPointer(op); }
 void Interpreter::Emit(AddToPointer<i64>& op) { EmitAddToPointer(op); }

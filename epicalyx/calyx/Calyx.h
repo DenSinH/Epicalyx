@@ -12,6 +12,7 @@ namespace epi::calyx {
 struct Backend;
 
 using var_index_t = u64;
+using block_label_t = u64;
 
 struct Pointer;
 struct Struct;
@@ -84,12 +85,23 @@ struct Expr : Directive {
   static_assert(is_calyx_type_v<T>);
   
   Expr(var_index_t idx) :
-          Directive(Class::Expression),
+      Directive(Class::Expression),
     idx(idx) {
 
   }
 
   var_index_t idx;
+};
+
+struct Branch : Directive {
+
+  Branch(block_label_t dest) :
+      Directive(Class::Branch),
+      dest(dest) {
+
+  }
+
+  block_label_t dest;
 };
 
 using pDirective = std::unique_ptr<Directive>;
@@ -113,6 +125,11 @@ enum class ShiftType {
 enum class UnopType {
   Neg,
   BinNot
+};
+
+enum class CmpType {
+  // signed or unsigned is from the type of the cmp instruction
+  Eq, Ne, Lt, Le, Gt, Ge
 };
 
 template<typename To, typename From>
@@ -174,6 +191,51 @@ struct Shift : Expr<T> {
   var_index_t left_idx;
   ShiftType op;
   var_index_t right_idx;
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+struct UnconditionalBranch : Branch {
+  UnconditionalBranch(block_label_t dest) :
+      Branch(dest) {
+
+  }
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+template<typename T>
+struct BranchCompare : Branch {
+  static_assert(is_calyx_type_v<T>);
+
+  BranchCompare(block_label_t dest, var_index_t left, CmpType op, var_index_t right) :
+      Branch(dest), left_idx(left), op(op), right_idx(right) {
+
+  }
+
+  var_index_t left_idx;
+  CmpType op;
+  var_index_t right_idx;
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+template<typename T>
+struct BranchCompareImm : Branch {
+  static_assert(is_calyx_type_v<T>);
+
+  BranchCompareImm(block_label_t dest, var_index_t left, CmpType op, T right) :
+    Branch(dest), left_idx(left), op(op), right(right) {
+
+  }
+
+
+  var_index_t left_idx;
+  CmpType op;
+  T right;
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;

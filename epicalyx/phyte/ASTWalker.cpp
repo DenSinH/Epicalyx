@@ -527,7 +527,7 @@ void ASTWalker::Visit(PostFix& expr) {
       auto read = current;
       auto type = emitter.vars[current].type;
       if (type == calyx::Var::Type::Pointer) {
-
+        // todo
       }
       else if (type == calyx::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for post-increment: struct");
@@ -552,7 +552,7 @@ void ASTWalker::Visit(PostFix& expr) {
       auto read = current;
       auto type = emitter.vars[current].type;
       if (type == calyx::Var::Type::Pointer) {
-
+        // todo
       }
       else if (type == calyx::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for post-decrement: struct");
@@ -607,7 +607,7 @@ void ASTWalker::Visit(Unary& expr) {
       auto type = emitter.vars[current].type;
       calyx::var_index_t stored;
       if (type == calyx::Var::Type::Pointer) {
-
+        // todo
       }
       else if (type == calyx::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for pre-increment: struct");
@@ -634,7 +634,7 @@ void ASTWalker::Visit(Unary& expr) {
       auto type = emitter.vars[current].type;
       calyx::var_index_t stored;
       if (type == calyx::Var::Type::Pointer) {
-
+        // todo
       }
       else if (type == calyx::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for pre-decrement: struct");
