@@ -22,7 +22,7 @@ struct ASTWalker : public taxy::NodeVisitor {
     Assign,
     Address,
     Read,
-    Condition,
+    ConditionalBranch,
   };
 
   std::stack<std::pair<State, calyx::var_index_t>> state{};

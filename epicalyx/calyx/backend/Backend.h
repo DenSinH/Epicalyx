@@ -9,7 +9,7 @@ namespace epi::calyx {
 
 struct Backend {
 
-  virtual void EmitProgram(std::vector<calyx::pDirective>& program) = 0;
+  virtual void EmitProgram(Program& program) = 0;
 
   virtual void Emit(AllocateCVar& op) = 0;
   virtual void Emit(DeallocateCVar& op) = 0;

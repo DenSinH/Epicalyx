@@ -450,6 +450,16 @@ void ASTWalker::Visit(Identifier& decl) {
       type->Visit(visitor);
       break;
     }
+    case State::ConditionalBranch: {
+//      if (type->IsArray()) {
+//        current = emitter.EmitExpr<calyx::LoadCVarAddr>({ calyx::Var::Type::Pointer, type->Deref()->Sizeof() }, cvar.idx);
+//      }
+//      else {
+//        auto visitor = detail::EmitterTypeVisitor<detail::LoadCVarEmitter>(*this, { cvar.idx });
+//        type->Visit(visitor);
+//      }
+//      emitter.Emit<calyx::BranchCompareImm
+    }
     default: {
       throw std::runtime_error("Unimplemented");
     }

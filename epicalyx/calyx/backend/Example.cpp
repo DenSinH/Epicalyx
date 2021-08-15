@@ -3,7 +3,7 @@
 
 namespace epi::calyx {
 
-void Example::EmitProgram(std::vector<calyx::pDirective>& program) {
+void Example::EmitProgram(Program& program) {
 
 }
 

@@ -9,6 +9,8 @@ namespace epi::phyte {
 
 struct Emitter {
 
+  Emitter();
+
   // todo: blocks
   template<typename T, typename... Args>
   calyx::var_index_t EmitExpr(calyx::Var var, Args... args) {
@@ -20,18 +22,30 @@ struct Emitter {
 
   template<typename T, typename... Args>
   void Emit(Args... args) {
-    program.push_back(std::make_unique<T>(args...));
+    program[current_block].push_back(std::make_unique<T>(args...));
+  }
+
+  calyx::var_index_t MakeBlock() {
+    calyx::var_index_t id = program.size();
+    program.emplace_back();
+    return id;
+  }
+
+  void SelectBlock(calyx::var_index_t id) {
+    current_block = id;
   }
 
   void MakeProgram(std::vector<taxy::pNode<taxy::Decl>>& ast);
 
   // 0 are special IDs
-  calyx::var_index_t ir_counter = 1;
-  calyx::var_index_t c_counter = 1;
+  calyx::var_index_t ir_counter = 1;  // ir vars
+  calyx::var_index_t c_counter = 1;   // c vars
+
+  calyx::var_index_t current_block = 0;
 
   // first var is special
   std::vector<calyx::Var> vars{{calyx::Var::Type::I32}};
-  std::vector<calyx::pDirective> program{};
+  calyx::Program program{};
 };
 
 }

@@ -16,7 +16,11 @@ struct Interpreter : Backend {
   std::map<calyx::var_index_t, u64> c_vars{};
   std::map<calyx::var_index_t, std::variant<i32, u32, i64, u64, float, double>> vars{};
 
-  void EmitProgram(std::vector<calyx::pDirective>& program) final;
+  std::pair<calyx::var_index_t, calyx::var_index_t> pos{0, 0};
+  bool returned = false;
+
+  void EmitProgram(Program& program) final;
+  void VisualizeProgram(const Program& program);
 
   void Emit(AllocateCVar& op) final;
   void Emit(DeallocateCVar& op) final;

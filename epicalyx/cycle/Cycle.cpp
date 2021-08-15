@@ -90,13 +90,13 @@ void Graph::VisualizeImpl() {
   canvas->Style.ConnectionIndent = 0.0f;
 
   auto sort = FindOrder();
-  ImVec2 pos{50, 100};
+  std::pair<float, float> pos{50, 100};
   for (const auto& layer : sort) {
-    pos.y = 100;
-    pos.x += 200;
+    pos.second = 100;
+    pos.first += 200;
     for (const auto& id : layer) {
       nodes.at(id).pos = pos;
-      pos.y += (1 + nodes.at(id).body.size()) * 20 + 30;
+      pos.second += (1 + nodes.at(id).body.size()) * 20 + 30;
     }
   }
 
@@ -211,7 +211,8 @@ void Graph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort) {
     for (const auto& layer : sort) {
       for (const auto& id : layer) {
         auto& node = nodes.at(id);
-        if (ImNodes::Ez::BeginNode(&node.id, std::to_string(id).c_str(), &node.pos, &node.selected))
+        ImVec2 pos = {node.pos.first, node.pos.second};
+        if (ImNodes::Ez::BeginNode(&node.id, std::to_string(id).c_str(), &pos, &node.selected))
         {
           if (edges.contains(id)) [[likely]] {
             // blocks only contain one input

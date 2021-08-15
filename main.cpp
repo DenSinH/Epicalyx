@@ -16,7 +16,8 @@
 
 
 int main() {
-  auto file = epi::File("tests/test.c");
+  // auto file = epi::File("tests/test.c");
+  auto file = epi::File("examples/emitting/branches.c");
   auto string = epi::SString(
           "{ for (int i = {0}; i < 12; i++)"
           "{ int a = i + 1, (*b)() = c = 12 ? 1 > 2 : 3; (&a)[i] = 69; }"
@@ -50,8 +51,11 @@ int main() {
     emitter.MakeProgram(parser.declarations);
     std::cout << std::endl << std::endl;
     std::cout << "-- program" << std::endl;
-    for (const auto& op : emitter.program) {
-      std::cout << op->ToString() << std::endl;
+    for (int i = 0; i < emitter.program.size(); i++) {
+      std::cout << 'L' << i << std::endl;
+      for (const auto& op : emitter.program[i]) {
+        std::cout << "    " << op->ToString() << std::endl;
+      }
     }
   }
   catch_e {
@@ -66,28 +70,13 @@ int main() {
     std::cout << "-- interpreted" << std::endl;
     interpreter.EmitProgram(emitter.program);
     std::cout << std::endl << std::endl;
+    interpreter.VisualizeProgram(emitter.program);
   }
   catch_e {
     Log::ConsoleColor<Log::Color::Red>();
     std::cout << "Interpreter error:" << std::endl << std::endl;
     std::cout << e.what() << std::endl;
   }
-
-  epi::cycle::Graph graph{};
-  graph.n(0)->n(1)->n(2);
-  graph.n(4)->n(6, "gt");
-  graph.n(4)->n(7, "le");
-  graph.n(0, "string");
-  graph.n(0, "string");
-  graph.n(1, "node 1");
-  graph.n(1, "node 1");
-  graph.n(1, "node 1");
-  graph.n(2, "node 2");
-  graph.n(3, "node 3");
-  graph.n(3, "node 3");
-
-  graph.Visualize();
-  graph.Join();
 
   return 0;
 }

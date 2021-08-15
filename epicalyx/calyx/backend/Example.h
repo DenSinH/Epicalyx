@@ -7,7 +7,7 @@ namespace epi::calyx {
 
 struct Example : Backend {
 
-  void EmitProgram(std::vector<calyx::pDirective>& program) final;
+  void EmitProgram(Program& program) final;
 
   void Emit(AllocateCVar& op) final;
   void Emit(DeallocateCVar& op) final;

@@ -1,6 +1,8 @@
 #include "Interpreter.h"
 
+#include "cycle/Cycle.h"
 #include "Assert.h"
+#include "Format.h"
 
 #include <stdexcept>
 #include <iostream>
@@ -10,9 +12,35 @@
 
 namespace epi::calyx {
 
+void Interpreter::VisualizeProgram(const Program& program) {
+  auto graph = std::make_unique<epi::cycle::Graph>();
 
-void Interpreter::EmitProgram(std::vector<calyx::pDirective>& program) {
-  for (auto& directive : program) {
+  for (int i = 0; i < program.size(); i++) {
+    graph->n(i, cotyl::Format("Block %d", i));
+    graph->n(i, "");
+    for (const auto& directive : program[i]) {
+      switch (directive->cls) {
+        case Directive::Class::Expression:
+        case Directive::Class::Stack:
+        case Directive::Class::Store:
+          graph->n(i, directive->ToString());
+          break;
+        case Directive::Class::Branch:
+          // todo: branches
+          graph->n(i, directive->ToString());
+          break;
+      }
+    }
+  }
+
+  graph->Visualize();
+  graph->Join();
+}
+
+void Interpreter::EmitProgram(Program& program) {
+  while (!returned) {
+    auto& directive = program[pos.first][pos.second];
+    pos.second++;
     directive->Emit(*this);
   }
 }
@@ -96,6 +124,7 @@ void Interpreter::EmitStoreCVar(StoreCVar<T>& op) {
 
 template<typename T>
 void Interpreter::EmitReturn(Return<T>& op) {
+  returned = true;
   if constexpr(std::is_same_v<T, Pointer>) {
 
   }

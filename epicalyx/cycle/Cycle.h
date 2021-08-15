@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Default.h"
-#include "imgui/imgui.h"
 
 #include <thread>
 #include <map>
@@ -52,7 +51,7 @@ private:
 
     u64 id;
     bool selected = false;
-    ImVec2 pos{0, 0};
+    std::pair<float, float> pos{0, 0};
     std::vector<std::string> body{};
     std::set<std::string> outputs{};
   };

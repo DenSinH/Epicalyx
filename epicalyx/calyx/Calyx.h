@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 
 namespace epi::calyx {
@@ -80,6 +81,9 @@ struct Directive {
   virtual void Emit(Backend& backend) = 0;
 };
 
+using pDirective = std::unique_ptr<Directive>;
+using Program = std::vector<std::vector<calyx::pDirective>>;
+
 template<typename T>
 struct Expr : Directive {
   static_assert(is_calyx_type_v<T>);
@@ -103,8 +107,6 @@ struct Branch : Directive {
 
   block_label_t dest;
 };
-
-using pDirective = std::unique_ptr<Directive>;
 
 enum class BinopType {
   Add,
