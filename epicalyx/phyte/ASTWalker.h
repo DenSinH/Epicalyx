@@ -25,7 +25,20 @@ struct ASTWalker : public taxy::NodeVisitor {
     ConditionalBranch,
   };
 
-  std::stack<std::pair<State, calyx::var_index_t>> state{};
+  union StateData {
+    struct {
+      calyx::var_index_t var;
+    };
+
+    struct {
+      calyx::var_index_t true_block;
+      calyx::var_index_t false_block;
+    };
+  };
+
+  std::stack<std::pair<State, StateData>> state{};
+  bool reachable = true;
+
   cotyl::MapScope<std::string, calyx::CVar> variables{};
   cotyl::MapScope<std::string, pType<const CType>> c_types{};
 
@@ -38,6 +51,8 @@ struct ASTWalker : public taxy::NodeVisitor {
   void EmitArithExpr(calyx::Var::Type type, Args... args);
   template<template<typename T> class Op, typename... Args>
   void EmitIntegralExpr(calyx::Var::Type type, Args... args);
+  template<template<typename T> class Op, typename... Args>
+  void EmitBranch(calyx::Var::Type type, Args... args);
 
   void BinopHelper(calyx::var_index_t left, calyx::BinopType op, calyx::var_index_t right);
 

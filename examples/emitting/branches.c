@@ -1,13 +1,15 @@
 
 int main() {
   int x = 0;
-  if (x > 1) {
-    return 2;
-  }
-  else if (x < 1) {
+  int y = 1;
+  if (x) {
     return 1;
   }
-  else {
-    return 0;
+  else if (y) {
+    return 2;
   }
+  else {
+    return 3;
+  }
+  return 0;
 }

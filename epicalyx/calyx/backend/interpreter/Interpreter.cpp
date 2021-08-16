@@ -3,6 +3,7 @@
 #include "cycle/Cycle.h"
 #include "Assert.h"
 #include "Format.h"
+#include "Cast.h"
 
 #include <stdexcept>
 #include <iostream>
@@ -16,18 +17,16 @@ void Interpreter::VisualizeProgram(const Program& program) {
   auto graph = std::make_unique<epi::cycle::Graph>();
 
   for (int i = 0; i < program.size(); i++) {
-    graph->n(i, cotyl::Format("Block %d", i));
-    graph->n(i, "");
     for (const auto& directive : program[i]) {
       switch (directive->cls) {
         case Directive::Class::Expression:
         case Directive::Class::Stack:
         case Directive::Class::Store:
+        case Directive::Class::Return:
           graph->n(i, directive->ToString());
           break;
         case Directive::Class::Branch:
-          // todo: branches
-          graph->n(i, directive->ToString());
+          graph->n(i, directive->ToString())->n(cotyl::unique_ptr_cast<Branch>(directive)->dest);
           break;
       }
     }
@@ -279,17 +278,60 @@ void Interpreter::EmitShift(Shift<T>& op) {
 }
 
 void Interpreter::Emit(UnconditionalBranch& op) {
-
+  pos.first  = op.dest;
+  pos.second = 0;
 }
 
 template<typename T>
 void Interpreter::EmitBranchCompare(BranchCompare<T>& op) {
+  if constexpr(std::is_same_v<T, Pointer>) {
+    throw std::runtime_error("Unimplemented");
+  }
+  else {
+    T left = std::get<T>(vars[op.left_idx]);
+    T right = std::get<T>(vars[op.right_idx]);
+    bool branch;
 
+    switch (op.op) {
+      case calyx::CmpType::Eq: branch = left == right; break;
+      case calyx::CmpType::Ne: branch = left != right; break;
+      case calyx::CmpType::Gt: branch = left > right; break;
+      case calyx::CmpType::Ge: branch = left >= right; break;
+      case calyx::CmpType::Lt: branch = left < right; break;
+      case calyx::CmpType::Le: branch = left <= right; break;
+    }
+
+    if (branch) {
+      pos.first = op.dest;
+      pos.second = 0;
+    }
+  }
 }
 
 template<typename T>
 void Interpreter::EmitBranchCompareImm(BranchCompareImm<T>& op) {
+  if constexpr(std::is_same_v<T, Pointer>) {
+    throw std::runtime_error("Unimplemented");
+  }
+  else {
+    T left = std::get<T>(vars[op.left_idx]);
+    T right = op.right;
+    bool branch;
 
+    switch (op.op) {
+      case calyx::CmpType::Eq: branch = left == right; break;
+      case calyx::CmpType::Ne: branch = left != right; break;
+      case calyx::CmpType::Gt: branch = left > right; break;
+      case calyx::CmpType::Ge: branch = left >= right; break;
+      case calyx::CmpType::Lt: branch = left < right; break;
+      case calyx::CmpType::Le: branch = left <= right; break;
+    }
+
+    if (branch) {
+      pos.first = op.dest;
+      pos.second = 0;
+    }
+  }
 }
 
 template<typename T>
@@ -327,6 +369,7 @@ void Interpreter::Emit(BranchCompareImm<i64>& op) { EmitBranchCompareImm(op); }
 void Interpreter::Emit(BranchCompareImm<u64>& op) { EmitBranchCompareImm(op); }
 void Interpreter::Emit(BranchCompareImm<float>& op) { EmitBranchCompareImm(op); }
 void Interpreter::Emit(BranchCompareImm<double>& op) { EmitBranchCompareImm(op); }
+void Interpreter::Emit(BranchCompareImm<Pointer>& op) { EmitBranchCompareImm(op); }
 void Interpreter::Emit(AddToPointer<i32>& op) { EmitAddToPointer(op); }
 void Interpreter::Emit(AddToPointer<u32>& op) { EmitAddToPointer(op); }
 void Interpreter::Emit(AddToPointer<i64>& op) { EmitAddToPointer(op); }

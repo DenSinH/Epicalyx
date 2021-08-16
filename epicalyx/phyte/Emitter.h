@@ -25,13 +25,13 @@ struct Emitter {
     program[current_block].push_back(std::make_unique<T>(args...));
   }
 
-  calyx::var_index_t MakeBlock() {
-    calyx::var_index_t id = program.size();
+  calyx::block_label_t MakeBlock() {
+    calyx::block_label_t id = program.size();
     program.emplace_back();
     return id;
   }
 
-  void SelectBlock(calyx::var_index_t id) {
+  void SelectBlock(calyx::block_label_t id) {
     current_block = id;
   }
 
@@ -41,7 +41,7 @@ struct Emitter {
   calyx::var_index_t ir_counter = 1;  // ir vars
   calyx::var_index_t c_counter = 1;   // c vars
 
-  calyx::var_index_t current_block = 0;
+  calyx::block_label_t current_block = 0;
 
   // first var is special
   std::vector<calyx::Var> vars{{calyx::Var::Type::I32}};

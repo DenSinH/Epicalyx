@@ -113,6 +113,7 @@ void Example::Emit(BranchCompareImm<i64>& op) { EmitBranchCompareImm(op); }
 void Example::Emit(BranchCompareImm<u64>& op) { EmitBranchCompareImm(op); }
 void Example::Emit(BranchCompareImm<float>& op) { EmitBranchCompareImm(op); }
 void Example::Emit(BranchCompareImm<double>& op) { EmitBranchCompareImm(op); }
+void Example::Emit(BranchCompareImm<Pointer>& op) { EmitBranchCompareImm(op); }
 void Example::Emit(AddToPointer<i32>& op) { EmitAddToPointer(op); }
 void Example::Emit(AddToPointer<u32>& op) { EmitAddToPointer(op); }
 void Example::Emit(AddToPointer<i64>& op) { EmitAddToPointer(op); }

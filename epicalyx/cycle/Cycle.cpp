@@ -90,13 +90,14 @@ void Graph::VisualizeImpl() {
   canvas->Style.ConnectionIndent = 0.0f;
 
   auto sort = FindOrder();
-  std::pair<float, float> pos{50, 100};
+  std::map<u64, ImVec2> positions;
+  ImVec2 pos{50, 100};
   for (const auto& layer : sort) {
-    pos.second = 100;
-    pos.first += 200;
+    pos.y = 100;
+    pos.x += 300;
     for (const auto& id : layer) {
-      nodes.at(id).pos = pos;
-      pos.second += (1 + nodes.at(id).body.size()) * 20 + 30;
+      positions.emplace(id, pos);
+      pos.y += (1 + nodes.at(id).body.size()) * 20 + 30;
     }
   }
 
@@ -131,7 +132,7 @@ void Graph::VisualizeImpl() {
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    Render(*canvas, sort);
+    Render(*canvas, sort, positions);
 
     ImGui::Render();
 
@@ -144,7 +145,7 @@ void Graph::VisualizeImpl() {
 }
 
 Graph::top_sort_t Graph::FindOrder() {
-  std::vector<std::vector<u64>> result{};
+  top_sort_t result{};
   std::unordered_set<u64> todo{};
   result.push_back({});
   for (const auto &[id, node] : nodes) {
@@ -168,12 +169,9 @@ Graph::top_sort_t Graph::FindOrder() {
       // check if all inputs are done
       bool allow_add = true;
       for (const auto& e : edges[id]) {
-        // ignore backwards edges
-        if (e.from < id) {
-          if (todo.contains(e.from)) {
-            allow_add = false;
-            break;
-          }
+        if (todo.contains(e.from)) {
+          allow_add = false;
+          break;
         }
       }
 
@@ -182,9 +180,26 @@ Graph::top_sort_t Graph::FindOrder() {
       }
     }
 
-#ifndef NDEBUG
-    cotyl::Assert(!result.back().empty(), "Graph cannot be topologically sorted");
-#endif
+    // for cycles, pick the node with the least inputs left
+    if (result.back().empty()) {
+      u32 least_inputs = -1;
+      u64 least_id = 0;
+      for (const auto& id : todo) {
+        u32 inputs = 0;
+        for (const auto& e : edges[id]) {
+          if (todo.contains(e.from)) {
+            inputs++;
+          }
+        }
+
+        if (inputs < least_inputs) {
+          least_inputs = inputs;
+          least_id = id;
+        }
+      }
+
+      result.back().push_back(least_id);
+    }
 
     for (const auto& id : result.back()) {
       todo.erase(id);
@@ -194,7 +209,7 @@ Graph::top_sort_t Graph::FindOrder() {
   return std::move(result);
 }
 
-void Graph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort) {
+void Graph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, std::map<u64, ImVec2>& positions) {
   ImGui::SetNextWindowSize(ImVec2(WINDOW_WIDTH, WINDOW_HEIGHT));
   ImGui::SetNextWindowPos(ImVec2(0, 0));
   if (ImGui::Begin(
@@ -211,8 +226,7 @@ void Graph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort) {
     for (const auto& layer : sort) {
       for (const auto& id : layer) {
         auto& node = nodes.at(id);
-        ImVec2 pos = {node.pos.first, node.pos.second};
-        if (ImNodes::Ez::BeginNode(&node.id, std::to_string(id).c_str(), &pos, &node.selected))
+        if (ImNodes::Ez::BeginNode(&node.id, std::to_string(id).c_str(), &positions.at(id), &node.selected))
         {
           if (edges.contains(id)) [[likely]] {
             // blocks only contain one input

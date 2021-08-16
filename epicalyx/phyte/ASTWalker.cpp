@@ -218,6 +218,21 @@ void ASTWalker::EmitIntegralExpr(calyx::Var::Type type, Args... args) {
   }
 }
 
+template<template<typename T> class Op, typename... Args>
+void ASTWalker::EmitBranch(calyx::Var::Type type, Args... args) {
+  switch (type) {
+    case calyx::Var::Type::I32: emitter.Emit<Op<i32>>(args...); break;
+    case calyx::Var::Type::U32: emitter.Emit<Op<u32>>(args...); break;
+    case calyx::Var::Type::I64: emitter.Emit<Op<i64>>(args...); break;
+    case calyx::Var::Type::U64: emitter.Emit<Op<u64>>(args...); break;
+    case calyx::Var::Type::Float: emitter.Emit<Op<float>>(args...); break;
+    case calyx::Var::Type::Double: emitter.Emit<Op<double>>(args...); break;
+    case calyx::Var::Type::Pointer: emitter.Emit<Op<calyx::Pointer>>(args...); break;
+    default:
+      throw std::runtime_error("Bad type for branch expression");
+  }
+}
+
 void ASTWalker::BinopHelper(calyx::var_index_t left, calyx::BinopType op, calyx::var_index_t right) {
   auto left_t = emitter.vars[left].type;
   auto right_t = emitter.vars[right].type;
@@ -387,11 +402,11 @@ void ASTWalker::Visit(epi::taxy::Declaration& decl) {
 
     if (decl.value.has_value()) {
       if (std::holds_alternative<pExpr>(decl.value.value())) {
-        state.emplace(State::Read, 0);
+        state.push({State::Read, {}});
         std::get<pExpr>(decl.value.value())->Visit(*this);
         state.pop();
         // current now holds the expression id that we want to assign with
-        state.emplace(State::Assign, current);
+        state.push({State::Assign, {.var = current}});
         Identifier(decl.name).Visit(*this);
         state.pop();
       }
@@ -408,6 +423,7 @@ void ASTWalker::Visit(epi::taxy::FunctionDefinition& decl) {
   variables.NewLayer();
   // todo: arguments etc
   function = &decl;
+  reachable = true;
   for (const auto& node : decl.body->stats) {
     node->Visit(*this);
   }
@@ -423,6 +439,10 @@ void ASTWalker::Visit(Identifier& decl) {
     // statement has no effect
     return;
   }
+  if (!reachable) {
+    return;
+  }
+
   auto type = c_types.Get(decl.name);
   auto cvar = variables.Get(decl.name);
   switch (state.top().first) {
@@ -438,7 +458,7 @@ void ASTWalker::Visit(Identifier& decl) {
     }
     case State::Assign: {
       auto visitor = detail::EmitterTypeVisitor<detail::StoreCVarEmitter>(
-              *this, { cvar.idx, state.top().second }
+              *this, { cvar.idx, state.top().second.var }
       );
       type->Visit(visitor);
       break;
@@ -451,14 +471,17 @@ void ASTWalker::Visit(Identifier& decl) {
       break;
     }
     case State::ConditionalBranch: {
-//      if (type->IsArray()) {
-//        current = emitter.EmitExpr<calyx::LoadCVarAddr>({ calyx::Var::Type::Pointer, type->Deref()->Sizeof() }, cvar.idx);
-//      }
-//      else {
-//        auto visitor = detail::EmitterTypeVisitor<detail::LoadCVarEmitter>(*this, { cvar.idx });
-//        type->Visit(visitor);
-//      }
-//      emitter.Emit<calyx::BranchCompareImm
+      // first part is same as read
+      state.push({State::Read, {}});
+      Visit(decl);
+      state.pop();
+
+      // emit branch
+      // branch to false block if 0, otherwise go to true block
+      auto block = state.top().second.false_block;
+      EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, block, current, calyx::CmpType::Eq, 0);
+      emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
+      break;
     }
     default: {
       throw std::runtime_error("Unimplemented");
@@ -467,42 +490,52 @@ void ASTWalker::Visit(Identifier& decl) {
 }
 
 void ASTWalker::Visit(NumericalConstant<i8>& expr) {
+  if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<i32>>({ detail::calyx_type_v<i32> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<u8>& expr) {
+  if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<u32>>({ detail::calyx_type_v<u32> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<i16>& expr) {
+  if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<i32>>({ detail::calyx_type_v<i32> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<u16>& expr) {
+  if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<u32>>({ detail::calyx_type_v<u32> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<i32>& expr) {
+  if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<i32>>({ detail::calyx_type_v<i32> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<u32>& expr) {
+  if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<u32>>({ detail::calyx_type_v<u32> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<i64>& expr) {
+  if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<i64>>({ detail::calyx_type_v<i64> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<u64>& expr) {
+  if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<u64>>({ detail::calyx_type_v<u64> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<float>& expr) {
+  if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<float>>({ detail::calyx_type_v<float> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<double>& expr) {
+  if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<double>>({ detail::calyx_type_v<double> }, expr.value);
 }
 
@@ -528,10 +561,12 @@ void ASTWalker::Visit(TypeInitializer& expr) {
 }
 
 void ASTWalker::Visit(PostFix& expr) {
+  if (!reachable) return;
+
   switch (expr.op) {
     case TokenType::Incr: {
       cotyl::Assert(state.empty() || state.top().first == State::Read);
-      state.emplace(State::Read, 0);
+      state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
       auto read = current;
@@ -547,7 +582,7 @@ void ASTWalker::Visit(PostFix& expr) {
       }
 
       // write back
-      state.emplace(State::Assign, current);
+      state.push({State::Assign, {.var = current}});
       expr.left->Visit(*this);
       state.pop();
       // restore read value for next expression
@@ -556,7 +591,7 @@ void ASTWalker::Visit(PostFix& expr) {
     }
     case TokenType::Decr: {
       cotyl::Assert(state.empty() || state.top().first == State::Read);
-      state.emplace(State::Read, 0);
+      state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
       auto read = current;
@@ -572,7 +607,7 @@ void ASTWalker::Visit(PostFix& expr) {
       }
 
       // write back
-      state.emplace(State::Assign, current);
+      state.push({State::Assign, {.var = current}});
       expr.left->Visit(*this);
       state.pop();
       // restore read value for next expression
@@ -586,6 +621,8 @@ void ASTWalker::Visit(PostFix& expr) {
 }
 
 void ASTWalker::Visit(Unary& expr) {
+  if (!reachable) return;
+
   switch (expr.op) {
     case TokenType::Minus: {
       cotyl::Assert(state.empty() || state.top().first == State::Read);
@@ -611,7 +648,7 @@ void ASTWalker::Visit(Unary& expr) {
     }
     case TokenType::Incr: {
       cotyl::Assert(state.empty() || state.top().first == State::Read);
-      state.emplace(State::Read, 0);
+      state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
       auto type = emitter.vars[current].type;
@@ -628,7 +665,7 @@ void ASTWalker::Visit(Unary& expr) {
       stored = current;
 
       // write back
-      state.emplace(State::Assign, current);
+      state.push({State::Assign, {.var = current}});
       expr.left->Visit(*this);
       state.pop();
 
@@ -638,7 +675,7 @@ void ASTWalker::Visit(Unary& expr) {
     }
     case TokenType::Decr: {
       cotyl::Assert(state.empty() || state.top().first == State::Read);
-      state.emplace(State::Read, 0);
+      state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
       auto type = emitter.vars[current].type;
@@ -655,7 +692,7 @@ void ASTWalker::Visit(Unary& expr) {
       stored = current;
 
       // write back
-      state.emplace(State::Assign, current);
+      state.push({State::Assign, {.var = current}});
       expr.left->Visit(*this);
       state.pop();
 
@@ -678,6 +715,8 @@ void ASTWalker::Visit(Cast& expr) {
 }
 
 void ASTWalker::Visit(Binop& expr) {
+  if (!reachable) return;
+
   cotyl::Assert(state.empty() || state.top().first == State::Read);
   // no need to push new state
   expr.left->Visit(*this);
@@ -755,12 +794,14 @@ void ASTWalker::Visit(Ternary& expr) {
 }
 
 void ASTWalker::Visit(Assignment& expr) {
+  if (!reachable) return;
+
   if (expr.op == TokenType::Assign) {
-    state.emplace(State::Read, 0);
+    state.push({State::Read, {}});
     expr.right->Visit(*this);
     state.pop();
     // current now holds the expression id that we want to assign with
-    state.emplace(State::Assign, current);
+    state.push({State::Assign, {.var = current}});
     expr.left->Visit(*this);
     state.pop();
   }
@@ -771,7 +812,45 @@ void ASTWalker::Visit(Empty& stat) {
 }
 
 void ASTWalker::Visit(If& stat) {
-  throw std::runtime_error("unimplemented");
+  if (!reachable) return;
+
+  auto true_block = emitter.MakeBlock();
+  auto false_block = emitter.MakeBlock();
+  calyx::var_index_t post_block;
+  if (stat._else) {
+    post_block = emitter.MakeBlock();
+  }
+  else {
+    post_block = false_block;
+  }
+
+  state.push({State::ConditionalBranch, {.true_block = true_block, .false_block = false_block}});
+  stat.cond->Visit(*this);
+  state.pop();
+
+  // true, then jump to post block
+  emitter.SelectBlock(true_block);
+  stat.stat->Visit(*this);
+  bool true_reachable = reachable;
+  if (reachable) {
+    emitter.Emit<calyx::UnconditionalBranch>(post_block);
+  }
+  reachable = true;
+
+  bool false_reachable = true;
+  if (stat._else) {
+    emitter.SelectBlock(false_block);
+    stat._else->Visit(*this);
+    false_reachable = reachable;
+    if (reachable) {
+      emitter.Emit<calyx::UnconditionalBranch>(post_block);
+    }
+    reachable = true;
+  }
+
+  emitter.SelectBlock(post_block);
+  reachable = true_reachable || false_reachable;
+  cotyl::Assert(emitter.program[post_block].empty());
 }
 
 void ASTWalker::Visit(While& stat) {
@@ -807,8 +886,10 @@ void ASTWalker::Visit(Goto& stat) {
 }
 
 void ASTWalker::Visit(Return& stat) {
+  if (!reachable) return;
+
   if (stat.expr) {
-    state.emplace(State::Read, 0);
+    state.push({State::Read, {}});
     stat.expr->Visit(*this);
     auto visitor = detail::EmitterTypeVisitor<detail::ReturnEmitter>(*this, { current });
     function->signature->contained->Visit(visitor);
@@ -817,6 +898,7 @@ void ASTWalker::Visit(Return& stat) {
   else {
     emitter.Emit<calyx::Return<i32>>(0);
   }
+  reachable = false;
 }
 
 void ASTWalker::Visit(Break& stat) {

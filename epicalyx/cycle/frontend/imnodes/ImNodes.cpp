@@ -490,8 +490,9 @@ void EndNode()
         if (ImGui::IsMouseDown(0))
         {
             // Node dragging behavior. Drag node under mouse and other selected nodes if current node is selected.
-            if ((ImGui::IsItemActive() || (impl->DragNode && impl->DragNodeSelected && node_selected)))
-                node_pos += ImGui::GetIO().MouseDelta / canvas->Zoom;
+            if ((ImGui::IsItemActive() || (impl->DragNode && impl->DragNodeSelected && node_selected))) {
+              node_pos += ImGui::GetIO().MouseDelta / canvas->Zoom;
+            }
         }
         break;
     }

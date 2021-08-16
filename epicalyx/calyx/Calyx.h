@@ -33,6 +33,19 @@ template<> struct calyx_upcast<u16> { using type = i32; };
 template<typename T>
 using calyx_upcast_t = typename calyx_upcast<T>::type;
 
+template<typename T>
+struct calyx_imm_type {
+  using type = T;
+};
+
+template<>
+struct calyx_imm_type<Pointer> {
+  using type = u64;
+};
+
+template<typename T>
+using calyx_imm_type_t = typename calyx_imm_type<T>::type;
+
 struct CVar {
   enum class Location {
     Stack,  // if address is taken
@@ -66,6 +79,7 @@ struct Directive {
     Store,
     Stack,
     Branch,
+    Return,
   };
 
   Directive(Class cls) :
@@ -229,15 +243,14 @@ template<typename T>
 struct BranchCompareImm : Branch {
   static_assert(is_calyx_type_v<T>);
 
-  BranchCompareImm(block_label_t dest, var_index_t left, CmpType op, T right) :
+  BranchCompareImm(block_label_t dest, var_index_t left, CmpType op, calyx_imm_type_t<T> right) :
     Branch(dest), left_idx(left), op(op), right(right) {
 
   }
 
-
   var_index_t left_idx;
   CmpType op;
-  T right;
+  calyx_imm_type_t<T> right;
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
@@ -398,7 +411,7 @@ struct Return : Directive {
   static_assert(is_calyx_type_v<T>);
 
   Return(var_index_t idx) :
-          Directive(Class::Branch), idx(idx) {
+          Directive(Class::Return), idx(idx) {
 
   }
 

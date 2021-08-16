@@ -280,6 +280,7 @@ template struct BranchCompareImm<i64>;
 template struct BranchCompareImm<u64>;
 template struct BranchCompareImm<float>;
 template struct BranchCompareImm<double>;
+template struct BranchCompareImm<Pointer>;
 
 template struct Return<i32>;
 template struct Return<u32>;

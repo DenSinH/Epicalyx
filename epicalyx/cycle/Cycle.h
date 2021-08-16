@@ -11,6 +11,8 @@ namespace ImNodes {
 struct CanvasState;
 }
 
+struct ImVec2;
+
 namespace epi::cycle {
 
 struct Graph {
@@ -25,7 +27,7 @@ private:
     NodeRef(Graph& graph, u64 from) :
         graph(graph), from(from) {
       if (!graph.nodes.contains(from)) {
-        graph.nodes.emplace(from, Node(from));
+        graph.nodes.insert({from, Node(from)});
       }
     }
 
@@ -51,7 +53,6 @@ private:
 
     u64 id;
     bool selected = false;
-    std::pair<float, float> pos{0, 0};
     std::vector<std::string> body{};
     std::set<std::string> outputs{};
   };
@@ -75,7 +76,7 @@ private:
   void InitImGui();
   top_sort_t FindOrder();
   void VisualizeImpl();
-  void Render(ImNodes::CanvasState& canvas, const top_sort_t& sort);
+  void Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, std::map<u64, ImVec2>& positions);
 
 public:
   NodeRef n(u64 from, std::string line = "") {
