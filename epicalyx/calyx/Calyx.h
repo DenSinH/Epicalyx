@@ -99,8 +99,8 @@ using pDirective = std::unique_ptr<Directive>;
 using Program = std::vector<std::vector<calyx::pDirective>>;
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 struct Expr : Directive {
-  static_assert(is_calyx_type_v<T>);
   
   Expr(var_index_t idx) :
       Directive(Class::Expression),
@@ -162,8 +162,8 @@ struct Cast : Expr<calyx_upcast_t<To>> {
 };
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 struct Binop : Expr<T> {
-  static_assert(is_calyx_type_v<T>);
 
   Binop(var_index_t idx, var_index_t left, BinopType op, var_index_t right) :
       Expr<T>(idx), left_idx(left), op(op), right_idx(right) {
@@ -179,8 +179,8 @@ struct Binop : Expr<T> {
 };
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 struct BinopImm : Expr<T> {
-  static_assert(is_calyx_type_v<T>);
 
   BinopImm(var_index_t idx, var_index_t left, BinopType op, T right) :
       Expr<T>(idx), left_idx(left), op(op), right(right) {
@@ -196,8 +196,8 @@ struct BinopImm : Expr<T> {
 };
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 struct Shift : Expr<T> {
-  static_assert(is_calyx_type_v<T>);
 
   Shift(var_index_t idx, var_index_t left, ShiftType op, var_index_t right) :
       Expr<T>(idx), left_idx(left), op(op), right_idx(right) {
@@ -207,6 +207,57 @@ struct Shift : Expr<T> {
   var_index_t left_idx;
   ShiftType op;
   var_index_t right_idx;
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+template<typename T>
+requires (is_calyx_type_v<T>)
+struct ShiftImm : Expr<T> {
+
+  ShiftImm(var_index_t idx, var_index_t left, ShiftType op, T right) :
+      Expr<T>(idx), left_idx(left), op(op), right(right) {
+
+  }
+
+  var_index_t left_idx;
+  ShiftType op;
+  T right;
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+template<typename T>
+requires (is_calyx_type_v<T>)
+struct Compare : Expr<i32> {
+
+  Compare(var_index_t idx, var_index_t left, CmpType op, var_index_t right) :
+          Expr<i32>(idx), left_idx(left), op(op), right_idx(right) {
+
+  }
+
+  var_index_t left_idx;
+  CmpType op;
+  var_index_t right_idx;
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+template<typename T>
+requires (is_calyx_type_v<T>)
+struct CompareImm : Expr<i32> {
+
+  CompareImm(var_index_t idx, var_index_t left, CmpType op, T right) :
+          Expr<i32>(idx), left_idx(left), op(op), right(right) {
+
+  }
+
+  var_index_t left_idx;
+  CmpType op;
+  T right;
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
@@ -223,8 +274,8 @@ struct UnconditionalBranch : Branch {
 };
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 struct BranchCompare : Branch {
-  static_assert(is_calyx_type_v<T>);
 
   BranchCompare(block_label_t dest, var_index_t left, CmpType op, var_index_t right) :
       Branch(dest), left_idx(left), op(op), right_idx(right) {
@@ -240,8 +291,8 @@ struct BranchCompare : Branch {
 };
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 struct BranchCompareImm : Branch {
-  static_assert(is_calyx_type_v<T>);
 
   BranchCompareImm(block_label_t dest, var_index_t left, CmpType op, calyx_imm_type_t<T> right) :
     Branch(dest), left_idx(left), op(op), right(right) {
@@ -257,8 +308,8 @@ struct BranchCompareImm : Branch {
 };
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 struct AddToPointer : Expr<Pointer> {
-  static_assert(is_calyx_type_v<Pointer>);
 
   AddToPointer(var_index_t idx, var_index_t left, u64 stride, var_index_t right) :
       Expr<Pointer>(idx), ptr_idx(left), stride(stride), right_idx(right) {
@@ -274,8 +325,8 @@ struct AddToPointer : Expr<Pointer> {
 };
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 struct Imm : Expr<T> {
-  static_assert(is_calyx_type_v<T>);
 
   Imm(var_index_t idx, T value) :
       Expr<T>(idx), value(value) {
@@ -289,8 +340,8 @@ struct Imm : Expr<T> {
 };
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 struct Unop : Expr<T> {
-  static_assert(is_calyx_type_v<T>);
 
   Unop(var_index_t idx, UnopType op, var_index_t right) :
       Expr<T>(idx), op(op), right_idx(right) {
@@ -374,8 +425,8 @@ struct DeallocateCVar : Directive {
 };
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 struct LoadFromPointer : Expr<T> {
-  static_assert(is_calyx_type_v<T>);
 
   LoadFromPointer(var_index_t idx, var_index_t ptr_idx, i32 offset = 0) :
       Expr<T>(idx), ptr_idx(ptr_idx), offset(offset) {
@@ -390,8 +441,8 @@ struct LoadFromPointer : Expr<T> {
 };
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 struct StoreToPointer : Directive {
-  static_assert(is_calyx_type_v<T>);
 
   StoreToPointer(var_index_t ptr_idx, var_index_t idx, i32 offset = 0) :
           Directive(Class::Store), idx(idx), ptr_idx(ptr_idx), offset(offset) {
@@ -407,8 +458,8 @@ struct StoreToPointer : Directive {
 };
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 struct Return : Directive {
-  static_assert(is_calyx_type_v<T>);
 
   Return(var_index_t idx) :
           Directive(Class::Return), idx(idx) {

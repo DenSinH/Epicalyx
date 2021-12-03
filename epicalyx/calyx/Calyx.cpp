@@ -36,6 +36,7 @@ std::string Cast<To, From>::ToString() const {
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 std::string Binop<T>::ToString() const {
   std::string op_str;
   switch (op) {
@@ -52,6 +53,7 @@ std::string Binop<T>::ToString() const {
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 std::string BinopImm<T>::ToString() const {
   std::string op_str;
   switch (op) {
@@ -68,6 +70,7 @@ std::string BinopImm<T>::ToString() const {
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 std::string Shift<T>::ToString() const {
   std::string op_str;
   switch (op) {
@@ -75,6 +78,17 @@ std::string Shift<T>::ToString() const {
     case ShiftType::Right: op_str = ">>"; break;
   }
   return cotyl::FormatStr("shift v%s = v%s %s<%s> v%s", this->idx, left_idx, op_str, detail::type_string<T>::value, right_idx);
+}
+
+template<typename T>
+requires (is_calyx_type_v<T>)
+std::string ShiftImm<T>::ToString() const {
+  std::string op_str;
+  switch (op) {
+    case ShiftType::Left: op_str = "<<"; break;
+    case ShiftType::Right: op_str = ">>"; break;
+  }
+  return cotyl::FormatStr("shift v%s = v%s %s<%s> %s", this->idx, left_idx, op_str, detail::type_string<T>::value, right);
 }
 
 static std::string cmp_string(CmpType type) {
@@ -88,39 +102,64 @@ static std::string cmp_string(CmpType type) {
   }
 }
 
-std::string UnconditionalBranch::ToString() const {
-  return cotyl::FormatStr("branch L%s", this->dest);
+template<typename T>
+requires (is_calyx_type_v<T>)
+std::string Compare<T>::ToString() const {
+  return cotyl::FormatStr(
+          "cmpre v% = v%s %s<%s> v%s",
+          this->idx, left_idx, cmp_string(op),
+          detail::type_string<T>::value, right_idx
+  );
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
+std::string CompareImm<T>::ToString() const {
+  return cotyl::FormatStr(
+          "cmpim v% = v%s %s<%s> %s",
+          this->idx, left_idx, cmp_string(op),
+          detail::type_string<T>::value, right
+  );
+}
+
+std::string UnconditionalBranch::ToString() const {
+  return cotyl::FormatStr("brnch L%s", this->dest);
+}
+
+template<typename T>
+requires (is_calyx_type_v<T>)
 std::string BranchCompare<T>::ToString() const {
   return cotyl::FormatStr(
-          "branch L%s : v%s %s<%s> v%s",
+          "brnch L%s : v%s %s<%s> v%s",
           this->dest, left_idx, cmp_string(op),
           detail::type_string<T>::value, right_idx
   );
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 std::string BranchCompareImm<T>::ToString() const {
   return cotyl::FormatStr(
-          "branch L%s : v%s %s<%s> imm(%s)",
+          "brnch L%s : v%s %s<%s> imm(%s)",
           this->dest, left_idx, cmp_string(op),
           detail::type_string<T>::value, right
   );
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 std::string AddToPointer<T>::ToString() const {
   return cotyl::FormatStr("ptrad v% = v%s + %s * v%s", this->idx, ptr_idx, stride, right_idx);
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 std::string Imm<T>::ToString() const {
   return cotyl::FormatStr("immed v%s = imm<%s>(%s)", this->idx, detail::type_string<T>::value, value);
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 std::string Unop<T>::ToString() const {
   std::string op_str;
   switch (op) {
@@ -153,6 +192,7 @@ std::string LoadCVarAddr::ToString() const {
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 std::string Return<T>::ToString() const {
   if (idx) {
     return cotyl::FormatStr("retrn [%s]v%s", detail::type_string<T>::value, idx);
@@ -167,17 +207,38 @@ void Cast<To, From>::Emit(Backend& backend) {
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 void Binop<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 void BinopImm<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 void Shift<T>::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+template<typename T>
+requires (is_calyx_type_v<T>)
+void ShiftImm<T>::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+template<typename T>
+requires (is_calyx_type_v<T>)
+void Compare<T>::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+template<typename T>
+requires (is_calyx_type_v<T>)
+void CompareImm<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
@@ -186,26 +247,31 @@ void UnconditionalBranch::Emit(Backend& backend) {
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 void BranchCompare<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 void BranchCompareImm<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 void Unop<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 void AddToPointer<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 void Imm<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
@@ -233,16 +299,19 @@ void DeallocateCVar::Emit(Backend& backend) {
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 void LoadFromPointer<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 void StoreToPointer<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
+requires (is_calyx_type_v<T>)
 void Return<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
@@ -265,6 +334,25 @@ template struct Shift<i32>;
 template struct Shift<u32>;
 template struct Shift<i64>;
 template struct Shift<u64>;
+template struct ShiftImm<i32>;
+template struct ShiftImm<u32>;
+template struct ShiftImm<i64>;
+template struct ShiftImm<u64>;
+
+template struct Compare<i32>;
+template struct Compare<u32>;
+template struct Compare<i64>;
+template struct Compare<u64>;
+template struct Compare<float>;
+template struct Compare<double>;
+template struct Compare<Pointer>;
+
+template struct CompareImm<i32>;
+template struct CompareImm<u32>;
+template struct CompareImm<i64>;
+template struct CompareImm<u64>;
+template struct CompareImm<float>;
+template struct CompareImm<double>;
 
 template struct BranchCompare<i32>;
 template struct BranchCompare<u32>;

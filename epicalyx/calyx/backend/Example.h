@@ -32,6 +32,12 @@ struct Example : Backend {
   template<typename T>
   void EmitShift(Shift<T>& op);
   template<typename T>
+  void EmitShiftImm(ShiftImm<T>& op);
+  template<typename T>
+  void EmitCompare(Compare<T>& op);
+  template<typename T>
+  void EmitCompareImm(CompareImm<T>& op);
+  template<typename T>
   void EmitBranchCompare(BranchCompare<T>& op);
   template<typename T>
   void EmitBranchCompareImm(BranchCompareImm<T>& op);
@@ -54,6 +60,24 @@ struct Example : Backend {
   void Emit(Shift<u32>& op) final;
   void Emit(Shift<i64>& op) final;
   void Emit(Shift<u64>& op) final;
+  void Emit(ShiftImm<i32>& op) final;
+  void Emit(ShiftImm<u32>& op) final;
+  void Emit(ShiftImm<i64>& op) final;
+  void Emit(ShiftImm<u64>& op) final;
+  void Emit(Compare<i32>& op) final;
+  void Emit(Compare<u32>& op) final;
+  void Emit(Compare<i64>& op) final;
+  void Emit(Compare<u64>& op) final;
+  void Emit(Compare<float>& op) final;
+  void Emit(Compare<double>& op) final;
+  void Emit(Compare<Pointer>& op) final;
+  void Emit(CompareImm<i32>& op) final;
+  void Emit(CompareImm<u32>& op) final;
+  void Emit(CompareImm<i64>& op) final;
+  void Emit(CompareImm<u64>& op) final;
+  void Emit(CompareImm<float>& op) final;
+  void Emit(CompareImm<double>& op) final;
+  void Emit(CompareImm<Pointer>& op) final;
   void Emit(UnconditionalBranch& op) final;
   void Emit(BranchCompare<i32>& op) final;
   void Emit(BranchCompare<u32>& op) final;

@@ -48,12 +48,20 @@ struct ASTWalker : public taxy::NodeVisitor {
   const FunctionDefinition* function = nullptr;
 
   template<template<typename T> class Op, typename... Args>
-  void EmitArithExpr(calyx::Var::Type type, Args... args);
-  template<template<typename T> class Op, typename... Args>
   void EmitIntegralExpr(calyx::Var::Type type, Args... args);
   template<template<typename T> class Op, typename... Args>
+  void EmitArithExpr(calyx::Var::Type type, Args... args);
+  template<template<typename T> class Op, typename... Args>
   void EmitBranch(calyx::Var::Type type, Args... args);
+  template<template<typename T> class Op, typename... Args>
+  void EmitCompare(calyx::Var::Type type, Args... args);
 
+  struct BinopCastResult {
+    calyx::Var::Type type;
+    calyx::var_index_t left;
+    calyx::var_index_t right;
+  };
+  BinopCastResult BinopCastHelper(calyx::var_index_t left, calyx::var_index_t right);
   void BinopHelper(calyx::var_index_t left, calyx::BinopType op, calyx::var_index_t right);
 
   void Visit(Declaration& decl) final;

@@ -65,10 +65,10 @@ template<typename To, typename From>
 void Interpreter::EmitCast(Cast<To, From>& op) {
   cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<To, Pointer>) {
-
+    throw std::runtime_error("Unimplemented: cast to pointer");
   }
   else if constexpr(std::is_same_v<From, Pointer>) {
-
+    throw std::runtime_error("Unimplemented: cast from pointer");
   }
   else {
     To value;
@@ -93,10 +93,10 @@ template<typename T>
 void Interpreter::EmitLoadCVar(LoadCVar<T>& op) {
   cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<T, Pointer>) {
-
+    throw std::runtime_error("Unimplemented: load pointer cvar");
   }
   else if constexpr(std::is_same_v<T, Struct>) {
-
+    throw std::runtime_error("Unimplemented: load struct cvar");
   }
   else {
     T value;
@@ -109,10 +109,10 @@ template<typename T>
 void Interpreter::EmitStoreCVar(StoreCVar<T>& op) {
   cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<T, Pointer>) {
-
+    throw std::runtime_error("Unimplemented: store pointer cvar");
   }
   else if constexpr(std::is_same_v<T, Struct>) {
-
+    throw std::runtime_error("Unimplemented: store struct cvar");
   }
   else {
     T value = (T)std::get<calyx_upcast_t<T>>(vars[op.src]);
@@ -125,10 +125,10 @@ template<typename T>
 void Interpreter::EmitReturn(Return<T>& op) {
   returned = true;
   if constexpr(std::is_same_v<T, Pointer>) {
-
+    throw std::runtime_error("Unimplemented: return pointer");
   }
   else if constexpr(std::is_same_v<T, Struct>) {
-
+    throw std::runtime_error("Unimplemented: return struct");
   }
   else {
     std::cout << "return " << std::get<T>(vars[op.idx]) << std::endl;
@@ -277,6 +277,34 @@ void Interpreter::EmitShift(Shift<T>& op) {
   vars[op.idx] = left;
 }
 
+template<typename T>
+void Interpreter::EmitShiftImm(ShiftImm<T>& op) {
+  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+  T left = std::get<T>(vars[op.left_idx]);
+  switch (op.op) {
+    case calyx::ShiftType::Left: {
+      left <<= op.right;
+      break;
+    }
+    case calyx::ShiftType::Right: {
+      left >>= op.right;
+      break;
+    }
+  }
+  vars[op.idx] = left;
+}
+
+template<typename T>
+void Interpreter::EmitCompare(Compare<T>& op) {
+  throw std::runtime_error("Unimplemented: compare");
+}
+
+template<typename T>
+void Interpreter::EmitCompareImm(CompareImm<T>& op) {
+  throw std::runtime_error("Unimplemented: compare imm");
+}
+
+
 void Interpreter::Emit(UnconditionalBranch& op) {
   pos.first  = op.dest;
   pos.second = 0;
@@ -285,7 +313,7 @@ void Interpreter::Emit(UnconditionalBranch& op) {
 template<typename T>
 void Interpreter::EmitBranchCompare(BranchCompare<T>& op) {
   if constexpr(std::is_same_v<T, Pointer>) {
-    throw std::runtime_error("Unimplemented");
+    throw std::runtime_error("Unimplemented: pointer branch compare");
   }
   else {
     T left = std::get<T>(vars[op.left_idx]);
@@ -311,7 +339,7 @@ void Interpreter::EmitBranchCompare(BranchCompare<T>& op) {
 template<typename T>
 void Interpreter::EmitBranchCompareImm(BranchCompareImm<T>& op) {
   if constexpr(std::is_same_v<T, Pointer>) {
-    throw std::runtime_error("Unimplemented");
+    throw std::runtime_error("Unimplemented: pointer branch compare immediate");
   }
   else {
     T left = std::get<T>(vars[op.left_idx]);
@@ -356,6 +384,24 @@ void Interpreter::Emit(Shift<i32>& op) { EmitShift(op); }
 void Interpreter::Emit(Shift<u32>& op) { EmitShift(op); }
 void Interpreter::Emit(Shift<i64>& op) { EmitShift(op); }
 void Interpreter::Emit(Shift<u64>& op) { EmitShift(op); }
+void Interpreter::Emit(ShiftImm<i32>& op) { EmitShiftImm(op); }
+void Interpreter::Emit(ShiftImm<u32>& op) { EmitShiftImm(op); }
+void Interpreter::Emit(ShiftImm<i64>& op) { EmitShiftImm(op); }
+void Interpreter::Emit(ShiftImm<u64>& op) { EmitShiftImm(op); }
+void Interpreter::Emit(Compare<i32>& op) { EmitCompare(op); }
+void Interpreter::Emit(Compare<u32>& op) { EmitCompare(op); }
+void Interpreter::Emit(Compare<i64>& op) { EmitCompare(op); }
+void Interpreter::Emit(Compare<u64>& op) { EmitCompare(op); }
+void Interpreter::Emit(Compare<float>& op) { EmitCompare(op); }
+void Interpreter::Emit(Compare<double>& op) { EmitCompare(op); }
+void Interpreter::Emit(Compare<Pointer>& op) { EmitCompare(op); }
+void Interpreter::Emit(CompareImm<i32>& op) { EmitCompareImm(op); }
+void Interpreter::Emit(CompareImm<u32>& op) { EmitCompareImm(op); }
+void Interpreter::Emit(CompareImm<i64>& op) { EmitCompareImm(op); }
+void Interpreter::Emit(CompareImm<u64>& op) { EmitCompareImm(op); }
+void Interpreter::Emit(CompareImm<float>& op) { EmitCompareImm(op); }
+void Interpreter::Emit(CompareImm<double>& op) { EmitCompareImm(op); }
+void Interpreter::Emit(CompareImm<Pointer>& op) { EmitCompareImm(op); }
 void Interpreter::Emit(BranchCompare<i32>& op) { EmitBranchCompare(op); }
 void Interpreter::Emit(BranchCompare<u32>& op) { EmitBranchCompare(op); }
 void Interpreter::Emit(BranchCompare<i64>& op) { EmitBranchCompare(op); }

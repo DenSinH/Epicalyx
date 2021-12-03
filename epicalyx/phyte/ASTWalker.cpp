@@ -192,6 +192,18 @@ struct ReturnEmitter {
 }
 
 template<template<typename T> class Op, typename... Args>
+void ASTWalker::EmitIntegralExpr(calyx::Var::Type type, Args... args) {
+  switch (type) {
+    case calyx::Var::Type::I32: current = emitter.EmitExpr<Op<i32>>({ type }, args...); break;
+    case calyx::Var::Type::U32: current = emitter.EmitExpr<Op<u32>>({ type }, args...); break;
+    case calyx::Var::Type::I64: current = emitter.EmitExpr<Op<i64>>({ type }, args...); break;
+    case calyx::Var::Type::U64: current = emitter.EmitExpr<Op<u64>>({ type }, args...); break;
+    default:
+      throw std::runtime_error("Bad type for integral expression");
+  }
+}
+
+template<template<typename T> class Op, typename... Args>
 void ASTWalker::EmitArithExpr(calyx::Var::Type type, Args... args) {
   switch (type) {
     case calyx::Var::Type::I32: current = emitter.EmitExpr<Op<i32>>({ type }, args...); break;
@@ -205,16 +217,18 @@ void ASTWalker::EmitArithExpr(calyx::Var::Type type, Args... args) {
   }
 }
 
-
 template<template<typename T> class Op, typename... Args>
-void ASTWalker::EmitIntegralExpr(calyx::Var::Type type, Args... args) {
+void ASTWalker::EmitCompare(calyx::Var::Type type, Args... args) {
   switch (type) {
-    case calyx::Var::Type::I32: current = emitter.EmitExpr<Op<i32>>({ type }, args...); break;
-    case calyx::Var::Type::U32: current = emitter.EmitExpr<Op<u32>>({ type }, args...); break;
-    case calyx::Var::Type::I64: current = emitter.EmitExpr<Op<i64>>({ type }, args...); break;
-    case calyx::Var::Type::U64: current = emitter.EmitExpr<Op<u64>>({ type }, args...); break;
+    case calyx::Var::Type::I32: emitter.EmitExpr<Op<i32>>({ calyx::Var::Type::I32 }, args...); break;
+    case calyx::Var::Type::U32: emitter.EmitExpr<Op<u32>>({ calyx::Var::Type::I32 }, args...); break;
+    case calyx::Var::Type::I64: emitter.EmitExpr<Op<i64>>({ calyx::Var::Type::I32 }, args...); break;
+    case calyx::Var::Type::U64: emitter.EmitExpr<Op<u64>>({ calyx::Var::Type::I32 }, args...); break;
+    case calyx::Var::Type::Float: emitter.EmitExpr<Op<float>>({ calyx::Var::Type::I32 }, args...); break;
+    case calyx::Var::Type::Double: emitter.EmitExpr<Op<double>>({ calyx::Var::Type::I32 }, args...); break;
+    case calyx::Var::Type::Pointer: throw std::runtime_error("Unimplemented: pointer compare");
     default:
-      throw std::runtime_error("Bad type for integral expression");
+      throw std::runtime_error("Bad type for branch expression");
   }
 }
 
@@ -234,11 +248,15 @@ void ASTWalker::EmitBranch(calyx::Var::Type type, Args... args) {
 }
 
 void ASTWalker::BinopHelper(calyx::var_index_t left, calyx::BinopType op, calyx::var_index_t right) {
+  auto casted = BinopCastHelper(left, right);
+  EmitArithExpr<calyx::Binop>({casted.type}, casted.left, op, casted.right);
+}
+
+ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(calyx::var_index_t left, calyx::var_index_t right) {
   auto left_t = emitter.vars[left].type;
   auto right_t = emitter.vars[right].type;
   if (left_t == right_t) {
-    EmitArithExpr<calyx::Binop>({ left_t }, left, op, right);
-    return;
+    return {left_t, left, right};
   }
 
   switch (left_t) {
@@ -246,70 +264,59 @@ void ASTWalker::BinopHelper(calyx::var_index_t left, calyx::BinopType op, calyx:
       switch (right_t) {
         case calyx::Var::Type::U32:
           current = emitter.EmitExpr<calyx::Cast<u32, i32>>({ right_t }, left);
-          EmitArithExpr<calyx::Binop>({ right_t }, current, op, right);
-          return;
+          return {right_t, current, right};
         case calyx::Var::Type::I64:
           current = emitter.EmitExpr<calyx::Cast<i64, i32>>({ right_t }, left);
-          break;
+          return {right_t, current, right};
         case calyx::Var::Type::U64:
           current = emitter.EmitExpr<calyx::Cast<u64, i32>>({ right_t }, left);
-          break;
+          return {right_t, current, right};
         case calyx::Var::Type::Float:
           current = emitter.EmitExpr<calyx::Cast<float, i32>>({ right_t }, left);
-          break;
+          return {right_t, current, right};
         case calyx::Var::Type::Double:
           current = emitter.EmitExpr<calyx::Cast<double, i32>>({ right_t }, left);
-          break;
+          return {right_t, current, right};
         default: throw std::runtime_error("Bad binop");
       }
-      EmitArithExpr<calyx::Binop>({ right_t }, current, op, right);
-      return;
     }
     case calyx::Var::Type::U32: {
       switch (right_t) {
         case calyx::Var::Type::I32:
           current = emitter.EmitExpr<calyx::Cast<u32, i32>>({ left_t }, right);
-          EmitArithExpr<calyx::Binop>({ left_t }, left, op, current);
-          return;
+          return {left_t, left, current};
         case calyx::Var::Type::I64:
           current = emitter.EmitExpr<calyx::Cast<i64, u32>>({ right_t }, left);
-          break;
+          return {right_t, current, right};
         case calyx::Var::Type::U64:
           current = emitter.EmitExpr<calyx::Cast<u64, u32>>({ right_t }, left);
-          break;
+          return {right_t, current, right};
         case calyx::Var::Type::Float:
           current = emitter.EmitExpr<calyx::Cast<float, u32>>({ right_t }, left);
-          break;
+          return {right_t, current, right};
         case calyx::Var::Type::Double:
           current = emitter.EmitExpr<calyx::Cast<double, u32>>({ right_t }, left);
-          break;
+          return {right_t, current, right};
         default: throw std::runtime_error("Bad binop");
       }
-      EmitArithExpr<calyx::Binop>({ right_t }, current, op, right);
-      return;
     }
     case calyx::Var::Type::I64: {
       switch (right_t) {
         case calyx::Var::Type::I32:
           current = emitter.EmitExpr<calyx::Cast<i64, i32>>({ left_t }, right);
-          EmitArithExpr<calyx::Binop>({ left_t }, left, op, current);
-          return;
+          return {left_t, left, current};
         case calyx::Var::Type::U32:
           current = emitter.EmitExpr<calyx::Cast<i64, u32>>({ left_t }, right);
-          EmitArithExpr<calyx::Binop>({ left_t }, left, op, current);
-          return;
+          return {left_t, left, current};
         case calyx::Var::Type::U64:
           current = emitter.EmitExpr<calyx::Cast<u64, i64>>({ right_t }, left);
-          EmitArithExpr<calyx::Binop>({ right_t }, current, op, right);
-          return;
+          return {right_t, current, right};
         case calyx::Var::Type::Float:
           current = emitter.EmitExpr<calyx::Cast<float, i64>>({ right_t }, left);
-          EmitArithExpr<calyx::Binop>({ right_t }, current, op, right);
-          return;
+          return {right_t, current, right};
         case calyx::Var::Type::Double:
           current = emitter.EmitExpr<calyx::Cast<double, i64>>({ right_t }, left);
-          EmitArithExpr<calyx::Binop>({ right_t }, current, op, right);
-          return;
+          return {right_t, current, right};
         default: throw std::runtime_error("Bad binop");
       }
     }
@@ -317,24 +324,19 @@ void ASTWalker::BinopHelper(calyx::var_index_t left, calyx::BinopType op, calyx:
       switch (right_t) {
         case calyx::Var::Type::I32:
           current = emitter.EmitExpr<calyx::Cast<u64, i32>>({left_t}, right);
-          EmitArithExpr<calyx::Binop>({ left_t }, left, op, current);
-          return;
+          return {left_t, left, current};
         case calyx::Var::Type::U32:
           current = emitter.EmitExpr<calyx::Cast<u64, u32>>({left_t}, right);
-          EmitArithExpr<calyx::Binop>({ left_t }, left, op, current);
-          return;
+          return {left_t, left, current};
         case calyx::Var::Type::I64:
           current = emitter.EmitExpr<calyx::Cast<u64, i64>>({left_t}, right);
-          EmitArithExpr<calyx::Binop>({ left_t }, left, op, current);
-          return;
+          return {left_t, left, current};
         case calyx::Var::Type::Float:
           current = emitter.EmitExpr<calyx::Cast<float, u64>>({right_t}, left);
-          EmitArithExpr<calyx::Binop>({ right_t }, current, op, right);
-          return;
+          return {right_t, current, right};
         case calyx::Var::Type::Double:
           current = emitter.EmitExpr<calyx::Cast<double, u64>>({right_t}, left);
-          EmitArithExpr<calyx::Binop>({ right_t }, current, op, right);
-          return;
+          return {right_t, current, right};
         default: throw std::runtime_error("Bad binop");
       }
     }
@@ -342,46 +344,41 @@ void ASTWalker::BinopHelper(calyx::var_index_t left, calyx::BinopType op, calyx:
       switch (right_t) {
         case calyx::Var::Type::Double:
           current = emitter.EmitExpr<calyx::Cast<double, float>>({right_t}, left);
-          EmitArithExpr<calyx::Binop>({ right_t }, current, op, right);
-          return;
+          return {right_t, current, right};
         case calyx::Var::Type::I32:
           current = emitter.EmitExpr<calyx::Cast<float, i32>>({left_t}, right);
-          break;
+          return {left_t, left, current};
         case calyx::Var::Type::U32:
           current = emitter.EmitExpr<calyx::Cast<float, u32>>({left_t}, right);
-          break;
+          return {left_t, left, current};
         case calyx::Var::Type::I64:
           current = emitter.EmitExpr<calyx::Cast<float, i64>>({left_t}, right);
-          break;
+          return {left_t, left, current};
         case calyx::Var::Type::U64:
           current = emitter.EmitExpr<calyx::Cast<float, u64>>({left_t}, right);
-          break;
+          return {left_t, left, current};
         default: throw std::runtime_error("Bad binop");
       }
-      EmitArithExpr<calyx::Binop>({ left_t }, left, op, current);
-      return;
     }
     case calyx::Var::Type::Double: {
       switch (right_t) {
         case calyx::Var::Type::I32:
           current = emitter.EmitExpr<calyx::Cast<double, i32>>({left_t}, right);
-          break;
+          return {left_t, left, current};
         case calyx::Var::Type::U32:
           current = emitter.EmitExpr<calyx::Cast<double, u32>>({left_t}, right);
-          break;
+          return {left_t, left, current};
         case calyx::Var::Type::I64:
           current = emitter.EmitExpr<calyx::Cast<double, i64>>({left_t}, right);
-          break;
+          return {left_t, left, current};
         case calyx::Var::Type::U64:
           current = emitter.EmitExpr<calyx::Cast<double, u64>>({left_t}, right);
-          break;
+          return {left_t, left, current};
         case calyx::Var::Type::Float:
           current = emitter.EmitExpr<calyx::Cast<double, float>>({left_t}, right);
-          break;
+          return {left_t, left, current};
         default: throw std::runtime_error("Bad binop");
       }
-      EmitArithExpr<calyx::Binop>({ left_t }, left, op, current);
-      return;
     }
     default: throw std::runtime_error("Bad binop");
   }
@@ -490,51 +487,61 @@ void ASTWalker::Visit(Identifier& decl) {
 }
 
 void ASTWalker::Visit(NumericalConstant<i8>& expr) {
+  cotyl::Assert(state.empty() || state.top().first == State::Read);
   if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<i32>>({ detail::calyx_type_v<i32> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<u8>& expr) {
+  cotyl::Assert(state.empty() || state.top().first == State::Read);
   if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<u32>>({ detail::calyx_type_v<u32> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<i16>& expr) {
+  cotyl::Assert(state.empty() || state.top().first == State::Read);
   if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<i32>>({ detail::calyx_type_v<i32> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<u16>& expr) {
+  cotyl::Assert(state.empty() || state.top().first == State::Read);
   if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<u32>>({ detail::calyx_type_v<u32> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<i32>& expr) {
+  cotyl::Assert(state.empty() || state.top().first == State::Read);
   if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<i32>>({ detail::calyx_type_v<i32> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<u32>& expr) {
+  cotyl::Assert(state.empty() || state.top().first == State::Read);
   if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<u32>>({ detail::calyx_type_v<u32> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<i64>& expr) {
+  cotyl::Assert(state.empty() || state.top().first == State::Read);
   if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<i64>>({ detail::calyx_type_v<i64> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<u64>& expr) {
+  cotyl::Assert(state.empty() || state.top().first == State::Read);
   if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<u64>>({ detail::calyx_type_v<u64> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<float>& expr) {
+  cotyl::Assert(state.empty() || state.top().first == State::Read);
   if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<float>>({ detail::calyx_type_v<float> }, expr.value);
 }
 
 void ASTWalker::Visit(NumericalConstant<double>& expr) {
+  cotyl::Assert(state.empty() || state.top().first == State::Read);
   if (!reachable) return;
   current = emitter.EmitExpr<calyx::Imm<double>>({ detail::calyx_type_v<double> }, expr.value);
 }
@@ -561,11 +568,13 @@ void ASTWalker::Visit(TypeInitializer& expr) {
 }
 
 void ASTWalker::Visit(PostFix& expr) {
+  cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   if (!reachable) return;
+
+  bool conditional_branch = !state.empty() && state.top().first == State::ConditionalBranch;
 
   switch (expr.op) {
     case TokenType::Incr: {
-      cotyl::Assert(state.empty() || state.top().first == State::Read);
       state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
@@ -587,7 +596,9 @@ void ASTWalker::Visit(PostFix& expr) {
       state.pop();
       // restore read value for next expression
       current = read;
-      return;
+
+      // need to check for conditional branches
+      break;
     }
     case TokenType::Decr: {
       cotyl::Assert(state.empty() || state.top().first == State::Read);
@@ -612,45 +623,73 @@ void ASTWalker::Visit(PostFix& expr) {
       state.pop();
       // restore read value for next expression
       current = read;
-      return;
+
+      // need to check for conditional branches
+      break;
     }
     default: {
       throw std::runtime_error("Unreachable");
     }
   }
+
+  if (conditional_branch) {
+    auto block = state.top().second.false_block;
+    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, block, current, calyx::CmpType::Eq, 0);
+  }
 }
 
 void ASTWalker::Visit(Unary& expr) {
+  cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   if (!reachable) return;
+
+  const bool conditional_branch = !state.empty() && state.top().first == State::ConditionalBranch;
 
   switch (expr.op) {
     case TokenType::Minus: {
-      cotyl::Assert(state.empty() || state.top().first == State::Read);
-
       // no need to push a new state
       expr.left->Visit(*this);
-      EmitArithExpr<calyx::Unop>(emitter.vars[current].type, calyx::UnopType::Neg, current);
+      if (!conditional_branch) {
+        EmitArithExpr<calyx::Unop>(emitter.vars[current].type, calyx::UnopType::Neg, current);
+      }
+      // return, no need to check for conditional branches, is handled in visiting the expr
       return;
     }
     case TokenType::Plus: {
-      cotyl::Assert(state.empty() || state.top().first == State::Read);
       // no need to push a new state
       // does nothing
+      // return, no need to check for conditional branches, is handled in visiting the expr
       expr.left->Visit(*this);
       return;
     }
     case TokenType::Tilde: {
-      cotyl::Assert(state.empty() || state.top().first == State::Read);
       // no need to push a new state
       expr.left->Visit(*this);
       EmitArithExpr<calyx::Unop>(emitter.vars[current].type, calyx::UnopType::BinNot, current);
-      return;
+      // break, need to check for conditional branches
+      break;
     }
-    case TokenType::Incr: {
-      cotyl::Assert(state.empty() || state.top().first == State::Read);
+    case TokenType::Exclamation: {
       state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
+
+      if (conditional_branch) {
+        auto block = state.top().second.false_block;
+        // branch to false if current != 0 (if current == 0, then !current is true)
+        EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, block, current, calyx::CmpType::Ne, 0);
+      }
+      else {
+        EmitCompare<calyx::CompareImm>(emitter.vars[current].type, current, calyx::CmpType::Eq, 0);
+      }
+
+      // return, no need to check for conditional branches, already handled
+      return;
+    }
+    case TokenType::Incr: {
+      state.push({State::Read, {}});
+      expr.left->Visit(*this);
+      state.pop();
+
       auto type = emitter.vars[current].type;
       calyx::var_index_t stored;
       if (type == calyx::Var::Type::Pointer) {
@@ -671,10 +710,10 @@ void ASTWalker::Visit(Unary& expr) {
 
       // restore stored value
       current = stored;
-      return;
+      // break, need to check for conditional branches
+      break;
     }
     case TokenType::Decr: {
-      cotyl::Assert(state.empty() || state.top().first == State::Read);
       state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
@@ -698,38 +737,57 @@ void ASTWalker::Visit(Unary& expr) {
 
       // restore stored value
       current = stored;
-      return;
+
+      // break, need to check for conditional branches
+      break;
     }
     default: {
       throw std::runtime_error("unimplemented unop");
     }
   }
+
+  if (conditional_branch) {
+    auto block = state.top().second.false_block;
+    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, block, current, calyx::CmpType::Eq, 0);
+  }
 }
 
 void ASTWalker::Visit(Cast& expr) {
-  cotyl::Assert(state.empty() || state.top().first == State::Read);
+  cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   // no need to push a new state
   expr.expr->Visit(*this);
-  auto visitor = detail::EmitterTypeVisitor<detail::CastToEmitter>(*this, { current });
-  expr.type->Visit(visitor);
+
+  // only need to emit an actual cast if we are not checking for 0
+  if (state.empty() || state.top().first != State::ConditionalBranch) {
+    auto visitor = detail::EmitterTypeVisitor<detail::CastToEmitter>(*this, { current });
+    expr.type->Visit(visitor);
+  }
 }
 
 void ASTWalker::Visit(Binop& expr) {
   if (!reachable) return;
 
-  cotyl::Assert(state.empty() || state.top().first == State::Read);
-  // no need to push new state
+  cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+  // only need to push a new state for conditional branches
+  const bool conditional_branch = !state.empty() && (state.top().first == State::ConditionalBranch);
+  if (conditional_branch) {
+    state.push({State::Read, {}});
+  }
   expr.left->Visit(*this);
   auto left = current;
   expr.right->Visit(*this);
   auto right = current;
+  if (conditional_branch) {
+    state.pop();
+  }
+
   switch (expr.op) {
-    case TokenType::Asterisk: BinopHelper(left, calyx::BinopType::Mul, right); return;
-    case TokenType::Div: BinopHelper(left, calyx::BinopType::Div, right); return;
-    case TokenType::Mod: BinopHelper(left, calyx::BinopType::Mod, right); return;
-    case TokenType::Ampersand: BinopHelper(left, calyx::BinopType::BinAnd, right); return;
-    case TokenType::BinOr: BinopHelper(left, calyx::BinopType::BinOr, right); return;
-    case TokenType::BinXor: BinopHelper(left, calyx::BinopType::BinXor, right); return;
+    case TokenType::Asterisk: BinopHelper(left, calyx::BinopType::Mul, right); break;
+    case TokenType::Div: BinopHelper(left, calyx::BinopType::Div, right); break;
+    case TokenType::Mod: BinopHelper(left, calyx::BinopType::Mod, right); break;
+    case TokenType::Ampersand: BinopHelper(left, calyx::BinopType::BinAnd, right); break;
+    case TokenType::BinOr: BinopHelper(left, calyx::BinopType::BinOr, right); break;
+    case TokenType::BinXor: BinopHelper(left, calyx::BinopType::BinXor, right); break;
     case TokenType::Plus: {
       if (emitter.vars[left].type == calyx::Var::Type::Pointer) {
         throw std::runtime_error("Unimplemented: pointer add");
@@ -739,7 +797,7 @@ void ASTWalker::Visit(Binop& expr) {
       }
 
       BinopHelper(left, calyx::BinopType::Add, right);
-      return;
+      break;
     }
     case TokenType::Minus: {
       if (emitter.vars[left].type == calyx::Var::Type::Pointer) {
@@ -750,6 +808,54 @@ void ASTWalker::Visit(Binop& expr) {
       }
 
       BinopHelper(left, calyx::BinopType::Sub, right);
+      break;
+    }
+    case TokenType::Less:
+    case TokenType::LessEqual:
+    case TokenType::GreaterEqual:
+    case TokenType::Greater:
+    case TokenType::Equal:
+    case TokenType::NotEqual: {
+      auto casted = BinopCastHelper(left, right);
+      calyx::CmpType cmp_type;
+      calyx::CmpType inverse;
+      switch (expr.op) {
+        case TokenType::Less:
+          cmp_type = calyx::CmpType::Lt;
+          inverse = calyx::CmpType::Ge;
+          break;
+        case TokenType::LessEqual:
+          cmp_type = calyx::CmpType::Le;
+          inverse = calyx::CmpType::Gt;
+          break;
+        case TokenType::GreaterEqual:
+          cmp_type = calyx::CmpType::Ge;
+          inverse = calyx::CmpType::Lt;
+          break;
+        case TokenType::Greater:
+          cmp_type = calyx::CmpType::Gt;
+          inverse = calyx::CmpType::Le;
+          break;
+        case TokenType::Equal:
+          cmp_type = calyx::CmpType::Eq;
+          inverse = calyx::CmpType::Ne;
+          break;
+        case TokenType::NotEqual:
+          cmp_type = calyx::CmpType::Ne;
+          inverse = calyx::CmpType::Eq;
+          break;
+        default:
+          throw std::runtime_error("unreachable");
+      }
+
+      if (conditional_branch) {
+        auto block = state.top().second.false_block;
+        EmitBranch<calyx::BranchCompare>(casted.type, block, casted.left, inverse, casted.right);
+      }
+      else {
+        EmitCompare<calyx::Compare>(casted.type, casted.left, cmp_type, casted.right);
+      }
+      // no need to check for conditional branching after this
       return;
     }
     case TokenType::LShift:
@@ -780,13 +886,17 @@ void ASTWalker::Visit(Binop& expr) {
       else {
         EmitIntegralExpr<calyx::Shift>(emitter.vars[left].type, left, calyx::ShiftType::Right, right);
       }
-      return;
+      break;
     }
     default:
-      break;
+      throw std::runtime_error("unimplemented");
   }
-  // todo: comparisons, logical and/or
-  throw std::runtime_error("unimplemented");
+
+  if (conditional_branch) {
+    auto type = emitter.vars[current].type;
+    auto block = state.top().second.false_block;
+    EmitBranch<calyx::BranchCompareImm>(type, block, current, calyx::CmpType::Eq, 0);
+  }
 }
 
 void ASTWalker::Visit(Ternary& expr) {
@@ -829,6 +939,8 @@ void ASTWalker::Visit(If& stat) {
   state.pop();
 
   // true, then jump to post block
+  // emitter should have emitted a branch to the false block if needed
+  emitter.Emit<calyx::UnconditionalBranch>(true_block);
   emitter.SelectBlock(true_block);
   stat.stat->Visit(*this);
   bool true_reachable = reachable;
@@ -843,9 +955,9 @@ void ASTWalker::Visit(If& stat) {
     stat._else->Visit(*this);
     false_reachable = reachable;
     if (reachable) {
+      // unreachable means we already returned or branched somewhere else
       emitter.Emit<calyx::UnconditionalBranch>(post_block);
     }
-    reachable = true;
   }
 
   emitter.SelectBlock(post_block);

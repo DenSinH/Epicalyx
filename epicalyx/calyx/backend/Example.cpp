@@ -64,6 +64,21 @@ void Example::EmitShift(Shift<T>& op) {
 
 }
 
+template<typename T>
+void Example::EmitShiftImm(ShiftImm<T>& op) {
+
+}
+
+template<typename T>
+void Example::EmitCompare(Compare<T>& op) {
+
+}
+
+template<typename T>
+void Example::EmitCompareImm(CompareImm<T>& op) {
+
+}
+
 void Example::Emit(UnconditionalBranch& op) {
 
 }
@@ -100,6 +115,24 @@ void Example::Emit(Shift<i32>& op) { EmitShift(op); }
 void Example::Emit(Shift<u32>& op) { EmitShift(op); }
 void Example::Emit(Shift<i64>& op) { EmitShift(op); }
 void Example::Emit(Shift<u64>& op) { EmitShift(op); }
+void Example::Emit(ShiftImm<i32>& op) { EmitShiftImm(op); }
+void Example::Emit(ShiftImm<u32>& op) { EmitShiftImm(op); }
+void Example::Emit(ShiftImm<i64>& op) { EmitShiftImm(op); }
+void Example::Emit(ShiftImm<u64>& op) { EmitShiftImm(op); }
+void Example::Emit(Compare<i32>& op) { EmitCompare(op); }
+void Example::Emit(Compare<u32>& op) { EmitCompare(op); }
+void Example::Emit(Compare<i64>& op) { EmitCompare(op); }
+void Example::Emit(Compare<u64>& op) { EmitCompare(op); }
+void Example::Emit(Compare<float>& op) { EmitCompare(op); }
+void Example::Emit(Compare<double>& op) { EmitCompare(op); }
+void Example::Emit(Compare<Pointer>& op) { EmitCompare(op); }
+void Example::Emit(CompareImm<i32>& op) { EmitCompareImm(op); }
+void Example::Emit(CompareImm<u32>& op) { EmitCompareImm(op); }
+void Example::Emit(CompareImm<i64>& op) { EmitCompareImm(op); }
+void Example::Emit(CompareImm<u64>& op) { EmitCompareImm(op); }
+void Example::Emit(CompareImm<float>& op) { EmitCompareImm(op); }
+void Example::Emit(CompareImm<double>& op) { EmitCompareImm(op); }
+void Example::Emit(CompareImm<Pointer>& op) { EmitCompareImm(op); }
 void Example::Emit(BranchCompare<i32>& op) { EmitBranchCompare(op); }
 void Example::Emit(BranchCompare<u32>& op) { EmitBranchCompare(op); }
 void Example::Emit(BranchCompare<i64>& op) { EmitBranchCompare(op); }
