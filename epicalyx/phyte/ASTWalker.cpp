@@ -1003,7 +1003,32 @@ void ASTWalker::Visit(While& stat) {
 }
 
 void ASTWalker::Visit(DoWhile& stat) {
-  throw std::runtime_error("unimplemented");
+  if (!reachable) return;
+
+  auto loop_block = emitter.MakeBlock();
+  auto cond_block = emitter.MakeBlock();
+  auto post_block = emitter.MakeBlock();
+
+  // branch to loop block always happens at least once
+  emitter.Emit<calyx::UnconditionalBranch>(loop_block);
+  emitter.SelectBlock(loop_block);
+
+  stat.stat->Visit(*this);
+
+  // go to cond block
+  // this is a separate block for continue statements
+  emitter.Emit<calyx::UnconditionalBranch>(cond_block);
+  emitter.SelectBlock(cond_block);
+
+  state.push({State::ConditionalBranch, {.true_block = loop_block, .false_block = post_block}});
+  stat.cond->Visit(*this);
+  state.pop();
+
+  // loop back to the loop block if condition was met (false case should be handled by cond visit)
+  emitter.Emit<calyx::UnconditionalBranch>(loop_block);
+
+  // go to block after loop
+  emitter.SelectBlock(post_block);
 }
 
 void ASTWalker::Visit(For& stat) {
