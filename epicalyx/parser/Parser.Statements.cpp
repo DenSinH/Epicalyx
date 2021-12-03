@@ -20,11 +20,19 @@ pNode<Stat> Parser::SStatement() {
       // validation
       case_scope.Add(expr);
 
-      return std::make_unique<Case>(expr, SStatement());
+      auto case_stat = std::make_unique<Case>(expr, SStatement());
+
+      auto reduced = case_stat->SReduce(*this);
+      if (reduced) return reduced;
+      return case_stat;
     }
     case TokenType::Default: {
       in_stream.EatSequence(TokenType::Default, TokenType::Colon);
-      return std::make_unique<Default>(SStatement());
+      auto def_stat = std::make_unique<Default>(SStatement());
+
+      auto reduced = def_stat->SReduce(*this);
+      if (reduced) return reduced;
+      return def_stat;
     }
     case TokenType::Switch: {
       in_stream.EatSequence(TokenType::Switch, TokenType::LParen);
@@ -39,7 +47,11 @@ pNode<Stat> Parser::SStatement() {
 
       auto stat = case_scope << [&]{ return SStatement(); };
 
-      return std::make_unique<Switch>(std::move(expr), SStatement());
+      auto switch_stat = std::make_unique<Switch>(std::move(expr), SStatement());
+
+      auto reduced = switch_stat->SReduce(*this);
+      if (reduced) return reduced;
+      return switch_stat;
     }
     case TokenType::If: {
       in_stream.EatSequence(TokenType::If, TokenType::LParen);
@@ -58,7 +70,12 @@ pNode<Stat> Parser::SStatement() {
         return std::make_unique<If>(std::move(cond), std::move(stat));
       }
       in_stream.Skip();
-      return std::make_unique<If>(std::move(cond), std::move(stat), SStatement());
+
+      auto if_stat = std::make_unique<If>(std::move(cond), std::move(stat), SStatement());
+
+      auto reduced = if_stat->SReduce(*this);
+      if (reduced) return reduced;
+      return if_stat;
     }
     case TokenType::While: {
       in_stream.EatSequence(TokenType::While, TokenType::LParen);
@@ -74,7 +91,11 @@ pNode<Stat> Parser::SStatement() {
       loop_scope.push_back(Loop::While);
       auto stat = SStatement();
       loop_scope.pop_back();
-      return std::make_unique<While>(std::move(cond), std::move(stat));
+      auto while_stat = std::make_unique<While>(std::move(cond), std::move(stat));
+
+      auto reduced = while_stat->SReduce(*this);
+      if (reduced) return reduced;
+      return while_stat;
     }
     case TokenType::Do: {
       in_stream.Skip();
@@ -93,7 +114,12 @@ pNode<Stat> Parser::SStatement() {
       }
 
       in_stream.EatSequence(TokenType::RParen, TokenType::SemiColon);
-      return std::make_unique<DoWhile>(std::move(stat), std::move(cond));
+      auto dowhile_stat = std::make_unique<DoWhile>(std::move(stat), std::move(cond));
+
+      auto reduced = dowhile_stat->SReduce(*this);
+      if (reduced) return reduced;
+      return dowhile_stat;
+
     }
     case TokenType::For: {
       in_stream.EatSequence(TokenType::For, TokenType::LParen);
@@ -125,14 +151,19 @@ pNode<Stat> Parser::SStatement() {
       auto stat = SStatement();
       loop_scope.pop_back();
 
-      PopScope();
-      return std::make_unique<For>(
+      auto for_stat = std::make_unique<For>(
           std::move(decl_list),
           std::move(init),
           std::move(cond),
           std::move(update),
           std::move(stat)
       );
+
+      auto reduced = for_stat->SReduce(*this);
+      PopScope();
+
+      if (reduced) return reduced;
+      return for_stat;
     }
     case TokenType::Goto: {
       in_stream.Skip();
@@ -174,7 +205,10 @@ pNode<Stat> Parser::SStatement() {
       // check function return type
       function_return->Cast(*expr->GetType(*this));
 
-      return std::make_unique<Return>(std::move(expr));
+      auto ret_stat = std::make_unique<Return>(std::move(expr));
+      auto reduced = ret_stat->SReduce(*this);
+      if (reduced) return reduced;
+      return ret_stat;
     }
     case TokenType::LBrace: {
       // compound
@@ -235,13 +269,7 @@ pNode<Compound> Parser::SCompound() {
     else {
       auto stat = SStatement();
       if (stat) {
-        auto n_stat = stat->SReduce(*this);
-        if (n_stat) {
-          compound->AddNode(std::move(n_stat));
-        }
-        else {
-          compound->AddNode(std::move(stat));
-        }
+        compound->AddNode(std::move(stat));
       }
     }
   }

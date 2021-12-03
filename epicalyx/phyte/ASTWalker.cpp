@@ -481,7 +481,7 @@ void ASTWalker::Visit(Identifier& decl) {
       break;
     }
     default: {
-      throw std::runtime_error("Unimplemented");
+      throw std::runtime_error("Unimplemented declaration state");
     }
   }
 }
@@ -516,23 +516,23 @@ template void ASTWalker::ConstVisitImpl(NumericalConstant<double>&);
 
 void ASTWalker::Visit(StringConstant& expr) {
   // load from rodata
-  throw std::runtime_error("unimplemented");
+  throw std::runtime_error("unimplemented: string constant");
 }
 
 void ASTWalker::Visit(ArrayAccess& expr) {
-  throw std::runtime_error("unimplemented");
+  throw std::runtime_error("unimplemented: array access");
 }
 
 void ASTWalker::Visit(FunctionCall& expr) {
-  throw std::runtime_error("unimplemented");
+  throw std::runtime_error("unimplemented: function call");
 }
 
 void ASTWalker::Visit(MemberAccess& expr) {
-  throw std::runtime_error("unimplemented");
+  throw std::runtime_error("unimplemented: member access");
 }
 
 void ASTWalker::Visit(TypeInitializer& expr) {
-  throw std::runtime_error("unimplemented");
+  throw std::runtime_error("unimplemented: type initializer");
 }
 
 void ASTWalker::Visit(PostFix& expr) {
@@ -857,7 +857,7 @@ void ASTWalker::Visit(Binop& expr) {
       break;
     }
     default:
-      throw std::runtime_error("unimplemented");
+      throw std::runtime_error("Bad binop");
   }
 
   if (conditional_branch) {
@@ -868,7 +868,7 @@ void ASTWalker::Visit(Binop& expr) {
 }
 
 void ASTWalker::Visit(Ternary& expr) {
-  throw std::runtime_error("unimplemented");
+  throw std::runtime_error("unimplemented: ternary");
 }
 
 void ASTWalker::Visit(Assignment& expr) {
@@ -1032,7 +1032,53 @@ void ASTWalker::Visit(DoWhile& stat) {
 }
 
 void ASTWalker::Visit(For& stat) {
-  throw std::runtime_error("unimplemented");
+  if (!reachable) return;
+
+  auto init_block = emitter.MakeBlock();
+  auto cond_block = emitter.MakeBlock();
+  auto update_block = emitter.MakeBlock();
+  auto loop_block = emitter.MakeBlock();
+  auto post_block = emitter.MakeBlock();
+
+  // new scope for declarations in for loop
+  variables.NewLayer();
+
+  emitter.Emit<calyx::UnconditionalBranch>(init_block);
+  emitter.SelectBlock(init_block);
+  for (auto& decl : stat.decls) {
+    decl->Visit(*this);
+  }
+  for (auto& init : stat.inits) {
+    init->Visit(*this);
+  }
+
+  emitter.Emit<calyx::UnconditionalBranch>(cond_block);
+  emitter.SelectBlock(cond_block);
+
+  state.push({State::ConditionalBranch, {.true_block = loop_block, .false_block = post_block}});
+  stat.cond->Visit(*this);
+  state.pop();
+
+  emitter.Emit<calyx::UnconditionalBranch>(loop_block);
+  emitter.SelectBlock(loop_block);
+
+  stat.stat->Visit(*this);
+
+  emitter.Emit<calyx::UnconditionalBranch>(update_block);
+  emitter.SelectBlock(update_block);
+  for (auto& update : stat.updates) {
+    update->Visit(*this);
+  }
+  emitter.Emit<calyx::UnconditionalBranch>(cond_block);
+
+  // pop variables layer
+//  for (auto var = variables.Top().rbegin(); var != variables.Top().rend(); var++) {
+//    emitter.Emit<calyx::DeallocateCVar>(var->second.idx, var->second.size);
+//  }
+  variables.PopLayer();
+
+  // go to block after loop
+  emitter.SelectBlock(post_block);
 }
 
 void ASTWalker::Visit(Label& stat) {

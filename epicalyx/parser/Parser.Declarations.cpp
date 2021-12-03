@@ -456,7 +456,6 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
 }
 
 std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) {
-
   std::string name;
   pType<PointerType> ctype;
 
