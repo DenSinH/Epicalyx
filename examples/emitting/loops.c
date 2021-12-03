@@ -4,6 +4,7 @@ int main() {
   int y = 1;
   while (++x < 4) {
     y *= y + 1;
+    break;
   }
 
   do {
@@ -12,6 +13,7 @@ int main() {
 
   for (int i = 0; i < 10; i++) {
     y += i;
+    continue;
     if (i > 5) {
       goto done;
     }

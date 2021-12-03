@@ -928,7 +928,7 @@ void ASTWalker::Visit(Assignment& expr) {
 }
 
 void ASTWalker::Visit(Empty& stat) {
-  std::printf("empty statement\n");
+
 }
 
 void ASTWalker::Visit(If& stat) {
@@ -993,7 +993,13 @@ void ASTWalker::Visit(While& stat) {
   emitter.Emit<calyx::UnconditionalBranch>(loop_block);
   emitter.SelectBlock(loop_block);
 
+  break_stack.push(post_block);
+  continue_stack.push(cond_block);
+
   stat.stat->Visit(*this);
+
+  break_stack.pop();
+  continue_stack.pop();
 
   // loop back to the condition block
   emitter.Emit<calyx::UnconditionalBranch>(cond_block);
@@ -1013,7 +1019,13 @@ void ASTWalker::Visit(DoWhile& stat) {
   emitter.Emit<calyx::UnconditionalBranch>(loop_block);
   emitter.SelectBlock(loop_block);
 
+  break_stack.push(post_block);
+  continue_stack.push(cond_block);
+
   stat.stat->Visit(*this);
+
+  break_stack.pop();
+  continue_stack.pop();
 
   // go to cond block
   // this is a separate block for continue statements
@@ -1065,8 +1077,14 @@ void ASTWalker::Visit(For& stat) {
   emitter.Emit<calyx::UnconditionalBranch>(loop_block);
   emitter.SelectBlock(loop_block);
 
+  break_stack.push(post_block);
+  continue_stack.push(update_block);
+
   // loop body
   stat.stat->Visit(*this);
+
+  break_stack.pop();
+  continue_stack.pop();
 
   // go to update and loop back to condition
   emitter.Emit<calyx::UnconditionalBranch>(update_block);
@@ -1141,11 +1159,13 @@ void ASTWalker::Visit(Return& stat) {
 }
 
 void ASTWalker::Visit(Break& stat) {
-  throw std::runtime_error("unimplemented");
+  cotyl::Assert(!break_stack.empty());
+  emitter.Emit<calyx::UnconditionalBranch>(break_stack.top());
 }
 
 void ASTWalker::Visit(Continue& stat) {
-  throw std::runtime_error("unimplemented");
+  cotyl::Assert(!continue_stack.empty());
+  emitter.Emit<calyx::UnconditionalBranch>(continue_stack.top());
 }
 
 void ASTWalker::Visit(Compound& stat) {
