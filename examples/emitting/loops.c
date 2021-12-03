@@ -4,6 +4,7 @@ int main() {
   int y = 1;
   while (++x < 4) {
     y *= y + 1;
+    y <<= 1;
     break;
   }
 

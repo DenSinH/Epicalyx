@@ -481,7 +481,7 @@ void ASTWalker::Visit(Identifier& decl) {
       break;
     }
     default: {
-      throw std::runtime_error("Unimplemented declaration state");
+      throw std::runtime_error("Bad declaration state");
     }
   }
 }
@@ -888,8 +888,49 @@ void ASTWalker::Visit(Assignment& expr) {
     case TokenType::IMod: op = calyx::BinopType::Mod; break;
     case TokenType::IPlus: op = calyx::BinopType::Add; break;
     case TokenType::IMinus: op = calyx::BinopType::Sub; break;
-    case TokenType::ILShift: throw std::runtime_error("Unimplemented: <<=");
-    case TokenType::IRShift: throw std::runtime_error("Unimplemented: >>=");
+    case TokenType::ILShift:
+    case TokenType::IRShift: {
+      // same as binop LShift / RShift
+      state.push({State::Read, {}});
+      expr.left->Visit(*this);
+      state.pop();
+
+      auto left = current;
+      cotyl::Assert(!cotyl::Is(emitter.vars[left].type).AnyOf<calyx::Var::Type::Float, calyx::Var::Type::Double>());
+      cotyl::Assert(!cotyl::Is(emitter.vars[right].type).AnyOf<calyx::Var::Type::Float, calyx::Var::Type::Double>());
+      switch (emitter.vars[right].type) {
+        case calyx::Var::Type::I32: {
+          right = emitter.EmitExpr<calyx::Cast<u32, i32>>({ calyx::Var::Type::U32 }, right);
+          break;
+        }
+        case calyx::Var::Type::I64: {
+          right = emitter.EmitExpr<calyx::Cast<u32, i64>>({ calyx::Var::Type::U32 }, right);
+          break;
+        }
+        case calyx::Var::Type::U64: {
+          right = emitter.EmitExpr<calyx::Cast<u32, u64>>({ calyx::Var::Type::U32 }, right);
+          break;
+        }
+        case calyx::Var::Type::U32: break;
+        default: {
+          throw std::runtime_error("Bad operand type for shift amount");
+        }
+      }
+      if (expr.op == TokenType::ILShift) {
+        EmitIntegralExpr<calyx::Shift>(emitter.vars[left].type, left, calyx::ShiftType::Left, right);
+      }
+      else {
+        EmitIntegralExpr<calyx::Shift>(emitter.vars[left].type, left, calyx::ShiftType::Right, right);
+      }
+
+      // do assignment
+      state.push({State::Assign, {.var = current}});
+      expr.left->Visit(*this);
+      state.pop();
+
+      // todo: conditional branch
+      return;
+    }
     case TokenType::IAnd: op = calyx::BinopType::BinAnd; break;
     case TokenType::IOr: op = calyx::BinopType::BinOr; break;
     case TokenType::IXor: op = calyx::BinopType::BinXor; break;
@@ -1095,6 +1136,7 @@ void ASTWalker::Visit(For& stat) {
   emitter.Emit<calyx::UnconditionalBranch>(cond_block);
 
   // pop variables layer
+  // todo: dealloc?
 //  for (auto var = variables.Top().rbegin(); var != variables.Top().rend(); var++) {
 //    emitter.Emit<calyx::DeallocateCVar>(var->second.idx, var->second.size);
 //  }
