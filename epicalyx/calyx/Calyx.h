@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 
 namespace epi::calyx {
@@ -80,6 +81,7 @@ struct Directive {
     Stack,
     Branch,
     Return,
+    Select,
   };
 
   Directive(Class cls) :
@@ -462,11 +464,26 @@ requires (is_calyx_type_v<T>)
 struct Return : Directive {
 
   Return(var_index_t idx) :
-          Directive(Class::Return), idx(idx) {
+        Directive(Class::Return), idx(idx) {
 
   }
 
   var_index_t idx;
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+struct Select : Directive {
+
+  Select(var_index_t idx) :
+        Directive(Class::Select), idx(idx) {
+
+  }
+
+  var_index_t idx;
+  std::unordered_map<i64, block_label_t> table{};
+  block_label_t _default = 0;
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;

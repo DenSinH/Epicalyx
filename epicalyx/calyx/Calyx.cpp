@@ -146,6 +146,10 @@ std::string BranchCompareImm<T>::ToString() const {
   );
 }
 
+std::string Select::ToString() const {
+  return cotyl::FormatStr("select v%s", idx);
+}
+
 template<typename T>
 requires (is_calyx_type_v<T>)
 std::string AddToPointer<T>::ToString() const {
@@ -313,6 +317,10 @@ void StoreToPointer<T>::Emit(Backend& backend) {
 template<typename T>
 requires (is_calyx_type_v<T>)
 void Return<T>::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+void Select::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 

@@ -28,6 +28,17 @@ void Interpreter::VisualizeProgram(const Program& program) {
         case Directive::Class::Branch:
           graph->n(i, directive->ToString())->n(cotyl::unique_ptr_cast<Branch>(directive)->dest);
           break;
+        case Directive::Class::Select: {
+          auto node = graph->n(i, directive->ToString());
+          auto* select = cotyl::unique_ptr_cast<Select>(directive);
+          for (auto [val, block] : select->table) {
+            node->n(block, std::to_string(val));
+          }
+          if (select->_default) {
+            node->n(select->_default, "default");
+          }
+          break;
+        }
       }
     }
   }
@@ -79,7 +90,10 @@ void Interpreter::EmitCast(Cast<To, From>& op) {
       }
       else {
         // out of bounds is UB anyway...
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wimplicit-const-int-float-conversion"
         value = std::clamp<From>(from, std::numeric_limits<To>::min(), std::numeric_limits<To>::max());
+#pragma clang diagnostic pop
       }
     }
     else {
@@ -304,7 +318,6 @@ void Interpreter::EmitCompareImm(CompareImm<T>& op) {
   throw std::runtime_error("Unimplemented: compare imm");
 }
 
-
 void Interpreter::Emit(UnconditionalBranch& op) {
   pos.first  = op.dest;
   pos.second = 0;
@@ -360,6 +373,19 @@ void Interpreter::EmitBranchCompareImm(BranchCompareImm<T>& op) {
       pos.second = 0;
     }
   }
+}
+
+void Interpreter::Emit(Select& op) {
+  cotyl::Assert(vars.contains(op.idx));
+  auto val = std::get<i64>(vars.at(op.idx));
+  cotyl::Assert(op._default || op.table.contains(val), "Jump table does not contain value");
+  if (op.table.contains(val)) {
+    pos.first  = op.table.at(val);
+  }
+  else {
+    pos.first = op._default;
+  }
+  pos.second = 0;
 }
 
 template<typename T>

@@ -106,6 +106,7 @@ struct Interpreter : Backend {
   void Emit(BranchCompareImm<float>& op) final;
   void Emit(BranchCompareImm<double>& op) final;
   void Emit(BranchCompareImm<Pointer>& op) final;
+  void Emit(Select& op) final;
   void Emit(AddToPointer<i32>& op) final;
   void Emit(AddToPointer<u32>& op) final;
   void Emit(AddToPointer<i64>& op) final;

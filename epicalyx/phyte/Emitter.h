@@ -22,8 +22,11 @@ struct Emitter {
   }
 
   template<typename T, typename... Args>
-  void Emit(Args... args) {
-    program[current_block].push_back(std::make_unique<T>(args...));
+  T* Emit(Args... args) {
+    auto directive = std::make_unique<T>(args...);
+    T* ref = directive.get();
+    program[current_block].push_back(std::move(directive));
+    return ref;
   }
 
   calyx::block_label_t MakeBlock() {

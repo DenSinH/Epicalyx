@@ -64,6 +64,7 @@ struct Backend {
   virtual void Emit(BranchCompareImm<float>& op) = 0;
   virtual void Emit(BranchCompareImm<double>& op) = 0;
   virtual void Emit(BranchCompareImm<Pointer>& op) = 0;
+  virtual void Emit(Select& op) = 0;
   virtual void Emit(AddToPointer<i32>& op) = 0;
   virtual void Emit(AddToPointer<u32>& op) = 0;
   virtual void Emit(AddToPointer<i64>& op) = 0;

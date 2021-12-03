@@ -36,6 +36,7 @@ struct ASTWalker : public taxy::NodeVisitor {
   std::stack<std::pair<State, StateData>> state{};
   std::stack<calyx::block_label_t> break_stack{};
   std::stack<calyx::block_label_t> continue_stack{};
+  std::stack<calyx::Select*> select_stack{};
   bool reachable = true;
 
   cotyl::MapScope<std::string, calyx::CVar> variables{};

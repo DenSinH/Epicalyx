@@ -93,6 +93,10 @@ void Example::EmitBranchCompareImm(BranchCompareImm<T>& op) {
 
 }
 
+void Example::Emit(Select& op) {
+
+}
+
 template<typename T>
 void Example::EmitAddToPointer(AddToPointer<T>& op) {
 

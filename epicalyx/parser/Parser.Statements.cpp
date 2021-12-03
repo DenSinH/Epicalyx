@@ -47,7 +47,7 @@ pNode<Stat> Parser::SStatement() {
 
       auto stat = case_scope << [&]{ return SStatement(); };
 
-      auto switch_stat = std::make_unique<Switch>(std::move(expr), SStatement());
+      auto switch_stat = std::make_unique<Switch>(std::move(expr), std::move(stat));
 
       auto reduced = switch_stat->SReduce(*this);
       if (reduced) return reduced;
