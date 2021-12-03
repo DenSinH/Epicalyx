@@ -68,16 +68,19 @@ struct ASTWalker : public taxy::NodeVisitor {
   void Visit(FunctionDefinition& decl) final;
   void Visit(Identifier& decl) final;
 
-  void Visit(NumericalConstant<i8>& expr) final;
-  void Visit(NumericalConstant<u8>& expr) final;
-  void Visit(NumericalConstant<i16>& expr) final;
-  void Visit(NumericalConstant<u16>& expr) final;
-  void Visit(NumericalConstant<i32>& expr) final;
-  void Visit(NumericalConstant<u32>& expr) final;
-  void Visit(NumericalConstant<i64>& expr) final;
-  void Visit(NumericalConstant<u64>& expr) final;
-  void Visit(NumericalConstant<float>& expr) final;
-  void Visit(NumericalConstant<double>& expr) final;
+  void Visit(NumericalConstant<i8>& expr) final { ConstVisitImpl(expr); }
+  void Visit(NumericalConstant<u8>& expr) final { ConstVisitImpl(expr); }
+  void Visit(NumericalConstant<i16>& expr) final { ConstVisitImpl(expr); }
+  void Visit(NumericalConstant<u16>& expr) final { ConstVisitImpl(expr); }
+  void Visit(NumericalConstant<i32>& expr) final { ConstVisitImpl(expr); }
+  void Visit(NumericalConstant<u32>& expr) final { ConstVisitImpl(expr); }
+  void Visit(NumericalConstant<i64>& expr) final { ConstVisitImpl(expr); }
+  void Visit(NumericalConstant<u64>& expr) final { ConstVisitImpl(expr); }
+  void Visit(NumericalConstant<float>& expr) final { ConstVisitImpl(expr); }
+  void Visit(NumericalConstant<double>& expr) final { ConstVisitImpl(expr); }
+  template<typename T>
+  void ConstVisitImpl(NumericalConstant<T>& expr);
+
   void Visit(StringConstant& expr) final;
   void Visit(ArrayAccess& expr) final;
   void Visit(FunctionCall& expr) final;

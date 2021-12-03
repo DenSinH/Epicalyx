@@ -17,18 +17,11 @@
 
 int main() {
   // auto file = epi::File("tests/test.c");
-  auto file = epi::File("examples/emitting/branches.c");
-  auto string = epi::SString(
-          "{ for (int i = {0}; i < 12; i++)"
-          "{ int a = i + 1, (*b)() = c = 12 ? 1 > 2 : 3; (&a)[i] = 69; }"
-          "{ typedef int i32; *(i32*)abc = (int){0, 1, .abc = 2, [0].x[1] = 3}; }"
-          "{ const struct TestStruct{ int a, b: 2, *c;} x = {1, 2, {3}}; }"
-          " enum a {x = 1, y, z }; "
-          " return x * 12 * 12;}");
+  auto file = epi::File("examples/emitting/loops.c");
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
-#if 0
+#if 1
 #define try if (true)
 #define catch_e ; for (std::runtime_error e(""); false;)
 #else

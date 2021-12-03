@@ -10,7 +10,7 @@ pNode<Stat> Parser::SStatement() {
   switch (in_stream.ForcePeek()->type) {
     case TokenType::SemiColon: {
       in_stream.Skip();
-      return nullptr;
+      return std::make_unique<Empty>();
     }
     case TokenType::Case: {
       in_stream.Skip();

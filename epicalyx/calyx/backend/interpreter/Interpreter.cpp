@@ -45,7 +45,7 @@ void Interpreter::EmitProgram(Program& program) {
 }
 
 void Interpreter::Emit(AllocateCVar& op) {
-  cotyl::Assert(!c_vars.contains(op.c_idx), op.ToString());
+//  cotyl::Assert(!c_vars.contains(op.c_idx), op.ToString());
   c_vars[op.c_idx] = stack.size();
   stack.resize(stack.size() + op.size);
 }
@@ -63,7 +63,7 @@ void Interpreter::Emit(LoadCVarAddr& op) {
 
 template<typename To, typename From>
 void Interpreter::EmitCast(Cast<To, From>& op) {
-  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<To, Pointer>) {
     throw std::runtime_error("Unimplemented: cast to pointer");
   }
@@ -91,7 +91,7 @@ void Interpreter::EmitCast(Cast<To, From>& op) {
 
 template<typename T>
 void Interpreter::EmitLoadCVar(LoadCVar<T>& op) {
-  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<T, Pointer>) {
     throw std::runtime_error("Unimplemented: load pointer cvar");
   }
@@ -107,7 +107,7 @@ void Interpreter::EmitLoadCVar(LoadCVar<T>& op) {
 
 template<typename T>
 void Interpreter::EmitStoreCVar(StoreCVar<T>& op) {
-  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<T, Pointer>) {
     throw std::runtime_error("Unimplemented: store pointer cvar");
   }
@@ -137,13 +137,13 @@ void Interpreter::EmitReturn(Return<T>& op) {
 
 template<typename T>
 void Interpreter::EmitImm(Imm<T>& op) {
-  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   vars[op.idx] = op.value;
 }
 
 template<typename T>
 void Interpreter::EmitUnop(Unop<T>& op) {
-  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T right = std::get<T>(vars[op.right_idx]);
   switch (op.op) {
     case UnopType::Neg:
@@ -160,7 +160,7 @@ void Interpreter::EmitUnop(Unop<T>& op) {
 
 template<typename T>
 void Interpreter::EmitBinop(Binop<T>& op) {
-  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T left = std::get<T>(vars[op.left_idx]);
   T right = std::get<T>(vars[op.right_idx]);
   T result;
@@ -211,7 +211,7 @@ void Interpreter::EmitBinop(Binop<T>& op) {
 
 template<typename T>
 void Interpreter::EmitBinopImm(BinopImm<T>& op) {
-  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T left = std::get<T>(vars[op.left_idx]);
   T result;
   switch (op.op) {
@@ -261,7 +261,7 @@ void Interpreter::EmitBinopImm(BinopImm<T>& op) {
 
 template<typename T>
 void Interpreter::EmitShift(Shift<T>& op) {
-  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T left = std::get<T>(vars[op.left_idx]);
   u32 right = std::get<u32>(vars[op.right_idx]);
   switch (op.op) {
@@ -279,7 +279,7 @@ void Interpreter::EmitShift(Shift<T>& op) {
 
 template<typename T>
 void Interpreter::EmitShiftImm(ShiftImm<T>& op) {
-  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T left = std::get<T>(vars[op.left_idx]);
   switch (op.op) {
     case calyx::ShiftType::Left: {
