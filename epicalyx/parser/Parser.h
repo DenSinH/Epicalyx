@@ -83,6 +83,7 @@ struct Parser final : public cotyl::Locatable {
   std::deque<Loop> loop_scope{};
   cotyl::SetScope<i64> case_scope{};
   std::unordered_set<std::string> labels{};
+  std::unordered_set<std::string> unresolved_labels{};
   cotyl::MapScope<std::string, pType<const CType>> variables{};
 
   // external results

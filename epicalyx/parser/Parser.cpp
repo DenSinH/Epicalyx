@@ -58,6 +58,12 @@ void Parser::Parse() {
       }
     }
   }
+
+  for (const auto& label : unresolved_labels) {
+    if (!labels.contains(label)) {
+      throw cotyl::FormatExceptStr("Unresolved label: %s", label);
+    }
+  }
 }
 
 void Parser::Data() {

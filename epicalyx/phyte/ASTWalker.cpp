@@ -1043,6 +1043,7 @@ void ASTWalker::Visit(For& stat) {
   // new scope for declarations in for loop
   variables.NewLayer();
 
+  // always go to initialization
   emitter.Emit<calyx::UnconditionalBranch>(init_block);
   emitter.SelectBlock(init_block);
   for (auto& decl : stat.decls) {
@@ -1052,6 +1053,7 @@ void ASTWalker::Visit(For& stat) {
     init->Visit(*this);
   }
 
+  // go to condition
   emitter.Emit<calyx::UnconditionalBranch>(cond_block);
   emitter.SelectBlock(cond_block);
 
@@ -1059,11 +1061,14 @@ void ASTWalker::Visit(For& stat) {
   stat.cond->Visit(*this);
   state.pop();
 
+  // false_block case should have been handled by condition
   emitter.Emit<calyx::UnconditionalBranch>(loop_block);
   emitter.SelectBlock(loop_block);
 
+  // loop body
   stat.stat->Visit(*this);
 
+  // go to update and loop back to condition
   emitter.Emit<calyx::UnconditionalBranch>(update_block);
   emitter.SelectBlock(update_block);
   for (auto& update : stat.updates) {
@@ -1082,7 +1087,18 @@ void ASTWalker::Visit(For& stat) {
 }
 
 void ASTWalker::Visit(Label& stat) {
-  throw std::runtime_error("unimplemented");
+  if (!emitter.labels.contains(stat.name)) {
+    auto block = emitter.MakeBlock();
+    emitter.labels.emplace(stat.name, block);
+    emitter.Emit<calyx::UnconditionalBranch>(block);
+    emitter.SelectBlock(block);
+  }
+  else {
+    auto block = emitter.labels.at(stat.name);
+    emitter.Emit<calyx::UnconditionalBranch>(block);
+    emitter.SelectBlock(block);
+  }
+  stat.stat->Visit(*this);
 }
 
 void ASTWalker::Visit(Switch& stat) {
@@ -1098,7 +1114,14 @@ void ASTWalker::Visit(Default& stat) {
 }
 
 void ASTWalker::Visit(Goto& stat) {
-  throw std::runtime_error("unimplemented");
+  if (!emitter.labels.contains(stat.label)) {
+    auto block = emitter.MakeBlock();
+    emitter.labels.emplace(stat.label, block);
+    emitter.Emit<calyx::UnconditionalBranch>(block);
+  }
+  else {
+    emitter.Emit<calyx::UnconditionalBranch>(emitter.labels.at(stat.label));
+  }
 }
 
 void ASTWalker::Visit(Return& stat) {

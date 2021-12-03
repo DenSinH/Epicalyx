@@ -12,7 +12,11 @@ int main() {
 
   for (int i = 0; i < 10; i++) {
     y += i;
+    if (i > 5) {
+      goto done;
+    }
   }
 
+done:
   return y;
 }

@@ -4,6 +4,7 @@
 #include "taxy/Node.h"
 
 #include <vector>
+#include <unordered_map>
 
 namespace epi::phyte {
 
@@ -45,6 +46,7 @@ struct Emitter {
 
   // first var is special
   std::vector<calyx::Var> vars{{calyx::Var::Type::I32}};
+  std::unordered_map<std::string, calyx::block_label_t> labels{};
   calyx::Program program{};
 };
 

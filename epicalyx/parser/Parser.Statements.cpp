@@ -171,9 +171,9 @@ pNode<Stat> Parser::SStatement() {
       std::string label = cotyl::unique_ptr_cast<tIdentifier>(in_stream.Get())->name;
       in_stream.Eat(TokenType::SemiColon);
 
-      // validation
+      // labels might be predeclared
       if (!labels.contains(label)) {
-        throw cotyl::FormatExceptStr("Undefined label: %s", label);
+        unresolved_labels.insert(label);
       }
 
       return std::make_unique<Goto>(std::move(label));
