@@ -98,6 +98,7 @@ struct Example : Backend {
   void Emit(AddToPointer<u32>& op) final;
   void Emit(AddToPointer<i64>& op) final;
   void Emit(AddToPointer<u64>& op) final;
+  void Emit(AddToPointerImm& op) final;
   void Emit(Unop<i32>& op) final;
   void Emit(Unop<u32>& op) final;
   void Emit(Unop<i64>& op) final;

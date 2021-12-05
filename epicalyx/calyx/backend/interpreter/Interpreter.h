@@ -14,7 +14,7 @@ struct Interpreter : Backend {
 
   // id 0 is special
   std::map<calyx::var_index_t, u64> c_vars{};
-  std::map<calyx::var_index_t, std::variant<i32, u32, i64, u64, float, double>> vars{};
+  std::map<calyx::var_index_t, std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> vars{};
 
   std::pair<calyx::var_index_t, calyx::var_index_t> pos{0, 0};
   bool returned = false;
@@ -111,6 +111,7 @@ struct Interpreter : Backend {
   void Emit(AddToPointer<u32>& op) final;
   void Emit(AddToPointer<i64>& op) final;
   void Emit(AddToPointer<u64>& op) final;
+  void Emit(AddToPointerImm& op) final;
   void Emit(Unop<i32>& op) final;
   void Emit(Unop<u32>& op) final;
   void Emit(Unop<i64>& op) final;

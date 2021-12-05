@@ -76,10 +76,21 @@ template<typename To, typename From>
 void Interpreter::EmitCast(Cast<To, From>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<To, Pointer>) {
-    throw std::runtime_error("Unimplemented: cast to pointer");
+    To value;
+    From from = std::get<From>(vars[op.right_idx]);
+    if constexpr(std::is_same_v<From, Pointer>) {
+      vars[op.idx] = calyx::Pointer{from.value};
+    }
+    else {
+      vars[op.idx] = calyx::Pointer{(u64)from};
+    }
   }
   else if constexpr(std::is_same_v<From, Pointer>) {
-    throw std::runtime_error("Unimplemented: cast from pointer");
+    // we know that To is not a pointer type
+    To value;
+    From from = std::get<From>(vars[op.right_idx]);
+    value = from.value;
+    vars[op.idx] = value;
   }
   else {
     To value;
@@ -106,13 +117,11 @@ void Interpreter::EmitCast(Cast<To, From>& op) {
 template<typename T>
 void Interpreter::EmitLoadCVar(LoadCVar<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
-  if constexpr(std::is_same_v<T, Pointer>) {
-    throw std::runtime_error("Unimplemented: load pointer cvar");
-  }
-  else if constexpr(std::is_same_v<T, Struct>) {
+  if constexpr(std::is_same_v<T, Struct>) {
     throw std::runtime_error("Unimplemented: load struct cvar");
   }
   else {
+    // works the same for pointers
     T value;
     memcpy(&value, &stack[c_vars[op.c_idx]], sizeof(T));
     vars[op.idx] = (calyx_upcast_t<T>)value;
@@ -122,13 +131,11 @@ void Interpreter::EmitLoadCVar(LoadCVar<T>& op) {
 template<typename T>
 void Interpreter::EmitStoreCVar(StoreCVar<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
-  if constexpr(std::is_same_v<T, Pointer>) {
-    throw std::runtime_error("Unimplemented: store pointer cvar");
-  }
-  else if constexpr(std::is_same_v<T, Struct>) {
+  if constexpr(std::is_same_v<T, Struct>) {
     throw std::runtime_error("Unimplemented: store struct cvar");
   }
   else {
+    // works the same for pointers
     T value = (T)std::get<calyx_upcast_t<T>>(vars[op.src]);
     memcpy(&stack[c_vars[op.c_idx]], &value, sizeof(T));
     vars[op.idx] = (calyx_upcast_t<T>)value;
@@ -390,7 +397,17 @@ void Interpreter::Emit(Select& op) {
 
 template<typename T>
 void Interpreter::EmitAddToPointer(AddToPointer<T>& op) {
+  calyx::Pointer left = std::get<calyx::Pointer>(vars[op.ptr_idx]);
+  T right = std::get<T>(vars[op.right_idx]);
+  calyx::Pointer result = {left.value + op.stride * right};
+  vars[op.idx] = result;
+}
 
+void Interpreter::Emit(AddToPointerImm& op) {
+  calyx::Pointer left = std::get<calyx::Pointer>(vars[op.ptr_idx]);
+  i64 right = op.right;
+  calyx::Pointer result = {left.value + op.stride * right};
+  vars[op.idx] = result;
 }
 
 

@@ -52,6 +52,10 @@ struct ASTWalker : public taxy::NodeVisitor {
   template<template<typename T> class Op, typename... Args>
   void EmitArithExpr(calyx::Var::Type type, Args... args);
   template<template<typename T> class Op, typename... Args>
+  void EmitPointerIntegralExpr(calyx::Var::Type type, u64 stride, Args... args);
+  template<template<typename T> class Op, typename... Args>
+  void EmitPointerExpr(calyx::Var::Type type, u64 stride, Args... args);
+  template<template<typename T> class Op, typename... Args>
   void EmitBranch(calyx::Var::Type type, Args... args);
   template<template<typename T> class Op, typename... Args>
   void EmitCompare(calyx::Var::Type type, Args... args);

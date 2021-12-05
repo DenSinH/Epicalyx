@@ -69,6 +69,7 @@ struct Backend {
   virtual void Emit(AddToPointer<u32>& op) = 0;
   virtual void Emit(AddToPointer<i64>& op) = 0;
   virtual void Emit(AddToPointer<u64>& op) = 0;
+  virtual void Emit(AddToPointerImm& op) = 0;
   virtual void Emit(Unop<i32>& op) = 0;
   virtual void Emit(Unop<u32>& op) = 0;
   virtual void Emit(Unop<i64>& op) = 0;

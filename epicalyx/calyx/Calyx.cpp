@@ -151,9 +151,13 @@ std::string Select::ToString() const {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_integral_type_v<T>)
 std::string AddToPointer<T>::ToString() const {
-  return cotyl::FormatStr("ptrad v% = v%s + %s * v%s", this->idx, ptr_idx, stride, right_idx);
+  return cotyl::FormatStr("ptrad v%s = v%s + %s * v%s", this->idx, ptr_idx, stride, right_idx);
+}
+
+std::string AddToPointerImm::ToString() const {
+  return cotyl::FormatStr("paddi v%s = v%s + %s * imm(%s)", this->idx, ptr_idx, stride, right);
 }
 
 template<typename T>
@@ -269,8 +273,12 @@ void Unop<T>::Emit(Backend& backend) {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_integral_type_v<T>)
 void AddToPointer<T>::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+void AddToPointerImm::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 

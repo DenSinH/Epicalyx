@@ -16,19 +16,19 @@ struct Backend;
 using var_index_t = u64;
 using block_label_t = u64;
 
-struct Pointer;
+struct Pointer {
+  u64 value;
+};
 struct Struct;
 
 template<typename T>
-struct is_calyx_type {
-  static constexpr bool value = epi::cotyl::is_in_v<T, i32, u32, i64, u64, float, double, Struct, Pointer>;
-};
+constexpr bool is_calyx_type_v = epi::cotyl::is_in_v<T, i32, u32, i64, u64, float, double, Struct, Pointer>;
 template<typename T>
-constexpr bool is_calyx_type_v = is_calyx_type<T>::value;
+constexpr bool is_calyx_integral_type_v = epi::cotyl::is_in_v<T, i32, u32, i64, u64>;
 
 template<typename T> struct calyx_upcast { using type = T; };
 template<> struct calyx_upcast<i8> { using type = i32; };
-template<> struct calyx_upcast<u8> { using type = i32; };
+template<> struct calyx_upcast<u8> { using type = i32; };  // todo: fix this in CType (cast to i32, should be u32)
 template<> struct calyx_upcast<i16> { using type = i32; };
 template<> struct calyx_upcast<u16> { using type = i32; };
 template<typename T>
@@ -133,6 +133,11 @@ enum class BinopType {
   BinAnd,
   BinOr,
   BinXor,
+};
+
+enum class PtrAddType {
+  Add,
+  Sub,
 };
 
 enum class ShiftType {
@@ -310,17 +315,33 @@ struct BranchCompareImm : Branch {
 };
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_integral_type_v<T>)
 struct AddToPointer : Expr<Pointer> {
 
-  AddToPointer(var_index_t idx, var_index_t left, u64 stride, var_index_t right) :
-      Expr<Pointer>(idx), ptr_idx(left), stride(stride), right_idx(right) {
+  AddToPointer(var_index_t idx, var_index_t ptr, PtrAddType op, u64 stride, var_index_t right) :
+      Expr<Pointer>(idx), ptr_idx(ptr), op(op), stride(stride), right_idx(right) {
+
+  }
+
+  var_index_t ptr_idx;
+  PtrAddType op;
+  u64 stride;
+  var_index_t right_idx;
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+struct AddToPointerImm : Expr<Pointer> {
+
+  AddToPointerImm(var_index_t idx, var_index_t ptr, u64 stride, i64 right) :
+      Expr<Pointer>(idx), ptr_idx(ptr), stride(stride), right(right) {
 
   }
 
   var_index_t ptr_idx;
   u64 stride;
-  var_index_t right_idx;
+  i64 right;
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;

@@ -136,7 +136,7 @@ struct CastToEmitter {
     auto src_t = walker.emitter.vars[src].type;
     if ((src_t == calyx::Var::Type::Pointer) && (walker.emitter.vars[src].stride == stride)) {
       // "same pointer", no cast necessary
-      return 0;
+      return src;
     }
     switch (src_t) {
       case calyx::Var::Type::I32: return walker.emitter.EmitExpr<calyx::Cast<T, i32>>({ calyx::Var::Type::Pointer, stride }, src);
@@ -146,8 +146,7 @@ struct CastToEmitter {
       case calyx::Var::Type::Float: return walker.emitter.EmitExpr<calyx::Cast<T, float>>({ calyx::Var::Type::Pointer, stride }, src);
       case calyx::Var::Type::Double: return walker.emitter.EmitExpr<calyx::Cast<T, double>>({ calyx::Var::Type::Pointer, stride }, src);
       case calyx::Var::Type::Pointer: return walker.emitter.EmitExpr<calyx::Cast<T, calyx::Pointer>>({ calyx::Var::Type::Pointer, stride }, src);
-      default:
-        return 0;
+      default: throw std::runtime_error("Bad pointer cast!");
     }
   }
 };
@@ -214,6 +213,33 @@ void ASTWalker::EmitArithExpr(calyx::Var::Type type, Args... args) {
     case calyx::Var::Type::Double: current = emitter.EmitExpr<Op<double>>({ type }, args...); break;
     default:
       throw std::runtime_error("Bad type for arithmetic expression");
+  }
+}
+
+template<template<typename T> class Op, typename... Args>
+void ASTWalker::EmitPointerIntegralExpr(calyx::Var::Type type, u64 stride, Args... args) {
+  switch (type) {
+    case calyx::Var::Type::I32: current = emitter.EmitExpr<Op<i32>>({ calyx::Var::Type::Pointer, stride }, args...); break;
+    case calyx::Var::Type::U32: current = emitter.EmitExpr<Op<u32>>({ calyx::Var::Type::Pointer, stride }, args...); break;
+    case calyx::Var::Type::I64: current = emitter.EmitExpr<Op<i64>>({ calyx::Var::Type::Pointer, stride }, args...); break;
+    case calyx::Var::Type::U64: current = emitter.EmitExpr<Op<u64>>({ calyx::Var::Type::Pointer, stride }, args...); break;
+    default:
+      throw std::runtime_error("Unimplemented type for arithmetic expression");
+  }
+}
+
+template<template<typename T> class Op, typename... Args>
+void ASTWalker::EmitPointerExpr(calyx::Var::Type type, u64 stride, Args... args) {
+  switch (type) {
+    case calyx::Var::Type::I32: current = emitter.EmitExpr<Op<i32>>({ type, stride }, args...); break;
+    case calyx::Var::Type::U32: current = emitter.EmitExpr<Op<u32>>({ type, stride }, args...); break;
+    case calyx::Var::Type::I64: current = emitter.EmitExpr<Op<i64>>({ type, stride }, args...); break;
+    case calyx::Var::Type::U64: current = emitter.EmitExpr<Op<u64>>({ type, stride }, args...); break;
+    case calyx::Var::Type::Float: current = emitter.EmitExpr<Op<float>>({ type, stride }, args...); break;
+    case calyx::Var::Type::Double: current = emitter.EmitExpr<Op<double>>({ type, stride }, args...); break;
+    case calyx::Var::Type::Pointer: current = emitter.EmitExpr<Op<calyx::Pointer>>({ type, stride }, args...); break;
+    default:
+      throw std::runtime_error("Unimplemented type for arithmetic expression");
   }
 }
 
@@ -552,7 +578,8 @@ void ASTWalker::Visit(PostFix& expr) {
       auto read = current;
       auto type = emitter.vars[current].type;
       if (type == calyx::Var::Type::Pointer) {
-        // todo
+        auto var = emitter.vars[read];
+        current = emitter.EmitExpr<calyx::AddToPointerImm>(var, read, var.stride, 1);
       }
       else if (type == calyx::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for post-increment: struct");
@@ -579,7 +606,8 @@ void ASTWalker::Visit(PostFix& expr) {
       auto read = current;
       auto type = emitter.vars[current].type;
       if (type == calyx::Var::Type::Pointer) {
-        // todo
+        auto var = emitter.vars[read];
+        current = emitter.EmitExpr<calyx::AddToPointerImm>(var, read, var.stride, -1);
       }
       else if (type == calyx::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for post-decrement: struct");
@@ -664,7 +692,8 @@ void ASTWalker::Visit(Unary& expr) {
       auto type = emitter.vars[current].type;
       calyx::var_index_t stored;
       if (type == calyx::Var::Type::Pointer) {
-        // todo
+        auto var = emitter.vars[current];
+        current = emitter.EmitExpr<calyx::AddToPointerImm>(var, current, var.stride, 1);
       }
       else if (type == calyx::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for pre-increment: struct");
@@ -691,7 +720,8 @@ void ASTWalker::Visit(Unary& expr) {
       auto type = emitter.vars[current].type;
       calyx::var_index_t stored;
       if (type == calyx::Var::Type::Pointer) {
-        // todo
+        auto var = emitter.vars[current];
+        current = emitter.EmitExpr<calyx::AddToPointerImm>(var, current, var.stride, -1);
       }
       else if (type == calyx::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for pre-decrement: struct");
@@ -761,24 +791,29 @@ void ASTWalker::Visit(Binop& expr) {
     case TokenType::BinXor: BinopHelper(left, calyx::BinopType::BinXor, right); break;
     case TokenType::Plus: {
       if (emitter.vars[left].type == calyx::Var::Type::Pointer) {
-        throw std::runtime_error("Unimplemented: pointer add");
+        auto var = emitter.vars[left];
+        EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, calyx::PtrAddType::Add, var.stride, right);
       }
-      if (emitter.vars[right].type == calyx::Var::Type::Pointer) {
-        throw std::runtime_error("Unimplemented: pointer add");
+      else if (emitter.vars[right].type == calyx::Var::Type::Pointer) {
+        auto var = emitter.vars[right];
+        EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[left].type, var.stride, right, calyx::PtrAddType::Add, var.stride, left);
       }
-
-      BinopHelper(left, calyx::BinopType::Add, right);
+      else {
+        BinopHelper(left, calyx::BinopType::Add, right);
+      }
       break;
     }
     case TokenType::Minus: {
       if (emitter.vars[left].type == calyx::Var::Type::Pointer) {
-        throw std::runtime_error("Unimplemented: pointer sub");
+        auto var = emitter.vars[left];
+        EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, calyx::PtrAddType::Sub, var.stride, right);
       }
-      if (emitter.vars[right].type == calyx::Var::Type::Pointer) {
-        throw std::runtime_error("Unimplemented: pointer sub");
+      else if (emitter.vars[right].type == calyx::Var::Type::Pointer) {
+        throw std::runtime_error("Invalid right hand side operator for -: pointer");
       }
-
-      BinopHelper(left, calyx::BinopType::Sub, right);
+      else {
+        BinopHelper(left, calyx::BinopType::Sub, right);
+      }
       break;
     }
     case TokenType::Less:
@@ -899,7 +934,7 @@ void ASTWalker::Visit(Assignment& expr) {
       state.pop();
 
       auto left = current;
-      cotyl::Assert(!cotyl::Is(emitter.vars[left].type).AnyOf<calyx::Var::Type::Float, calyx::Var::Type::Double>());
+      cotyl::Assert(!cotyl::Is(emitter.vars[left].type).AnyOf<calyx::Var::Type::Float, calyx::Var::Type::Double, calyx::Var::Type::Pointer, calyx::Var::Type::Struct>());
       cotyl::Assert(!cotyl::Is(emitter.vars[right].type).AnyOf<calyx::Var::Type::Float, calyx::Var::Type::Double>());
       switch (emitter.vars[right].type) {
         case calyx::Var::Type::I32: {
@@ -958,7 +993,22 @@ void ASTWalker::Visit(Assignment& expr) {
   auto left = current;
 
   // emit binop
-  BinopHelper(left, op, right);
+  if (emitter.vars[left].type == calyx::Var::Type::Pointer) {
+    auto var = emitter.vars[left];
+    switch (op) {
+      case calyx::BinopType::Add:
+        EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, calyx::PtrAddType::Add, var.stride, right);
+        break;
+      case calyx::BinopType::Sub:
+        EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, calyx::PtrAddType::Sub, var.stride, right);
+        break;
+      default:
+        throw std::runtime_error("Bad pointer binop in pointer assignment");
+    }
+  }
+  else {
+    BinopHelper(left, op, right);
+  }
 
   auto result = current;
 
@@ -969,6 +1019,7 @@ void ASTWalker::Visit(Assignment& expr) {
 
   // set current to the result variable
   current = result;
+  // todo: conditional branch
 }
 
 void ASTWalker::Visit(Empty& stat) {

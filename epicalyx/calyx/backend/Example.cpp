@@ -102,6 +102,9 @@ void Example::EmitAddToPointer(AddToPointer<T>& op) {
 
 }
 
+void Example::Emit(AddToPointerImm& op) {
+
+}
 
 void Example::Emit(Binop<i32>& op) { EmitBinop(op); }
 void Example::Emit(Binop<u32>& op) { EmitBinop(op); }
