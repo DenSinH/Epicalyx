@@ -61,7 +61,7 @@ struct ASTWalker : public taxy::NodeVisitor {
   void EmitCompare(calyx::Var::Type type, Args... args);
 
   struct BinopCastResult {
-    calyx::Var::Type type;
+    calyx::Var var;
     calyx::var_index_t left;
     calyx::var_index_t right;
   };

@@ -201,6 +201,8 @@ struct PointerType : public CType {
 
   OVERRIDE_BINOP(Add)
   OVERRIDE_BINOP(Sub)
+  OVERRIDE_BINOP(Lt)
+  OVERRIDE_BINOP(Eq)
   pType<> Deref() const override;
 
   OVERRIDE_BINOP(CommonType)

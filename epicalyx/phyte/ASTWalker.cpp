@@ -224,7 +224,7 @@ void ASTWalker::EmitPointerIntegralExpr(calyx::Var::Type type, u64 stride, Args.
     case calyx::Var::Type::I64: current = emitter.EmitExpr<Op<i64>>({ calyx::Var::Type::Pointer, stride }, args...); break;
     case calyx::Var::Type::U64: current = emitter.EmitExpr<Op<u64>>({ calyx::Var::Type::Pointer, stride }, args...); break;
     default:
-      throw std::runtime_error("Unimplemented type for arithmetic expression");
+      throw std::runtime_error("Bad type for arithmetic expression");
   }
 }
 
@@ -239,20 +239,20 @@ void ASTWalker::EmitPointerExpr(calyx::Var::Type type, u64 stride, Args... args)
     case calyx::Var::Type::Double: current = emitter.EmitExpr<Op<double>>({ type, stride }, args...); break;
     case calyx::Var::Type::Pointer: current = emitter.EmitExpr<Op<calyx::Pointer>>({ type, stride }, args...); break;
     default:
-      throw std::runtime_error("Unimplemented type for arithmetic expression");
+      throw std::runtime_error("Bad type for arithmetic expression");
   }
 }
 
 template<template<typename T> class Op, typename... Args>
 void ASTWalker::EmitCompare(calyx::Var::Type type, Args... args) {
   switch (type) {
-    case calyx::Var::Type::I32: emitter.EmitExpr<Op<i32>>({ calyx::Var::Type::I32 }, args...); break;
-    case calyx::Var::Type::U32: emitter.EmitExpr<Op<u32>>({ calyx::Var::Type::I32 }, args...); break;
-    case calyx::Var::Type::I64: emitter.EmitExpr<Op<i64>>({ calyx::Var::Type::I32 }, args...); break;
-    case calyx::Var::Type::U64: emitter.EmitExpr<Op<u64>>({ calyx::Var::Type::I32 }, args...); break;
-    case calyx::Var::Type::Float: emitter.EmitExpr<Op<float>>({ calyx::Var::Type::I32 }, args...); break;
-    case calyx::Var::Type::Double: emitter.EmitExpr<Op<double>>({ calyx::Var::Type::I32 }, args...); break;
-    case calyx::Var::Type::Pointer: throw std::runtime_error("Unimplemented: pointer compare");
+    case calyx::Var::Type::I32: current = emitter.EmitExpr<Op<i32>>({ calyx::Var::Type::I32 }, args...); break;
+    case calyx::Var::Type::U32: current = emitter.EmitExpr<Op<u32>>({ calyx::Var::Type::I32 }, args...); break;
+    case calyx::Var::Type::I64: current = emitter.EmitExpr<Op<i64>>({ calyx::Var::Type::I32 }, args...); break;
+    case calyx::Var::Type::U64: current = emitter.EmitExpr<Op<u64>>({ calyx::Var::Type::I32 }, args...); break;
+    case calyx::Var::Type::Float: current = emitter.EmitExpr<Op<float>>({ calyx::Var::Type::I32 }, args...); break;
+    case calyx::Var::Type::Double: current = emitter.EmitExpr<Op<double>>({ calyx::Var::Type::I32 }, args...); break;
+    case calyx::Var::Type::Pointer: current = emitter.EmitExpr<Op<calyx::Pointer>>({ calyx::Var::Type::I32 }, args...); break;
     default:
       throw std::runtime_error("Bad type for branch expression");
   }
@@ -275,17 +275,64 @@ void ASTWalker::EmitBranch(calyx::Var::Type type, Args... args) {
 
 void ASTWalker::BinopHelper(calyx::var_index_t left, calyx::BinopType op, calyx::var_index_t right) {
   auto casted = BinopCastHelper(left, right);
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wbraced-scalar-init"
-  EmitArithExpr<calyx::Binop>({casted.type}, casted.left, op, casted.right);
-#pragma clang diagnostic pop
+  EmitArithExpr<calyx::Binop>(casted.var.type, casted.left, op, casted.right);
 }
 
 ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(calyx::var_index_t left, calyx::var_index_t right) {
-  auto left_t = emitter.vars[left].type;
-  auto right_t = emitter.vars[right].type;
+  auto left_v = emitter.vars[left];
+  auto right_v = emitter.vars[right];
+  auto left_t = left_v.type;
+  auto right_t = right_v.type;
   if (left_t == right_t) {
     return {left_t, left, right};
+  }
+
+  if (left_t == calyx::Var::Type::Pointer) {
+    switch (right_t) {
+      case calyx::Var::Type::I32:
+        current = emitter.EmitExpr<calyx::Cast<calyx::Pointer, i32>>(left_v, right);
+        return {left_v, left, current};
+      case calyx::Var::Type::U32:
+        current = emitter.EmitExpr<calyx::Cast<calyx::Pointer, u32>>(left_v, right);
+        return {left_v, left, current};
+      case calyx::Var::Type::I64:
+        current = emitter.EmitExpr<calyx::Cast<calyx::Pointer, i64>>(left_v, right);
+        return {left_v, left, current};
+      case calyx::Var::Type::U64:
+        current = emitter.EmitExpr<calyx::Cast<calyx::Pointer, u64>>(left_v, right);
+        return {left_v, left, current};
+      case calyx::Var::Type::Float:
+      case calyx::Var::Type::Double:
+        throw std::runtime_error("Invalid operands for binop: pointer and floating point type");
+      case calyx::Var::Type::Pointer:
+        // should have been hit before
+        throw std::runtime_error("Unreachable");
+      default: throw std::runtime_error("Bad binop");
+    }
+  }
+
+  if (right_t == calyx::Var::Type::Pointer) {
+    switch (left_t) {
+      case calyx::Var::Type::I32:
+        current = emitter.EmitExpr<calyx::Cast<calyx::Pointer, i32>>(right_v, left);
+        return {left_v, current, right};
+      case calyx::Var::Type::U32:
+        current = emitter.EmitExpr<calyx::Cast<calyx::Pointer, u32>>(right_v, left);
+        return {left_v, current, right};
+      case calyx::Var::Type::I64:
+        current = emitter.EmitExpr<calyx::Cast<calyx::Pointer, i64>>(right_v, left);
+        return {left_v, current, right};
+      case calyx::Var::Type::U64:
+        current = emitter.EmitExpr<calyx::Cast<calyx::Pointer, u64>>(right_v, left);
+        return {left_v, current, right};
+      case calyx::Var::Type::Float:
+      case calyx::Var::Type::Double:
+        throw std::runtime_error("Invalid operands for binop: floating point type and pointer");
+      case calyx::Var::Type::Pointer:
+        // should have been hit before
+        throw std::runtime_error("Unreachable");
+      default: throw std::runtime_error("Bad binop");
+    }
   }
 
   switch (left_t) {
@@ -293,19 +340,19 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(calyx::var_index_t left, c
       switch (right_t) {
         case calyx::Var::Type::U32:
           current = emitter.EmitExpr<calyx::Cast<u32, i32>>({ right_t }, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         case calyx::Var::Type::I64:
           current = emitter.EmitExpr<calyx::Cast<i64, i32>>({ right_t }, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         case calyx::Var::Type::U64:
           current = emitter.EmitExpr<calyx::Cast<u64, i32>>({ right_t }, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         case calyx::Var::Type::Float:
           current = emitter.EmitExpr<calyx::Cast<float, i32>>({ right_t }, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         case calyx::Var::Type::Double:
           current = emitter.EmitExpr<calyx::Cast<double, i32>>({ right_t }, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         default: throw std::runtime_error("Bad binop");
       }
     }
@@ -313,19 +360,19 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(calyx::var_index_t left, c
       switch (right_t) {
         case calyx::Var::Type::I32:
           current = emitter.EmitExpr<calyx::Cast<u32, i32>>({ left_t }, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         case calyx::Var::Type::I64:
           current = emitter.EmitExpr<calyx::Cast<i64, u32>>({ right_t }, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         case calyx::Var::Type::U64:
           current = emitter.EmitExpr<calyx::Cast<u64, u32>>({ right_t }, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         case calyx::Var::Type::Float:
           current = emitter.EmitExpr<calyx::Cast<float, u32>>({ right_t }, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         case calyx::Var::Type::Double:
           current = emitter.EmitExpr<calyx::Cast<double, u32>>({ right_t }, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         default: throw std::runtime_error("Bad binop");
       }
     }
@@ -333,19 +380,19 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(calyx::var_index_t left, c
       switch (right_t) {
         case calyx::Var::Type::I32:
           current = emitter.EmitExpr<calyx::Cast<i64, i32>>({ left_t }, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         case calyx::Var::Type::U32:
           current = emitter.EmitExpr<calyx::Cast<i64, u32>>({ left_t }, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         case calyx::Var::Type::U64:
           current = emitter.EmitExpr<calyx::Cast<u64, i64>>({ right_t }, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         case calyx::Var::Type::Float:
           current = emitter.EmitExpr<calyx::Cast<float, i64>>({ right_t }, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         case calyx::Var::Type::Double:
           current = emitter.EmitExpr<calyx::Cast<double, i64>>({ right_t }, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         default: throw std::runtime_error("Bad binop");
       }
     }
@@ -353,19 +400,19 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(calyx::var_index_t left, c
       switch (right_t) {
         case calyx::Var::Type::I32:
           current = emitter.EmitExpr<calyx::Cast<u64, i32>>({left_t}, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         case calyx::Var::Type::U32:
           current = emitter.EmitExpr<calyx::Cast<u64, u32>>({left_t}, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         case calyx::Var::Type::I64:
           current = emitter.EmitExpr<calyx::Cast<u64, i64>>({left_t}, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         case calyx::Var::Type::Float:
           current = emitter.EmitExpr<calyx::Cast<float, u64>>({right_t}, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         case calyx::Var::Type::Double:
           current = emitter.EmitExpr<calyx::Cast<double, u64>>({right_t}, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         default: throw std::runtime_error("Bad binop");
       }
     }
@@ -373,19 +420,19 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(calyx::var_index_t left, c
       switch (right_t) {
         case calyx::Var::Type::Double:
           current = emitter.EmitExpr<calyx::Cast<double, float>>({right_t}, left);
-          return {right_t, current, right};
+          return {{right_t}, current, right};
         case calyx::Var::Type::I32:
           current = emitter.EmitExpr<calyx::Cast<float, i32>>({left_t}, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         case calyx::Var::Type::U32:
           current = emitter.EmitExpr<calyx::Cast<float, u32>>({left_t}, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         case calyx::Var::Type::I64:
           current = emitter.EmitExpr<calyx::Cast<float, i64>>({left_t}, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         case calyx::Var::Type::U64:
           current = emitter.EmitExpr<calyx::Cast<float, u64>>({left_t}, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         default: throw std::runtime_error("Bad binop");
       }
     }
@@ -393,19 +440,19 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(calyx::var_index_t left, c
       switch (right_t) {
         case calyx::Var::Type::I32:
           current = emitter.EmitExpr<calyx::Cast<double, i32>>({left_t}, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         case calyx::Var::Type::U32:
           current = emitter.EmitExpr<calyx::Cast<double, u32>>({left_t}, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         case calyx::Var::Type::I64:
           current = emitter.EmitExpr<calyx::Cast<double, i64>>({left_t}, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         case calyx::Var::Type::U64:
           current = emitter.EmitExpr<calyx::Cast<double, u64>>({left_t}, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         case calyx::Var::Type::Float:
           current = emitter.EmitExpr<calyx::Cast<double, float>>({left_t}, right);
-          return {left_t, left, current};
+          return {{left_t}, left, current};
         default: throw std::runtime_error("Bad binop");
       }
     }
@@ -856,10 +903,10 @@ void ASTWalker::Visit(Binop& expr) {
 
       if (conditional_branch) {
         auto block = state.top().second.false_block;
-        EmitBranch<calyx::BranchCompare>(casted.type, block, casted.left, inverse, casted.right);
+        EmitBranch<calyx::BranchCompare>(casted.var.type, block, casted.left, inverse, casted.right);
       }
       else {
-        EmitCompare<calyx::Compare>(casted.type, casted.left, cmp_type, casted.right);
+        EmitCompare<calyx::Compare>(casted.var.type, casted.left, cmp_type, casted.right);
       }
       // no need to check for conditional branching after this
       return;

@@ -17,6 +17,9 @@ using var_index_t = u64;
 using block_label_t = u64;
 
 struct Pointer {
+  Pointer() : value(0) { }
+  Pointer(u64 value) : value(value) { }
+
   u64 value;
 };
 struct Struct;

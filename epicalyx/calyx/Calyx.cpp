@@ -102,11 +102,15 @@ static std::string cmp_string(CmpType type) {
   }
 }
 
+static std::string to_string(const Pointer& ptr) {
+  return cotyl::Format("%016x", ptr.value);
+}
+
 template<typename T>
 requires (is_calyx_type_v<T>)
 std::string Compare<T>::ToString() const {
   return cotyl::FormatStr(
-          "cmpre v% = v%s %s<%s> v%s",
+          "cmp   v%s = v%s %s<%s> v%s",
           this->idx, left_idx, cmp_string(op),
           detail::type_string<T>::value, right_idx
   );
@@ -115,11 +119,11 @@ std::string Compare<T>::ToString() const {
 template<typename T>
 requires (is_calyx_type_v<T>)
 std::string CompareImm<T>::ToString() const {
-  return cotyl::FormatStr(
-          "cmpim v% = v%s %s<%s> %s",
-          this->idx, left_idx, cmp_string(op),
-          detail::type_string<T>::value, right
-  );
+    return cotyl::FormatStr(
+            "cmpim v%s = v%s %s<%s> %s",
+            this->idx, left_idx, cmp_string(op),
+            detail::type_string<T>::value, right
+    );
 }
 
 std::string UnconditionalBranch::ToString() const {
@@ -369,6 +373,7 @@ template struct CompareImm<i64>;
 template struct CompareImm<u64>;
 template struct CompareImm<float>;
 template struct CompareImm<double>;
+template struct CompareImm<Pointer>;
 
 template struct BranchCompare<i32>;
 template struct BranchCompare<u32>;

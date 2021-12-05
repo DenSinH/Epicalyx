@@ -317,12 +317,59 @@ void Interpreter::EmitShiftImm(ShiftImm<T>& op) {
 
 template<typename T>
 void Interpreter::EmitCompare(Compare<T>& op) {
-  throw std::runtime_error("Unimplemented: compare");
+  T left = std::get<T>(vars[op.left_idx]);
+  T right = std::get<T>(vars[op.right_idx]);
+  i32 result;
+
+  if constexpr(std::is_same_v<T, calyx::Pointer>) {
+    switch (op.op) {
+      case CmpType::Eq: result = left.value == right.value; break;
+      case CmpType::Ne: result = left.value != right.value; break;
+      case CmpType::Lt: result = left.value <  right.value; break;
+      case CmpType::Le: result = left.value <= right.value; break;
+      case CmpType::Gt: result = left.value >  right.value; break;
+      case CmpType::Ge: result = left.value >= right.value; break;
+    }
+  }
+  else {
+    switch (op.op) {
+      case CmpType::Eq: result = left == right; break;
+      case CmpType::Ne: result = left != right; break;
+      case CmpType::Lt: result = left <  right; break;
+      case CmpType::Le: result = left <= right; break;
+      case CmpType::Gt: result = left >  right; break;
+      case CmpType::Ge: result = left >= right; break;
+    }
+  }
+  vars[op.idx] = result;
 }
 
 template<typename T>
 void Interpreter::EmitCompareImm(CompareImm<T>& op) {
-  throw std::runtime_error("Unimplemented: compare imm");
+  T left = std::get<T>(vars[op.left_idx]);
+  i32 result;
+
+  if constexpr(std::is_same_v<T, calyx::Pointer>) {
+    switch (op.op) {
+      case CmpType::Eq: result = left.value == op.right.value; break;
+      case CmpType::Ne: result = left.value != op.right.value; break;
+      case CmpType::Lt: result = left.value <  op.right.value; break;
+      case CmpType::Le: result = left.value <= op.right.value; break;
+      case CmpType::Gt: result = left.value >  op.right.value; break;
+      case CmpType::Ge: result = left.value >= op.right.value; break;
+    }
+  }
+  else {
+    switch (op.op) {
+      case CmpType::Eq: result = left == op.right; break;
+      case CmpType::Ne: result = left != op.right; break;
+      case CmpType::Lt: result = left <  op.right; break;
+      case CmpType::Le: result = left <= op.right; break;
+      case CmpType::Gt: result = left >  op.right; break;
+      case CmpType::Ge: result = left >= op.right; break;
+    }
+  }
+  vars[op.idx] = result;
 }
 
 void Interpreter::Emit(UnconditionalBranch& op) {
@@ -332,53 +379,67 @@ void Interpreter::Emit(UnconditionalBranch& op) {
 
 template<typename T>
 void Interpreter::EmitBranchCompare(BranchCompare<T>& op) {
+  T left = std::get<T>(vars[op.left_idx]);
+  T right = std::get<T>(vars[op.right_idx]);
+  bool branch;
+
   if constexpr(std::is_same_v<T, Pointer>) {
-    throw std::runtime_error("Unimplemented: pointer branch compare");
+    switch (op.op) {
+      case calyx::CmpType::Eq: branch = left.value == right.value; break;
+      case calyx::CmpType::Ne: branch = left.value != right.value; break;
+      case calyx::CmpType::Gt: branch = left.value >  right.value; break;
+      case calyx::CmpType::Ge: branch = left.value >= right.value; break;
+      case calyx::CmpType::Lt: branch = left.value <  right.value; break;
+      case calyx::CmpType::Le: branch = left.value <= right.value; break;
+    }
   }
   else {
-    T left = std::get<T>(vars[op.left_idx]);
-    T right = std::get<T>(vars[op.right_idx]);
-    bool branch;
-
     switch (op.op) {
       case calyx::CmpType::Eq: branch = left == right; break;
       case calyx::CmpType::Ne: branch = left != right; break;
-      case calyx::CmpType::Gt: branch = left > right; break;
+      case calyx::CmpType::Gt: branch = left >  right; break;
       case calyx::CmpType::Ge: branch = left >= right; break;
-      case calyx::CmpType::Lt: branch = left < right; break;
+      case calyx::CmpType::Lt: branch = left <  right; break;
       case calyx::CmpType::Le: branch = left <= right; break;
     }
+  }
 
-    if (branch) {
-      pos.first = op.dest;
-      pos.second = 0;
-    }
+  if (branch) {
+    pos.first = op.dest;
+    pos.second = 0;
   }
 }
 
 template<typename T>
 void Interpreter::EmitBranchCompareImm(BranchCompareImm<T>& op) {
+  T left = std::get<T>(vars[op.left_idx]);
+  T right = op.right;
+  bool branch;
+
   if constexpr(std::is_same_v<T, Pointer>) {
-    throw std::runtime_error("Unimplemented: pointer branch compare immediate");
+    switch (op.op) {
+      case calyx::CmpType::Eq: branch = left.value == right.value; break;
+      case calyx::CmpType::Ne: branch = left.value != right.value; break;
+      case calyx::CmpType::Gt: branch = left.value >  right.value; break;
+      case calyx::CmpType::Ge: branch = left.value >= right.value; break;
+      case calyx::CmpType::Lt: branch = left.value <  right.value; break;
+      case calyx::CmpType::Le: branch = left.value <= right.value; break;
+    }
   }
   else {
-    T left = std::get<T>(vars[op.left_idx]);
-    T right = op.right;
-    bool branch;
-
     switch (op.op) {
       case calyx::CmpType::Eq: branch = left == right; break;
       case calyx::CmpType::Ne: branch = left != right; break;
-      case calyx::CmpType::Gt: branch = left > right; break;
+      case calyx::CmpType::Gt: branch = left >  right; break;
       case calyx::CmpType::Ge: branch = left >= right; break;
-      case calyx::CmpType::Lt: branch = left < right; break;
+      case calyx::CmpType::Lt: branch = left <  right; break;
       case calyx::CmpType::Le: branch = left <= right; break;
     }
+  }
 
-    if (branch) {
-      pos.first = op.dest;
-      pos.second = 0;
-    }
+  if (branch) {
+    pos.first = op.dest;
+    pos.second = 0;
   }
 }
 

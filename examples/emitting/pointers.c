@@ -3,5 +3,10 @@ int main() {
   int a = 12;
   test++;
   test += 12;
-  return test;
+  if (test > 1) {
+    return (test + 1) > 0;
+  }
+  else {
+    return test - 1;
+  }
 }
