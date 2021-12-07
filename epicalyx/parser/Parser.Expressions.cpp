@@ -125,7 +125,7 @@ pExpr Parser::EUnary() {
         in_stream.Eat(TokenType::RParen);
         return std::make_unique<NumericalConstant<u64>>(type_name->Sizeof());
       }
-      return std::make_unique<NumericalConstant<u64>>(EExpression()->GetType(*this)->Sizeof());
+      return std::make_unique<NumericalConstant<u64>>(EExpression()->SemanticAnalysis(*this)->Sizeof());
     }
     case TokenType::Alignof: {
       // _Alignof(type-name)
@@ -249,13 +249,13 @@ pExpr Parser::EAssignment() {
 pExpr Parser::EExpression() {
   // todo: commas
   auto expr = EAssignment();
-  expr->Validate(*this);
+  expr->SemanticAnalysis(*this);
   return std::move(expr);
 }
 
 i64 Parser::EConstexpr() {
   auto expr = ETernary();
-  return expr->ConstEval(*this);
+  return expr->ConstEval();
 }
 
 void Parser::EExpressionList(std::vector<pExpr>& dest) {
@@ -274,7 +274,7 @@ Initializer Parser::EInitializer() {
   else {
     // assignment expression
     auto expr = EAssignment();
-    expr->Validate(*this);
+    expr->SemanticAnalysis(*this);
     return std::move(expr);
   }
 }

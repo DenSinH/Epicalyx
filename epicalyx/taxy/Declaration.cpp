@@ -48,7 +48,7 @@ void Declaration::VerifyAndRecord(Parser& parser) {
   if (value.has_value()) {
     const auto& val = value.value();
     if (holds_alternative<pExpr>(val)) {
-      type->Cast(*std::get<pExpr>(val)->GetType(parser));
+      type->Cast(*std::get<pExpr>(val)->GetType());
     }
     else {
       auto visitor = ValidInitializerListVisitor(parser, *std::get<pNode<InitializerList>>(val));

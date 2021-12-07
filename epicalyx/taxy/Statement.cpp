@@ -84,8 +84,8 @@ pNode<Stat> If::SReduce(const Parser& parser) {
     if (n_else) _else = std::move(_else);
   }
 
-  if (cond->IsConstexpr(parser)) {
-    if (cond->GetType(parser)->GetBoolValue()) {
+  if (cond->IsConstexpr()) {
+    if (cond->GetType()->GetBoolValue()) {
       return std::move(stat);
     }
     else if (_else) {
@@ -104,8 +104,8 @@ pNode<Stat> While::SReduce(const Parser& parser) {
   auto n_stat = stat->SReduce(parser);
   if (n_stat) stat = std::move(n_stat);
 
-  if (cond->IsConstexpr(parser)) {
-    if (!cond->GetType(parser)->GetBoolValue()) {
+  if (cond->IsConstexpr()) {
+    if (!cond->GetType()->GetBoolValue()) {
       return std::make_unique<Empty>();
     }
   }
@@ -118,8 +118,8 @@ pNode<Stat> DoWhile::SReduce(const Parser& parser) {
   auto n_stat = stat->SReduce(parser);
   if (n_stat) stat = std::move(n_stat);
 
-  if (cond->IsConstexpr(parser)) {
-    if (!cond->GetType(parser)->GetBoolValue()) {
+  if (cond->IsConstexpr()) {
+    if (!cond->GetType()->GetBoolValue()) {
       return std::make_unique<Empty>();
     }
   }
@@ -145,8 +145,8 @@ pNode<Stat> For::SReduce(const Parser& parser) {
   auto n_stat = stat->SReduce(parser);
   if (n_stat) stat = std::move(n_stat);
 
-  if (cond->IsConstexpr(parser)) {
-    if (!cond->GetType(parser)->GetBoolValue()) {
+  if (cond->IsConstexpr()) {
+    if (!cond->GetType()->GetBoolValue()) {
       return std::make_unique<Empty>();
     }
   }

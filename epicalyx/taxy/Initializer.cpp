@@ -53,7 +53,7 @@ void ValidInitializerListVisitor::VisitScalar(const CType& type) {
     throw std::runtime_error("Expected expression, got initializer list");
   }
   // try to cast
-  type.Cast(*std::get<pExpr>(list.list[0].second)->GetType(parser));
+  type.Cast(*std::get<pExpr>(list.list[0].second)->GetType());
 }
 
 void ValidInitializerListVisitor::VisitStructLike(const StructUnionType& type) {

@@ -1106,7 +1106,6 @@ void ASTWalker::Visit(Empty& stat) {
 }
 
 void ASTWalker::Visit(If& stat) {
-  
   auto true_block = emitter.MakeBlock();
   auto false_block = emitter.MakeBlock();
   calyx::var_index_t post_block;
@@ -1304,12 +1303,16 @@ void ASTWalker::Visit(Switch& stat) {
   auto select = emitter.Emit<calyx::Select>(right);
   auto post_block = emitter.MakeBlock();
 
-  break_stack.push(post_block);
-  select_stack.push(select);
-  stat.stat->Visit(*this);
-  select_stack.pop();
-  break_stack.pop();
+  if (select) {
+    // we might be in an unreachable spot
+    break_stack.push(post_block);
+    select_stack.push(select);
+    stat.stat->Visit(*this);
+    select_stack.pop();
+    break_stack.pop();
+  }
 
+  emitter.Emit<calyx::UnconditionalBranch>(post_block);
   emitter.SelectBlock(post_block);
 }
 
@@ -1355,7 +1358,6 @@ void ASTWalker::Visit(Goto& stat) {
 }
 
 void ASTWalker::Visit(Return& stat) {
-  
   if (stat.expr) {
     state.push({State::Read, {}});
     stat.expr->Visit(*this);

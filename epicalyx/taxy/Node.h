@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Default.h"
+#include "Assert.h"
 #include "types/EpiCType.h"
 
 #include <memory>
@@ -83,13 +84,24 @@ struct Stat : public Node {
 };
 
 struct Expr : public Stat {
+  pType<const CType> type = nullptr;
 
-  // performs semantic analysis
-  virtual pType<const CType> GetType(const Parser&) const = 0;
+  const pType<const CType>& GetType() const {
+    cotyl::Assert(type != nullptr, "Semantic analysis has to be performed before type can be acquired");
+    return type;
+  }
 
-  bool IsConstexpr(const Parser& parser) const { return GetType(parser)->IsConstexpr(); }
-  i64 ConstEval(const Parser& parser) const { return GetType(parser)->ConstIntVal(); }
-  void Validate(const Parser& parser) const { GetType(parser); };
+  pType<const CType> SemanticAnalysis(const Parser& parser) {
+    type = SemanticAnalysisImpl(parser);
+    return type;
+  }
+
+protected:
+  virtual pType<const CType> SemanticAnalysisImpl(const Parser&) const = 0;
+
+public:
+  bool IsConstexpr() const { return GetType()->IsConstexpr(); }
+  i64 ConstEval() const { return GetType()->ConstIntVal(); }
 
   pNode<> Reduce(const Parser& parser) override { return EReduce(parser); }
   virtual pExpr EReduce(const Parser& parser);

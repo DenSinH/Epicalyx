@@ -7,7 +7,7 @@
 namespace epi::taxy {
 
 pExpr Expr::EReduce(const Parser& parser) {
-  return ConstTypeVisitor(parser).GetConstNode(*GetType(parser));
+  return ConstTypeVisitor(parser).GetConstNode(*SemanticAnalysis(parser));
 }
 
 

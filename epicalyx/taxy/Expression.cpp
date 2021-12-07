@@ -45,7 +45,7 @@ std::string MemberAccess::ToString() const {
   return cotyl::FormatStr("(%s)->%s", left, member);
 }
 
-pType<const CType> Identifier::GetType(const Parser& parser) const {
+pType<const CType> Identifier::SemanticAnalysisImpl(const Parser& parser) const {
   if (parser.enum_values.Has(name)) {
     return MakeType<ValueType<Parser::enum_type>>(
             parser.enum_values.Get(name),
@@ -62,13 +62,13 @@ pType<const CType> Identifier::GetType(const Parser& parser) const {
 }
 
 template<typename T>
-pType<const CType> NumericalConstant<T>::GetType(const Parser&) const {
+pType<const CType> NumericalConstant<T>::SemanticAnalysisImpl(const Parser&) const {
   return MakeType<ValueType<T>>(
           value, CType::LValueNess::None, CType::Qualifier::Const
   );
 }
 
-pType<const CType> StringConstant::GetType(const Parser&) const {
+pType<const CType> StringConstant::SemanticAnalysisImpl(const Parser&) const {
   return MakeType<PointerType>(
           MakeType<ValueType<i8>>(CType::LValueNess::Assignable, CType::Qualifier::Const),
           CType::LValueNess::None,
@@ -76,88 +76,88 @@ pType<const CType> StringConstant::GetType(const Parser&) const {
   );
 }
 
-pType<const CType> ArrayAccess::GetType(const Parser& parser) const {
-  return left->GetType(parser)->ArrayAccess(*right->GetType(parser));
+pType<const CType> ArrayAccess::SemanticAnalysisImpl(const Parser& parser) const {
+  return left->SemanticAnalysis(parser)->ArrayAccess(*right->SemanticAnalysis(parser));
 }
 
-pType<const CType> FunctionCall::GetType(const Parser& parser) const {
+pType<const CType> FunctionCall::SemanticAnalysisImpl(const Parser& parser) const {
   std::vector<pType<const CType>> call_args{};
   for (const auto& arg : args) {
-    call_args.push_back(arg->GetType(parser));
+    call_args.push_back(arg->SemanticAnalysis(parser));
   }
-  return left->GetType(parser)->FunctionCall(call_args);
+  return left->SemanticAnalysis(parser)->FunctionCall(call_args);
 }
 
-pType<const CType> MemberAccess::GetType(const Parser& parser) const {
+pType<const CType> MemberAccess::SemanticAnalysisImpl(const Parser& parser) const {
   if (direct) {
-    return left->GetType(parser)->MemberAccess(member);
+    return left->SemanticAnalysis(parser)->MemberAccess(member);
   }
-  return left->GetType(parser)->Deref()->MemberAccess(member);
+  return left->SemanticAnalysis(parser)->Deref()->MemberAccess(member);
 }
 
-pType<const CType> TypeInitializer::GetType(const Parser& parser) const {
+pType<const CType> TypeInitializer::SemanticAnalysisImpl(const Parser& parser) const {
   auto visitor = ValidInitializerListVisitor(parser, *list);
   type->Visit(visitor);
   return type;
 }
 
-pType<const CType> PostFix::GetType(const Parser& parser) const {
+pType<const CType> PostFix::SemanticAnalysisImpl(const Parser& parser) const {
   switch (op) {
-    case TokenType::Incr: return left->GetType(parser)->Incr();
-    case TokenType::Decr: return left->GetType(parser)->Decr();
+    case TokenType::Incr: return left->SemanticAnalysis(parser)->Incr();
+    case TokenType::Decr: return left->SemanticAnalysis(parser)->Decr();
     default:
       throw cotyl::FormatExceptStr("Bad AST (postfix: %s)", Token(op));
   }
 }
 
-pType<const CType> Unary::GetType(const Parser& parser) const {
+pType<const CType> Unary::SemanticAnalysisImpl(const Parser& parser) const {
   switch (op) {
-    case TokenType::Incr: return left->GetType(parser)->Incr();
-    case TokenType::Decr: return left->GetType(parser)->Decr();
-    case TokenType::Ampersand: return left->GetType(parser)->Ref();
-    case TokenType::Asterisk: return left->GetType(parser)->Deref();
-    case TokenType::Plus: return left->GetType(parser)->Pos();
-    case TokenType::Minus: return left->GetType(parser)->Neg();
-    case TokenType::Tilde: return left->GetType(parser)->BinNot();
-    case TokenType::Exclamation: return left->GetType(parser)->LogNot();
+    case TokenType::Incr: return left->SemanticAnalysis(parser)->Incr();
+    case TokenType::Decr: return left->SemanticAnalysis(parser)->Decr();
+    case TokenType::Ampersand: return left->SemanticAnalysis(parser)->Ref();
+    case TokenType::Asterisk: return left->SemanticAnalysis(parser)->Deref();
+    case TokenType::Plus: return left->SemanticAnalysis(parser)->Pos();
+    case TokenType::Minus: return left->SemanticAnalysis(parser)->Neg();
+    case TokenType::Tilde: return left->SemanticAnalysis(parser)->BinNot();
+    case TokenType::Exclamation: return left->SemanticAnalysis(parser)->LogNot();
     default:
       throw cotyl::FormatExceptStr("Bad AST (unary: %s)", Token(op));
   }
 }
 
-pType<const CType> Cast::GetType(const Parser& parser) const {
-  return type->Cast(*expr->GetType(parser));
+pType<const CType> Cast::SemanticAnalysisImpl(const Parser& parser) const {
+  return type->Cast(*expr->SemanticAnalysis(parser));
 }
 
-pType<const CType> Binop::GetType(const Parser& parser) const {
+pType<const CType> Binop::SemanticAnalysisImpl(const Parser& parser) const {
   switch (op) {
-    case TokenType::Asterisk: return left->GetType(parser)->Mul(*right->GetType(parser));
-    case TokenType::Div: return left->GetType(parser)->Div(*right->GetType(parser));
-    case TokenType::Mod: return left->GetType(parser)->Mod(*right->GetType(parser));
-    case TokenType::Plus: return left->GetType(parser)->Add(*right->GetType(parser));
-    case TokenType::Minus: return left->GetType(parser)->Sub(*right->GetType(parser));
-    case TokenType::LShift: return left->GetType(parser)->LShift(*right->GetType(parser));
-    case TokenType::RShift: return left->GetType(parser)->RShift(*right->GetType(parser));
-    case TokenType::Equal: return left->GetType(parser)->Eq(*right->GetType(parser));
-    case TokenType::NotEqual: return left->GetType(parser)->Neq(*right->GetType(parser));
-    case TokenType::Less: return left->GetType(parser)->Lt(*right->GetType(parser));
-    case TokenType::LessEqual: return left->GetType(parser)->Le(*right->GetType(parser));
-    case TokenType::Greater: return left->GetType(parser)->Gt(*right->GetType(parser));
-    case TokenType::GreaterEqual: return left->GetType(parser)->Ge(*right->GetType(parser));
-    case TokenType::Ampersand: return left->GetType(parser)->BinAnd(*right->GetType(parser));
-    case TokenType::BinOr: return left->GetType(parser)->BinOr(*right->GetType(parser));
-    case TokenType::BinXor: return left->GetType(parser)->Xor(*right->GetType(parser));
-    case TokenType::LogicalAnd: return left->GetType(parser)->LogAnd(*right->GetType(parser));
-    case TokenType::LogicalOr: return left->GetType(parser)->LogOr(*right->GetType(parser));
+    case TokenType::Asterisk: return left->SemanticAnalysis(parser)->Mul(*right->SemanticAnalysis(parser));
+    case TokenType::Div: return left->SemanticAnalysis(parser)->Div(*right->SemanticAnalysis(parser));
+    case TokenType::Mod: return left->SemanticAnalysis(parser)->Mod(*right->SemanticAnalysis(parser));
+    case TokenType::Plus: return left->SemanticAnalysis(parser)->Add(*right->SemanticAnalysis(parser));
+    case TokenType::Minus: return left->SemanticAnalysis(parser)->Sub(*right->SemanticAnalysis(parser));
+    case TokenType::LShift: return left->SemanticAnalysis(parser)->LShift(*right->SemanticAnalysis(parser));
+    case TokenType::RShift: return left->SemanticAnalysis(parser)->RShift(*right->SemanticAnalysis(parser));
+    case TokenType::Equal: return left->SemanticAnalysis(parser)->Eq(*right->SemanticAnalysis(parser));
+    case TokenType::NotEqual: return left->SemanticAnalysis(parser)->Neq(*right->SemanticAnalysis(parser));
+    case TokenType::Less: return left->SemanticAnalysis(parser)->Lt(*right->SemanticAnalysis(parser));
+    case TokenType::LessEqual: return left->SemanticAnalysis(parser)->Le(*right->SemanticAnalysis(parser));
+    case TokenType::Greater: return left->SemanticAnalysis(parser)->Gt(*right->SemanticAnalysis(parser));
+    case TokenType::GreaterEqual: return left->SemanticAnalysis(parser)->Ge(*right->SemanticAnalysis(parser));
+    case TokenType::Ampersand: return left->SemanticAnalysis(parser)->BinAnd(*right->SemanticAnalysis(parser));
+    case TokenType::BinOr: return left->SemanticAnalysis(parser)->BinOr(*right->SemanticAnalysis(parser));
+    case TokenType::BinXor: return left->SemanticAnalysis(parser)->Xor(*right->SemanticAnalysis(parser));
+    case TokenType::LogicalAnd: return left->SemanticAnalysis(parser)->LogAnd(*right->SemanticAnalysis(parser));
+    case TokenType::LogicalOr: return left->SemanticAnalysis(parser)->LogOr(*right->SemanticAnalysis(parser));
     default:
       throw cotyl::FormatExceptStr("Bad AST (binop: %s)", Token(op));
   }
 }
 
-pType<const CType> Ternary::GetType(const Parser& parser) const {
-  auto cond_t = cond->GetType(parser);
-  auto true_t = _true->GetType(parser);
-  auto false_t = _false->GetType(parser);
+pType<const CType> Ternary::SemanticAnalysisImpl(const Parser& parser) const {
+  auto cond_t = cond->SemanticAnalysis(parser);
+  auto true_t = _true->SemanticAnalysis(parser);
+  auto false_t = _false->SemanticAnalysis(parser);
 
   // todo: type conversions for constexpr
   if (cond_t->IsConstexpr()) {
@@ -166,15 +166,16 @@ pType<const CType> Ternary::GetType(const Parser& parser) const {
     }
     return false_t;
   }
+
   return true_t->CommonType(*false_t);
 }
 
-pType<const CType> Assignment::GetType(const Parser& parser) const {
-  auto left_t = left->GetType(parser);
+pType<const CType> Assignment::SemanticAnalysisImpl(const Parser& parser) const {
+  auto left_t = left->SemanticAnalysis(parser);
   if (!left_t->IsAssignable()) {
     throw std::runtime_error("Cannot assign to expression");
   }
-  auto right_t = right->GetType(parser);
+  auto right_t = right->SemanticAnalysis(parser);
 
   switch (op) {
     case TokenType::IMul: return left_t->Mul(*right_t);
@@ -245,6 +246,18 @@ pExpr Ternary::EReduce(const Parser& parser) {
   if (n_true) _true = std::move(n_true);
   auto n_false = _false->EReduce(parser);
   if (n_false) _false = std::move(n_false);
+
+  auto true_t = _true->SemanticAnalysis(parser);
+  auto false_t = _false->SemanticAnalysis(parser);
+  auto common_t = true_t->CommonType(*false_t);
+
+  if (!true_t->EqualType(*common_t)) {
+    _true = std::make_unique<Cast>(common_t, std::move(_true));
+  }
+  if (!false_t->EqualType(*common_t)) {
+    _false = std::make_unique<Cast>(common_t, std::move(_false));
+  }
+
   return Expr::EReduce(parser);
 }
 

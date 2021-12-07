@@ -40,7 +40,7 @@ pNode<Stat> Parser::SStatement() {
       in_stream.Eat(TokenType::RParen);
 
       // validation
-      auto expr_t = expr->GetType(*this);
+      auto expr_t = expr->SemanticAnalysis(*this);
       if (!expr_t->IsIntegral()) {
         throw std::runtime_error("Expression is not an integral expression");
       }
@@ -60,7 +60,7 @@ pNode<Stat> Parser::SStatement() {
       in_stream.Eat(TokenType::RParen);
 
       // validation
-      auto cond_t = cond->GetType(*this);
+      auto cond_t = cond->SemanticAnalysis(*this);
       if (!cond_t->HasTruthiness()) {
         throw std::runtime_error("Condition has no truthiness");
       }
@@ -82,7 +82,7 @@ pNode<Stat> Parser::SStatement() {
       auto cond = EExpression();
 
       // validation
-      auto cond_t = cond->GetType(*this);
+      auto cond_t = cond->SemanticAnalysis(*this);
       if (!cond_t->HasTruthiness()) {
         throw std::runtime_error("Condition has no truthiness");
       }
@@ -108,7 +108,7 @@ pNode<Stat> Parser::SStatement() {
       auto cond = EExpression();
 
       // validation
-      auto cond_t = cond->GetType(*this);
+      auto cond_t = cond->SemanticAnalysis(*this);
       if (!cond_t->HasTruthiness()) {
         throw std::runtime_error("Condition has no truthiness");
       }
@@ -203,7 +203,7 @@ pNode<Stat> Parser::SStatement() {
       in_stream.Eat(TokenType::SemiColon);
 
       // check function return type
-      function_return->Cast(*expr->GetType(*this));
+      function_return->Cast(*expr->GetType());
 
       auto ret_stat = std::make_unique<Return>(std::move(expr));
       auto reduced = ret_stat->SReduce(*this);
@@ -241,7 +241,7 @@ pNode<Stat> Parser::SStatement() {
       }
       auto compound = std::make_unique<Compound>();
       for (auto& expr : exprlist) {
-        expr->GetType(*this);  // validates expression
+        expr->SemanticAnalysis(*this);  // validates expression
         compound->AddNode(std::move(expr));
       }
       return std::move(compound);
