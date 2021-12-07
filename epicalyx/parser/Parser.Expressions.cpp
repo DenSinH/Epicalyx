@@ -211,6 +211,18 @@ pExpr Parser::ETernary() {
     auto _true = EAssignment();
     in_stream.Eat(TokenType::Colon);
     auto _false = ETernary();
+
+    // insert casts if true or false do not have the same type
+    auto true_t = _true->SemanticAnalysis(*this);
+    auto false_t = _false->SemanticAnalysis(*this);
+    auto common_t = true_t->CommonType(*false_t);
+
+    if (!true_t->EqualType(*common_t)) {
+      _true = std::make_unique<Cast>(common_t, std::move(_true));
+    }
+    if (!false_t->EqualType(*common_t)) {
+      _false = std::make_unique<Cast>(common_t, std::move(_false));
+    }
     return std::make_unique<Ternary>(std::move(left), std::move(_true), std::move(_false));
   }
   return left;

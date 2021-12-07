@@ -17,11 +17,11 @@
 
 int main() {
   // auto file = epi::File("tests/test.c");
-  auto file = epi::File("examples/emitting/loops.c");
+  auto file = epi::File("examples/emitting/ternary.c");
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
-#if 1
+#if 0
 #define try if (true)
 #define catch_e ; for (std::runtime_error e(""); false;)
 #else
@@ -50,24 +50,24 @@ int main() {
         std::cout << "    " << op->ToString() << std::endl;
       }
     }
+
+    try {
+      auto interpreter = epi::calyx::Interpreter();
+      std::cout << std::endl << std::endl;
+      std::cout << "-- interpreted" << std::endl;
+      interpreter.EmitProgram(emitter.program);
+      std::cout << std::endl << std::endl;
+      interpreter.VisualizeProgram(emitter.program);
+    }
+    catch_e {
+      Log::ConsoleColor<Log::Color::Red>();
+      std::cout << "Interpreter error:" << std::endl << std::endl;
+      std::cout << e.what() << std::endl;
+    }
   }
   catch_e {
     Log::ConsoleColor<Log::Color::Red>();
     std::cout << "Emitter error:" << std::endl << std::endl;
-    std::cout << e.what() << std::endl;
-  }
-
-  try {
-    auto interpreter = epi::calyx::Interpreter();
-    std::cout << std::endl << std::endl;
-    std::cout << "-- interpreted" << std::endl;
-    interpreter.EmitProgram(emitter.program);
-    std::cout << std::endl << std::endl;
-    interpreter.VisualizeProgram(emitter.program);
-  }
-  catch_e {
-    Log::ConsoleColor<Log::Color::Red>();
-    std::cout << "Interpreter error:" << std::endl << std::endl;
     std::cout << e.what() << std::endl;
   }
 

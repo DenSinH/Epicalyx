@@ -24,7 +24,7 @@ struct Interpreter : Backend {
 
   void Emit(AllocateLocal& op) final;
   void Emit(DeallocateLocal& op) final;
-  void Emit(LoadCVarAddr& op) final;
+  void Emit(LoadLocalAddr& op) final;
 
   template<typename To, typename From>
   void EmitCast(Cast<To, From>& op);

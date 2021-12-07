@@ -96,7 +96,7 @@ struct EmitterTypeVisitor : TypeVisitor {
 };
 
 template<typename T>
-struct LoadCVarEmitter {
+struct LoadLocalEmitter {
   static calyx::var_index_t emit_value(ASTWalker& walker, calyx::var_index_t c_idx) {
     return walker.emitter.EmitExpr<calyx::LoadLocal<T>>({calyx_type_v<calyx::calyx_upcast_t<T>> }, c_idx);
   }
@@ -152,18 +152,18 @@ struct CastToEmitter {
 };
 
 template<typename T>
-struct LoadCVarAddrEmitter {
+struct LoadLocalAddrEmitter {
   static calyx::var_index_t emit_value(ASTWalker& walker, calyx::var_index_t c_idx) {
-    return walker.emitter.EmitExpr<calyx::LoadCVarAddr>({ calyx::Var::Type::Pointer, sizeof(T) }, c_idx);
+    return walker.emitter.EmitExpr<calyx::LoadLocalAddr>({calyx::Var::Type::Pointer, sizeof(T) }, c_idx);
   }
 
   static calyx::var_index_t emit_pointer(ASTWalker& walker, [[maybe_unused]] u64 stride, calyx::var_index_t c_idx) {
-    return walker.emitter.EmitExpr<calyx::LoadCVarAddr>({ calyx::Var::Type::Pointer, sizeof(u64) }, c_idx);
+    return walker.emitter.EmitExpr<calyx::LoadLocalAddr>({calyx::Var::Type::Pointer, sizeof(u64) }, c_idx);
   }
 };
 
 template<typename T>
-struct StoreCVarEmitter {
+struct StoreLocalEmitter {
   static calyx::var_index_t emit_value(ASTWalker& walker, calyx::var_index_t c_idx, calyx::var_index_t src) {
     calyx::var_index_t cast = CastToEmitter<T>::emit_value(walker, src);
     return walker.emitter.EmitExpr<calyx::StoreLocal<T>>({calyx_type_v<calyx::calyx_upcast_t<T>> }, c_idx, cast);
@@ -514,16 +514,16 @@ void ASTWalker::Visit(Identifier& decl) {
   switch (state.top().first) {
     case State::Read: {
       if (type->IsArray()) {
-        current = emitter.EmitExpr<calyx::LoadCVarAddr>({ calyx::Var::Type::Pointer, type->Deref()->Sizeof() }, cvar.idx);
+        current = emitter.EmitExpr<calyx::LoadLocalAddr>({calyx::Var::Type::Pointer, type->Deref()->Sizeof() }, cvar.idx);
       }
       else {
-        auto visitor = detail::EmitterTypeVisitor<detail::LoadCVarEmitter>(*this, { cvar.idx });
+        auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalEmitter>(*this, {cvar.idx});
         type->Visit(visitor);
       }
       break;
     }
     case State::Assign: {
-      auto visitor = detail::EmitterTypeVisitor<detail::StoreCVarEmitter>(
+      auto visitor = detail::EmitterTypeVisitor<detail::StoreLocalEmitter>(
               *this, { cvar.idx, state.top().second.var }
       );
       type->Visit(visitor);
@@ -532,7 +532,7 @@ void ASTWalker::Visit(Identifier& decl) {
     case State::Address: {
       // we can't get the address of a variable that is not on the stack
       variables.Get(decl.name).loc = calyx::CVar::Location::Stack;
-      auto visitor = detail::EmitterTypeVisitor<detail::LoadCVarAddrEmitter>(*this, { cvar.idx });
+      auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalAddrEmitter>(*this, {cvar.idx});
       type->Visit(visitor);
       break;
     }
@@ -558,7 +558,7 @@ void ASTWalker::Visit(Identifier& decl) {
 template<typename T>
 void ASTWalker::ConstVisitImpl(NumericalConstant<T>& expr) {
   cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
-    if (state.top().first == State::ConditionalBranch) {
+  if (state.top().first == State::ConditionalBranch) {
     if (expr.value) {
       emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
     }
@@ -567,7 +567,7 @@ void ASTWalker::ConstVisitImpl(NumericalConstant<T>& expr) {
     }
   }
   else {
-    current = emitter.EmitExpr<calyx::Imm<calyx::calyx_upcast_t<T>>>({ detail::calyx_type_v<i32> }, expr.value);
+    current = emitter.EmitExpr<calyx::Imm<calyx::calyx_upcast_t<T>>>({ detail::calyx_type_v<calyx::calyx_upcast_t<T>> }, expr.value);
   }
 }
 
@@ -958,13 +958,56 @@ void ASTWalker::Visit(Ternary& expr) {
   if (state.empty() || state.top().first == State::Read) {
     // we create a "fake local" in order to do this
     auto c_idx = emitter.c_counter++;
-//    u64 size = expr->T->Sizeof();
-//    variables.Set(decl.name, calyx::CVar{
-//            c_idx, calyx::CVar::Location::Either, size
-//    });
-//    c_types.Set(decl.name, decl.type);
-//    emitter.Emit<calyx::AllocateLocal>(c_idx, size);
-    throw std::runtime_error("Unimplemented: ternary read\n");
+    std::string name = "$tern" + std::to_string(c_idx);
+    const auto& type = expr.GetType();
+    u64 size = type->Sizeof();
+    variables.Set(name, calyx::CVar{
+            c_idx, calyx::CVar::Location::Either, size
+    });
+    c_types.Set(name, type);
+    emitter.Emit<calyx::AllocateLocal>(c_idx, size);
+
+    // now basically add an if statement
+    auto true_block = emitter.MakeBlock();
+    auto false_block = emitter.MakeBlock();
+    calyx::var_index_t post_block = emitter.MakeBlock();
+
+    state.push({State::ConditionalBranch, {.true_block = true_block, .false_block = false_block}});
+    expr.cond->Visit(*this);
+    state.pop();
+
+    // emitter should have emitted branches to blocks
+    {
+      emitter.SelectBlock(true_block);
+      expr._true->Visit(*this);
+      // store result to temp cvar
+      auto store_visitor = detail::EmitterTypeVisitor<detail::StoreLocalEmitter>(
+              *this, { c_idx, current }
+      );
+      type->Visit(store_visitor);
+      emitter.Emit<calyx::UnconditionalBranch>(post_block);
+    }
+
+    {
+      emitter.SelectBlock(false_block);
+      expr._false->Visit(*this);
+      // store result to temp cvar
+      auto store_visitor = detail::EmitterTypeVisitor<detail::StoreLocalEmitter>(
+              *this, { c_idx, current }
+      );
+      type->Visit(store_visitor);
+      emitter.Emit<calyx::UnconditionalBranch>(post_block);
+    }
+
+    {
+      emitter.SelectBlock(post_block);
+      cotyl::Assert(emitter.program[post_block].empty());
+      // load result from temp cvar
+      auto load_visitor = detail::EmitterTypeVisitor<detail::LoadLocalEmitter>(
+              *this, { c_idx }
+      );
+      type->Visit(load_visitor);
+    }
   }
   else {
     // for stuff like: if (var ? cond : cond)
@@ -1126,7 +1169,6 @@ void ASTWalker::Visit(If& stat) {
   stat.stat->Visit(*this);
   emitter.Emit<calyx::UnconditionalBranch>(post_block);
 
-  bool false_reachable = true;
   if (stat._else) {
     emitter.SelectBlock(false_block);
     stat._else->Visit(*this);

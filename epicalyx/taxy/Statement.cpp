@@ -2,6 +2,8 @@
 #include "Declaration.h"
 #include "parser/Parser.h"
 
+#include "Cast.h"
+
 #include <regex>
 #include <sstream>
 
@@ -80,7 +82,7 @@ pNode<Stat> If::SReduce(const Parser& parser) {
   auto n_stat = stat->SReduce(parser);
   if (n_stat) stat = std::move(stat);
   if (_else) {
-    auto n_else = stat->SReduce(parser);
+    auto n_else = _else->SReduce(parser);
     if (n_else) _else = std::move(_else);
   }
 
@@ -187,16 +189,13 @@ pNode<Stat> Return::SReduce(const Parser& parser) {
 
 pNode<Stat> Compound::SReduce(const Parser& parser) {
   // reduced when added
-//  for (auto& node : stats) {
-//    if (node->IsStatement()) {
-//      auto n_stat = static_cast<Stat*>(node.get())->SReduce(parser);
-//      if (n_stat) node = std::move(n_stat);
-//    }
-//    else {
-//      // declaration
-//
-//    }
-//  }
+  for (auto& node : stats) {
+    if (node->IsStatement()) {
+      auto n_stat = cotyl::unique_ptr_cast<Stat>(node)->SReduce(parser);
+      if (n_stat) node = std::move(n_stat);
+    }
+    // don't do anything for declarations
+  }
   return nullptr;
 }
 

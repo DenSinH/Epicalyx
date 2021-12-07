@@ -247,17 +247,6 @@ pExpr Ternary::EReduce(const Parser& parser) {
   auto n_false = _false->EReduce(parser);
   if (n_false) _false = std::move(n_false);
 
-  auto true_t = _true->SemanticAnalysis(parser);
-  auto false_t = _false->SemanticAnalysis(parser);
-  auto common_t = true_t->CommonType(*false_t);
-
-  if (!true_t->EqualType(*common_t)) {
-    _true = std::make_unique<Cast>(common_t, std::move(_true));
-  }
-  if (!false_t->EqualType(*common_t)) {
-    _false = std::make_unique<Cast>(common_t, std::move(_false));
-  }
-
   return Expr::EReduce(parser);
 }
 

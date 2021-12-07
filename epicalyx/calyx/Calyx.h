@@ -397,9 +397,9 @@ struct LoadLocal : Expr<calyx_upcast_t<T>> {
   void Emit(Backend& backend) final;
 };
 
-struct LoadCVarAddr : Expr<Pointer> {
+struct LoadLocalAddr : Expr<Pointer> {
 
-  LoadCVarAddr(var_index_t idx, var_index_t c_idx) :
+  LoadLocalAddr(var_index_t idx, var_index_t c_idx) :
           Expr<Pointer>(idx), c_idx(c_idx){
 
   }

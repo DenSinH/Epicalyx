@@ -15,7 +15,7 @@ void Example::Emit(DeallocateLocal& op) {
 
 }
 
-void Example::Emit(LoadCVarAddr& op) {
+void Example::Emit(LoadLocalAddr& op) {
 
 }
 

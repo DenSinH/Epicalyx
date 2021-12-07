@@ -204,8 +204,8 @@ std::string StoreLocal<T>::ToString() const {
   return cotyl::FormatStr("store c%s = v%s <-<%s> v%s", c_idx, this->idx, detail::type_string<T>::value, src);
 }
 
-std::string LoadCVarAddr::ToString() const {
-  return cotyl::FormatStr("addrss v%s <- c%s", idx, c_idx);
+std::string LoadLocalAddr::ToString() const {
+  return cotyl::FormatStr("addrs v%s <- c%s", idx, c_idx);
 }
 
 template<typename T>
@@ -302,7 +302,7 @@ void LoadLocal<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
-void LoadCVarAddr::Emit(Backend& backend) {
+void LoadLocalAddr::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 

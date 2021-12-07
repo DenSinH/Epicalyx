@@ -69,7 +69,7 @@ void Interpreter::Emit(DeallocateLocal& op) {
 //  stack.resize(stack.size() - op.size);
 }
 
-void Interpreter::Emit(LoadCVarAddr& op) {
+void Interpreter::Emit(LoadLocalAddr& op) {
   throw std::runtime_error("Unimplemented interpreter: load cvar");
 }
 

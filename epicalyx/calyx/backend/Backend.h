@@ -13,7 +13,7 @@ struct Backend {
 
   virtual void Emit(AllocateLocal& op) = 0;
   virtual void Emit(DeallocateLocal& op) = 0;
-  virtual void Emit(LoadCVarAddr& op) = 0;
+  virtual void Emit(LoadLocalAddr& op) = 0;
 
   virtual void Emit(Binop<i32>& op) = 0;
   virtual void Emit(Binop<u32>& op) = 0;
