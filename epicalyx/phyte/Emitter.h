@@ -15,6 +15,9 @@ struct Emitter {
   // todo: blocks
   template<typename T, typename... Args>
   calyx::var_index_t EmitExpr(calyx::Var var, Args... args) {
+    if (!reachable) {
+      return 0;
+    }
     vars.emplace_back(var);
     auto expr_idx = ir_counter++;
     Emit<T>(expr_idx, args...);
@@ -23,8 +26,20 @@ struct Emitter {
 
   template<typename T, typename... Args>
   T* Emit(Args... args) {
+    if (!reachable) {
+      return nullptr;
+    }
     auto directive = std::make_unique<T>(args...);
     T* ref = directive.get();
+    switch (ref->cls) {
+      case calyx::Directive::Class::UnconditionalBranch:
+      case calyx::Directive::Class::Return:
+      case calyx::Directive::Class::Select:
+        reachable = false;
+        break;
+      default:
+        break;
+    }
     program[current_block].push_back(std::move(directive));
     return ref;
   }
@@ -36,6 +51,7 @@ struct Emitter {
   }
 
   void SelectBlock(calyx::block_label_t id) {
+    reachable = true;
     current_block = id;
   }
 
@@ -51,6 +67,9 @@ struct Emitter {
   std::vector<calyx::Var> vars{{calyx::Var::Type::I32}};
   std::unordered_map<std::string, calyx::block_label_t> labels{};
   calyx::Program program{};
+
+private:
+  bool reachable = true;
 };
 
 }

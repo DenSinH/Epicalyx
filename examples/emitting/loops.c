@@ -20,6 +20,10 @@ int main() {
     }
   }
 
+  if (!y ? 0 : 1) {
+    y += 1;
+  }
+
 done:
   return y;
 }

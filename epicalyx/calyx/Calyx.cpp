@@ -157,7 +157,12 @@ std::string Select::ToString() const {
 template<typename T>
 requires (is_calyx_integral_type_v<T>)
 std::string AddToPointer<T>::ToString() const {
-  return cotyl::FormatStr("ptrad v%s = v%s + %s * v%s", this->idx, ptr_idx, stride, right_idx);
+  if (op == PtrAddType::Add) {
+    return cotyl::FormatStr("ptrad v%s = v%s + %s * v%s", this->idx, ptr_idx, stride, right_idx);
+  }
+  else {
+    return cotyl::FormatStr("ptrsb v%s = v%s - %s * v%s", this->idx, ptr_idx, stride, right_idx);
+  }
 }
 
 std::string AddToPointerImm::ToString() const {
@@ -181,21 +186,21 @@ std::string Unop<T>::ToString() const {
   return cotyl::FormatStr("unop  v%s = %s<%s> v%s", this->idx, op_str, detail::type_string<T>::value, right_idx);
 }
 
-std::string AllocateCVar::ToString() const {
+std::string AllocateLocal::ToString() const {
   return cotyl::FormatStr("alloc c%s: %s", c_idx, size);
 }
 
-std::string DeallocateCVar::ToString() const {
+std::string DeallocateLocal::ToString() const {
   return cotyl::FormatStr("dallc c%s: %s", c_idx, size);
 }
 
 template<typename T>
-std::string LoadCVar<T>::ToString() const {
+std::string LoadLocal<T>::ToString() const {
   return cotyl::FormatStr("load  v%s <-<%s> c%s", this->idx, detail::type_string<T>::value, c_idx);
 }
 
 template<typename T>
-std::string StoreCVar<T>::ToString() const {
+std::string StoreLocal<T>::ToString() const {
   return cotyl::FormatStr("store c%s = v%s <-<%s> v%s", c_idx, this->idx, detail::type_string<T>::value, src);
 }
 
@@ -293,7 +298,7 @@ void Imm<T>::Emit(Backend& backend) {
 }
 
 template<typename T>
-void LoadCVar<T>::Emit(Backend& backend) {
+void LoadLocal<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
@@ -302,15 +307,15 @@ void LoadCVarAddr::Emit(Backend& backend) {
 }
 
 template<typename T>
-void StoreCVar<T>::Emit(Backend& backend) {
+void StoreLocal<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
-void AllocateCVar::Emit(Backend& backend) {
+void AllocateLocal::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
-void DeallocateCVar::Emit(Backend& backend) {
+void DeallocateLocal::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
@@ -419,31 +424,31 @@ template struct Imm<u64>;
 template struct Imm<float>;
 template struct Imm<double>;
 
-template struct LoadCVar<i8>;
-template struct LoadCVar<u8>;
-template struct LoadCVar<i16>;
-template struct LoadCVar<u16>;
-template struct LoadCVar<i32>;
-template struct LoadCVar<u32>;
-template struct LoadCVar<i64>;
-template struct LoadCVar<u64>;
-template struct LoadCVar<float>;
-template struct LoadCVar<double>;
-template struct LoadCVar<Struct>;
-template struct LoadCVar<Pointer>;
+template struct LoadLocal<i8>;
+template struct LoadLocal<u8>;
+template struct LoadLocal<i16>;
+template struct LoadLocal<u16>;
+template struct LoadLocal<i32>;
+template struct LoadLocal<u32>;
+template struct LoadLocal<i64>;
+template struct LoadLocal<u64>;
+template struct LoadLocal<float>;
+template struct LoadLocal<double>;
+template struct LoadLocal<Struct>;
+template struct LoadLocal<Pointer>;
 
-template struct StoreCVar<i8>;
-template struct StoreCVar<u8>;
-template struct StoreCVar<i16>;
-template struct StoreCVar<u16>;
-template struct StoreCVar<i32>;
-template struct StoreCVar<u32>;
-template struct StoreCVar<i64>;
-template struct StoreCVar<u64>;
-template struct StoreCVar<float>;
-template struct StoreCVar<double>;
-template struct StoreCVar<Struct>;
-template struct StoreCVar<Pointer>;
+template struct StoreLocal<i8>;
+template struct StoreLocal<u8>;
+template struct StoreLocal<i16>;
+template struct StoreLocal<u16>;
+template struct StoreLocal<i32>;
+template struct StoreLocal<u32>;
+template struct StoreLocal<i64>;
+template struct StoreLocal<u64>;
+template struct StoreLocal<float>;
+template struct StoreLocal<double>;
+template struct StoreLocal<Struct>;
+template struct StoreLocal<Pointer>;
 
 template struct Cast<i8, i32>;
 template struct Cast<i8, u32>;

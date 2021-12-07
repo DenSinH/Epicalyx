@@ -83,6 +83,7 @@ struct Directive {
     Store,
     Stack,
     Branch,
+    UnconditionalBranch,
     Return,
     Select,
   };
@@ -118,8 +119,8 @@ struct Expr : Directive {
 
 struct Branch : Directive {
 
-  Branch(block_label_t dest) :
-      Directive(Class::Branch),
+  Branch(Class cls, block_label_t dest) :
+      Directive(cls),
       dest(dest) {
 
   }
@@ -275,7 +276,7 @@ struct CompareImm : Expr<i32> {
 
 struct UnconditionalBranch : Branch {
   UnconditionalBranch(block_label_t dest) :
-      Branch(dest) {
+      Branch(Class::UnconditionalBranch, dest) {
 
   }
 
@@ -288,7 +289,7 @@ requires (is_calyx_type_v<T>)
 struct BranchCompare : Branch {
 
   BranchCompare(block_label_t dest, var_index_t left, CmpType op, var_index_t right) :
-      Branch(dest), left_idx(left), op(op), right_idx(right) {
+      Branch(Class::Branch, dest), left_idx(left), op(op), right_idx(right) {
 
   }
 
@@ -305,7 +306,7 @@ requires (is_calyx_type_v<T>)
 struct BranchCompareImm : Branch {
 
   BranchCompareImm(block_label_t dest, var_index_t left, CmpType op, calyx_imm_type_t<T> right) :
-    Branch(dest), left_idx(left), op(op), right(right) {
+    Branch(Class::Branch, dest), left_idx(left), op(op), right(right) {
 
   }
 
@@ -382,9 +383,9 @@ struct Unop : Expr<T> {
 };
 
 template<typename T>
-struct LoadCVar : Expr<calyx_upcast_t<T>> {
+struct LoadLocal : Expr<calyx_upcast_t<T>> {
 
-  LoadCVar(var_index_t idx, var_index_t c_idx, i32 offset = 0) :
+  LoadLocal(var_index_t idx, var_index_t c_idx, i32 offset = 0) :
       Expr<calyx_upcast_t<T>>(idx), c_idx(c_idx), offset(offset) {
 
   }
@@ -410,9 +411,9 @@ struct LoadCVarAddr : Expr<Pointer> {
 };
 
 template<typename T>
-struct StoreCVar : Expr<calyx_upcast_t<T>> {
+struct StoreLocal : Expr<calyx_upcast_t<T>> {
 
-  StoreCVar(var_index_t idx, var_index_t c_idx, var_index_t src, i32 offset = 0) :
+  StoreLocal(var_index_t idx, var_index_t c_idx, var_index_t src, i32 offset = 0) :
       Expr<calyx_upcast_t<T>>(idx), c_idx(c_idx), src(src), offset(offset) {
 
   }
@@ -425,8 +426,8 @@ struct StoreCVar : Expr<calyx_upcast_t<T>> {
   void Emit(Backend& backend) final;
 };
 
-struct AllocateCVar : Directive {
-  AllocateCVar(var_index_t c_idx, u64 size) :
+struct AllocateLocal : Directive {
+  AllocateLocal(var_index_t c_idx, u64 size) :
       Directive(Class::Stack), c_idx(c_idx), size(size) {
 
   }
@@ -438,8 +439,8 @@ struct AllocateCVar : Directive {
   void Emit(Backend& backend) final;
 };
 
-struct DeallocateCVar : Directive {
-  DeallocateCVar(var_index_t c_idx, u64 size) :
+struct DeallocateLocal : Directive {
+  DeallocateLocal(var_index_t c_idx, u64 size) :
       Directive(Class::Stack), c_idx(c_idx), size(size) {
 
   }

@@ -9,16 +9,16 @@ struct Example : Backend {
 
   void EmitProgram(Program& program) final;
 
-  void Emit(AllocateCVar& op) final;
-  void Emit(DeallocateCVar& op) final;
+  void Emit(AllocateLocal& op) final;
+  void Emit(DeallocateLocal& op) final;
   void Emit(LoadCVarAddr& op) final;
 
   template<typename To, typename From>
   void EmitCast(Cast<To, From>& op);
   template<typename T>
-  void EmitLoadCVar(LoadCVar<T>& op);
+  void EmitLoadCVar(LoadLocal<T>& op);
   template<typename T>
-  void EmitStoreCVar(StoreCVar<T>& op);
+  void EmitStoreCVar(StoreLocal<T>& op);
   template<typename T>
   void EmitReturn(Return<T>& op);
   template<typename T>
@@ -111,30 +111,30 @@ struct Example : Backend {
   void Emit(Imm<u64>& op) final;
   void Emit(Imm<float>& op) final;
   void Emit(Imm<double>& op) final;
-  void Emit(LoadCVar<i8>& op) final;
-  void Emit(LoadCVar<u8>& op) final;
-  void Emit(LoadCVar<i16>& op) final;
-  void Emit(LoadCVar<u16>& op) final;
-  void Emit(LoadCVar<i32>& op) final;
-  void Emit(LoadCVar<u32>& op) final;
-  void Emit(LoadCVar<i64>& op) final;
-  void Emit(LoadCVar<u64>& op) final;
-  void Emit(LoadCVar<float>& op) final;
-  void Emit(LoadCVar<double>& op) final;
-  void Emit(LoadCVar<Struct>& op) final;
-  void Emit(LoadCVar<Pointer>& op) final;
-  void Emit(StoreCVar<i8>& op) final;
-  void Emit(StoreCVar<u8>& op) final;
-  void Emit(StoreCVar<i16>& op) final;
-  void Emit(StoreCVar<u16>& op) final;
-  void Emit(StoreCVar<i32>& op) final;
-  void Emit(StoreCVar<u32>& op) final;
-  void Emit(StoreCVar<i64>& op) final;
-  void Emit(StoreCVar<u64>& op) final;
-  void Emit(StoreCVar<float>& op) final;
-  void Emit(StoreCVar<double>& op) final;
-  void Emit(StoreCVar<Struct>& op) final;
-  void Emit(StoreCVar<Pointer>& op) final;
+  void Emit(LoadLocal<i8>& op) final;
+  void Emit(LoadLocal<u8>& op) final;
+  void Emit(LoadLocal<i16>& op) final;
+  void Emit(LoadLocal<u16>& op) final;
+  void Emit(LoadLocal<i32>& op) final;
+  void Emit(LoadLocal<u32>& op) final;
+  void Emit(LoadLocal<i64>& op) final;
+  void Emit(LoadLocal<u64>& op) final;
+  void Emit(LoadLocal<float>& op) final;
+  void Emit(LoadLocal<double>& op) final;
+  void Emit(LoadLocal<Struct>& op) final;
+  void Emit(LoadLocal<Pointer>& op) final;
+  void Emit(StoreLocal<i8>& op) final;
+  void Emit(StoreLocal<u8>& op) final;
+  void Emit(StoreLocal<i16>& op) final;
+  void Emit(StoreLocal<u16>& op) final;
+  void Emit(StoreLocal<i32>& op) final;
+  void Emit(StoreLocal<u32>& op) final;
+  void Emit(StoreLocal<i64>& op) final;
+  void Emit(StoreLocal<u64>& op) final;
+  void Emit(StoreLocal<float>& op) final;
+  void Emit(StoreLocal<double>& op) final;
+  void Emit(StoreLocal<Struct>& op) final;
+  void Emit(StoreLocal<Pointer>& op) final;
   void Emit(Return<i32>& op) final;
   void Emit(Return<u32>& op) final;
   void Emit(Return<i64>& op) final;

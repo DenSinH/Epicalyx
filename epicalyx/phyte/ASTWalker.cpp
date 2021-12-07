@@ -98,11 +98,11 @@ struct EmitterTypeVisitor : TypeVisitor {
 template<typename T>
 struct LoadCVarEmitter {
   static calyx::var_index_t emit_value(ASTWalker& walker, calyx::var_index_t c_idx) {
-    return walker.emitter.EmitExpr<calyx::LoadCVar<T>>({ calyx_type_v<calyx::calyx_upcast_t<T>> }, c_idx);
+    return walker.emitter.EmitExpr<calyx::LoadLocal<T>>({calyx_type_v<calyx::calyx_upcast_t<T>> }, c_idx);
   }
 
   static calyx::var_index_t emit_pointer(ASTWalker& walker, u64 stride, calyx::var_index_t c_idx) {
-    return walker.emitter.EmitExpr<calyx::LoadCVar<calyx::Pointer>>({ calyx::Var::Type::Pointer, stride }, c_idx);
+    return walker.emitter.EmitExpr<calyx::LoadLocal<calyx::Pointer>>({calyx::Var::Type::Pointer, stride }, c_idx);
   }
 };
 
@@ -166,12 +166,12 @@ template<typename T>
 struct StoreCVarEmitter {
   static calyx::var_index_t emit_value(ASTWalker& walker, calyx::var_index_t c_idx, calyx::var_index_t src) {
     calyx::var_index_t cast = CastToEmitter<T>::emit_value(walker, src);
-    return walker.emitter.EmitExpr<calyx::StoreCVar<T>>({ calyx_type_v<calyx::calyx_upcast_t<T>> }, c_idx, cast);
+    return walker.emitter.EmitExpr<calyx::StoreLocal<T>>({calyx_type_v<calyx::calyx_upcast_t<T>> }, c_idx, cast);
   }
 
   static calyx::var_index_t emit_pointer(ASTWalker& walker, u64 stride, calyx::var_index_t c_idx, calyx::var_index_t src) {
     calyx::var_index_t cast = CastToEmitter<T>::emit_pointer(walker, stride, src);
-    return walker.emitter.EmitExpr<calyx::StoreCVar<T>>({ calyx::Var::Type::Pointer, stride }, c_idx, cast);
+    return walker.emitter.EmitExpr<calyx::StoreLocal<T>>({calyx::Var::Type::Pointer, stride }, c_idx, cast);
   }
 };
 
@@ -328,9 +328,6 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(calyx::var_index_t left, c
       case calyx::Var::Type::Float:
       case calyx::Var::Type::Double:
         throw std::runtime_error("Invalid operands for binop: floating point type and pointer");
-      case calyx::Var::Type::Pointer:
-        // should have been hit before
-        throw std::runtime_error("Unreachable");
       default: throw std::runtime_error("Bad binop");
     }
   }
@@ -471,7 +468,7 @@ void ASTWalker::Visit(epi::taxy::Declaration& decl) {
             c_idx, calyx::CVar::Location::Either, size
     });
     c_types.Set(decl.name, decl.type);
-    emitter.Emit<calyx::AllocateCVar>(c_idx, size);
+    emitter.Emit<calyx::AllocateLocal>(c_idx, size);
 
     if (decl.value.has_value()) {
       if (std::holds_alternative<pExpr>(decl.value.value())) {
@@ -496,12 +493,11 @@ void ASTWalker::Visit(epi::taxy::FunctionDefinition& decl) {
   variables.NewLayer();
   // todo: arguments etc
   function = &decl;
-  reachable = true;
   for (const auto& node : decl.body->stats) {
     node->Visit(*this);
   }
   for (auto var = variables.Top().rbegin(); var != variables.Top().rend(); var++) {
-    emitter.Emit<calyx::DeallocateCVar>(var->second.idx, var->second.size);
+    emitter.Emit<calyx::DeallocateLocal>(var->second.idx, var->second.size);
   }
   variables.PopLayer();
 }
@@ -512,10 +508,7 @@ void ASTWalker::Visit(Identifier& decl) {
     // statement has no effect
     return;
   }
-  if (!reachable) {
-    return;
-  }
-
+  
   auto type = c_types.Get(decl.name);
   auto cvar = variables.Get(decl.name);
   switch (state.top().first) {
@@ -565,8 +558,7 @@ void ASTWalker::Visit(Identifier& decl) {
 template<typename T>
 void ASTWalker::ConstVisitImpl(NumericalConstant<T>& expr) {
   cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
-  if (!reachable) return;
-  if (state.top().first == State::ConditionalBranch) {
+    if (state.top().first == State::ConditionalBranch) {
     if (expr.value) {
       emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
     }
@@ -613,8 +605,7 @@ void ASTWalker::Visit(TypeInitializer& expr) {
 
 void ASTWalker::Visit(PostFix& expr) {
   cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
-  if (!reachable) return;
-
+  
   bool conditional_branch = !state.empty() && state.top().first == State::ConditionalBranch;
 
   switch (expr.op) {
@@ -679,15 +670,15 @@ void ASTWalker::Visit(PostFix& expr) {
   }
 
   if (conditional_branch) {
-    auto block = state.top().second.false_block;
-    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, block, current, calyx::CmpType::Eq, 0);
+    auto false_block = state.top().second.false_block;
+    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, false_block, current, calyx::CmpType::Eq, 0);
+    emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
   }
 }
 
 void ASTWalker::Visit(Unary& expr) {
   cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
-  if (!reachable) return;
-
+  
   const bool conditional_branch = !state.empty() && state.top().first == State::ConditionalBranch;
 
   switch (expr.op) {
@@ -720,9 +711,10 @@ void ASTWalker::Visit(Unary& expr) {
       state.pop();
 
       if (conditional_branch) {
-        auto block = state.top().second.false_block;
+        auto false_block = state.top().second.false_block;
         // branch to false if current != 0 (if current == 0, then !current is true)
-        EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, block, current, calyx::CmpType::Ne, 0);
+        EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, false_block, current, calyx::CmpType::Ne, 0);
+        emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
       }
       else {
         EmitCompare<calyx::CompareImm>(emitter.vars[current].type, current, calyx::CmpType::Eq, 0);
@@ -795,8 +787,9 @@ void ASTWalker::Visit(Unary& expr) {
   }
 
   if (conditional_branch) {
-    auto block = state.top().second.false_block;
-    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, block, current, calyx::CmpType::Eq, 0);
+    auto false_block = state.top().second.false_block;
+    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, false_block, current, calyx::CmpType::Eq, 0);
+    emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
   }
 }
 
@@ -814,8 +807,7 @@ void ASTWalker::Visit(Cast& expr) {
 
 void ASTWalker::Visit(Binop& expr) {
   cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
-  if (!reachable) return;
-
+  
   // only need to push a new state for conditional branches
   const bool conditional_branch = !state.empty() && (state.top().first == State::ConditionalBranch);
   if (conditional_branch) {
@@ -853,7 +845,12 @@ void ASTWalker::Visit(Binop& expr) {
     case TokenType::Minus: {
       if (emitter.vars[left].type == calyx::Var::Type::Pointer) {
         auto var = emitter.vars[left];
-        EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, calyx::PtrAddType::Sub, var.stride, right);
+        if (emitter.vars[right].type == calyx::Var::Type::Pointer) {
+          throw std::runtime_error("Uniplemented: pointer diff");
+        }
+        else {
+          EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, calyx::PtrAddType::Sub, var.stride, right);
+        }
       }
       else if (emitter.vars[right].type == calyx::Var::Type::Pointer) {
         throw std::runtime_error("Invalid right hand side operator for -: pointer");
@@ -902,8 +899,9 @@ void ASTWalker::Visit(Binop& expr) {
       }
 
       if (conditional_branch) {
-        auto block = state.top().second.false_block;
-        EmitBranch<calyx::BranchCompare>(casted.var.type, block, casted.left, inverse, casted.right);
+        auto false_block = state.top().second.false_block;
+        EmitBranch<calyx::BranchCompare>(casted.var.type, false_block, casted.left, inverse, casted.right);
+        emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
       }
       else {
         EmitCompare<calyx::Compare>(casted.var.type, casted.left, cmp_type, casted.right);
@@ -913,8 +911,8 @@ void ASTWalker::Visit(Binop& expr) {
     }
     case TokenType::LShift:
     case TokenType::RShift: {
-      cotyl::Assert(!cotyl::Is(emitter.vars[left].type).AnyOf<calyx::Var::Type::Float, calyx::Var::Type::Double>());
-      cotyl::Assert(!cotyl::Is(emitter.vars[right].type).AnyOf<calyx::Var::Type::Float, calyx::Var::Type::Double>());
+      cotyl::Assert(!cotyl::Is(emitter.vars[left].type).AnyOf<calyx::Var::Type::Float, calyx::Var::Type::Double, calyx::Var::Type::Pointer, calyx::Var::Type::Struct>());
+      cotyl::Assert(!cotyl::Is(emitter.vars[right].type).AnyOf<calyx::Var::Type::Float, calyx::Var::Type::Double, calyx::Var::Type::Pointer, calyx::Var::Type::Struct>());
       switch (emitter.vars[right].type) {
         case calyx::Var::Type::I32: {
           right = emitter.EmitExpr<calyx::Cast<u32, i32>>({ calyx::Var::Type::U32 }, right);
@@ -942,24 +940,58 @@ void ASTWalker::Visit(Binop& expr) {
       break;
     }
     default:
-      throw std::runtime_error("Bad binop");
+      // todo: logical operators
+      throw std::runtime_error("Unimplemented binop");
   }
 
   if (conditional_branch) {
     auto type = emitter.vars[current].type;
-    auto block = state.top().second.false_block;
-    EmitBranch<calyx::BranchCompareImm>(type, block, current, calyx::CmpType::Eq, 0);
+    auto false_block = state.top().second.false_block;
+    EmitBranch<calyx::BranchCompareImm>(type, false_block, current, calyx::CmpType::Eq, 0);
+    emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
   }
 }
 
 void ASTWalker::Visit(Ternary& expr) {
-  throw std::runtime_error("unimplemented: ternary");
+  cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+  
+  if (state.empty() || state.top().first == State::Read) {
+    // we create a "fake local" in order to do this
+    auto c_idx = emitter.c_counter++;
+//    u64 size = expr->T->Sizeof();
+//    variables.Set(decl.name, calyx::CVar{
+//            c_idx, calyx::CVar::Location::Either, size
+//    });
+//    c_types.Set(decl.name, decl.type);
+//    emitter.Emit<calyx::AllocateLocal>(c_idx, size);
+    throw std::runtime_error("Unimplemented: ternary read\n");
+  }
+  else {
+    // for stuff like: if (var ? cond : cond)
+    auto tern_true_block = emitter.MakeBlock();
+    auto tern_false_block = emitter.MakeBlock();
+
+    state.push({State::ConditionalBranch, {.true_block=tern_true_block, .false_block=tern_false_block}});
+    expr.cond->Visit(*this);
+    state.pop();
+
+    // branch to false block should have been emitted
+    emitter.Emit<calyx::UnconditionalBranch>(tern_true_block);
+    emitter.SelectBlock(tern_true_block);
+
+    // no need to push new state now, we have to do the original branching
+    expr._true->Visit(*this);
+    // branching should have been handled by conditional
+
+    emitter.SelectBlock(tern_false_block);
+    expr._false->Visit(*this);
+    // again, branching should have been handled by conditional
+  }
 }
 
 void ASTWalker::Visit(Assignment& expr) {
   cotyl::Assert(state.empty() || state.top().first == State::Read);
-  if (!reachable) return;
-
+  
   state.push({State::Read, {}});
   expr.right->Visit(*this);
   state.pop();
@@ -1074,8 +1106,7 @@ void ASTWalker::Visit(Empty& stat) {
 }
 
 void ASTWalker::Visit(If& stat) {
-  if (!reachable) return;
-
+  
   auto true_block = emitter.MakeBlock();
   auto false_block = emitter.MakeBlock();
   calyx::var_index_t post_block;
@@ -1091,35 +1122,24 @@ void ASTWalker::Visit(If& stat) {
   state.pop();
 
   // true, then jump to post block
-  // emitter should have emitted a branch to the false block if needed
-  emitter.Emit<calyx::UnconditionalBranch>(true_block);
+  // emitter should have emitted branches to blocks
   emitter.SelectBlock(true_block);
   stat.stat->Visit(*this);
-  bool true_reachable = reachable;
-  if (reachable) {
-    emitter.Emit<calyx::UnconditionalBranch>(post_block);
-  }
-  reachable = true;
+  emitter.Emit<calyx::UnconditionalBranch>(post_block);
 
   bool false_reachable = true;
   if (stat._else) {
     emitter.SelectBlock(false_block);
     stat._else->Visit(*this);
-    false_reachable = reachable;
-    if (reachable) {
-      // unreachable means we already returned or branched somewhere else
-      emitter.Emit<calyx::UnconditionalBranch>(post_block);
-    }
+    emitter.Emit<calyx::UnconditionalBranch>(post_block);
   }
 
   emitter.SelectBlock(post_block);
-  reachable = true_reachable || false_reachable;
   cotyl::Assert(emitter.program[post_block].empty());
 }
 
 void ASTWalker::Visit(While& stat) {
-  if (!reachable) return;
-
+  
   auto cond_block = emitter.MakeBlock();
   emitter.Emit<calyx::UnconditionalBranch>(cond_block);
   emitter.SelectBlock(cond_block);
@@ -1131,8 +1151,7 @@ void ASTWalker::Visit(While& stat) {
   stat.cond->Visit(*this);
   state.pop();
 
-  // branch to false block (post_block) should have been emitted by the cond Visit
-  emitter.Emit<calyx::UnconditionalBranch>(loop_block);
+  // branching to blocks should have been emitted by the cond Visit
   emitter.SelectBlock(loop_block);
 
   break_stack.push(post_block);
@@ -1151,8 +1170,7 @@ void ASTWalker::Visit(While& stat) {
 }
 
 void ASTWalker::Visit(DoWhile& stat) {
-  if (!reachable) return;
-
+  
   auto loop_block = emitter.MakeBlock();
   auto cond_block = emitter.MakeBlock();
   auto post_block = emitter.MakeBlock();
@@ -1177,17 +1195,14 @@ void ASTWalker::Visit(DoWhile& stat) {
   state.push({State::ConditionalBranch, {.true_block = loop_block, .false_block = post_block}});
   stat.cond->Visit(*this);
   state.pop();
-
-  // loop back to the loop block if condition was met (false case should be handled by cond visit)
-  emitter.Emit<calyx::UnconditionalBranch>(loop_block);
+  // branching to loop back to the loop block should have been handled by condition
 
   // go to block after loop
   emitter.SelectBlock(post_block);
 }
 
 void ASTWalker::Visit(For& stat) {
-  if (!reachable) return;
-
+  
   auto init_block = emitter.MakeBlock();
   auto cond_block = emitter.MakeBlock();
   auto update_block = emitter.MakeBlock();
@@ -1215,8 +1230,7 @@ void ASTWalker::Visit(For& stat) {
   stat.cond->Visit(*this);
   state.pop();
 
-  // false_block case should have been handled by condition
-  emitter.Emit<calyx::UnconditionalBranch>(loop_block);
+  // branching case should have been handled by condition
   emitter.SelectBlock(loop_block);
 
   break_stack.push(post_block);
@@ -1292,15 +1306,11 @@ void ASTWalker::Visit(Switch& stat) {
 
   break_stack.push(post_block);
   select_stack.push(select);
-  reachable = false;  // to prevent branch after select
   stat.stat->Visit(*this);
   select_stack.pop();
   break_stack.pop();
 
   emitter.SelectBlock(post_block);
-
-  // todo: return from all cases
-  reachable = true;
 }
 
 void ASTWalker::Visit(Case& stat) {
@@ -1309,11 +1319,8 @@ void ASTWalker::Visit(Case& stat) {
   cotyl::Assert(!select->table.contains(stat.expr), "Duplicate case statement");
 
   auto block = emitter.MakeBlock();
-  if (reachable) {
-    // check for fallthrough and don't emit branch if there is no fallthrough
-    emitter.Emit<calyx::UnconditionalBranch>(block);
-  }
-  reachable = true;
+  // check for fallthrough and don't emit branch if there is no fallthrough
+  emitter.Emit<calyx::UnconditionalBranch>(block);
 
   select->table.emplace(stat.expr, block);
 
@@ -1327,11 +1334,8 @@ void ASTWalker::Visit(Default& stat) {
   cotyl::Assert(select->_default == 0, "Duplicate default statement");
 
   auto block = emitter.MakeBlock();
-  if (reachable) {
-    // check for fallthrough and don't emit branch if there is no fallthrough
-    emitter.Emit<calyx::UnconditionalBranch>(block);
-  }
-  reachable = true;
+  // check for fallthrough and don't emit branch if there is no fallthrough
+  emitter.Emit<calyx::UnconditionalBranch>(block);
 
   select->_default = block;
 
@@ -1351,8 +1355,7 @@ void ASTWalker::Visit(Goto& stat) {
 }
 
 void ASTWalker::Visit(Return& stat) {
-  if (!reachable) return;
-
+  
   if (stat.expr) {
     state.push({State::Read, {}});
     stat.expr->Visit(*this);
@@ -1363,18 +1366,15 @@ void ASTWalker::Visit(Return& stat) {
   else {
     emitter.Emit<calyx::Return<i32>>(0);
   }
-  reachable = false;
 }
 
 void ASTWalker::Visit(Break& stat) {
   cotyl::Assert(!break_stack.empty());
-  reachable = false;
   emitter.Emit<calyx::UnconditionalBranch>(break_stack.top());
 }
 
 void ASTWalker::Visit(Continue& stat) {
   cotyl::Assert(!continue_stack.empty());
-  reachable = false;
   emitter.Emit<calyx::UnconditionalBranch>(continue_stack.top());
 }
 
@@ -1384,7 +1384,7 @@ void ASTWalker::Visit(Compound& stat) {
     node->Visit(*this);
   }
   for (auto var = variables.Top().rbegin(); var != variables.Top().rend(); var++) {
-    emitter.Emit<calyx::DeallocateCVar>(var->second.idx, var->second.size);
+    emitter.Emit<calyx::DeallocateLocal>(var->second.idx, var->second.size);
   }
   variables.PopLayer();
 }
