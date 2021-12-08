@@ -195,13 +195,13 @@ struct CType {
   virtual pType<> Clone() const = 0;
   virtual void Visit(TypeVisitor& v) const = 0;
 
+  static pType<ValueType<i32>> MakeBool(bool value);
+  static pType<ValueType<i32>> MakeBool();
+
 protected:
   virtual bool IsComplete() const { return false; }
 
   virtual void ForgetConstInfo() { }  // forget info on contained value (for example, adding an int to a pointer)
-
-  static pType<ValueType<i32>> MakeBool(bool value);
-  static pType<ValueType<i32>> MakeBool();
 
   TYPE_SIGNATURES(VIRTUAL_CASTABLE)  // compatible types (can cast)
   TYPE_SIGNATURES(VIRTUAL_EQ)        // equal types

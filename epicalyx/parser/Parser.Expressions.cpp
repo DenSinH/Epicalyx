@@ -267,6 +267,7 @@ pExpr Parser::EExpression() {
 
 i64 Parser::EConstexpr() {
   auto expr = ETernary();
+  expr->SemanticAnalysis(*this);
   return expr->ConstEval();
 }
 

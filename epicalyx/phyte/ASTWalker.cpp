@@ -39,6 +39,11 @@ template<class Sig>
 using func_return_t = typename func<Sig>::return_t;
 
 
+/*
+ * Generic type visitor to be used for different type-dependent operations.
+ * One can write their own emitter that handles value types / pointer types / struct types differently.
+ * This removes the boilerplate of the rest of the visitor pattern code.
+ * */
 template<template<typename T> class emit>
 struct EmitterTypeVisitor : TypeVisitor {
   using args_t = func_args_t<decltype(emit<i32>::emit_value)>;
@@ -753,11 +758,15 @@ void ASTWalker::Visit(Unary& expr) {
       break;
     }
     case TokenType::Decr: {
+      // read value
       state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
+
       auto type = emitter.vars[current].type;
       calyx::var_index_t stored;
+
+      // subtract 1
       if (type == calyx::Var::Type::Pointer) {
         auto var = emitter.vars[current];
         current = emitter.EmitExpr<calyx::AddToPointerImm>(var, current, var.stride, -1);
@@ -782,7 +791,7 @@ void ASTWalker::Visit(Unary& expr) {
       break;
     }
     default: {
-      throw std::runtime_error("unimplemented unop");
+      throw std::runtime_error("Unimplemented unop");
     }
   }
 
@@ -895,7 +904,7 @@ void ASTWalker::Visit(Binop& expr) {
           inverse = calyx::CmpType::Eq;
           break;
         default:
-          throw std::runtime_error("unreachable");
+          throw std::runtime_error("Unreachable");
       }
 
       if (conditional_branch) {
@@ -939,9 +948,93 @@ void ASTWalker::Visit(Binop& expr) {
       }
       break;
     }
+    case TokenType::LogicalAnd:
+    case TokenType::LogicalOr: {
+      if (state.empty() || state.top().first == State::Read) {
+        // we create a "fake local" in order to do this
+        auto c_idx = emitter.c_counter++;
+        std::string name = "$logop" + std::to_string(c_idx);
+        variables.Set(name, calyx::CVar{
+                c_idx, calyx::CVar::Location::Either, sizeof(i32)
+        });
+        c_types.Set(name, CType::MakeBool());
+        emitter.Emit<calyx::AllocateLocal>(c_idx, sizeof(i32));
+
+        // now basically add an if statement
+        auto rhs_block = emitter.MakeBlock();
+        auto true_block = emitter.MakeBlock();
+        auto false_block = emitter.MakeBlock();
+        auto post_block = emitter.MakeBlock();
+
+        if (expr.op == TokenType::LogicalAnd) {
+          state.push({State::ConditionalBranch, {.true_block = rhs_block, .false_block = false_block}});
+        }
+        else {
+          state.push({State::ConditionalBranch, {.true_block = true_block, .false_block = rhs_block}});
+        }
+        expr.left->Visit(*this);
+        state.pop();
+
+        emitter.SelectBlock(rhs_block);
+        // also check right hand side
+
+        state.push({State::ConditionalBranch, {.true_block = true_block, .false_block = false_block}});
+        expr.right->Visit(*this);
+        state.pop();
+
+        // emitter should have emitted branches to blocks
+        {
+          emitter.SelectBlock(true_block);
+          // store result to temp cvar
+          auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ calyx::Var::Type::I32 }, 1);
+          emitter.EmitExpr<calyx::StoreLocal<i32>>({ calyx::Var::Type::I32 }, c_idx, imm);
+          emitter.Emit<calyx::UnconditionalBranch>(post_block);
+        }
+
+        {
+          emitter.SelectBlock(false_block);
+          // store result to temp cvar
+          auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ calyx::Var::Type::I32 }, 0);
+          emitter.EmitExpr<calyx::StoreLocal<i32>>({ calyx::Var::Type::I32 }, c_idx, imm);
+          emitter.Emit<calyx::UnconditionalBranch>(post_block);
+        }
+
+        {
+          emitter.SelectBlock(post_block);
+          cotyl::Assert(emitter.program[post_block].empty());
+          // load result from temp cvar
+          current = emitter.EmitExpr<calyx::LoadLocal<i32>>({ calyx::Var::Type::I32 }, c_idx);
+        }
+      }
+      else if (state.top().first == State::ConditionalBranch) {
+        auto rhs_block = emitter.MakeBlock();
+        auto true_block = state.top().second.true_block;
+        auto false_block = state.top().second.false_block;
+
+        if (expr.op == TokenType::LogicalAnd) {
+          // if lhs is false, jump to false block, otherwise jump to false block
+          state.push({State::ConditionalBranch, {.true_block = rhs_block, .false_block = false_block}});
+        }
+        else {
+          // if lhs is false, jump to rhs block, otherwise jump to true block
+          state.push({State::ConditionalBranch, {.true_block = true_block, .false_block = rhs_block}});
+        }
+        expr.left->Visit(*this);
+        state.pop();
+
+        emitter.SelectBlock(rhs_block);
+        // now we just need to check the condition like "normal"
+        expr.right->Visit(*this);
+      }
+      else {
+        // this cannot happen
+      }
+
+      // no need to check for conditional branches anymore
+      return;
+    }
     default:
-      // todo: logical operators
-      throw std::runtime_error("Unimplemented binop");
+      throw std::runtime_error("Bad binop");
   }
 
   if (conditional_branch) {
