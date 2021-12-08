@@ -252,7 +252,7 @@ struct ArrayType : public PointerType {
   size_t size;
 
   bool IsArray() const final { return true; }
-  u64 Sizeof() const final { std::printf("%llu + %llu\n", size, contained->Sizeof()); return size * contained->Sizeof(); }
+  u64 Sizeof() const final { return size * contained->Sizeof(); }
 
   std::string ToString() const override {
     return cotyl::FormatStr("(%s)[%s]", contained, size);
