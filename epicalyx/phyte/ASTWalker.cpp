@@ -618,7 +618,70 @@ void ASTWalker::Visit(StringConstant& expr) {
 }
 
 void ASTWalker::Visit(ArrayAccess& expr) {
-  throw std::runtime_error("unimplemented: array access");
+  cotyl::Assert(state.empty() || cotyl::Is(state.top().first).AnyOf<State::Read, State::ConditionalBranch, State::Assign, State::Address>());
+
+  state.push({State::Read, {}});
+  calyx::var_index_t ptr_idx, offs_idx;
+  if (expr.left->GetType()->IsPointer()) {
+    expr.left->Visit(*this);
+    ptr_idx = current;
+    expr.right->Visit(*this);
+    offs_idx = current;
+  }
+  else {
+    expr.right->Visit(*this);
+    ptr_idx = current;
+    expr.left->Visit(*this);
+    offs_idx = current;
+  }
+  state.pop();
+
+  auto ptr_var = emitter.vars[ptr_idx];
+  EmitPointerIntegralExpr<calyx::AddToPointer>(
+          emitter.vars[offs_idx].type, ptr_var.stride, ptr_idx, calyx::PtrAddType::Add, ptr_var.stride, offs_idx
+  );
+  ptr_idx = current;
+
+  if (state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch) {
+    auto visitor = detail::EmitterTypeVisitor<detail::LoadFromPointerEmitter>(*this, { ptr_idx });
+    if (expr.left->GetType()->IsPointer()) {
+      expr.left->GetType()->Deref()->Visit(visitor);
+    }
+    else {
+      expr.right->GetType()->Deref()->Visit(visitor);
+    }
+
+    if (!state.empty() && state.top().first == State::ConditionalBranch) {
+      auto false_block = state.top().second.false_block;
+      EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, false_block, current, calyx::CmpType::Eq, 0);
+      emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
+    }
+  }
+  else {
+    switch (state.top().first) {
+      case State::Assign: {
+        auto var = state.top().second.var;
+        auto visitor = detail::EmitterTypeVisitor<detail::StoreToPointerEmitter>(*this, { ptr_idx, var });
+        if (expr.left->GetType()->IsPointer()) {
+          expr.left->GetType()->Deref()->Visit(visitor);
+        }
+        else {
+          expr.right->GetType()->Deref()->Visit(visitor);
+        }
+
+        // stored value is "returned" value
+        current = var;
+        break;
+      }
+      case State::Address: {
+        // current now holds the address already
+        break;
+      }
+      default: {
+        throw std::runtime_error("Bad state");
+      }
+    }
+  }
 }
 
 void ASTWalker::Visit(FunctionCall& expr) {

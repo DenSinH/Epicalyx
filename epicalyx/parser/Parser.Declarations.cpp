@@ -592,7 +592,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
           }
         }
         in_stream.Eat(TokenType::RBracket);
-        ctype = MakeType<ArrayType>(std::move(ctype), 0);
+        ctype = MakeType<ArrayType>(std::move(ctype), size);
         break;
       }
       default: {
