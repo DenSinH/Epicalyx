@@ -452,23 +452,21 @@ struct DeallocateLocal : Directive {
 };
 
 template<typename T>
-requires (is_calyx_type_v<T>)
-struct LoadFromPointer : Expr<T> {
+struct LoadFromPointer : Expr<calyx_upcast_t<T>> {
 
   LoadFromPointer(var_index_t idx, var_index_t ptr_idx, i32 offset = 0) :
-      Expr<T>(idx), ptr_idx(ptr_idx), offset(offset) {
+      Expr<calyx_upcast_t<T>>(idx), ptr_idx(ptr_idx), offset(offset) {
 
   }
 
   var_index_t ptr_idx;
   i32 offset;
 
-  std::string ToString() const final { return ""; }
+  std::string ToString() const final;
   void Emit(Backend& backend) final;
 };
 
 template<typename T>
-requires (is_calyx_type_v<T>)
 struct StoreToPointer : Directive {
 
   StoreToPointer(var_index_t ptr_idx, var_index_t idx, i32 offset = 0) :
@@ -480,7 +478,7 @@ struct StoreToPointer : Directive {
   var_index_t idx;
   i32 offset;
 
-  std::string ToString() const final { return ""; }
+  std::string ToString() const final;
   void Emit(Backend& backend) final;
 };
 

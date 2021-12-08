@@ -4,10 +4,12 @@ int main() {
   int a = 12;
   test++;
   test += 12;
-  if (test > 1) {
+  if (0 && test > 1) {
     return (test + 1) > test2;
   }
   else {
-    return test - 1;
+    test2 = &a;
+    *test2 = 42;
+    return a;
   }
 }

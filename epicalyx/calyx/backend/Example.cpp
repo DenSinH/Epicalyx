@@ -25,13 +25,23 @@ void Example::EmitCast(Cast<To, From>& op) {
 }
 
 template<typename T>
-void Example::EmitLoadCVar(LoadLocal<T>& op) {
+void Example::EmitLoadLocal(LoadLocal<T>& op) {
 
 }
 
 template<typename T>
-void Example::EmitStoreCVar(StoreLocal<T>& op) {
+void Example::EmitStoreLocal(StoreLocal<T>& op) {
 
+}
+
+template<typename T>
+void Example::EmitLoadFromPointer(LoadFromPointer<T>& op) {
+  
+}
+
+template<typename T>
+void Example::EmitStoreToPointer(StoreToPointer<T>& op) {
+  
 }
 
 template<typename T>
@@ -170,30 +180,54 @@ void Example::Emit(Imm<i64>& op) { EmitImm(op); }
 void Example::Emit(Imm<u64>& op) { EmitImm(op); }
 void Example::Emit(Imm<float>& op) { EmitImm(op); }
 void Example::Emit(Imm<double>& op) { EmitImm(op); }
-void Example::Emit(LoadLocal<i8>& op) { EmitLoadCVar(op); }
-void Example::Emit(LoadLocal<u8>& op) { EmitLoadCVar(op); }
-void Example::Emit(LoadLocal<i16>& op) { EmitLoadCVar(op); }
-void Example::Emit(LoadLocal<u16>& op) { EmitLoadCVar(op); }
-void Example::Emit(LoadLocal<i32>& op) { EmitLoadCVar(op); }
-void Example::Emit(LoadLocal<u32>& op) { EmitLoadCVar(op); }
-void Example::Emit(LoadLocal<i64>& op) { EmitLoadCVar(op); }
-void Example::Emit(LoadLocal<u64>& op) { EmitLoadCVar(op); }
-void Example::Emit(LoadLocal<float>& op) { EmitLoadCVar(op); }
-void Example::Emit(LoadLocal<double>& op) { EmitLoadCVar(op); }
-void Example::Emit(LoadLocal<Struct>& op) { EmitLoadCVar(op); }
-void Example::Emit(LoadLocal<Pointer>& op) { EmitLoadCVar(op); }
-void Example::Emit(StoreLocal<i8>& op) { EmitStoreCVar(op); }
-void Example::Emit(StoreLocal<u8>& op) { EmitStoreCVar(op); }
-void Example::Emit(StoreLocal<i16>& op) { EmitStoreCVar(op); }
-void Example::Emit(StoreLocal<u16>& op) { EmitStoreCVar(op); }
-void Example::Emit(StoreLocal<i32>& op) { EmitStoreCVar(op); }
-void Example::Emit(StoreLocal<u32>& op) { EmitStoreCVar(op); }
-void Example::Emit(StoreLocal<i64>& op) { EmitStoreCVar(op); }
-void Example::Emit(StoreLocal<u64>& op) { EmitStoreCVar(op); }
-void Example::Emit(StoreLocal<float>& op) { EmitStoreCVar(op); }
-void Example::Emit(StoreLocal<double>& op) { EmitStoreCVar(op); }
-void Example::Emit(StoreLocal<Struct>& op) { EmitStoreCVar(op); }
-void Example::Emit(StoreLocal<Pointer>& op) { EmitStoreCVar(op); }
+void Example::Emit(LoadLocal<i8>& op) { EmitLoadLocal(op); }
+void Example::Emit(LoadLocal<u8>& op) { EmitLoadLocal(op); }
+void Example::Emit(LoadLocal<i16>& op) { EmitLoadLocal(op); }
+void Example::Emit(LoadLocal<u16>& op) { EmitLoadLocal(op); }
+void Example::Emit(LoadLocal<i32>& op) { EmitLoadLocal(op); }
+void Example::Emit(LoadLocal<u32>& op) { EmitLoadLocal(op); }
+void Example::Emit(LoadLocal<i64>& op) { EmitLoadLocal(op); }
+void Example::Emit(LoadLocal<u64>& op) { EmitLoadLocal(op); }
+void Example::Emit(LoadLocal<float>& op) { EmitLoadLocal(op); }
+void Example::Emit(LoadLocal<double>& op) { EmitLoadLocal(op); }
+void Example::Emit(LoadLocal<Struct>& op) { EmitLoadLocal(op); }
+void Example::Emit(LoadLocal<Pointer>& op) { EmitLoadLocal(op); }
+void Example::Emit(StoreLocal<i8>& op) { EmitStoreLocal(op); }
+void Example::Emit(StoreLocal<u8>& op) { EmitStoreLocal(op); }
+void Example::Emit(StoreLocal<i16>& op) { EmitStoreLocal(op); }
+void Example::Emit(StoreLocal<u16>& op) { EmitStoreLocal(op); }
+void Example::Emit(StoreLocal<i32>& op) { EmitStoreLocal(op); }
+void Example::Emit(StoreLocal<u32>& op) { EmitStoreLocal(op); }
+void Example::Emit(StoreLocal<i64>& op) { EmitStoreLocal(op); }
+void Example::Emit(StoreLocal<u64>& op) { EmitStoreLocal(op); }
+void Example::Emit(StoreLocal<float>& op) { EmitStoreLocal(op); }
+void Example::Emit(StoreLocal<double>& op) { EmitStoreLocal(op); }
+void Example::Emit(StoreLocal<Struct>& op) { EmitStoreLocal(op); }
+void Example::Emit(StoreLocal<Pointer>& op) { EmitStoreLocal(op); }
+void Example::Emit(LoadFromPointer<i8>& op) { EmitLoadFromPointer(op); }
+void Example::Emit(LoadFromPointer<u8>& op) { EmitLoadFromPointer(op); }
+void Example::Emit(LoadFromPointer<i16>& op) { EmitLoadFromPointer(op); }
+void Example::Emit(LoadFromPointer<u16>& op) { EmitLoadFromPointer(op); }
+void Example::Emit(LoadFromPointer<i32>& op) { EmitLoadFromPointer(op); }
+void Example::Emit(LoadFromPointer<u32>& op) { EmitLoadFromPointer(op); }
+void Example::Emit(LoadFromPointer<i64>& op) { EmitLoadFromPointer(op); }
+void Example::Emit(LoadFromPointer<u64>& op) { EmitLoadFromPointer(op); }
+void Example::Emit(LoadFromPointer<float>& op) { EmitLoadFromPointer(op); }
+void Example::Emit(LoadFromPointer<double>& op) { EmitLoadFromPointer(op); }
+void Example::Emit(LoadFromPointer<Struct>& op) { EmitLoadFromPointer(op); }
+void Example::Emit(LoadFromPointer<Pointer>& op) { EmitLoadFromPointer(op); }
+void Example::Emit(StoreToPointer<i8>& op) { EmitStoreToPointer(op); }
+void Example::Emit(StoreToPointer<u8>& op) { EmitStoreToPointer(op); }
+void Example::Emit(StoreToPointer<i16>& op) { EmitStoreToPointer(op); }
+void Example::Emit(StoreToPointer<u16>& op) { EmitStoreToPointer(op); }
+void Example::Emit(StoreToPointer<i32>& op) { EmitStoreToPointer(op); }
+void Example::Emit(StoreToPointer<u32>& op) { EmitStoreToPointer(op); }
+void Example::Emit(StoreToPointer<i64>& op) { EmitStoreToPointer(op); }
+void Example::Emit(StoreToPointer<u64>& op) { EmitStoreToPointer(op); }
+void Example::Emit(StoreToPointer<float>& op) { EmitStoreToPointer(op); }
+void Example::Emit(StoreToPointer<double>& op) { EmitStoreToPointer(op); }
+void Example::Emit(StoreToPointer<Struct>& op) { EmitStoreToPointer(op); }
+void Example::Emit(StoreToPointer<Pointer>& op) { EmitStoreToPointer(op); }
 void Example::Emit(Return<i32>& op) { EmitReturn(op); }
 void Example::Emit(Return<u32>& op) { EmitReturn(op); }
 void Example::Emit(Return<i64>& op) { EmitReturn(op); }

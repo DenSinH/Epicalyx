@@ -29,9 +29,13 @@ struct Interpreter : Backend {
   template<typename To, typename From>
   void EmitCast(Cast<To, From>& op);
   template<typename T>
-  void EmitLoadCVar(LoadLocal<T>& op);
+  void EmitLoadLocal(LoadLocal<T>& op);
   template<typename T>
-  void EmitStoreCVar(StoreLocal<T>& op);
+  void EmitStoreLocal(StoreLocal<T>& op);
+  template<typename T>
+  void EmitLoadFromPointer(LoadFromPointer<T>& op);
+  template<typename T>
+  void EmitStoreToPointer(StoreToPointer<T>& op);
   template<typename T>
   void EmitReturn(Return<T>& op);
   template<typename T>
@@ -148,6 +152,30 @@ struct Interpreter : Backend {
   void Emit(StoreLocal<double>& op) final;
   void Emit(StoreLocal<Struct>& op) final;
   void Emit(StoreLocal<Pointer>& op) final;
+  void Emit(LoadFromPointer<i8>& op) final;
+  void Emit(LoadFromPointer<u8>& op) final;
+  void Emit(LoadFromPointer<i16>& op) final;
+  void Emit(LoadFromPointer<u16>& op) final;
+  void Emit(LoadFromPointer<i32>& op) final;
+  void Emit(LoadFromPointer<u32>& op) final;
+  void Emit(LoadFromPointer<i64>& op) final;
+  void Emit(LoadFromPointer<u64>& op) final;
+  void Emit(LoadFromPointer<float>& op) final;
+  void Emit(LoadFromPointer<double>& op) final;
+  void Emit(LoadFromPointer<Struct>& op) final;
+  void Emit(LoadFromPointer<Pointer>& op) final;
+  void Emit(StoreToPointer<i8>& op) final;
+  void Emit(StoreToPointer<u8>& op) final;
+  void Emit(StoreToPointer<i16>& op) final;
+  void Emit(StoreToPointer<u16>& op) final;
+  void Emit(StoreToPointer<i32>& op) final;
+  void Emit(StoreToPointer<u32>& op) final;
+  void Emit(StoreToPointer<i64>& op) final;
+  void Emit(StoreToPointer<u64>& op) final;
+  void Emit(StoreToPointer<float>& op) final;
+  void Emit(StoreToPointer<double>& op) final;
+  void Emit(StoreToPointer<Struct>& op) final;
+  void Emit(StoreToPointer<Pointer>& op) final;
   void Emit(Return<i32>& op) final;
   void Emit(Return<u32>& op) final;
   void Emit(Return<i64>& op) final;

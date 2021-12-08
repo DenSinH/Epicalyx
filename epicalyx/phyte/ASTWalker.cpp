@@ -5,6 +5,7 @@
 #include "taxy/Declaration.h"
 #include "taxy/Statement.h"
 #include "taxy/Expression.h"
+#include "Is.h"
 
 #include "Assert.h"
 
@@ -190,6 +191,30 @@ struct ReturnEmitter {
   static void emit_pointer(ASTWalker& walker, u64 stride, calyx::var_index_t src) {
     calyx::var_index_t cast = CastToEmitter<T>::emit_pointer(walker, stride, src);
     walker.emitter.Emit<calyx::Return<T>>(cast);
+  }
+};
+
+template<typename T>
+struct LoadFromPointerEmitter {
+  static calyx::var_index_t emit_value(ASTWalker& walker, calyx::var_index_t ptr_idx) {
+    return walker.emitter.EmitExpr<calyx::LoadFromPointer<T>>({calyx_type_v<calyx::calyx_upcast_t<T>> }, ptr_idx);
+  }
+
+  static calyx::var_index_t emit_pointer(ASTWalker& walker, u64 stride, calyx::var_index_t ptr_idx) {
+    return walker.emitter.EmitExpr<calyx::LoadLocal<calyx::Pointer>>({calyx::Var::Type::Pointer, stride }, ptr_idx);
+  }
+};
+
+template<typename T>
+struct StoreToPointerEmitter {
+  static void emit_value(ASTWalker& walker, calyx::var_index_t ptr_idx, calyx::var_index_t src) {
+    calyx::var_index_t cast = CastToEmitter<T>::emit_value(walker, src);
+    walker.emitter.Emit<calyx::StoreToPointer<T>>(ptr_idx, cast);
+  }
+
+  static void emit_pointer(ASTWalker& walker, u64 stride, calyx::var_index_t ptr_idx, calyx::var_index_t src) {
+    calyx::var_index_t cast = CastToEmitter<T>::emit_pointer(walker, stride, src);
+    walker.emitter.Emit<calyx::StoreToPointer<T>>(ptr_idx, cast);
   }
 };
 
@@ -670,7 +695,7 @@ void ASTWalker::Visit(PostFix& expr) {
       break;
     }
     default: {
-      throw std::runtime_error("Unreachable");
+      throw std::runtime_error("Bad postfix");
     }
   }
 
@@ -682,12 +707,11 @@ void ASTWalker::Visit(PostFix& expr) {
 }
 
 void ASTWalker::Visit(Unary& expr) {
-  cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
-  
   const bool conditional_branch = !state.empty() && state.top().first == State::ConditionalBranch;
 
   switch (expr.op) {
     case TokenType::Minus: {
+      cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       // no need to push a new state
       expr.left->Visit(*this);
       if (!conditional_branch) {
@@ -697,6 +721,7 @@ void ASTWalker::Visit(Unary& expr) {
       return;
     }
     case TokenType::Plus: {
+      cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       // no need to push a new state
       // does nothing
       // return, no need to check for conditional branches, is handled in visiting the expr
@@ -704,6 +729,7 @@ void ASTWalker::Visit(Unary& expr) {
       return;
     }
     case TokenType::Tilde: {
+      cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       // no need to push a new state
       expr.left->Visit(*this);
       EmitArithExpr<calyx::Unop>(emitter.vars[current].type, calyx::UnopType::BinNot, current);
@@ -711,6 +737,7 @@ void ASTWalker::Visit(Unary& expr) {
       break;
     }
     case TokenType::Exclamation: {
+      cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
@@ -729,6 +756,7 @@ void ASTWalker::Visit(Unary& expr) {
       return;
     }
     case TokenType::Incr: {
+      cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
@@ -758,6 +786,7 @@ void ASTWalker::Visit(Unary& expr) {
       break;
     }
     case TokenType::Decr: {
+      cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       // read value
       state.push({State::Read, {}});
       expr.left->Visit(*this);
@@ -790,8 +819,50 @@ void ASTWalker::Visit(Unary& expr) {
       // break, need to check for conditional branches
       break;
     }
+    case TokenType::Ampersand: {
+      cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+      state.push({ State::Address, {} });
+      expr.left->Visit(*this);
+      state.pop();
+      break;
+    }
+    case TokenType::Asterisk: {
+      cotyl::Assert(state.empty() || cotyl::Is(state.top().first).AnyOf<State::Read, State::ConditionalBranch, State::Assign, State::Address>());
+      if (!state.empty() && state.top().first == State::Assign) {
+        state.push({ State::Read, {} });
+        expr.left->Visit(*this);
+        state.pop();
+
+        auto var = state.top().second.var;
+        auto visitor = detail::EmitterTypeVisitor<detail::StoreToPointerEmitter>(*this, { current, var });
+        expr.left->GetType()->Deref()->Visit(visitor);
+
+        // stored value is "returned" value
+        current = var;
+        return;
+      }
+      else if (!state.empty() && state.top().first == State::Address) {
+        // &(*pointer) == pointer
+        state.push({ State::Read, {} });
+        expr.left->Visit(*this);
+        state.pop();
+        // no need to check for conditional branch
+        return;
+      }
+      else {
+        state.push({ State::Read, {} });
+        expr.left->Visit(*this);
+        state.pop();
+
+        auto visitor = detail::EmitterTypeVisitor<detail::LoadFromPointerEmitter>(*this, { current });
+        expr.left->GetType()->Deref()->Visit(visitor);
+
+        // could be a conditional branch
+      }
+      break;
+    }
     default: {
-      throw std::runtime_error("Unimplemented unop");
+      throw std::runtime_error("Bad unop");
     }
   }
 

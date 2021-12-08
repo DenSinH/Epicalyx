@@ -70,7 +70,7 @@ void Interpreter::Emit(DeallocateLocal& op) {
 }
 
 void Interpreter::Emit(LoadLocalAddr& op) {
-  throw std::runtime_error("Unimplemented interpreter: load cvar");
+  vars[op.idx] = Pointer{c_vars[op.c_idx]};
 }
 
 template<typename To, typename From>
@@ -116,7 +116,7 @@ void Interpreter::EmitCast(Cast<To, From>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitLoadCVar(LoadLocal<T>& op) {
+void Interpreter::EmitLoadLocal(LoadLocal<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<T, Struct>) {
     throw std::runtime_error("Unimplemented: load struct cvar");
@@ -130,16 +130,41 @@ void Interpreter::EmitLoadCVar(LoadLocal<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitStoreCVar(StoreLocal<T>& op) {
+void Interpreter::EmitStoreLocal(StoreLocal<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<T, Struct>) {
-    throw std::runtime_error("Unimplemented: store struct cvar");
+    throw std::runtime_error("Unimplemented: store struct local");
   }
   else {
     // works the same for pointers
     T value = (T)std::get<calyx_upcast_t<T>>(vars[op.src]);
     memcpy(&stack[c_vars[op.c_idx]], &value, sizeof(T));
     vars[op.idx] = (calyx_upcast_t<T>)value;
+  }
+}
+
+template<typename T>
+void Interpreter::EmitLoadFromPointer(LoadFromPointer<T>& op) {
+  auto pointer = std::get<Pointer>(vars[op.ptr_idx]);
+  if constexpr(std::is_same_v<T, Struct>) {
+    throw std::runtime_error("Unimplemented: load struct from pointer");
+  }
+  else {
+    T value;
+    memcpy(&value, &stack[pointer.value + op.offset], sizeof(T));
+    vars[op.idx] = (calyx_upcast_t<T>)value;
+  }
+}
+
+template<typename T>
+void Interpreter::EmitStoreToPointer(StoreToPointer<T>& op) {
+  auto pointer = std::get<Pointer>(vars[op.ptr_idx]);
+  if constexpr(std::is_same_v<T, Struct>) {
+    throw std::runtime_error("Unimplemented: store struct to pointer");
+  }
+  else {
+    T value = std::get<calyx_upcast_t<T>>(vars[op.idx]);
+    memcpy(&stack[pointer.value + op.offset], &value, sizeof(T));
   }
 }
 
@@ -537,30 +562,54 @@ void Interpreter::Emit(Imm<i64>& op) { EmitImm(op); }
 void Interpreter::Emit(Imm<u64>& op) { EmitImm(op); }
 void Interpreter::Emit(Imm<float>& op) { EmitImm(op); }
 void Interpreter::Emit(Imm<double>& op) { EmitImm(op); }
-void Interpreter::Emit(LoadLocal<i8>& op) { EmitLoadCVar(op); }
-void Interpreter::Emit(LoadLocal<u8>& op) { EmitLoadCVar(op); }
-void Interpreter::Emit(LoadLocal<i16>& op) { EmitLoadCVar(op); }
-void Interpreter::Emit(LoadLocal<u16>& op) { EmitLoadCVar(op); }
-void Interpreter::Emit(LoadLocal<i32>& op) { EmitLoadCVar(op); }
-void Interpreter::Emit(LoadLocal<u32>& op) { EmitLoadCVar(op); }
-void Interpreter::Emit(LoadLocal<i64>& op) { EmitLoadCVar(op); }
-void Interpreter::Emit(LoadLocal<u64>& op) { EmitLoadCVar(op); }
-void Interpreter::Emit(LoadLocal<float>& op) { EmitLoadCVar(op); }
-void Interpreter::Emit(LoadLocal<double>& op) { EmitLoadCVar(op); }
-void Interpreter::Emit(LoadLocal<Struct>& op) { EmitLoadCVar(op); }
-void Interpreter::Emit(LoadLocal<Pointer>& op) { EmitLoadCVar(op); }
-void Interpreter::Emit(StoreLocal<i8>& op) { EmitStoreCVar(op); }
-void Interpreter::Emit(StoreLocal<u8>& op) { EmitStoreCVar(op); }
-void Interpreter::Emit(StoreLocal<i16>& op) { EmitStoreCVar(op); }
-void Interpreter::Emit(StoreLocal<u16>& op) { EmitStoreCVar(op); }
-void Interpreter::Emit(StoreLocal<i32>& op) { EmitStoreCVar(op); }
-void Interpreter::Emit(StoreLocal<u32>& op) { EmitStoreCVar(op); }
-void Interpreter::Emit(StoreLocal<i64>& op) { EmitStoreCVar(op); }
-void Interpreter::Emit(StoreLocal<u64>& op) { EmitStoreCVar(op); }
-void Interpreter::Emit(StoreLocal<float>& op) { EmitStoreCVar(op); }
-void Interpreter::Emit(StoreLocal<double>& op) { EmitStoreCVar(op); }
-void Interpreter::Emit(StoreLocal<Struct>& op) { EmitStoreCVar(op); }
-void Interpreter::Emit(StoreLocal<Pointer>& op) { EmitStoreCVar(op); }
+void Interpreter::Emit(LoadLocal<i8>& op) { EmitLoadLocal(op); }
+void Interpreter::Emit(LoadLocal<u8>& op) { EmitLoadLocal(op); }
+void Interpreter::Emit(LoadLocal<i16>& op) { EmitLoadLocal(op); }
+void Interpreter::Emit(LoadLocal<u16>& op) { EmitLoadLocal(op); }
+void Interpreter::Emit(LoadLocal<i32>& op) { EmitLoadLocal(op); }
+void Interpreter::Emit(LoadLocal<u32>& op) { EmitLoadLocal(op); }
+void Interpreter::Emit(LoadLocal<i64>& op) { EmitLoadLocal(op); }
+void Interpreter::Emit(LoadLocal<u64>& op) { EmitLoadLocal(op); }
+void Interpreter::Emit(LoadLocal<float>& op) { EmitLoadLocal(op); }
+void Interpreter::Emit(LoadLocal<double>& op) { EmitLoadLocal(op); }
+void Interpreter::Emit(LoadLocal<Struct>& op) { EmitLoadLocal(op); }
+void Interpreter::Emit(LoadLocal<Pointer>& op) { EmitLoadLocal(op); }
+void Interpreter::Emit(StoreLocal<i8>& op) { EmitStoreLocal(op); }
+void Interpreter::Emit(StoreLocal<u8>& op) { EmitStoreLocal(op); }
+void Interpreter::Emit(StoreLocal<i16>& op) { EmitStoreLocal(op); }
+void Interpreter::Emit(StoreLocal<u16>& op) { EmitStoreLocal(op); }
+void Interpreter::Emit(StoreLocal<i32>& op) { EmitStoreLocal(op); }
+void Interpreter::Emit(StoreLocal<u32>& op) { EmitStoreLocal(op); }
+void Interpreter::Emit(StoreLocal<i64>& op) { EmitStoreLocal(op); }
+void Interpreter::Emit(StoreLocal<u64>& op) { EmitStoreLocal(op); }
+void Interpreter::Emit(StoreLocal<float>& op) { EmitStoreLocal(op); }
+void Interpreter::Emit(StoreLocal<double>& op) { EmitStoreLocal(op); }
+void Interpreter::Emit(StoreLocal<Struct>& op) { EmitStoreLocal(op); }
+void Interpreter::Emit(StoreLocal<Pointer>& op) { EmitStoreLocal(op); }
+void Interpreter::Emit(LoadFromPointer<i8>& op) { EmitLoadFromPointer(op); }
+void Interpreter::Emit(LoadFromPointer<u8>& op) { EmitLoadFromPointer(op); }
+void Interpreter::Emit(LoadFromPointer<i16>& op) { EmitLoadFromPointer(op); }
+void Interpreter::Emit(LoadFromPointer<u16>& op) { EmitLoadFromPointer(op); }
+void Interpreter::Emit(LoadFromPointer<i32>& op) { EmitLoadFromPointer(op); }
+void Interpreter::Emit(LoadFromPointer<u32>& op) { EmitLoadFromPointer(op); }
+void Interpreter::Emit(LoadFromPointer<i64>& op) { EmitLoadFromPointer(op); }
+void Interpreter::Emit(LoadFromPointer<u64>& op) { EmitLoadFromPointer(op); }
+void Interpreter::Emit(LoadFromPointer<float>& op) { EmitLoadFromPointer(op); }
+void Interpreter::Emit(LoadFromPointer<double>& op) { EmitLoadFromPointer(op); }
+void Interpreter::Emit(LoadFromPointer<Struct>& op) { EmitLoadFromPointer(op); }
+void Interpreter::Emit(LoadFromPointer<Pointer>& op) { EmitLoadFromPointer(op); }
+void Interpreter::Emit(StoreToPointer<i8>& op) { EmitStoreToPointer(op); }
+void Interpreter::Emit(StoreToPointer<u8>& op) { EmitStoreToPointer(op); }
+void Interpreter::Emit(StoreToPointer<i16>& op) { EmitStoreToPointer(op); }
+void Interpreter::Emit(StoreToPointer<u16>& op) { EmitStoreToPointer(op); }
+void Interpreter::Emit(StoreToPointer<i32>& op) { EmitStoreToPointer(op); }
+void Interpreter::Emit(StoreToPointer<u32>& op) { EmitStoreToPointer(op); }
+void Interpreter::Emit(StoreToPointer<i64>& op) { EmitStoreToPointer(op); }
+void Interpreter::Emit(StoreToPointer<u64>& op) { EmitStoreToPointer(op); }
+void Interpreter::Emit(StoreToPointer<float>& op) { EmitStoreToPointer(op); }
+void Interpreter::Emit(StoreToPointer<double>& op) { EmitStoreToPointer(op); }
+void Interpreter::Emit(StoreToPointer<Struct>& op) { EmitStoreToPointer(op); }
+void Interpreter::Emit(StoreToPointer<Pointer>& op) { EmitStoreToPointer(op); }
 void Interpreter::Emit(Return<i32>& op) { EmitReturn(op); }
 void Interpreter::Emit(Return<u32>& op) { EmitReturn(op); }
 void Interpreter::Emit(Return<i64>& op) { EmitReturn(op); }
