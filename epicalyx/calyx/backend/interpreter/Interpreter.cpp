@@ -44,6 +44,10 @@ void Interpreter::VisualizeProgram(const Program& program) {
     }
   }
 
+  for (const auto& [symbol, block] : program.functions) {
+    graph->n(block).title(symbol);
+  }
+
   graph->Visualize();
   graph->Join();
 }

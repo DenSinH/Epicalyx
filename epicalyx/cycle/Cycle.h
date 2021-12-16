@@ -46,6 +46,10 @@ private:
       graph.nodes.at(from).outputs.emplace(output);
       return NodeRef(graph, to);
     }
+
+    void title(const std::string& title) {
+      graph.nodes.at(from).title = title;
+    }
   };
 
   struct Node {
@@ -53,6 +57,7 @@ private:
 
     u64 id;
     bool selected = false;
+    std::string title;
     std::vector<std::string> body{};
     std::set<std::string> outputs{};
   };

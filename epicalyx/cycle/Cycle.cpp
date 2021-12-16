@@ -226,7 +226,11 @@ void Graph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, std::ma
     for (const auto& layer : sort) {
       for (const auto& id : layer) {
         auto& node = nodes.at(id);
-        if (ImNodes::Ez::BeginNode(&node.id, std::to_string(id).c_str(), &positions.at(id), &node.selected))
+        std::string title = std::to_string(node.id);
+        if (!node.title.empty()) {
+          title += " : " + node.title;
+        }
+        if (ImNodes::Ez::BeginNode(&node.id, title.c_str(), &positions.at(id), &node.selected))
         {
           if (edges.contains(id)) [[likely]] {
             // blocks only contain one input
