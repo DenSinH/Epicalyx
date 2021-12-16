@@ -199,9 +199,27 @@ std::string LoadLocal<T>::ToString() const {
   return cotyl::FormatStr("load  v%s <-<%s> c%s", this->idx, detail::type_string<T>::value, c_idx);
 }
 
+std::string LoadLocalAddr::ToString() const {
+  return cotyl::FormatStr("addrs v%s <- c%s", idx, c_idx);
+}
+
 template<typename T>
 std::string StoreLocal<T>::ToString() const {
   return cotyl::FormatStr("store c%s = v%s <-<%s> v%s", c_idx, this->idx, detail::type_string<T>::value, src);
+}
+
+template<typename T>
+std::string LoadGlobal<T>::ToString() const {
+  return cotyl::FormatStr("lglob v%s <-<%s> [%s]", this->idx, detail::type_string<T>::value, symbol);
+}
+
+std::string LoadGlobalAddr::ToString() const {
+  return cotyl::FormatStr("adglb v%s <- &[%s]", idx, symbol);
+}
+
+template<typename T>
+std::string StoreGlobal<T>::ToString() const {
+  return cotyl::FormatStr("sglob [%s] = v%s <-<%s> v%s", symbol, this->idx, detail::type_string<T>::value, src);
 }
 
 template<typename T>
@@ -212,10 +230,6 @@ std::string LoadFromPointer<T>::ToString() const {
 template<typename T>
 std::string StoreToPointer<T>::ToString() const {
   return cotyl::FormatStr("store *v%s <-<%s> v%s", ptr_idx, detail::type_string<T>::value, idx);
-}
-
-std::string LoadLocalAddr::ToString() const {
-  return cotyl::FormatStr("addrs v%s <- c%s", idx, c_idx);
 }
 
 template<typename T>
@@ -318,6 +332,20 @@ void LoadLocalAddr::Emit(Backend& backend) {
 
 template<typename T>
 void StoreLocal<T>::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+template<typename T>
+void LoadGlobal<T>::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+void LoadGlobalAddr::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+template<typename T>
+void StoreGlobal<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
@@ -457,6 +485,32 @@ template struct StoreLocal<float>;
 template struct StoreLocal<double>;
 template struct StoreLocal<Struct>;
 template struct StoreLocal<Pointer>;
+
+template struct LoadGlobal<i8>;
+template struct LoadGlobal<u8>;
+template struct LoadGlobal<i16>;
+template struct LoadGlobal<u16>;
+template struct LoadGlobal<i32>;
+template struct LoadGlobal<u32>;
+template struct LoadGlobal<i64>;
+template struct LoadGlobal<u64>;
+template struct LoadGlobal<float>;
+template struct LoadGlobal<double>;
+template struct LoadGlobal<Struct>;
+template struct LoadGlobal<Pointer>;
+
+template struct StoreGlobal<i8>;
+template struct StoreGlobal<u8>;
+template struct StoreGlobal<i16>;
+template struct StoreGlobal<u16>;
+template struct StoreGlobal<i32>;
+template struct StoreGlobal<u32>;
+template struct StoreGlobal<i64>;
+template struct StoreGlobal<u64>;
+template struct StoreGlobal<float>;
+template struct StoreGlobal<double>;
+template struct StoreGlobal<Struct>;
+template struct StoreGlobal<Pointer>;
 
 template struct LoadFromPointer<i8>;
 template struct LoadFromPointer<u8>;

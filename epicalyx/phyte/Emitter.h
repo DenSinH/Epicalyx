@@ -40,13 +40,13 @@ struct Emitter {
       default:
         break;
     }
-    program[current_block].push_back(std::move(directive));
+    program.blocks[current_block].push_back(std::move(directive));
     return ref;
   }
 
   calyx::block_label_t MakeBlock() {
-    calyx::block_label_t id = program.size();
-    program.emplace_back();
+    calyx::block_label_t id = program.blocks.size();
+    program.blocks.emplace_back();
     return id;
   }
 
@@ -65,7 +65,6 @@ struct Emitter {
 
   // first var is special
   std::vector<calyx::Var> vars{{calyx::Var::Type::I32}};
-  std::unordered_map<std::string, calyx::block_label_t> labels{};
   calyx::Program program{};
 
 private:

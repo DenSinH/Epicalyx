@@ -17,6 +17,21 @@ namespace epi::phyte {
 void ASTWalker::Visit(epi::taxy::Declaration& decl) {
   if (variables.Depth() == 1) {
     // global symbols
+    u64 size = decl.type->Sizeof();
+    emitter.program.globals[decl.name] = size;
+    c_types.Set(decl.name, decl.type);
+    if (decl.value.has_value()) {
+      if (std::holds_alternative<pExpr>(decl.value.value())) {
+        auto& expr = std::get<pExpr>(decl.value.value());
+        // distinguish string literal / constexpr values
+        // otherwise add a block and run that
+        throw std::runtime_error("Unimplemented: global initializer");
+      }
+      else {
+        // todo: handle initializer list
+        throw std::runtime_error("Unimplemented: global initializer list declaration");
+      }
+    }
   }
   else {
     auto c_idx = emitter.c_counter++;
@@ -48,8 +63,14 @@ void ASTWalker::Visit(epi::taxy::Declaration& decl) {
 void ASTWalker::Visit(epi::taxy::FunctionDefinition& decl) {
   // same as normal compound statement besides arguments
   variables.NewLayer();
+  c_types.NewLayer();
+
   // todo: arguments etc
+  // after arguments add another scope
   function = &decl;
+  auto block = emitter.MakeBlock();
+  emitter.SelectBlock(block);
+  emitter.program.functions.emplace(decl.symbol, block);
   for (const auto& node : decl.body->stats) {
     node->Visit(*this);
   }
@@ -57,6 +78,7 @@ void ASTWalker::Visit(epi::taxy::FunctionDefinition& decl) {
     emitter.Emit<calyx::DeallocateLocal>(var->second.idx, var->second.size);
   }
   variables.PopLayer();
+  c_types.NewLayer();
 }
 
 void ASTWalker::Visit(Identifier& decl) {
@@ -65,49 +87,87 @@ void ASTWalker::Visit(Identifier& decl) {
     // statement has no effect
     return;
   }
+
+  if (state.top().first == State::ConditionalBranch) {
+    // this makes no difference for local / global symbols
+
+    // first part is same as read
+    state.push({State::Read, {}});
+    Visit(decl);
+    state.pop();
+
+    // emit branch
+    // branch to false block if 0, otherwise go to true block
+    auto block = state.top().second.false_block;
+    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, block, current, calyx::CmpType::Eq, 0);
+    emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
+    return;
+  }
   
   auto type = c_types.Get(decl.name);
-  auto cvar = variables.Get(decl.name);
-  switch (state.top().first) {
-    case State::Read: {
-      if (type->IsArray()) {
-        current = emitter.EmitExpr<calyx::LoadLocalAddr>({calyx::Var::Type::Pointer, type->Deref()->Sizeof() }, cvar.idx);
+  if (variables.Has(decl.name)) {
+    // local variable
+    auto cvar = variables.Get(decl.name);
+    switch (state.top().first) {
+      case State::Read: {
+        if (type->IsArray()) {
+          current = emitter.EmitExpr<calyx::LoadLocalAddr>({calyx::Var::Type::Pointer, type->Deref()->Sizeof() }, cvar.idx);
+        }
+        else {
+          auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalEmitter>(*this, {cvar.idx});
+          type->Visit(visitor);
+        }
+        break;
       }
-      else {
-        auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalEmitter>(*this, {cvar.idx});
+      case State::Assign: {
+        auto visitor = detail::EmitterTypeVisitor<detail::StoreLocalEmitter>(
+                *this, { cvar.idx, state.top().second.var }
+        );
         type->Visit(visitor);
+        break;
       }
-      break;
+      case State::Address: {
+        // we can't get the address of a variable that is not on the stack
+        variables.Get(decl.name).loc = calyx::CVar::Location::Stack;
+        auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalAddrEmitter>(*this, {cvar.idx});
+        type->Visit(visitor);
+        break;
+      }
+      default: {
+        throw std::runtime_error("Bad declaration state");
+      }
     }
-    case State::Assign: {
-      auto visitor = detail::EmitterTypeVisitor<detail::StoreLocalEmitter>(
-              *this, { cvar.idx, state.top().second.var }
-      );
-      type->Visit(visitor);
-      break;
-    }
-    case State::Address: {
-      // we can't get the address of a variable that is not on the stack
-      variables.Get(decl.name).loc = calyx::CVar::Location::Stack;
-      auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalAddrEmitter>(*this, {cvar.idx});
-      type->Visit(visitor);
-      break;
-    }
-    case State::ConditionalBranch: {
-      // first part is same as read
-      state.push({State::Read, {}});
-      Visit(decl);
-      state.pop();
-
-      // emit branch
-      // branch to false block if 0, otherwise go to true block
-      auto block = state.top().second.false_block;
-      EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, block, current, calyx::CmpType::Eq, 0);
-      emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
-      break;
-    }
-    default: {
-      throw std::runtime_error("Bad declaration state");
+  }
+  else {
+    // global symbol
+    switch (state.top().first) {
+      case State::Read: {
+        if (type->IsArray()) {
+          current = emitter.EmitExpr<calyx::LoadGlobalAddr>({calyx::Var::Type::Pointer, type->Deref()->Sizeof() }, decl.name);
+        }
+        else {
+          auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalEmitter>(*this, {decl.name});
+          type->Visit(visitor);
+        }
+        break;
+      }
+      case State::Assign: {
+        auto visitor = detail::EmitterTypeVisitor<detail::StoreGlobalEmitter>(
+                *this, { decl.name, state.top().second.var }
+        );
+        type->Visit(visitor);
+        break;
+      }
+      case State::Address: {
+        // we can't get the address of a variable that is not on the stack
+        variables.Get(decl.name).loc = calyx::CVar::Location::Stack;
+        auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {decl.name});
+        type->Visit(visitor);
+        break;
+      }
+      default: {
+        throw std::runtime_error("Bad declaration state");
+      }
     }
   }
 }
@@ -662,7 +722,7 @@ void ASTWalker::Visit(Binop& expr) {
 
         {
           emitter.SelectBlock(post_block);
-          cotyl::Assert(emitter.program[post_block].empty());
+          cotyl::Assert(emitter.program.blocks[post_block].empty());
           // load result from temp cvar
           current = emitter.EmitExpr<calyx::LoadLocal<i32>>({ calyx::Var::Type::I32 }, c_idx);
         }
@@ -755,7 +815,7 @@ void ASTWalker::Visit(Ternary& expr) {
 
     {
       emitter.SelectBlock(post_block);
-      cotyl::Assert(emitter.program[post_block].empty());
+      cotyl::Assert(emitter.program.blocks[post_block].empty());
       // load result from temp cvar
       auto load_visitor = detail::EmitterTypeVisitor<detail::LoadLocalEmitter>(
               *this, { c_idx }
@@ -930,7 +990,7 @@ void ASTWalker::Visit(If& stat) {
   }
 
   emitter.SelectBlock(post_block);
-  cotyl::Assert(emitter.program[post_block].empty());
+  cotyl::Assert(emitter.program.blocks[post_block].empty());
 }
 
 void ASTWalker::Visit(While& stat) {
@@ -1057,14 +1117,14 @@ void ASTWalker::Visit(For& stat) {
 }
 
 void ASTWalker::Visit(Label& stat) {
-  if (!emitter.labels.contains(stat.name)) {
+  if (!emitter.program.local_labels.contains(stat.name)) {
     auto block = emitter.MakeBlock();
-    emitter.labels.emplace(stat.name, block);
+    emitter.program.local_labels.emplace(stat.name, block);
     emitter.Emit<calyx::UnconditionalBranch>(block);
     emitter.SelectBlock(block);
   }
   else {
-    auto block = emitter.labels.at(stat.name);
+    auto block = emitter.program.local_labels.at(stat.name);
     emitter.Emit<calyx::UnconditionalBranch>(block);
     emitter.SelectBlock(block);
   }
@@ -1143,13 +1203,13 @@ void ASTWalker::Visit(Default& stat) {
 }
 
 void ASTWalker::Visit(Goto& stat) {
-  if (!emitter.labels.contains(stat.label)) {
+  if (!emitter.program.local_labels.contains(stat.label)) {
     auto block = emitter.MakeBlock();
-    emitter.labels.emplace(stat.label, block);
+    emitter.program.local_labels.emplace(stat.label, block);
     emitter.Emit<calyx::UnconditionalBranch>(block);
   }
   else {
-    emitter.Emit<calyx::UnconditionalBranch>(emitter.labels.at(stat.label));
+    emitter.Emit<calyx::UnconditionalBranch>(emitter.program.local_labels.at(stat.label));
   }
 }
 

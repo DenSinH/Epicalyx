@@ -15,10 +15,6 @@ void Example::Emit(DeallocateLocal& op) {
 
 }
 
-void Example::Emit(LoadLocalAddr& op) {
-
-}
-
 template<typename To, typename From>
 void Example::EmitCast(Cast<To, From>& op) {
 
@@ -29,8 +25,26 @@ void Example::EmitLoadLocal(LoadLocal<T>& op) {
 
 }
 
+void Example::Emit(LoadLocalAddr& op) {
+
+}
+
 template<typename T>
 void Example::EmitStoreLocal(StoreLocal<T>& op) {
+
+}
+
+template<typename T>
+void Example::EmitLoadGlobal(LoadGlobal<T>& op) {
+
+}
+
+void Example::Emit(LoadGlobalAddr& op) {
+
+}
+
+template<typename T>
+void Example::EmitStoreGlobal(StoreGlobal<T>& op) {
 
 }
 

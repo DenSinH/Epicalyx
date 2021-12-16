@@ -16,8 +16,8 @@ namespace epi::calyx {
 void Interpreter::VisualizeProgram(const Program& program) {
   auto graph = std::make_unique<epi::cycle::Graph>();
 
-  for (int i = 0; i < program.size(); i++) {
-    for (const auto& directive : program[i]) {
+  for (int i = 0; i < program.blocks.size(); i++) {
+    for (const auto& directive : program.blocks[i]) {
       switch (directive->cls) {
         case Directive::Class::Expression:
         case Directive::Class::Stack:
@@ -49,8 +49,29 @@ void Interpreter::VisualizeProgram(const Program& program) {
 }
 
 void Interpreter::EmitProgram(Program& program) {
+  for (const auto& [global, size] : program.globals) {
+    globals.emplace(global, std::vector<u8>(size));
+  }
+
+  for (const auto& [global, global_init] : program.global_init) {
+    if (std::holds_alternative<std::vector<u8>>(global_init)) {
+      const auto& data = std::get<std::vector<u8>>(global_init);
+      std::memcpy(globals.at(global).data(), data.data(), globals.at(global).size());
+    }
+    else if (std::holds_alternative<calyx::Program::label_offset_t>(global_init)) {
+      throw std::runtime_error("Unimplemented: global label offset init");
+    }
+    else if (std::holds_alternative<calyx::Program::blocks_t>(global_init)) {
+      throw std::runtime_error("Unimplemented: global label block init");
+    }
+    else {
+      throw std::runtime_error("Bad global initializer");
+    }
+  }
+
+  pos.first = program.functions.at("main");
   while (!returned) {
-    auto& directive = program[pos.first][pos.second];
+    auto& directive = program.blocks[pos.first][pos.second];
     pos.second++;
     directive->Emit(*this);
   }
@@ -58,19 +79,15 @@ void Interpreter::EmitProgram(Program& program) {
 
 void Interpreter::Emit(AllocateLocal& op) {
 //  cotyl::Assert(!c_vars.contains(op.c_idx), op.ToString());
-  c_vars[op.c_idx] = stack.size();
+  locals[op.c_idx] = stack.size();
   stack.resize(stack.size() + op.size);
 }
 
 void Interpreter::Emit(DeallocateLocal& op) {
   u64 value = 0;
-  memcpy(&value, &stack[c_vars[op.c_idx]], op.size);
+  memcpy(&value, &stack[locals[op.c_idx]], op.size);
 //  std::cout << 'c' << op.c_idx << " = " << std::hex << value << " on dealloc" << std::endl;
 //  stack.resize(stack.size() - op.size);
-}
-
-void Interpreter::Emit(LoadLocalAddr& op) {
-  vars[op.idx] = Pointer{c_vars[op.c_idx]};
 }
 
 template<typename To, typename From>
@@ -124,9 +141,13 @@ void Interpreter::EmitLoadLocal(LoadLocal<T>& op) {
   else {
     // works the same for pointers
     T value;
-    memcpy(&value, &stack[c_vars[op.c_idx]], sizeof(T));
+    memcpy(&value, &stack[locals[op.c_idx]], sizeof(T));
     vars[op.idx] = (calyx_upcast_t<T>)value;
   }
+}
+
+void Interpreter::Emit(LoadLocalAddr& op) {
+  vars[op.idx] = Pointer{locals[op.c_idx]};
 }
 
 template<typename T>
@@ -138,9 +159,39 @@ void Interpreter::EmitStoreLocal(StoreLocal<T>& op) {
   else {
     // works the same for pointers
     T value = (T)std::get<calyx_upcast_t<T>>(vars[op.src]);
-    memcpy(&stack[c_vars[op.c_idx]], &value, sizeof(T));
+    memcpy(&stack[locals[op.c_idx]], &value, sizeof(T));
     vars[op.idx] = (calyx_upcast_t<T>)value;
   }
+}
+
+template<typename T>
+void Interpreter::EmitLoadGlobal(LoadGlobal<T>& op) {
+  if constexpr(std::is_same_v<T, Struct>) {
+    throw std::runtime_error("Unimplemented: load struct global");
+  }
+  else {
+    cotyl::Assert(globals.at(op.symbol).size() == sizeof(T));
+    T value;
+    std::memcpy(&value, globals.at(op.symbol).data(), sizeof(T));
+    vars[op.idx] = (calyx_upcast_t<T>)value;
+  };
+}
+
+void Interpreter::Emit(LoadGlobalAddr& op) {
+  throw std::runtime_error("Unimplemented: load global addr");
+}
+
+template<typename T>
+void Interpreter::EmitStoreGlobal(StoreGlobal<T>& op) {
+  if constexpr(std::is_same_v<T, Struct>) {
+    throw std::runtime_error("Unimplemented: load struct global");
+  }
+  else {
+    cotyl::Assert(globals.at(op.symbol).size() == sizeof(T));
+    T value = (T)std::get<calyx_upcast_t<T>>(vars[op.src]);
+    std::memcpy(globals.at(op.symbol).data(), &value, sizeof(T));
+    vars[op.idx] = (calyx_upcast_t<T>)value;
+  };
 }
 
 template<typename T>

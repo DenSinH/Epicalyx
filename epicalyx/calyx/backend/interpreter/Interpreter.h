@@ -3,7 +3,7 @@
 #include "calyx/backend/Backend.h"
 
 #include <variant>
-#include <map>
+#include <unordered_map>
 
 
 namespace epi::calyx {
@@ -12,9 +12,14 @@ struct Interpreter : Backend {
 
   std::vector<u8> stack{};
 
-  // id 0 is special
-  std::map<calyx::var_index_t, u64> c_vars{};
-  std::map<calyx::var_index_t, std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> vars{};
+  // globals as raw data
+  std::unordered_map<std::string, std::vector<u8>> globals{};
+
+  // points to stack location of locals
+  std::unordered_map<calyx::var_index_t, u64> locals{};
+
+  // IR variables
+  std::unordered_map<calyx::var_index_t, std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> vars{};
 
   std::pair<calyx::var_index_t, calyx::var_index_t> pos{0, 0};
   bool returned = false;
@@ -25,6 +30,7 @@ struct Interpreter : Backend {
   void Emit(AllocateLocal& op) final;
   void Emit(DeallocateLocal& op) final;
   void Emit(LoadLocalAddr& op) final;
+  void Emit(LoadGlobalAddr& op) final;
 
   template<typename To, typename From>
   void EmitCast(Cast<To, From>& op);
@@ -32,6 +38,10 @@ struct Interpreter : Backend {
   void EmitLoadLocal(LoadLocal<T>& op);
   template<typename T>
   void EmitStoreLocal(StoreLocal<T>& op);
+  template<typename T>
+  void EmitLoadGlobal(LoadGlobal<T>& op);
+  template<typename T>
+  void EmitStoreGlobal(StoreGlobal<T>& op);
   template<typename T>
   void EmitLoadFromPointer(LoadFromPointer<T>& op);
   template<typename T>

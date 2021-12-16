@@ -33,7 +33,7 @@ struct MapScope : public Scope<std::map<K, V>> {
   using base = Scope<std::map<K, V>>;
 
   void Set(const K& key, const V& value) {
-    if (base::scope.back().contains(key)) {
+    if (HasTop(key)) {
       throw cotyl::FormatExceptStr("Redefinition of %s", key);
     }
     base::scope.back()[key] = value;

@@ -17,7 +17,7 @@
 
 int main() {
   // auto file = epi::File("tests/test.c");
-  auto file = epi::File("examples/emitting/arrays.c");
+  auto file = epi::File("examples/emitting/globals.c");
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
@@ -44,9 +44,9 @@ int main() {
     emitter.MakeProgram(parser.declarations);
     std::cout << std::endl << std::endl;
     std::cout << "-- program" << std::endl;
-    for (int i = 0; i < emitter.program.size(); i++) {
+    for (int i = 0; i < emitter.program.blocks.size(); i++) {
       std::cout << 'L' << i << std::endl;
-      for (const auto& op : emitter.program[i]) {
+      for (const auto& op : emitter.program.blocks[i]) {
         std::cout << "    " << op->ToString() << std::endl;
       }
     }

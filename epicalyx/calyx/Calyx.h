@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <variant>
 
 
 namespace epi::calyx {
@@ -22,6 +23,7 @@ struct Pointer {
 
   u64 value;
 };
+
 struct Struct;
 
 template<typename T>
@@ -102,7 +104,32 @@ struct Directive {
 };
 
 using pDirective = std::unique_ptr<Directive>;
-using Program = std::vector<std::vector<calyx::pDirective>>;
+struct Program {
+  using blocks_t = std::vector<std::vector<calyx::pDirective>>;
+  struct label_offset_t { std::string label; i64 offset; };
+
+  // program code
+  blocks_t blocks{};
+
+  // function symbols -> block ID
+  std::unordered_map<std::string, calyx::block_label_t> functions{};
+
+  // local label -> block ID
+  std::unordered_map<std::string, calyx::block_label_t> local_labels{};
+
+  // string constants
+  std::vector<std::string> strings{};
+
+  // global variable sizes
+  std::unordered_map<std::string, size_t> globals{};
+
+  // global variable initializer
+  // possible constant, possibly a label with some offset, possibly requires some code
+  // for example, weird expressions like "long long k = 2 * (long long)test" are too hard to parse
+  // (try this on godbolt for example)
+  // these require a block to run
+  std::unordered_map<std::string, std::variant<std::vector<u8>, label_offset_t, blocks_t>> global_init{};
+};
 
 template<typename T>
 requires (is_calyx_type_v<T>)
@@ -419,6 +446,50 @@ struct StoreLocal : Expr<calyx_upcast_t<T>> {
   }
 
   var_index_t c_idx;
+  var_index_t src;
+  i32 offset;  // struct fields
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+template<typename T>
+struct LoadGlobal : Expr<calyx_upcast_t<T>> {
+
+  LoadGlobal(var_index_t idx, std::string symbol, i32 offset = 0) :
+      Expr<calyx_upcast_t<T>>(idx), symbol(std::move(symbol)), offset(offset) {
+
+  }
+
+  std::string symbol;
+  i32 offset;  // struct fields
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+struct LoadGlobalAddr : Expr<Pointer> {
+
+  LoadGlobalAddr(var_index_t idx, std::string symbol) :
+          Expr<Pointer>(idx), symbol(std::move(symbol)){
+
+  }
+
+  std::string symbol;
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+template<typename T>
+struct StoreGlobal : Expr<calyx_upcast_t<T>> {
+
+  StoreGlobal(var_index_t idx, std::string symbol, var_index_t src, i32 offset = 0) :
+      Expr<calyx_upcast_t<T>>(idx), symbol(std::move(symbol)), src(src), offset(offset) {
+
+  }
+
+  std::string symbol;
   var_index_t src;
   i32 offset;  // struct fields
 
