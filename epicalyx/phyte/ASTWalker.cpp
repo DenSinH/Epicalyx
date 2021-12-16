@@ -23,9 +23,17 @@ void ASTWalker::Visit(epi::taxy::Declaration& decl) {
     if (decl.value.has_value()) {
       if (std::holds_alternative<pExpr>(decl.value.value())) {
         auto& expr = std::get<pExpr>(decl.value.value());
-        // distinguish string literal / constexpr values
-        // otherwise add a block and run that
-        throw std::runtime_error("Unimplemented: global initializer");
+
+        auto block = emitter.MakeBlock();
+        emitter.SelectBlock(block);
+
+        state.push({State::Read, {}});
+        expr->Visit(*this);
+        auto visitor = detail::EmitterTypeVisitor<detail::ReturnEmitter>(*this, { current });
+        decl.type->Visit(visitor);
+        state.pop();
+
+        emitter.program.global_init[decl.name] = block;
       }
       else {
         // todo: handle initializer list
@@ -159,8 +167,6 @@ void ASTWalker::Visit(Identifier& decl) {
         break;
       }
       case State::Address: {
-        // we can't get the address of a variable that is not on the stack
-        variables.Get(decl.name).loc = calyx::CVar::Location::Stack;
         auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {decl.name});
         type->Visit(visitor);
         break;

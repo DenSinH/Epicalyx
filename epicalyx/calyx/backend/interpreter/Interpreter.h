@@ -13,16 +13,17 @@ struct Interpreter : Backend {
   std::vector<u8> stack{};
 
   // globals as raw data
-  std::unordered_map<std::string, std::vector<u8>> globals{};
+  std::unordered_map<std::string, i64> globals{};
+  std::vector<std::vector<u8>> global_data{{}};
 
   // points to stack location of locals
-  std::unordered_map<calyx::var_index_t, u64> locals{};
+  std::unordered_map<calyx::var_index_t, i64> locals{};
 
   // IR variables
   std::unordered_map<calyx::var_index_t, std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> vars{};
 
   std::pair<calyx::var_index_t, calyx::var_index_t> pos{0, 0};
-  bool returned = false;
+  calyx::var_index_t returned = 0;
 
   void EmitProgram(Program& program) final;
   void VisualizeProgram(const Program& program);

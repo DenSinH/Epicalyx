@@ -45,7 +45,14 @@ void Interpreter::VisualizeProgram(const Program& program) {
   }
 
   for (const auto& [symbol, block] : program.functions) {
-    graph->n(block).title(symbol);
+    graph->n(block).title(symbol + "(*)");
+  }
+
+  for (const auto& [symbol, global_init] : program.global_init) {
+    if (std::holds_alternative<calyx::block_label_t>(global_init)) {
+      auto block = std::get<calyx::block_label_t>(global_init);
+      graph->n(block)->title("init " + symbol);
+    }
   }
 
   graph->Visualize();
@@ -53,20 +60,34 @@ void Interpreter::VisualizeProgram(const Program& program) {
 }
 
 void Interpreter::EmitProgram(Program& program) {
-  for (const auto& [global, size] : program.globals) {
-    globals.emplace(global, std::vector<u8>(size));
+  for (const auto& [symbol, size] : program.globals) {
+    auto index = global_data.size();
+    globals.emplace(symbol, index);
+    global_data.push_back(std::vector<u8>(size));
   }
 
-  for (const auto& [global, global_init] : program.global_init) {
+  for (const auto& [symbol, global_init] : program.global_init) {
     if (std::holds_alternative<std::vector<u8>>(global_init)) {
       const auto& data = std::get<std::vector<u8>>(global_init);
-      std::memcpy(globals.at(global).data(), data.data(), globals.at(global).size());
+      std::memcpy(global_data[globals.at(symbol)].data(), data.data(), global_data[globals.at(symbol)].size());
     }
     else if (std::holds_alternative<calyx::Program::label_offset_t>(global_init)) {
       throw std::runtime_error("Unimplemented: global label offset init");
     }
-    else if (std::holds_alternative<calyx::Program::blocks_t>(global_init)) {
-      throw std::runtime_error("Unimplemented: global label block init");
+    else if (std::holds_alternative<calyx::block_label_t>(global_init)) {
+      pos.first = std::get<calyx::block_label_t>(global_init);
+      pos.second = 0;
+      returned = 0;
+      while (!returned) {
+        auto& directive = program.blocks[pos.first][pos.second];
+        pos.second++;
+        directive->Emit(*this);
+      }
+
+      auto _symbol = symbol;
+      std::visit([&](auto& var) {
+        std::memcpy(global_data[globals.at(_symbol)].data(), &var, global_data[globals.at(_symbol)].size());
+      }, vars[returned]);
     }
     else {
       throw std::runtime_error("Bad global initializer");
@@ -74,11 +95,25 @@ void Interpreter::EmitProgram(Program& program) {
   }
 
   pos.first = program.functions.at("main");
+  pos.second = 0;
+  returned = 0;
   while (!returned) {
     auto& directive = program.blocks[pos.first][pos.second];
     pos.second++;
     directive->Emit(*this);
   }
+
+  std::visit([&](auto& var) {
+    if constexpr(std::is_same_v<decltype(var), Pointer&>) {
+      std::cout << "return pointer" << std::endl;
+    }
+    else if constexpr(std::is_same_v<decltype(var), Struct&>) {
+      std::cout << "return struct" << std::endl;
+    }
+    else {
+      std::cout << "return " << var << std::endl;
+    }
+  }, vars[returned]);
 }
 
 void Interpreter::Emit(AllocateLocal& op) {
@@ -174,15 +209,15 @@ void Interpreter::EmitLoadGlobal(LoadGlobal<T>& op) {
     throw std::runtime_error("Unimplemented: load struct global");
   }
   else {
-    cotyl::Assert(globals.at(op.symbol).size() == sizeof(T));
+    cotyl::Assert(global_data[globals.at(op.symbol)].size() == sizeof(T));
     T value;
-    std::memcpy(&value, globals.at(op.symbol).data(), sizeof(T));
+    std::memcpy(&value, global_data[globals.at(op.symbol)].data(), sizeof(T));
     vars[op.idx] = (calyx_upcast_t<T>)value;
   };
 }
 
 void Interpreter::Emit(LoadGlobalAddr& op) {
-  throw std::runtime_error("Unimplemented: load global addr");
+  vars[op.idx] = Pointer{-globals.at(op.symbol)};
 }
 
 template<typename T>
@@ -191,9 +226,9 @@ void Interpreter::EmitStoreGlobal(StoreGlobal<T>& op) {
     throw std::runtime_error("Unimplemented: load struct global");
   }
   else {
-    cotyl::Assert(globals.at(op.symbol).size() == sizeof(T));
+    cotyl::Assert(global_data[globals.at(op.symbol)].size() == sizeof(T));
     T value = (T)std::get<calyx_upcast_t<T>>(vars[op.src]);
-    std::memcpy(globals.at(op.symbol).data(), &value, sizeof(T));
+    std::memcpy(global_data[globals.at(op.symbol)].data(), &value, sizeof(T));
     vars[op.idx] = (calyx_upcast_t<T>)value;
   };
 }
@@ -206,7 +241,12 @@ void Interpreter::EmitLoadFromPointer(LoadFromPointer<T>& op) {
   }
   else {
     T value;
-    memcpy(&value, &stack[pointer.value + op.offset], sizeof(T));
+    if (pointer.value > 0) {
+      memcpy(&value, &stack[pointer.value] + op.offset, sizeof(T));
+    }
+    else {
+      memcpy(&value, global_data[-pointer.value].data() + op.offset, sizeof(T));
+    }
     vars[op.idx] = (calyx_upcast_t<T>)value;
   }
 }
@@ -225,16 +265,7 @@ void Interpreter::EmitStoreToPointer(StoreToPointer<T>& op) {
 
 template<typename T>
 void Interpreter::EmitReturn(Return<T>& op) {
-  returned = true;
-  if constexpr(std::is_same_v<T, Pointer>) {
-    throw std::runtime_error("Unimplemented: return pointer");
-  }
-  else if constexpr(std::is_same_v<T, Struct>) {
-    throw std::runtime_error("Unimplemented: return struct");
-  }
-  else {
-    std::cout << "return " << std::get<T>(vars[op.idx]) << std::endl;
-  }
+  returned = op.idx;
 }
 
 template<typename T>
@@ -541,14 +572,14 @@ template<typename T>
 void Interpreter::EmitAddToPointer(AddToPointer<T>& op) {
   calyx::Pointer left = std::get<calyx::Pointer>(vars[op.ptr_idx]);
   T right = std::get<T>(vars[op.right_idx]);
-  calyx::Pointer result = {left.value + op.stride * right};
+  calyx::Pointer result = {left.value + (i64)op.stride * (i64)right};
   vars[op.idx] = result;
 }
 
 void Interpreter::Emit(AddToPointerImm& op) {
   calyx::Pointer left = std::get<calyx::Pointer>(vars[op.ptr_idx]);
   i64 right = op.right;
-  calyx::Pointer result = {left.value + op.stride * right};
+  calyx::Pointer result = {left.value + (i64)op.stride * right};
   vars[op.idx] = result;
 }
 

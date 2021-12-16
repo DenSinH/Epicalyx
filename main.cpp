@@ -50,6 +50,14 @@ int main() {
         std::cout << "    " << op->ToString() << std::endl;
       }
     }
+    std::cout << std::endl << std::endl;
+    std::cout << "-- globals" << std::endl;
+    for (const auto& [symbol, size] : emitter.program.globals) {
+      std::cout << symbol << " " << size << std::endl;
+    }
+    for (const auto& string : emitter.program.strings) {
+      std::cout << '"' << string << '"' << std::endl;
+    }
 
     try {
       auto interpreter = epi::calyx::Interpreter();

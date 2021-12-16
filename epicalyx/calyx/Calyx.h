@@ -19,9 +19,9 @@ using block_label_t = u64;
 
 struct Pointer {
   Pointer() : value(0) { }
-  Pointer(u64 value) : value(value) { }
+  Pointer(i64 value) : value(value) { }
 
-  u64 value;
+  i64 value;
 };
 
 struct Struct;
@@ -128,7 +128,7 @@ struct Program {
   // for example, weird expressions like "long long k = 2 * (long long)test" are too hard to parse
   // (try this on godbolt for example)
   // these require a block to run
-  std::unordered_map<std::string, std::variant<std::vector<u8>, label_offset_t, blocks_t>> global_init{};
+  std::unordered_map<std::string, std::variant<std::vector<u8>, label_offset_t, block_label_t>> global_init{};
 };
 
 template<typename T>
