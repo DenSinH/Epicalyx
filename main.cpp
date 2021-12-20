@@ -17,7 +17,7 @@
 
 int main() {
   // auto file = epi::File("tests/test.c");
-  auto file = epi::File("examples/emitting/globals.c");
+  auto file = epi::File("examples/emitting/functions.c");
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
@@ -60,7 +60,7 @@ int main() {
     }
 
     try {
-      auto interpreter = epi::calyx::Interpreter();
+      auto interpreter = epi::calyx::Interpreter(emitter.program);
       std::cout << std::endl << std::endl;
       std::cout << "-- interpreted" << std::endl;
       interpreter.EmitProgram(emitter.program);

@@ -59,6 +59,20 @@ void Example::EmitStoreToPointer(StoreToPointer<T>& op) {
 }
 
 template<typename T>
+void Example::EmitCall(Call<T>& op) {
+
+}
+
+template<typename T>
+void Example::EmitCallLabel(CallLabel<T>& op) {
+
+}
+
+void Example::Emit(ArgMakeLocal& op) {
+
+}
+
+template<typename T>
 void Example::EmitReturn(Return<T>& op) {
 
 }

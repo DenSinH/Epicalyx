@@ -6,6 +6,7 @@
 #include "taxy/Statement.h"
 #include "taxy/Expression.h"
 #include "Is.h"
+#include "Cast.h"
 
 #include "Assert.h"
 
@@ -44,8 +45,8 @@ void ASTWalker::Visit(epi::taxy::Declaration& decl) {
   else {
     auto c_idx = emitter.c_counter++;
     u64 size = decl.type->Sizeof();
-    variables.Set(decl.name, calyx::CVar{
-            c_idx, calyx::CVar::Location::Either, size
+    variables.Set(decl.name, calyx::Local{
+            c_idx, calyx::Local::Location::Either, size
     });
     c_types.Set(decl.name, decl.type);
     emitter.Emit<calyx::AllocateLocal>(c_idx, size);
@@ -69,22 +70,45 @@ void ASTWalker::Visit(epi::taxy::Declaration& decl) {
 }
 
 void ASTWalker::Visit(epi::taxy::FunctionDefinition& decl) {
-  // same as normal compound statement besides arguments
-  variables.NewLayer();
-  c_types.NewLayer();
+  c_types.Set(decl.symbol, decl.signature);
 
-  // todo: arguments etc
-  // after arguments add another scope
-  function = &decl;
   auto block = emitter.MakeBlock();
   emitter.SelectBlock(block);
   emitter.program.functions.emplace(decl.symbol, block);
+
+  // same as normal compound statement besides arguments
+  variables.NewLayer();
+  c_types.NewLayer();
+  for (int i = 0; i < decl.signature->arg_types.size(); i++) {
+    // turn arguments into locals
+    auto& arg = decl.signature->arg_types[i];
+    auto c_idx = emitter.c_counter++;
+    variables.Set(arg.name, calyx::Local{
+            c_idx, calyx::Local::Location::Either, arg.type->Sizeof()
+    });
+    c_types.Set(arg.name, arg.type);
+    auto visitor = detail::ArgumentTypeVisitor(i, false);
+    arg.type->Visit(visitor);
+
+    emitter.Emit<calyx::ArgMakeLocal>(visitor.result, c_idx);
+  }
+
+  // locals layer
+  variables.NewLayer();
+  c_types.NewLayer();
+
+  function = &decl;
   for (const auto& node : decl.body->stats) {
     node->Visit(*this);
   }
-  for (auto var = variables.Top().rbegin(); var != variables.Top().rend(); var++) {
-    emitter.Emit<calyx::DeallocateLocal>(var->second.idx, var->second.size);
+  for (auto [_, var] : variables.Top()) {
+    emitter.Emit<calyx::DeallocateLocal>(var.idx, var.size);
   }
+  // locals layer
+  variables.PopLayer();
+  c_types.NewLayer();
+
+  // arguments layer
   variables.PopLayer();
   c_types.NewLayer();
 }
@@ -111,7 +135,7 @@ void ASTWalker::Visit(Identifier& decl) {
     emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
     return;
   }
-  
+
   auto type = c_types.Get(decl.name);
   if (variables.Has(decl.name)) {
     // local variable
@@ -136,7 +160,7 @@ void ASTWalker::Visit(Identifier& decl) {
       }
       case State::Address: {
         // we can't get the address of a variable that is not on the stack
-        variables.Get(decl.name).loc = calyx::CVar::Location::Stack;
+        variables.Get(decl.name).loc = calyx::Local::Location::Stack;
         auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalAddrEmitter>(*this, {cvar.idx});
         type->Visit(visitor);
         break;
@@ -278,7 +302,45 @@ void ASTWalker::Visit(ArrayAccess& expr) {
 }
 
 void ASTWalker::Visit(FunctionCall& expr) {
-  throw std::runtime_error("unimplemented: function call");
+  state.push({State::Read, {}});
+  expr.left->Visit(*this);
+  state.pop();
+
+  const auto fn = current;
+  const auto* signature = cotyl::shared_ptr_cast<const FunctionType>(expr.left->GetType());
+  const auto num_args = signature->arg_types.size();
+  calyx::arg_list_t args{};
+  calyx::arg_list_t var_args{};
+
+  for (int i = 0; i < num_args; i++) {
+    expr.args[i]->Visit(*this);
+    auto cast_arg_visitor = detail::EmitterTypeVisitor<detail::CastToEmitter>(*this, { current });
+    signature->arg_types[i].type->Visit(cast_arg_visitor);
+
+    auto arg_visitor = detail::ArgumentTypeVisitor(i, false);
+    signature->arg_types[i].type->Visit(arg_visitor);
+
+    args.emplace_back(current, arg_visitor.result);
+  }
+
+  if (signature->variadic) {
+    for (int i = num_args; i < expr.args.size(); i++) {
+      expr.args[i]->Visit(*this);
+
+      auto arg_visitor = detail::ArgumentTypeVisitor(i - num_args, true);
+      expr.args[i]->GetType()->Visit(arg_visitor);
+
+      var_args.emplace_back(current, arg_visitor.result);
+    }
+  }
+
+  if (signature->contained->IsVoid()) {
+    emitter.Emit<calyx::Call<void>>(0, fn, std::move(args), std::move(var_args));
+  }
+  else {
+    auto visitor = detail::EmitterTypeVisitor<detail::CallEmitter>(*this, { fn, std::move(args), std::move(var_args) });
+    signature->contained->Visit(visitor);
+  }
 }
 
 void ASTWalker::Visit(MemberAccess& expr) {
@@ -681,8 +743,8 @@ void ASTWalker::Visit(Binop& expr) {
         // we create a "fake local" in order to do this
         auto c_idx = emitter.c_counter++;
         std::string name = "$logop" + std::to_string(c_idx);
-        variables.Set(name, calyx::CVar{
-                c_idx, calyx::CVar::Location::Either, sizeof(i32)
+        variables.Set(name, calyx::Local{
+                c_idx, calyx::Local::Location::Either, sizeof(i32)
         });
         c_types.Set(name, CType::MakeBool());
         emitter.Emit<calyx::AllocateLocal>(c_idx, sizeof(i32));
@@ -781,8 +843,8 @@ void ASTWalker::Visit(Ternary& expr) {
     std::string name = "$tern" + std::to_string(c_idx);
     const auto& type = expr.GetType();
     u64 size = type->Sizeof();
-    variables.Set(name, calyx::CVar{
-            c_idx, calyx::CVar::Location::Either, size
+    variables.Set(name, calyx::Local{
+            c_idx, calyx::Local::Location::Either, size
     });
     c_types.Set(name, type);
     emitter.Emit<calyx::AllocateLocal>(c_idx, size);
@@ -1247,8 +1309,8 @@ void ASTWalker::Visit(Compound& stat) {
   for (const auto& node : stat.stats) {
     node->Visit(*this);
   }
-  for (auto var = variables.Top().rbegin(); var != variables.Top().rend(); var++) {
-    emitter.Emit<calyx::DeallocateLocal>(var->second.idx, var->second.size);
+  for (auto [_, var] : variables.Top()) {
+    emitter.Emit<calyx::DeallocateLocal>(var.idx, var.size);
   }
   variables.PopLayer();
 }

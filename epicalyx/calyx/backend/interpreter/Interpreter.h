@@ -1,14 +1,23 @@
 #pragma once
 
 #include "calyx/backend/Backend.h"
+#include "Scope.h"
 
 #include <variant>
 #include <unordered_map>
+#include <stack>
 
 
 namespace epi::calyx {
 
 struct Interpreter : Backend {
+  using program_counter_t = std::pair<calyx::var_index_t, calyx::var_index_t>;
+
+  Interpreter(const Program& program) : program(program) {
+
+  }
+
+  const Program& program;
 
   std::vector<u8> stack{};
 
@@ -17,12 +26,13 @@ struct Interpreter : Backend {
   std::vector<std::vector<u8>> global_data{{}};
 
   // points to stack location of locals
-  std::unordered_map<calyx::var_index_t, i64> locals{};
+  cotyl::MapScope<calyx::var_index_t, std::pair<i64, u64>> locals{};
 
   // IR variables
-  std::unordered_map<calyx::var_index_t, std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> vars{};
+  cotyl::MapScope<calyx::var_index_t, std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> vars{};
 
-  std::pair<calyx::var_index_t, calyx::var_index_t> pos{0, 0};
+  program_counter_t pos{0, 0};
+  std::stack<std::tuple<program_counter_t, calyx::var_index_t, calyx::arg_list_t, calyx::arg_list_t>> call_stack{};
   calyx::var_index_t returned = 0;
 
   void EmitProgram(Program& program) final;
@@ -32,6 +42,7 @@ struct Interpreter : Backend {
   void Emit(DeallocateLocal& op) final;
   void Emit(LoadLocalAddr& op) final;
   void Emit(LoadGlobalAddr& op) final;
+  void Emit(ArgMakeLocal& op) final;
 
   template<typename To, typename From>
   void EmitCast(Cast<To, From>& op);
@@ -47,6 +58,10 @@ struct Interpreter : Backend {
   void EmitLoadFromPointer(LoadFromPointer<T>& op);
   template<typename T>
   void EmitStoreToPointer(StoreToPointer<T>& op);
+  template<typename T>
+  void EmitCall(Call<T>& op);
+  template<typename T>
+  void EmitCallLabel(CallLabel<T>& op);
   template<typename T>
   void EmitReturn(Return<T>& op);
   template<typename T>

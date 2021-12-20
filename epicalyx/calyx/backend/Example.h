@@ -13,6 +13,7 @@ struct Example : Backend {
   void Emit(DeallocateLocal& op) final;
   void Emit(LoadLocalAddr& op) final;
   void Emit(LoadGlobalAddr& op) final;
+  void Emit(ArgMakeLocal& op) final;
 
   template<typename To, typename From>
   void EmitCast(Cast<To, From>& op);
@@ -28,6 +29,10 @@ struct Example : Backend {
   void EmitLoadFromPointer(LoadFromPointer<T>& op);
   template<typename T>
   void EmitStoreToPointer(StoreToPointer<T>& op);
+  template<typename T>
+  void EmitCall(Call<T>& op);
+  template<typename T>
+  void EmitCallLabel(CallLabel<T>& op);
   template<typename T>
   void EmitReturn(Return<T>& op);
   template<typename T>

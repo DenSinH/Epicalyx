@@ -52,7 +52,7 @@ struct calyx_imm_type<Pointer> {
 template<typename T>
 using calyx_imm_type_t = typename calyx_imm_type<T>::type;
 
-struct CVar {
+struct Local {
   enum class Location {
     Stack,  // if address is taken
     Register,
@@ -63,6 +63,34 @@ struct CVar {
   Location loc;
   u64 size;
 };
+
+struct Argument {
+  enum class Type {
+    I8, U8, I16, U16, I32, U32, I64, U64, Float, Double, Pointer, Struct
+  };
+
+  Argument() = default;
+  
+  Argument(Type type, var_index_t arg_idx, bool variadic = false) :
+          type(type), arg_idx(arg_idx), variadic(variadic), stride(0) {
+
+  }
+
+  Argument(Type type, var_index_t arg_idx, u64 stride, bool variadic = false) :
+          type(type), arg_idx(arg_idx), variadic(variadic), stride(stride) {
+
+  }
+
+  Type type;
+  var_index_t arg_idx;
+  bool variadic;
+  union {
+    u64 stride;  // for pointers
+    u64 size;    // for structs
+  };
+};
+
+using arg_list_t = std::vector<std::pair<var_index_t, Argument>>;
 
 struct Var {
   enum class Type {
@@ -75,7 +103,10 @@ struct Var {
   }
 
   Type type;
-  u64 stride;  // for pointers
+  union {
+    u64 stride;  // for pointers
+    u64 size;    // for structs
+  };
 };
 
 
@@ -86,6 +117,7 @@ struct Directive {
     Stack,
     Branch,
     UnconditionalBranch,
+    Call,
     Return,
     Select,
   };
@@ -126,6 +158,7 @@ struct Program {
   // global variable initializer
   // possible constant, possibly a label with some offset, possibly requires some code
   // for example, weird expressions like "long long k = 2 * (long long)test" are too hard to parse
+  // where test is another symbol (e.g. int test(int);)
   // (try this on godbolt for example)
   // these require a block to run
   std::unordered_map<std::string, std::variant<std::vector<u8>, label_offset_t, block_label_t>> global_init{};
@@ -412,12 +445,12 @@ struct Unop : Expr<T> {
 template<typename T>
 struct LoadLocal : Expr<calyx_upcast_t<T>> {
 
-  LoadLocal(var_index_t idx, var_index_t c_idx, i32 offset = 0) :
-      Expr<calyx_upcast_t<T>>(idx), c_idx(c_idx), offset(offset) {
+  LoadLocal(var_index_t idx, var_index_t loc_idx, i32 offset = 0) :
+      Expr<calyx_upcast_t<T>>(idx), loc_idx(loc_idx), offset(offset) {
 
   }
 
-  var_index_t c_idx;
+  var_index_t loc_idx;
   i32 offset;  // struct fields
 
   std::string ToString() const final;
@@ -426,12 +459,12 @@ struct LoadLocal : Expr<calyx_upcast_t<T>> {
 
 struct LoadLocalAddr : Expr<Pointer> {
 
-  LoadLocalAddr(var_index_t idx, var_index_t c_idx) :
-          Expr<Pointer>(idx), c_idx(c_idx){
+  LoadLocalAddr(var_index_t idx, var_index_t loc_idx) :
+          Expr<Pointer>(idx), loc_idx(loc_idx){
 
   }
 
-  var_index_t c_idx;
+  var_index_t loc_idx;
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
@@ -440,12 +473,12 @@ struct LoadLocalAddr : Expr<Pointer> {
 template<typename T>
 struct StoreLocal : Expr<calyx_upcast_t<T>> {
 
-  StoreLocal(var_index_t idx, var_index_t c_idx, var_index_t src, i32 offset = 0) :
-      Expr<calyx_upcast_t<T>>(idx), c_idx(c_idx), src(src), offset(offset) {
+  StoreLocal(var_index_t idx, var_index_t loc_idx, var_index_t src, i32 offset = 0) :
+      Expr<calyx_upcast_t<T>>(idx), loc_idx(loc_idx), src(src), offset(offset) {
 
   }
 
-  var_index_t c_idx;
+  var_index_t loc_idx;
   var_index_t src;
   i32 offset;  // struct fields
 
@@ -498,12 +531,12 @@ struct StoreGlobal : Expr<calyx_upcast_t<T>> {
 };
 
 struct AllocateLocal : Directive {
-  AllocateLocal(var_index_t c_idx, u64 size) :
-      Directive(Class::Stack), c_idx(c_idx), size(size) {
+  AllocateLocal(var_index_t loc_idx, u64 size) :
+      Directive(Class::Stack), loc_idx(loc_idx), size(size) {
 
   }
 
-  var_index_t c_idx;
+  var_index_t loc_idx;
   u64 size;
 
   std::string ToString() const final;
@@ -511,11 +544,11 @@ struct AllocateLocal : Directive {
 };
 
 struct DeallocateLocal : Directive {
-  DeallocateLocal(var_index_t c_idx, u64 size) :
-      Directive(Class::Stack), c_idx(c_idx), size(size) {
+  DeallocateLocal(var_index_t loc_idx, u64 size) :
+      Directive(Class::Stack), loc_idx(loc_idx), size(size) {
 
   }
-  var_index_t c_idx;
+  var_index_t loc_idx;
   u64 size;
 
   std::string ToString() const final;
@@ -563,6 +596,54 @@ struct Return : Directive {
   }
 
   var_index_t idx;
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+template<typename T>
+struct Call : Directive {
+
+  Call(var_index_t idx, var_index_t fn_idx, arg_list_t args, arg_list_t var_args) :
+        Directive(Class::Call), idx(idx), fn_idx(fn_idx), args(std::move(args)), var_args(std::move(var_args)) {
+
+  }
+
+  var_index_t idx;
+  var_index_t fn_idx;
+  arg_list_t args;
+  arg_list_t var_args;
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+template<typename T>
+struct CallLabel : Directive {
+
+  CallLabel(var_index_t idx, std::string label, arg_list_t args, arg_list_t var_args) :
+        Directive(Class::Call), idx(idx), label(std::move(label)), args(std::move(args)), var_args(std::move(var_args)) {
+
+  }
+
+  var_index_t idx;
+  std::string label;
+  arg_list_t args;
+  arg_list_t var_args;
+
+  std::string ToString() const final;
+  void Emit(Backend& backend) final;
+};
+
+struct ArgMakeLocal : Directive {
+
+  ArgMakeLocal(Argument arg, var_index_t loc_idx) :
+        Directive(Class::Stack), arg(arg), loc_idx(loc_idx) {
+
+  }
+
+  Argument arg;
+  var_index_t loc_idx;
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;

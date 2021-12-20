@@ -28,6 +28,7 @@ struct VoidType final : public CType {
 
   OVERRIDE_BASE_EQ
 
+  bool IsVoid() const final { return true; }
   bool IsComplete() const final { return false; }
   pType<> DoCast(const CType& other) const final { return MakeType<VoidType>(); }
   void Visit(TypeVisitor& v) const final { v.Visit(*this); }

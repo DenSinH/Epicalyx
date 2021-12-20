@@ -185,6 +185,7 @@ struct CType {
   pType<> Cast(const CType& other) const;
   virtual pType<> DoCast(const CType& other) const { throw std::runtime_error("Bad cast"); }  // checking whether types are castable
   virtual bool EqualType(const CType& other) const { return false; }  // for checking complete equality
+  virtual bool IsVoid() const { return false; }
   virtual bool IsPointer() const { return false; }
   virtual bool IsFunction() const { return false; }
   virtual bool IsArray() const { return false; }

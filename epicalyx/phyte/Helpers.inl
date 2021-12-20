@@ -136,6 +136,17 @@ struct CastToEmitter {
 };
 
 template<typename T>
+struct CallEmitter {
+  static calyx::var_index_t emit_value(ASTWalker& walker, calyx::var_index_t fn_idx, calyx::arg_list_t args, calyx::arg_list_t var_args) {
+    return walker.emitter.EmitExpr<calyx::Call<calyx::calyx_upcast_t<T>>>({calyx_type_v<calyx::calyx_upcast_t<T>> }, fn_idx, std::move(args), std::move(var_args));
+  }
+
+  static calyx::var_index_t emit_pointer(ASTWalker& walker, u64 stride, calyx::var_index_t fn_idx, calyx::arg_list_t args, calyx::arg_list_t var_args) {
+    return walker.emitter.EmitExpr<calyx::Call<calyx::Pointer>>({calyx::Var::Type::Pointer, stride }, fn_idx, std::move(args), std::move(var_args));
+  }
+};
+
+template<typename T>
 struct LoadLocalEmitter {
   static calyx::var_index_t emit_value(ASTWalker& walker, calyx::var_index_t c_idx) {
     return walker.emitter.EmitExpr<calyx::LoadLocal<T>>({calyx_type_v<calyx::calyx_upcast_t<T>> }, c_idx);
@@ -240,6 +251,33 @@ struct StoreToPointerEmitter {
     calyx::var_index_t cast = CastToEmitter<T>::emit_pointer(walker, stride, src);
     walker.emitter.Emit<calyx::StoreToPointer<T>>(ptr_idx, cast);
   }
+};
+
+
+struct ArgumentTypeVisitor : TypeVisitor {
+  calyx::Argument result{};
+
+  ArgumentTypeVisitor(calyx::var_index_t arg_idx, bool variadic) {
+    result.arg_idx = arg_idx;
+    result.variadic = variadic;
+  }
+
+  void Visit(const VoidType& type) final { throw std::runtime_error("Incomplete type"); }
+  void Visit(const ValueType<i8>& type) final { result.type = calyx::Argument::Type::I8; }
+  void Visit(const ValueType<u8>& type) final { result.type = calyx::Argument::Type::U8; }
+  void Visit(const ValueType<i16>& type) final { result.type = calyx::Argument::Type::I16; }
+  void Visit(const ValueType<u16>& type) final { result.type = calyx::Argument::Type::U16; }
+  void Visit(const ValueType<i32>& type) final { result.type = calyx::Argument::Type::I32; }
+  void Visit(const ValueType<u32>& type) final { result.type = calyx::Argument::Type::U32; }
+  void Visit(const ValueType<i64>& type) final { result.type = calyx::Argument::Type::I64; }
+  void Visit(const ValueType<u64>& type) final { result.type = calyx::Argument::Type::U64; }
+  void Visit(const ValueType<float>& type) final { result.type = calyx::Argument::Type::Float; }
+  void Visit(const ValueType<double>& type) final { result.type = calyx::Argument::Type::Double; }
+  void Visit(const PointerType& type) final { result.type = calyx::Argument::Type::Pointer; result.stride = type.Deref()->Sizeof(); }
+  void Visit(const ArrayType& type) final { result.type = calyx::Argument::Type::Pointer; result.stride = type.Deref()->Sizeof(); }
+  void Visit(const FunctionType& type) final { result.type = calyx::Argument::Type::Pointer; result.stride = 0; }
+  void Visit(const StructType& type) final { result.type = calyx::Argument::Type::Struct; result.size = type.Sizeof(); }
+  void Visit(const UnionType& type) final { result.type = calyx::Argument::Type::Struct; result.size = type.Sizeof(); }
 };
 
 }

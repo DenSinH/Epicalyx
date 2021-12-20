@@ -1,6 +1,6 @@
 #pragma once
 
-#include <map>
+#include <unordered_map>
 #include <vector>
 #include <unordered_set>
 #include <stdexcept>
@@ -29,8 +29,8 @@ protected:
 };
 
 template<typename K, typename V>
-struct MapScope : public Scope<std::map<K, V>> {
-  using base = Scope<std::map<K, V>>;
+struct MapScope : public Scope<std::unordered_map<K, V>> {
+  using base = Scope<std::unordered_map<K, V>>;
 
   void Set(const K& key, const V& value) {
     if (HasTop(key)) {

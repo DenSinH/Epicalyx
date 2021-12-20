@@ -187,25 +187,25 @@ std::string Unop<T>::ToString() const {
 }
 
 std::string AllocateLocal::ToString() const {
-  return cotyl::FormatStr("alloc c%s: %s", c_idx, size);
+  return cotyl::FormatStr("alloc c%s: %s", loc_idx, size);
 }
 
 std::string DeallocateLocal::ToString() const {
-  return cotyl::FormatStr("dallc c%s: %s", c_idx, size);
+  return cotyl::FormatStr("dallc c%s: %s", loc_idx, size);
 }
 
 template<typename T>
 std::string LoadLocal<T>::ToString() const {
-  return cotyl::FormatStr("load  v%s <-<%s> c%s", this->idx, detail::type_string<T>::value, c_idx);
+  return cotyl::FormatStr("load  v%s <-<%s> c%s", this->idx, detail::type_string<T>::value, loc_idx);
 }
 
 std::string LoadLocalAddr::ToString() const {
-  return cotyl::FormatStr("addrs v%s <- c%s", idx, c_idx);
+  return cotyl::FormatStr("addrs v%s <- c%s", idx, loc_idx);
 }
 
 template<typename T>
 std::string StoreLocal<T>::ToString() const {
-  return cotyl::FormatStr("store c%s = v%s <-<%s> v%s", c_idx, this->idx, detail::type_string<T>::value, src);
+  return cotyl::FormatStr("store c%s = v%s <-<%s> v%s", loc_idx, this->idx, detail::type_string<T>::value, src);
 }
 
 template<typename T>
@@ -241,6 +241,66 @@ std::string Return<T>::ToString() const {
   return "retrn void";
 }
 
+std::string make_args_list(const arg_list_t& args) {
+  std::stringstream stream{};
+  if (!args.empty()) {
+    for (int i = 0; i < args.size() - 1; i++) {
+      stream << "v" << args[i].first << ", ";
+    }
+    stream << "v" << args.back().first;
+  }
+  return stream.str();
+}
+
+template<typename T>
+std::string Call<T>::ToString() const {
+
+  if constexpr(std::is_same_v<T, void>) {
+    if (!var_args.empty()) {
+      return cotyl::FormatStr("call  [void]v%s(%s, ... %s)", fn_idx, make_args_list(args), make_args_list(var_args));
+    }
+    else {
+      return cotyl::FormatStr("call  [void]v%s(%s)", fn_idx, make_args_list(args));
+    }
+  }
+  else {
+    if (!var_args.empty()) {
+      return cotyl::FormatStr("call  v%s <- [%s]v%s(%s, ... %s)",
+                              idx, detail::type_string<T>::value, fn_idx, make_args_list(args), make_args_list(var_args)
+      );
+    }
+    else {
+      return cotyl::FormatStr("call  v%s <- [%s]v%s(%s)", idx, detail::type_string<T>::value, fn_idx, make_args_list(args));
+    }
+  }
+}
+
+template<typename T>
+std::string CallLabel<T>::ToString() const {
+
+  if constexpr(std::is_same_v<T, void>) {
+    if (!var_args.empty()) {
+      return cotyl::FormatStr("call  [void]%s(%s, ... %s)", label, make_args_list(args), make_args_list(var_args));
+    }
+    else {
+      return cotyl::FormatStr("call  [void]%s(%s)", label, make_args_list(args));
+    }
+  }
+  else {
+    if (!var_args.empty()) {
+      return cotyl::FormatStr("call  v%s <- [%s]%s(%s, ... %s)",
+                              idx, detail::type_string<T>::value, label, make_args_list(args), make_args_list(var_args)
+      );
+    }
+    else {
+      return cotyl::FormatStr("call  v%s <- [%s]%s(%s)", idx, detail::type_string<T>::value, label, make_args_list(args));
+    }
+  }
+}
+
+std::string ArgMakeLocal::ToString() const {
+  return cotyl::FormatStr("mkloc c%s <- a%s", loc_idx, arg.arg_idx);
+}
 
 template<typename To, typename From>
 void Cast<To, From>::Emit(Backend& backend) {
@@ -368,6 +428,20 @@ void StoreToPointer<T>::Emit(Backend& backend) {
 }
 
 template<typename T>
+void Call<T>::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+template<typename T>
+void CallLabel<T>::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+void ArgMakeLocal::Emit(Backend& backend) {
+  backend.Emit(*this);
+}
+
+template<typename T>
 requires (is_calyx_type_v<T>)
 void Return<T>::Emit(Backend& backend) {
   backend.Emit(*this);
@@ -431,6 +505,26 @@ template struct BranchCompareImm<u64>;
 template struct BranchCompareImm<float>;
 template struct BranchCompareImm<double>;
 template struct BranchCompareImm<Pointer>;
+
+template struct Call<i32>;
+template struct Call<u32>;
+template struct Call<i64>;
+template struct Call<u64>;
+template struct Call<float>;
+template struct Call<double>;
+template struct Call<Pointer>;
+template struct Call<Struct>;
+template struct Call<void>;
+
+template struct CallLabel<i32>;
+template struct CallLabel<u32>;
+template struct CallLabel<i64>;
+template struct CallLabel<u64>;
+template struct CallLabel<float>;
+template struct CallLabel<double>;
+template struct CallLabel<Pointer>;
+template struct CallLabel<Struct>;
+template struct CallLabel<void>;
 
 template struct Return<i32>;
 template struct Return<u32>;

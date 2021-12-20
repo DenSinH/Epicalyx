@@ -142,6 +142,24 @@ void BACKEND_NAME::Emit(Return<float>& op) { EmitReturn(op); }
 void BACKEND_NAME::Emit(Return<double>& op) { EmitReturn(op); }
 void BACKEND_NAME::Emit(Return<Struct>& op) { EmitReturn(op); }
 void BACKEND_NAME::Emit(Return<Pointer>& op) { EmitReturn(op); }
+void BACKEND_NAME::Emit(Call<i32>& op) { EmitCall(op); }
+void BACKEND_NAME::Emit(Call<u32>& op) { EmitCall(op); }
+void BACKEND_NAME::Emit(Call<i64>& op) { EmitCall(op); }
+void BACKEND_NAME::Emit(Call<u64>& op) { EmitCall(op); }
+void BACKEND_NAME::Emit(Call<float>& op) { EmitCall(op); }
+void BACKEND_NAME::Emit(Call<double>& op) { EmitCall(op); }
+void BACKEND_NAME::Emit(Call<Struct>& op) { EmitCall(op); }
+void BACKEND_NAME::Emit(Call<Pointer>& op) { EmitCall(op); }
+void BACKEND_NAME::Emit(Call<void>& op) { EmitCall(op); }
+void BACKEND_NAME::Emit(CallLabel<i32>& op) { EmitCallLabel(op); }
+void BACKEND_NAME::Emit(CallLabel<u32>& op) { EmitCallLabel(op); }
+void BACKEND_NAME::Emit(CallLabel<i64>& op) { EmitCallLabel(op); }
+void BACKEND_NAME::Emit(CallLabel<u64>& op) { EmitCallLabel(op); }
+void BACKEND_NAME::Emit(CallLabel<float>& op) { EmitCallLabel(op); }
+void BACKEND_NAME::Emit(CallLabel<double>& op) { EmitCallLabel(op); }
+void BACKEND_NAME::Emit(CallLabel<Struct>& op) { EmitCallLabel(op); }
+void BACKEND_NAME::Emit(CallLabel<Pointer>& op) { EmitCallLabel(op); }
+void BACKEND_NAME::Emit(CallLabel<void>& op) { EmitCallLabel(op); }
 void BACKEND_NAME::Emit(Cast<i8, i32>& op) { EmitCast(op); }
 void BACKEND_NAME::Emit(Cast<i8, u32>& op) { EmitCast(op); }
 void BACKEND_NAME::Emit(Cast<i8, i64>& op) { EmitCast(op); }

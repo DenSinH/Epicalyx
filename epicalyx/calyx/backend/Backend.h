@@ -15,6 +15,7 @@ struct Backend {
   virtual void Emit(DeallocateLocal& op) = 0;
   virtual void Emit(LoadLocalAddr& op) = 0;
   virtual void Emit(LoadGlobalAddr& op) = 0;
+  virtual void Emit(ArgMakeLocal& op) = 0;
 
   virtual void Emit(Binop<i32>& op) = 0;
   virtual void Emit(Binop<u32>& op) = 0;
@@ -163,6 +164,24 @@ struct Backend {
   virtual void Emit(Return<double>& op) = 0;
   virtual void Emit(Return<Struct>& op) = 0;
   virtual void Emit(Return<Pointer>& op) = 0;
+  virtual void Emit(Call<i32>& op) = 0;
+  virtual void Emit(Call<u32>& op) = 0;
+  virtual void Emit(Call<i64>& op) = 0;
+  virtual void Emit(Call<u64>& op) = 0;
+  virtual void Emit(Call<float>& op) = 0;
+  virtual void Emit(Call<double>& op) = 0;
+  virtual void Emit(Call<Struct>& op) = 0;
+  virtual void Emit(Call<Pointer>& op) = 0;
+  virtual void Emit(Call<void>& op) = 0;
+  virtual void Emit(CallLabel<i32>& op) = 0;
+  virtual void Emit(CallLabel<u32>& op) = 0;
+  virtual void Emit(CallLabel<i64>& op) = 0;
+  virtual void Emit(CallLabel<u64>& op) = 0;
+  virtual void Emit(CallLabel<float>& op) = 0;
+  virtual void Emit(CallLabel<double>& op) = 0;
+  virtual void Emit(CallLabel<Struct>& op) = 0;
+  virtual void Emit(CallLabel<Pointer>& op) = 0;
+  virtual void Emit(CallLabel<void>& op) = 0;
   virtual void Emit(Cast<i8, i32>& op) = 0;
   virtual void Emit(Cast<i8, u32>& op) = 0;
   virtual void Emit(Cast<i8, i64>& op) = 0;
