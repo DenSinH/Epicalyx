@@ -233,12 +233,14 @@ std::string StoreToPointer<T>::ToString() const {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
 std::string Return<T>::ToString() const {
-  if (idx) {
+  if constexpr(std::is_same_v<T, void>) {
+    return "retrn void";
+  }
+  else {
     return cotyl::FormatStr("retrn [%s]v%s", detail::type_string<T>::value, idx);
   }
-  return "retrn void";
 }
 
 std::string make_args_list(const arg_list_t& args) {
@@ -442,7 +444,7 @@ void ArgMakeLocal::Emit(Backend& backend) {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
 void Return<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
@@ -534,6 +536,7 @@ template struct Return<float>;
 template struct Return<double>;
 template struct Return<Pointer>;
 template struct Return<Struct>;
+template struct Return<void>;
 
 template struct AddToPointer<i32>;
 template struct AddToPointer<u32>;

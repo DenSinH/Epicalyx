@@ -15,6 +15,7 @@ struct Scope {
   void NewLayer() { scope.emplace_back(); }
   void PopLayer() { scope.pop_back(); }
   size_t Depth() const { return scope.size(); }
+  void Reset() { scope = {{}}; }
 
   template<typename T>
   auto operator<<(const T& callable) {
@@ -28,13 +29,15 @@ protected:
   std::vector<U> scope{{}};
 };
 
-template<typename K, typename V>
+template<typename K, typename V, bool allow_multiple_assignment = false>
 struct MapScope : public Scope<std::unordered_map<K, V>> {
   using base = Scope<std::unordered_map<K, V>>;
 
   void Set(const K& key, const V& value) {
-    if (HasTop(key)) {
-      throw cotyl::FormatExceptStr("Redefinition of %s", key);
+    if constexpr(!allow_multiple_assignment) {
+      if (HasTop(key)) {
+        throw cotyl::FormatExceptStr("Redefinition of %s", key);
+      }
     }
     base::scope.back()[key] = value;
   }

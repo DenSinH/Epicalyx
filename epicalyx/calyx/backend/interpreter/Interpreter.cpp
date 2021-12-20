@@ -84,8 +84,11 @@ void Interpreter::EmitProgram(Program& program) {
     else if (std::holds_alternative<calyx::block_label_t>(global_init)) {
       pos.first = std::get<calyx::block_label_t>(global_init);
       pos.second = 0;
-      returned = 0;
-      while (!returned) {
+      call_stack.emplace(std::make_pair(-1, 0), -1, arg_list_t{}, arg_list_t{});
+      vars.NewLayer();
+      locals.NewLayer();
+
+      while (pos.first != -1) {
         auto& directive = program.blocks[pos.first][pos.second];
         pos.second++;
         directive->Emit(*this);
@@ -94,7 +97,10 @@ void Interpreter::EmitProgram(Program& program) {
       auto _symbol = symbol;
       std::visit([&](auto& var) {
         std::memcpy(global_data[globals.at(_symbol)].data(), &var, global_data[globals.at(_symbol)].size());
-      }, vars.Get(returned));
+      }, vars.Get(-1));
+
+      vars.Reset();
+      locals.Reset();
     }
     else {
       throw std::runtime_error("Bad global initializer");
@@ -108,7 +114,7 @@ void Interpreter::EmitProgram(Program& program) {
 
   pos.first = program.functions.at("main");
   pos.second = 0;
-  returned = 0;
+  returned = {};
   while (!returned) {
     auto& directive = program.blocks[pos.first][pos.second];
     pos.second++;
@@ -125,7 +131,7 @@ void Interpreter::EmitProgram(Program& program) {
     else {
       std::cout << "return " << var << std::endl;
     }
-  }, vars.Get(returned));
+  }, returned.value());
 }
 
 void Interpreter::Emit(AllocateLocal& op) {
@@ -373,22 +379,26 @@ void Interpreter::Emit(ArgMakeLocal& op) {
 
 template<typename T>
 void Interpreter::EmitReturn(Return<T>& op) {
+  auto top_vars = std::move(vars.Top());
+  auto top_locals = std::move(locals.Top());
+  locals.PopLayer();
+  vars.PopLayer();
+
   if (call_stack.empty()) {
-    returned = op.idx;
+    returned = top_vars.at(op.idx);
   }
   else {
     auto [_pos, return_to, _, __] = call_stack.top();
     call_stack.pop();
     pos = _pos;
     if (return_to) {
-      vars.Set(return_to, vars.Get(op.idx));
+      vars.Set(return_to, top_vars.at(op.idx));
     }
   }
 
-  for (const auto& [idx, local] : locals.Top()) {
+  for (const auto& [idx, local] : top_locals) {
     stack.resize(stack.size() - local.second);
   }
-  locals.PopLayer();
 }
 
 template<typename T>

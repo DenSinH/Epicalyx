@@ -164,6 +164,7 @@ void Emit(Return<float>& op) final;
 void Emit(Return<double>& op) final;
 void Emit(Return<Struct>& op) final;
 void Emit(Return<Pointer>& op) final;
+void Emit(Return<void>& op) final;
 void Emit(Cast<i8, i32>& op) final;
 void Emit(Cast<i8, u32>& op) final;
 void Emit(Cast<i8, i64>& op) final;

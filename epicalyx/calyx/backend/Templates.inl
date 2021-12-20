@@ -142,6 +142,7 @@ void BACKEND_NAME::Emit(Return<float>& op) { EmitReturn(op); }
 void BACKEND_NAME::Emit(Return<double>& op) { EmitReturn(op); }
 void BACKEND_NAME::Emit(Return<Struct>& op) { EmitReturn(op); }
 void BACKEND_NAME::Emit(Return<Pointer>& op) { EmitReturn(op); }
+void BACKEND_NAME::Emit(Return<void>& op) { EmitReturn(op); }
 void BACKEND_NAME::Emit(Call<i32>& op) { EmitCall(op); }
 void BACKEND_NAME::Emit(Call<u32>& op) { EmitCall(op); }
 void BACKEND_NAME::Emit(Call<i64>& op) { EmitCall(op); }

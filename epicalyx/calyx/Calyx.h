@@ -587,7 +587,7 @@ struct StoreToPointer : Directive {
 };
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
 struct Return : Directive {
 
   Return(var_index_t idx) :

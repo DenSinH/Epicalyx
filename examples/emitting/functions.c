@@ -1,5 +1,7 @@
-int test() {
-  return 1;
+int global = 0;
+
+void test() {
+  global = 1;
 }
 
 float add_half(float a) {
@@ -7,6 +9,7 @@ float add_half(float a) {
 }
 
 int main() {
-  double one_added = add_half(add_half(test()));
+  test();
+  double one_added = add_half(add_half(global));
   return add_half(add_half(one_added));
 }

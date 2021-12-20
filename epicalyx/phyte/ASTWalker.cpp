@@ -104,6 +104,7 @@ void ASTWalker::Visit(epi::taxy::FunctionDefinition& decl) {
   for (auto [_, var] : variables.Top()) {
     emitter.Emit<calyx::DeallocateLocal>(var.idx, var.size);
   }
+  emitter.Emit<calyx::Return<void>>(0);
   // locals layer
   variables.PopLayer();
   c_types.NewLayer();
@@ -1290,7 +1291,7 @@ void ASTWalker::Visit(Return& stat) {
     state.pop();
   }
   else {
-    emitter.Emit<calyx::Return<i32>>(0);
+    emitter.Emit<calyx::Return<void>>(0);
   }
 }
 

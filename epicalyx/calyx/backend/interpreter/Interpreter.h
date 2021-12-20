@@ -4,6 +4,7 @@
 #include "Scope.h"
 
 #include <variant>
+#include <optional>
 #include <unordered_map>
 #include <stack>
 
@@ -29,11 +30,12 @@ struct Interpreter : Backend {
   cotyl::MapScope<calyx::var_index_t, std::pair<i64, u64>> locals{};
 
   // IR variables
-  cotyl::MapScope<calyx::var_index_t, std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> vars{};
+  cotyl::MapScope<calyx::var_index_t, std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>, true> vars{};
 
   program_counter_t pos{0, 0};
+  // link, return_to, args, var_args
   std::stack<std::tuple<program_counter_t, calyx::var_index_t, calyx::arg_list_t, calyx::arg_list_t>> call_stack{};
-  calyx::var_index_t returned = 0;
+  std::optional<std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> returned = {};
 
   void EmitProgram(Program& program) final;
   void VisualizeProgram(const Program& program);

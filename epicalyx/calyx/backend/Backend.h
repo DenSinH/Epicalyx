@@ -164,6 +164,7 @@ struct Backend {
   virtual void Emit(Return<double>& op) = 0;
   virtual void Emit(Return<Struct>& op) = 0;
   virtual void Emit(Return<Pointer>& op) = 0;
+  virtual void Emit(Return<void>& op) = 0;
   virtual void Emit(Call<i32>& op) = 0;
   virtual void Emit(Call<u32>& op) = 0;
   virtual void Emit(Call<i64>& op) = 0;
