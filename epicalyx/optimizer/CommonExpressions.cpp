@@ -61,10 +61,16 @@ bool CommonExpressions::ReplaceIf(T& op, F predicate) {
   for (const auto& [var_idx, loc] : vars_found) {
     auto& directive = new_program.blocks.at(loc.first)[loc.second];
     if (IsType<T>(directive)) {
-      const auto* candidate = cotyl::unique_ptr_cast<const T>(directive);
-      if (predicate(*candidate, op)) {
-        replacement.emplace(op.idx, candidate->idx);
-        return true;
+      auto candidate_block = dependencies.var_graph.at(var_idx).block_made;
+      auto ancestor = CommonBlockAncestor(candidate_block, current_block_idx);
+
+      // todo: shift directives back for earlier ancestor blocks
+      if (ancestor == current_block_idx || ancestor == candidate_block) {
+        const auto* candidate = cotyl::unique_ptr_cast<const T>(directive);
+        if (predicate(*candidate, op)) {
+          replacement.emplace(op.idx, candidate->idx);
+          return true;
+        }
       }
     }
   }

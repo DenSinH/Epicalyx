@@ -130,20 +130,46 @@ struct Directive {
     Select,
   };
 
-  Directive(Class cls) :
-      cls(cls) {
+  Directive(Class cls, size_t type_id) :
+      cls(cls), type_id(type_id) {
 
   }
 
   virtual ~Directive() = default;
 
   Class cls;
+  size_t type_id;
 
   virtual std::string ToString() const = 0;
   virtual void Emit(Backend& backend) = 0;
 };
 
 using pDirective = std::unique_ptr<Directive>;
+
+template<typename T>
+requires (is_calyx_type_v<T>)
+struct Expr : Directive {
+  
+  Expr(size_t type_id, var_index_t idx) :
+      Directive(Class::Expression, type_id),
+    idx(idx) {
+
+  }
+
+  var_index_t idx;
+};
+
+struct Branch : Directive {
+
+  Branch(Class cls, size_t type_id, block_label_t dest) :
+      Directive(cls, type_id),
+      dest(dest) {
+
+  }
+
+  block_label_t dest;
+};
+
 struct Program {
   using block_t = std::vector<pDirective>;
   using blocks_t = std::unordered_map<block_label_t, block_t>;
@@ -176,30 +202,6 @@ struct Program {
   // (try this on godbolt for example)
   // these require a block to run
   std::unordered_map<std::string, std::variant<std::vector<u8>, label_offset_t, block_label_t>> global_init{};
-};
-
-template<typename T>
-requires (is_calyx_type_v<T>)
-struct Expr : Directive {
-  
-  Expr(var_index_t idx) :
-      Directive(Class::Expression),
-    idx(idx) {
-
-  }
-
-  var_index_t idx;
-};
-
-struct Branch : Directive {
-
-  Branch(Class cls, block_label_t dest) :
-      Directive(cls),
-      dest(dest) {
-
-  }
-
-  block_label_t dest;
 };
 
 enum class BinopType {
@@ -236,7 +238,7 @@ enum class CmpType {
 template<typename To, typename From>
 struct Cast : Expr<calyx_upcast_t<To>> {
   Cast(var_index_t idx, var_index_t right_idx) :
-      Expr<calyx_upcast_t<To>>(idx), right_idx(right_idx) {
+      Expr<calyx_upcast_t<To>>(GetTID(), idx), right_idx(right_idx) {
 
   }
 
@@ -244,6 +246,7 @@ struct Cast : Expr<calyx_upcast_t<To>> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
@@ -251,7 +254,7 @@ requires (is_calyx_type_v<T>)
 struct Binop : Expr<T> {
 
   Binop(var_index_t idx, var_index_t left, BinopType op, var_index_t right) :
-      Expr<T>(idx), left_idx(left), op(op), right_idx(right) {
+      Expr<T>(GetTID(), idx), left_idx(left), op(op), right_idx(right) {
 
   }
 
@@ -261,6 +264,7 @@ struct Binop : Expr<T> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
@@ -268,7 +272,7 @@ requires (is_calyx_type_v<T>)
 struct BinopImm : Expr<T> {
 
   BinopImm(var_index_t idx, var_index_t left, BinopType op, T right) :
-      Expr<T>(idx), left_idx(left), op(op), right(right) {
+      Expr<T>(GetTID(), idx), left_idx(left), op(op), right(right) {
 
   }
 
@@ -278,6 +282,7 @@ struct BinopImm : Expr<T> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
@@ -285,7 +290,7 @@ requires (is_calyx_type_v<T>)
 struct Shift : Expr<T> {
 
   Shift(var_index_t idx, var_index_t left, ShiftType op, var_index_t right) :
-      Expr<T>(idx), left_idx(left), op(op), right_idx(right) {
+      Expr<T>(GetTID(), idx), left_idx(left), op(op), right_idx(right) {
 
   }
 
@@ -295,6 +300,7 @@ struct Shift : Expr<T> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
@@ -302,7 +308,7 @@ requires (is_calyx_type_v<T>)
 struct ShiftImm : Expr<T> {
 
   ShiftImm(var_index_t idx, var_index_t left, ShiftType op, T right) :
-      Expr<T>(idx), left_idx(left), op(op), right(right) {
+      Expr<T>(GetTID(), idx), left_idx(left), op(op), right(right) {
 
   }
 
@@ -312,6 +318,7 @@ struct ShiftImm : Expr<T> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
@@ -319,7 +326,7 @@ requires (is_calyx_type_v<T>)
 struct Compare : Expr<i32> {
 
   Compare(var_index_t idx, var_index_t left, CmpType op, var_index_t right) :
-          Expr<i32>(idx), left_idx(left), op(op), right_idx(right) {
+          Expr<i32>(GetTID(), idx), left_idx(left), op(op), right_idx(right) {
 
   }
 
@@ -329,6 +336,7 @@ struct Compare : Expr<i32> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
@@ -336,7 +344,7 @@ requires (is_calyx_type_v<T>)
 struct CompareImm : Expr<i32> {
 
   CompareImm(var_index_t idx, var_index_t left, CmpType op, T right) :
-          Expr<i32>(idx), left_idx(left), op(op), right(right) {
+          Expr<i32>(GetTID(), idx), left_idx(left), op(op), right(right) {
 
   }
 
@@ -346,16 +354,18 @@ struct CompareImm : Expr<i32> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 struct UnconditionalBranch : Branch {
   UnconditionalBranch(block_label_t dest) :
-      Branch(Class::UnconditionalBranch, dest) {
+      Branch(Class::UnconditionalBranch, GetTID(), dest) {
 
   }
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
@@ -363,7 +373,7 @@ requires (is_calyx_type_v<T>)
 struct BranchCompare : Branch {
 
   BranchCompare(block_label_t dest, var_index_t left, CmpType op, var_index_t right) :
-      Branch(Class::Branch, dest), left_idx(left), op(op), right_idx(right) {
+      Branch(Class::Branch, GetTID(), dest), left_idx(left), op(op), right_idx(right) {
 
   }
 
@@ -373,6 +383,7 @@ struct BranchCompare : Branch {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
@@ -380,7 +391,7 @@ requires (is_calyx_type_v<T>)
 struct BranchCompareImm : Branch {
 
   BranchCompareImm(block_label_t dest, var_index_t left, CmpType op, T right) :
-    Branch(Class::Branch, dest), left_idx(left), op(op), right(right) {
+    Branch(Class::Branch, GetTID(), dest), left_idx(left), op(op), right(right) {
 
   }
 
@@ -390,6 +401,7 @@ struct BranchCompareImm : Branch {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
@@ -397,7 +409,7 @@ requires (is_calyx_integral_type_v<T>)
 struct AddToPointer : Expr<Pointer> {
 
   AddToPointer(var_index_t idx, var_index_t ptr, PtrAddType op, u64 stride, var_index_t right) :
-      Expr<Pointer>(idx), ptr_idx(ptr), op(op), stride(stride), right_idx(right) {
+      Expr<Pointer>(GetTID(), idx), ptr_idx(ptr), op(op), stride(stride), right_idx(right) {
 
   }
 
@@ -408,12 +420,13 @@ struct AddToPointer : Expr<Pointer> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 struct AddToPointerImm : Expr<Pointer> {
 
   AddToPointerImm(var_index_t idx, var_index_t ptr, u64 stride, i64 right) :
-      Expr<Pointer>(idx), ptr_idx(ptr), stride(stride), right(right) {
+      Expr<Pointer>(GetTID(), idx), ptr_idx(ptr), stride(stride), right(right) {
 
   }
 
@@ -423,6 +436,7 @@ struct AddToPointerImm : Expr<Pointer> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
@@ -430,7 +444,7 @@ requires (is_calyx_type_v<T>)
 struct Imm : Expr<T> {
 
   Imm(var_index_t idx, T value) :
-      Expr<T>(idx), value(value) {
+      Expr<T>(GetTID(), idx), value(value) {
 
   }
 
@@ -438,6 +452,7 @@ struct Imm : Expr<T> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
@@ -445,7 +460,7 @@ requires (is_calyx_type_v<T>)
 struct Unop : Expr<T> {
 
   Unop(var_index_t idx, UnopType op, var_index_t right) :
-      Expr<T>(idx), op(op), right_idx(right) {
+      Expr<T>(GetTID(), idx), op(op), right_idx(right) {
 
   }
 
@@ -454,13 +469,14 @@ struct Unop : Expr<T> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
 struct LoadLocal : Expr<calyx_upcast_t<T>> {
 
   LoadLocal(var_index_t idx, var_index_t loc_idx, i32 offset = 0) :
-      Expr<calyx_upcast_t<T>>(idx), loc_idx(loc_idx), offset(offset) {
+      Expr<calyx_upcast_t<T>>(GetTID(), idx), loc_idx(loc_idx), offset(offset) {
 
   }
 
@@ -469,12 +485,13 @@ struct LoadLocal : Expr<calyx_upcast_t<T>> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 struct LoadLocalAddr : Expr<Pointer> {
 
   LoadLocalAddr(var_index_t idx, var_index_t loc_idx) :
-          Expr<Pointer>(idx), loc_idx(loc_idx){
+          Expr<Pointer>(GetTID(), idx), loc_idx(loc_idx){
 
   }
 
@@ -482,13 +499,14 @@ struct LoadLocalAddr : Expr<Pointer> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
 struct StoreLocal : Expr<calyx_upcast_t<T>> {
 
   StoreLocal(var_index_t idx, var_index_t loc_idx, var_index_t src, i32 offset = 0) :
-      Expr<calyx_upcast_t<T>>(idx), loc_idx(loc_idx), src(src), offset(offset) {
+      Expr<calyx_upcast_t<T>>(GetTID(), idx), loc_idx(loc_idx), src(src), offset(offset) {
 
   }
 
@@ -498,13 +516,14 @@ struct StoreLocal : Expr<calyx_upcast_t<T>> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
 struct LoadGlobal : Expr<calyx_upcast_t<T>> {
 
   LoadGlobal(var_index_t idx, std::string symbol, i32 offset = 0) :
-      Expr<calyx_upcast_t<T>>(idx), symbol(std::move(symbol)), offset(offset) {
+      Expr<calyx_upcast_t<T>>(GetTID(), idx), symbol(std::move(symbol)), offset(offset) {
 
   }
 
@@ -513,12 +532,13 @@ struct LoadGlobal : Expr<calyx_upcast_t<T>> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 struct LoadGlobalAddr : Expr<Pointer> {
 
   LoadGlobalAddr(var_index_t idx, std::string symbol) :
-          Expr<Pointer>(idx), symbol(std::move(symbol)){
+          Expr<Pointer>(GetTID(), idx), symbol(std::move(symbol)){
 
   }
 
@@ -526,13 +546,14 @@ struct LoadGlobalAddr : Expr<Pointer> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
 struct StoreGlobal : Expr<calyx_upcast_t<T>> {
 
   StoreGlobal(var_index_t idx, std::string symbol, var_index_t src, i32 offset = 0) :
-      Expr<calyx_upcast_t<T>>(idx), symbol(std::move(symbol)), src(src), offset(offset) {
+      Expr<calyx_upcast_t<T>>(GetTID(), idx), symbol(std::move(symbol)), src(src), offset(offset) {
 
   }
 
@@ -542,11 +563,12 @@ struct StoreGlobal : Expr<calyx_upcast_t<T>> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 struct AllocateLocal : Directive {
   AllocateLocal(var_index_t loc_idx, u64 size) :
-      Directive(Class::Stack), loc_idx(loc_idx), size(size) {
+      Directive(Class::Stack, GetTID()), loc_idx(loc_idx), size(size) {
 
   }
 
@@ -555,11 +577,12 @@ struct AllocateLocal : Directive {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 struct DeallocateLocal : Directive {
   DeallocateLocal(var_index_t loc_idx, u64 size) :
-      Directive(Class::Stack), loc_idx(loc_idx), size(size) {
+      Directive(Class::Stack, GetTID()), loc_idx(loc_idx), size(size) {
 
   }
   var_index_t loc_idx;
@@ -567,13 +590,14 @@ struct DeallocateLocal : Directive {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
 struct LoadFromPointer : Expr<calyx_upcast_t<T>> {
 
   LoadFromPointer(var_index_t idx, var_index_t ptr_idx, i32 offset = 0) :
-      Expr<calyx_upcast_t<T>>(idx), ptr_idx(ptr_idx), offset(offset) {
+      Expr<calyx_upcast_t<T>>(idx, GetTID()), ptr_idx(ptr_idx), offset(offset) {
 
   }
 
@@ -582,13 +606,14 @@ struct LoadFromPointer : Expr<calyx_upcast_t<T>> {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
 struct StoreToPointer : Directive {
 
   StoreToPointer(var_index_t ptr_idx, var_index_t src, i32 offset = 0) :
-          Directive(Class::Store), src(src), ptr_idx(ptr_idx), offset(offset) {
+          Directive(Class::Store, GetTID()), src(src), ptr_idx(ptr_idx), offset(offset) {
 
   }
 
@@ -598,6 +623,7 @@ struct StoreToPointer : Directive {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
@@ -605,7 +631,7 @@ requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
 struct Return : Directive {
 
   Return(var_index_t idx) :
-        Directive(Class::Return), idx(idx) {
+        Directive(Class::Return, GetTID()), idx(idx) {
 
   }
 
@@ -613,13 +639,14 @@ struct Return : Directive {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
 struct Call : Directive {
 
   Call(var_index_t idx, var_index_t fn_idx, arg_list_t args, arg_list_t var_args) :
-        Directive(Class::Call), idx(idx), fn_idx(fn_idx), args(std::move(args)), var_args(std::move(var_args)) {
+        Directive(Class::Call, GetTID()), idx(idx), fn_idx(fn_idx), args(std::move(args)), var_args(std::move(var_args)) {
 
   }
 
@@ -630,13 +657,14 @@ struct Call : Directive {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 template<typename T>
 struct CallLabel : Directive {
 
   CallLabel(var_index_t idx, std::string label, arg_list_t args, arg_list_t var_args) :
-        Directive(Class::Call), idx(idx), label(std::move(label)), args(std::move(args)), var_args(std::move(var_args)) {
+        Directive(Class::Call, GetTID()), idx(idx), label(std::move(label)), args(std::move(args)), var_args(std::move(var_args)) {
 
   }
 
@@ -647,12 +675,13 @@ struct CallLabel : Directive {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 struct ArgMakeLocal : Directive {
 
   ArgMakeLocal(Argument arg, var_index_t loc_idx) :
-        Directive(Class::Stack), arg(arg), loc_idx(loc_idx) {
+        Directive(Class::Stack, GetTID()), arg(arg), loc_idx(loc_idx) {
 
   }
 
@@ -661,12 +690,13 @@ struct ArgMakeLocal : Directive {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 struct Select : Directive {
 
   Select(var_index_t idx) :
-        Directive(Class::Select), idx(idx) {
+        Directive(Class::Select, GetTID()), idx(idx) {
 
   }
 
@@ -676,6 +706,7 @@ struct Select : Directive {
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 }

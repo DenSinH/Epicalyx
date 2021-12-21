@@ -82,7 +82,7 @@ void ProgramDependencies::EmitLoadGlobal(LoadGlobal<T>& op) {
 }
 
 void ProgramDependencies::Emit(LoadGlobalAddr& op) {
-
+  detail::get_default(var_graph, op.idx).block_made = pos.first;
 }
 
 template<typename T>
