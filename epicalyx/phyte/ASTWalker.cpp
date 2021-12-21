@@ -178,6 +178,10 @@ void ASTWalker::Visit(Identifier& decl) {
         if (type->IsArray()) {
           current = emitter.EmitExpr<calyx::LoadGlobalAddr>({calyx::Var::Type::Pointer, type->Deref()->Sizeof() }, decl.name);
         }
+        else if (type->IsFunction()) {
+          auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {decl.name});
+          type->Visit(visitor);
+        }
         else {
           auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalEmitter>(*this, {decl.name});
           type->Visit(visitor);

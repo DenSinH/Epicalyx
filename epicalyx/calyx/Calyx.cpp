@@ -103,7 +103,13 @@ static std::string cmp_string(CmpType type) {
 }
 
 static std::string to_string(const Pointer& ptr) {
-  return cotyl::Format("%016x", ptr.value);
+  if (std::holds_alternative<i64>(ptr.value)) {
+    return cotyl::Format("%016x", std::get<i64>(ptr.value));
+  }
+  else {
+    auto pval = std::get<label_offset_t>(ptr.value);
+    return cotyl::FormatStr("%s+%s", pval.label, pval.offset);
+  }
 }
 
 template<typename T>
@@ -229,7 +235,7 @@ std::string LoadFromPointer<T>::ToString() const {
 
 template<typename T>
 std::string StoreToPointer<T>::ToString() const {
-  return cotyl::FormatStr("store *v%s <-<%s> v%s", ptr_idx, detail::type_string<T>::value, idx);
+  return cotyl::FormatStr("store *v%s <-<%s> v%s", ptr_idx, detail::type_string<T>::value, src);
 }
 
 template<typename T>

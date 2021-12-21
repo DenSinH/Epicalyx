@@ -16,8 +16,8 @@ namespace epi::calyx {
 void Interpreter::VisualizeProgram(const Program& program) {
   auto graph = std::make_unique<epi::cycle::Graph>();
 
-  for (int i = 0; i < program.blocks.size(); i++) {
-    for (const auto& directive : program.blocks[i]) {
+  for (const auto& [i, block] : program.blocks) {
+    for (const auto& directive : block) {
       switch (directive->cls) {
         case Directive::Class::Expression:
         case Directive::Class::Stack:
@@ -67,28 +67,22 @@ void Interpreter::EmitProgram(Program& program) {
     global_data.push_back(std::vector<u8>(size));
   }
 
-  for (const auto& [symbol, _] : program.functions) {
-    auto index = global_data.size();
-    globals.emplace(symbol, index);
-    global_data.push_back(std::vector<u8>(sizeof(Pointer)));
-  }
-
   for (const auto& [symbol, global_init] : program.global_init) {
     if (std::holds_alternative<std::vector<u8>>(global_init)) {
       const auto& data = std::get<std::vector<u8>>(global_init);
       std::memcpy(global_data[globals.at(symbol)].data(), data.data(), global_data[globals.at(symbol)].size());
     }
-    else if (std::holds_alternative<calyx::Program::label_offset_t>(global_init)) {
+    else if (std::holds_alternative<calyx::label_offset_t>(global_init)) {
       throw std::runtime_error("Unimplemented: global label offset init");
     }
     else if (std::holds_alternative<calyx::block_label_t>(global_init)) {
       pos.first = std::get<calyx::block_label_t>(global_init);
       pos.second = 0;
-      call_stack.emplace(std::make_pair(-1, 0), -1, arg_list_t{}, arg_list_t{});
+      call_stack.emplace(std::make_pair(0, 0), -1, arg_list_t{}, arg_list_t{});
       vars.NewLayer();
       locals.NewLayer();
 
-      while (pos.first != -1) {
+      while (pos.first) {
         auto& directive = program.blocks[pos.first][pos.second];
         pos.second++;
         directive->Emit(*this);
@@ -105,11 +99,6 @@ void Interpreter::EmitProgram(Program& program) {
     else {
       throw std::runtime_error("Bad global initializer");
     }
-  }
-
-  for (const auto& [symbol, block_label] : program.functions) {
-    Pointer value = Pointer{(i64)block_label};
-    std::memcpy(global_data[globals.at(symbol)].data(), &value, global_data[globals.at(symbol)].size());
   }
 
   pos.first = program.functions.at("main");
@@ -157,14 +146,16 @@ void Interpreter::EmitCast(Cast<To, From>& op) {
       vars.Set(op.idx, calyx::Pointer{from.value});
     }
     else {
-      vars.Set(op.idx, calyx::Pointer{(u64)from});
+      vars.Set(op.idx, calyx::Pointer{(i64)from});
     }
   }
   else if constexpr(std::is_same_v<From, Pointer>) {
     // we know that To is not a pointer type
     To value;
     From from = std::get<From>(vars.Get(op.right_idx));
-    value = from.value;
+
+    // assume we don't get label offsets here
+    value = std::get<i64>(from.value);
     vars.Get(op.idx) = value;
   }
   else {
@@ -235,7 +226,12 @@ void Interpreter::EmitLoadGlobal(LoadGlobal<T>& op) {
 }
 
 void Interpreter::Emit(LoadGlobalAddr& op) {
-  vars.Set(op.idx, Pointer{-globals.at(op.symbol)});
+  if (program.functions.contains(op.symbol)) {
+    vars.Set(op.idx, Pointer{op.symbol, 0});
+  }
+  else {
+    vars.Set(op.idx, Pointer{-globals.at(op.symbol)});
+  }
 }
 
 template<typename T>
@@ -259,11 +255,18 @@ void Interpreter::EmitLoadFromPointer(LoadFromPointer<T>& op) {
   }
   else {
     T value;
-    if (pointer.value > 0) {
-      memcpy(&value, &stack[pointer.value] + op.offset, sizeof(T));
+    if (std::holds_alternative<i64>(pointer.value)) {
+      const auto pval = std::get<i64>(pointer.value);
+      if (pval > 0) {
+        memcpy(&value, &stack[pval] + op.offset, sizeof(T));
+      }
+      else {
+        memcpy(&value, global_data[-pval].data() + op.offset, sizeof(T));
+      }
     }
     else {
-      memcpy(&value, global_data[-pointer.value].data() + op.offset, sizeof(T));
+      const auto pval = std::get<calyx::label_offset_t>(pointer.value);
+      memcpy(&value, global_data[globals[pval.label]].data() + op.offset + pval.offset, sizeof(T));
     }
     vars.Set(op.idx, (calyx_upcast_t<T>)value);
   }
@@ -276,15 +279,37 @@ void Interpreter::EmitStoreToPointer(StoreToPointer<T>& op) {
     throw std::runtime_error("Unimplemented: store struct to pointer");
   }
   else {
-    T value = std::get<calyx_upcast_t<T>>(vars.Get(op.idx));
-    memcpy(&stack[pointer.value + op.offset], &value, sizeof(T));
+    T value = std::get<calyx_upcast_t<T>>(vars.Get(op.src));
+
+    if (std::holds_alternative<i64>(pointer.value)) {
+      const auto pval = std::get<i64>(pointer.value);
+      if (pval > 0) {
+        memcpy(&stack[pval + op.offset], &value, sizeof(T));
+      }
+      else {
+        memcpy(global_data[-pval].data() + op.offset, &value, sizeof(T));
+      }
+    }
+    else {
+      const auto pval = std::get<calyx::label_offset_t>(pointer.value);
+      memcpy(global_data[globals[pval.label]].data() + op.offset + pval.offset, &value, sizeof(T));
+    }
   }
 }
 
 template<typename T>
 void Interpreter::EmitCall(Call<T>& op) {
   call_stack.emplace(pos, op.idx, op.args, op.var_args);
-  pos.first = std::get<Pointer>(vars.Get(op.fn_idx)).value;
+  auto pointer = std::get<Pointer>(vars.Get(op.fn_idx));
+  if (std::holds_alternative<i64>(pointer.value)) {
+    pos.first = std::get<i64>(pointer.value);
+  }
+  else {
+    auto pval = std::get<calyx::label_offset_t>(pointer.value);
+    pos.first = program.functions.at(pval.label);
+    cotyl::Assert(pval.offset == 0, "Cannot jump to offset label in call");
+  }
+
   pos.second = 0;
   locals.NewLayer();
   vars.NewLayer();
@@ -303,70 +328,80 @@ void Interpreter::Emit(ArgMakeLocal& op) {
   auto [_, __, args, ___] = call_stack.top();
 
   const auto stack_loc = stack.size();
-  locals.Set(op.loc_idx, std::make_pair(stack_loc, op.arg.size));
   switch (op.arg.type) {
     case Argument::Type::I8: {
       i32 value = std::get<i32>(vars.Get(args[op.arg.arg_idx].first));
+      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Argument::Type::U8: {
       u32 value = std::get<u32>(vars.Get(args[op.arg.arg_idx].first));
+      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Argument::Type::I16: {
       i32 value = std::get<i32>(vars.Get(args[op.arg.arg_idx].first));
+      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Argument::Type::U16: {
       u32 value = std::get<u32>(vars.Get(args[op.arg.arg_idx].first));
+      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Argument::Type::I32: {
       i32 value = std::get<i32>(vars.Get(args[op.arg.arg_idx].first));
+      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Argument::Type::U32: {
       u32 value = std::get<u32>(vars.Get(args[op.arg.arg_idx].first));
+      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Argument::Type::I64: {
       i64 value = std::get<i64>(vars.Get(args[op.arg.arg_idx].first));
+      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Argument::Type::U64: {
       u64 value = std::get<u64>(vars.Get(args[op.arg.arg_idx].first));
+      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Argument::Type::Float: {
       float value = std::get<float>(vars.Get(args[op.arg.arg_idx].first));
+      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Argument::Type::Double: {
       double value = std::get<double>(vars.Get(args[op.arg.arg_idx].first));
+      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Argument::Type::Pointer: {
       Pointer value = std::get<Pointer>(vars.Get(args[op.arg.arg_idx].first));
+      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
@@ -391,7 +426,7 @@ void Interpreter::EmitReturn(Return<T>& op) {
     auto [_pos, return_to, _, __] = call_stack.top();
     call_stack.pop();
     pos = _pos;
-    if (return_to) {
+    if constexpr(!std::is_same_v<T, void>) {
       vars.Set(return_to, top_vars.at(op.idx));
     }
   }
@@ -567,13 +602,21 @@ void Interpreter::EmitCompare(Compare<T>& op) {
   i32 result;
 
   if constexpr(std::is_same_v<T, calyx::Pointer>) {
-    switch (op.op) {
-      case CmpType::Eq: result = left.value == right.value; break;
-      case CmpType::Ne: result = left.value != right.value; break;
-      case CmpType::Lt: result = left.value <  right.value; break;
-      case CmpType::Le: result = left.value <= right.value; break;
-      case CmpType::Gt: result = left.value >  right.value; break;
-      case CmpType::Ge: result = left.value >= right.value; break;
+    if (std::holds_alternative<i64>(left.value) && std::holds_alternative<i64>(right.value)) {
+      auto lval = std::get<i64>(left.value);
+      auto rval = std::get<i64>(right.value);
+      switch (op.op) {
+        case CmpType::Eq: result = lval == rval; break;
+        case CmpType::Ne: result = lval != rval; break;
+        case CmpType::Lt: result = lval <  rval; break;
+        case CmpType::Le: result = lval <= rval; break;
+        case CmpType::Gt: result = lval >  rval; break;
+        case CmpType::Ge: result = lval >= rval; break;
+      }
+    }
+    else {
+      // comparing symbol does not yield any interesting information
+      result = true;
     }
   }
   else {
@@ -595,13 +638,21 @@ void Interpreter::EmitCompareImm(CompareImm<T>& op) {
   i32 result;
 
   if constexpr(std::is_same_v<T, calyx::Pointer>) {
-    switch (op.op) {
-      case CmpType::Eq: result = left.value == op.right.value; break;
-      case CmpType::Ne: result = left.value != op.right.value; break;
-      case CmpType::Lt: result = left.value <  op.right.value; break;
-      case CmpType::Le: result = left.value <= op.right.value; break;
-      case CmpType::Gt: result = left.value >  op.right.value; break;
-      case CmpType::Ge: result = left.value >= op.right.value; break;
+    if (std::holds_alternative<i64>(left.value) && std::holds_alternative<i64>(op.right.value)) {
+      auto lval = std::get<i64>(left.value);
+      auto rval = std::get<i64>(op.right.value);
+      switch (op.op) {
+        case CmpType::Eq: result = lval == rval; break;
+        case CmpType::Ne: result = lval != rval; break;
+        case CmpType::Lt: result = lval <  rval; break;
+        case CmpType::Le: result = lval <= rval; break;
+        case CmpType::Gt: result = lval >  rval; break;
+        case CmpType::Ge: result = lval >= rval; break;
+      }
+    }
+    else {
+      // comparing symbol does not yield any interesting information
+      result = true;
     }
   }
   else {
@@ -629,13 +680,21 @@ void Interpreter::EmitBranchCompare(BranchCompare<T>& op) {
   bool branch;
 
   if constexpr(std::is_same_v<T, Pointer>) {
-    switch (op.op) {
-      case calyx::CmpType::Eq: branch = left.value == right.value; break;
-      case calyx::CmpType::Ne: branch = left.value != right.value; break;
-      case calyx::CmpType::Gt: branch = left.value >  right.value; break;
-      case calyx::CmpType::Ge: branch = left.value >= right.value; break;
-      case calyx::CmpType::Lt: branch = left.value <  right.value; break;
-      case calyx::CmpType::Le: branch = left.value <= right.value; break;
+    if (std::holds_alternative<i64>(left.value) && std::holds_alternative<i64>(right.value)) {
+      auto lval = std::get<i64>(left.value);
+      auto rval = std::get<i64>(right.value);
+      switch (op.op) {
+        case CmpType::Eq: branch = lval == rval; break;
+        case CmpType::Ne: branch = lval != rval; break;
+        case CmpType::Lt: branch = lval <  rval; break;
+        case CmpType::Le: branch = lval <= rval; break;
+        case CmpType::Gt: branch = lval >  rval; break;
+        case CmpType::Ge: branch = lval >= rval; break;
+      }
+    }
+    else {
+      // comparing symbol does not yield any interesting information
+      branch = true;
     }
   }
   else {
@@ -662,13 +721,21 @@ void Interpreter::EmitBranchCompareImm(BranchCompareImm<T>& op) {
   bool branch;
 
   if constexpr(std::is_same_v<T, Pointer>) {
-    switch (op.op) {
-      case calyx::CmpType::Eq: branch = left.value == right.value; break;
-      case calyx::CmpType::Ne: branch = left.value != right.value; break;
-      case calyx::CmpType::Gt: branch = left.value >  right.value; break;
-      case calyx::CmpType::Ge: branch = left.value >= right.value; break;
-      case calyx::CmpType::Lt: branch = left.value <  right.value; break;
-      case calyx::CmpType::Le: branch = left.value <= right.value; break;
+    if (std::holds_alternative<i64>(left.value) && std::holds_alternative<i64>(right.value)) {
+      auto lval = std::get<i64>(left.value);
+      auto rval = std::get<i64>(right.value);
+      switch (op.op) {
+        case CmpType::Eq: branch = lval == rval; break;
+        case CmpType::Ne: branch = lval != rval; break;
+        case CmpType::Lt: branch = lval <  rval; break;
+        case CmpType::Le: branch = lval <= rval; break;
+        case CmpType::Gt: branch = lval >  rval; break;
+        case CmpType::Ge: branch = lval >= rval; break;
+      }
+    }
+    else {
+      // comparing symbol does not yield any interesting information
+      branch = true;
     }
   }
   else {
@@ -705,14 +772,28 @@ template<typename T>
 void Interpreter::EmitAddToPointer(AddToPointer<T>& op) {
   calyx::Pointer left = std::get<calyx::Pointer>(vars.Get(op.ptr_idx));
   T right = std::get<T>(vars.Get(op.right_idx));
-  calyx::Pointer result = {left.value + (i64)op.stride * (i64)right};
+  calyx::Pointer result;
+  if (std::holds_alternative<i64>(left.value)) {
+    result = {std::get<i64>(left.value) + (i64)op.stride * (i64)right};
+  }
+  else {
+    auto pval = std::get<calyx::label_offset_t>(left.value);
+    result = {calyx::label_offset_t{pval.label, pval.offset + (i64) op.stride * (i64) right}};
+  }
   vars.Set(op.idx, result);
 }
 
 void Interpreter::Emit(AddToPointerImm& op) {
   calyx::Pointer left = std::get<calyx::Pointer>(vars.Get(op.ptr_idx));
   i64 right = op.right;
-  calyx::Pointer result = {left.value + (i64)op.stride * right};
+  calyx::Pointer result;
+  if (std::holds_alternative<i64>(left.value)) {
+    result = {std::get<i64>(left.value) + (i64)op.stride * (i64)right};
+  }
+  else {
+    auto pval = std::get<calyx::label_offset_t>(left.value);
+    result = {calyx::label_offset_t{pval.label, pval.offset + (i64) op.stride * (i64) right}};
+  }
   vars.Set(op.idx, result);
 }
 

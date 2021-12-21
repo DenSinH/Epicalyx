@@ -17,11 +17,18 @@ struct Backend;
 using var_index_t = u64;
 using block_label_t = u64;
 
+struct label_offset_t {
+  std::string label;
+  i64 offset;
+};
+
 struct Pointer {
   Pointer() : value(0) { }
   Pointer(i64 value) : value(value) { }
+  Pointer(std::variant<i64, label_offset_t> value) : value(value) { }
+  Pointer(std::string label, i64 offset = 0) : value(label_offset_t{std::move(label), offset}) { }
 
-  i64 value;
+  std::variant<i64, label_offset_t> value;
 };
 
 struct Struct;
@@ -90,6 +97,7 @@ struct Argument {
   };
 };
 
+// IR var idx and Argument
 using arg_list_t = std::vector<std::pair<var_index_t, Argument>>;
 
 struct Var {
@@ -137,16 +145,22 @@ struct Directive {
 
 using pDirective = std::unique_ptr<Directive>;
 struct Program {
-  using blocks_t = std::vector<std::vector<calyx::pDirective>>;
-  struct label_offset_t { std::string label; i64 offset; };
+  using block_t = std::vector<pDirective>;
+  using blocks_t = std::unordered_map<block_label_t, block_t>;
+
+  Program() {
+    blocks.emplace(0, block_t{});
+  }
 
   // program code
+  // block 0 is special
   blocks_t blocks{};
 
   // function symbols -> block ID
   std::unordered_map<std::string, calyx::block_label_t> functions{};
 
   // local label -> block ID
+  // todo: move this back to the AST walker
   std::unordered_map<std::string, calyx::block_label_t> local_labels{};
 
   // string constants
@@ -365,14 +379,14 @@ template<typename T>
 requires (is_calyx_type_v<T>)
 struct BranchCompareImm : Branch {
 
-  BranchCompareImm(block_label_t dest, var_index_t left, CmpType op, calyx_imm_type_t<T> right) :
+  BranchCompareImm(block_label_t dest, var_index_t left, CmpType op, T right) :
     Branch(Class::Branch, dest), left_idx(left), op(op), right(right) {
 
   }
 
   var_index_t left_idx;
   CmpType op;
-  calyx_imm_type_t<T> right;
+  T right;
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
@@ -573,13 +587,13 @@ struct LoadFromPointer : Expr<calyx_upcast_t<T>> {
 template<typename T>
 struct StoreToPointer : Directive {
 
-  StoreToPointer(var_index_t ptr_idx, var_index_t idx, i32 offset = 0) :
-          Directive(Class::Store), idx(idx), ptr_idx(ptr_idx), offset(offset) {
+  StoreToPointer(var_index_t ptr_idx, var_index_t src, i32 offset = 0) :
+          Directive(Class::Store), src(src), ptr_idx(ptr_idx), offset(offset) {
 
   }
 
   var_index_t ptr_idx;
-  var_index_t idx;
+  var_index_t src;
   i32 offset;
 
   std::string ToString() const final;
