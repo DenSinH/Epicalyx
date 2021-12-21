@@ -448,10 +448,10 @@ void Interpreter::EmitUnop(Unop<T>& op) {
   T right = std::get<T>(vars.Get(op.right_idx));
   switch (op.op) {
     case UnopType::Neg:
-      vars.Get(op.idx) = (T)-right; break;
+      vars.Set(op.idx, (T)-right); break;
     case UnopType::BinNot:
       if constexpr(std::is_integral_v<T>) {
-        vars.Get(op.idx) = (T)~right; break;
+        vars.Set(op.idx, (T)~right); break;
       }
       else {
         throw std::runtime_error("floating point operand for binary not");

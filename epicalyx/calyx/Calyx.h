@@ -36,6 +36,8 @@ struct Struct;
 template<typename T>
 constexpr bool is_calyx_type_v = epi::cotyl::is_in_v<T, i32, u32, i64, u64, float, double, Struct, Pointer>;
 template<typename T>
+constexpr bool is_calyx_arithmetic_type_v = epi::cotyl::is_in_v<T, i32, u32, i64, u64, float, double>;
+template<typename T>
 constexpr bool is_calyx_integral_type_v = epi::cotyl::is_in_v<T, i32, u32, i64, u64>;
 
 template<typename T> struct calyx_upcast { using type = T; };
@@ -250,7 +252,7 @@ struct Cast : Expr<calyx_upcast_t<To>> {
 };
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_type_v<T>)
 struct Binop : Expr<T> {
 
   Binop(var_index_t idx, var_index_t left, BinopType op, var_index_t right) :
@@ -268,7 +270,7 @@ struct Binop : Expr<T> {
 };
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_type_v<T>)
 struct BinopImm : Expr<T> {
 
   BinopImm(var_index_t idx, var_index_t left, BinopType op, T right) :
@@ -286,7 +288,7 @@ struct BinopImm : Expr<T> {
 };
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_integral_type_v<T>)
 struct Shift : Expr<T> {
 
   Shift(var_index_t idx, var_index_t left, ShiftType op, var_index_t right) :
@@ -304,7 +306,7 @@ struct Shift : Expr<T> {
 };
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_integral_type_v<T>)
 struct ShiftImm : Expr<T> {
 
   ShiftImm(var_index_t idx, var_index_t left, ShiftType op, T right) :
@@ -456,7 +458,7 @@ struct Imm : Expr<T> {
 };
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_type_v<T>)
 struct Unop : Expr<T> {
 
   Unop(var_index_t idx, UnopType op, var_index_t right) :

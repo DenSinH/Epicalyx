@@ -613,15 +613,19 @@ void ASTWalker::Visit(Binop& expr) {
   
   // only need to push a new state for conditional branches
   const bool conditional_branch = !state.empty() && (state.top().first == State::ConditionalBranch);
-  if (conditional_branch) {
-    state.push({State::Read, {}});
-  }
-  expr.left->Visit(*this);
-  auto left = current;
-  expr.right->Visit(*this);
-  auto right = current;
-  if (conditional_branch) {
-    state.pop();
+  calyx::var_index_t left, right;
+
+  if (expr.op != TokenType::LogicalAnd && expr.op != TokenType::LogicalOr) {
+    if (conditional_branch) {
+      state.push({State::Read, {}});
+    }
+    expr.left->Visit(*this);
+    left = current;
+    expr.right->Visit(*this);
+    right = current;
+    if (conditional_branch) {
+      state.pop();
+    }
   }
 
   switch (expr.op) {

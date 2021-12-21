@@ -36,7 +36,7 @@ std::string Cast<To, From>::ToString() const {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_type_v<T>)
 std::string Binop<T>::ToString() const {
   std::string op_str;
   switch (op) {
@@ -53,7 +53,7 @@ std::string Binop<T>::ToString() const {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_type_v<T>)
 std::string BinopImm<T>::ToString() const {
   std::string op_str;
   switch (op) {
@@ -70,7 +70,7 @@ std::string BinopImm<T>::ToString() const {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_integral_type_v<T>)
 std::string Shift<T>::ToString() const {
   std::string op_str;
   switch (op) {
@@ -81,7 +81,7 @@ std::string Shift<T>::ToString() const {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_integral_type_v<T>)
 std::string ShiftImm<T>::ToString() const {
   std::string op_str;
   switch (op) {
@@ -182,7 +182,7 @@ std::string Imm<T>::ToString() const {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_type_v<T>)
 std::string Unop<T>::ToString() const {
   std::string op_str;
   switch (op) {
@@ -316,25 +316,25 @@ void Cast<To, From>::Emit(Backend& backend) {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_type_v<T>)
 void Binop<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_type_v<T>)
 void BinopImm<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_integral_type_v<T>)
 void Shift<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_integral_type_v<T>)
 void ShiftImm<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
@@ -368,7 +368,7 @@ void BranchCompareImm<T>::Emit(Backend& backend) {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_type_v<T>)
 void Unop<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }

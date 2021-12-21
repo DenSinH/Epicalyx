@@ -3,7 +3,7 @@
 #include "phyte/Emitter.h"
 #include "calyx/backend/interpreter/Interpreter.h"
 #include "optimizer/ProgramDependencies.h"
-#include "optimizer/CommonExpressions.h"
+#include "optimizer/BasicOptimizer.h"
 #include "file/File.h"
 #include "file/SString.h"
 #include "tokenizer/Tokenizer.h"
@@ -18,7 +18,7 @@
 
 int main() {
   // auto file = epi::File("tests/test.c");
-  auto file = epi::File("examples/emitting/functions.c");
+  auto file = epi::File("examples/emitting/optimizing.c");
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
@@ -55,10 +55,10 @@ int main() {
   auto program = std::move(emitter.program);
 
   try {
-    auto subexpressions = epi::CommonExpressions();
-    subexpressions.EmitProgram(program);
+    auto optimizer = epi::BasicOptimizer();
+    optimizer.EmitProgram(program);
 
-    program = std::move(subexpressions.new_program);
+    program = std::move(optimizer.new_program);
   }
   catch_e {
     Log::ConsoleColor<Log::Color::Red>();

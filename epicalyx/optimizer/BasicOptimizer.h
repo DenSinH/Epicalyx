@@ -13,7 +13,7 @@ namespace epi {
 
 using namespace calyx;
 
-struct CommonExpressions : calyx::Backend {
+struct BasicOptimizer : calyx::Backend {
   std::unordered_map<var_index_t, var_index_t> replacement{};
 
   ProgramDependencies dependencies{};
