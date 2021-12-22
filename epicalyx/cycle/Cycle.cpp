@@ -82,13 +82,6 @@ void Graph::InitImGui() {
 }
 
 void Graph::VisualizeImpl() {
-  InitSDL();
-  InitImGui();
-
-  auto canvas = std::make_unique<ImNodes::CanvasState>();
-  canvas->Style.CurveThickness = 1.0f;
-  canvas->Style.ConnectionIndent = 0.0f;
-
   auto sort = FindOrder();
   std::map<u64, ImVec2> positions;
   ImVec2 pos{50, 100};
@@ -100,6 +93,13 @@ void Graph::VisualizeImpl() {
       pos.y += (1 + nodes.at(id).body.size()) * 20 + 30;
     }
   }
+
+  InitSDL();
+  InitImGui();
+
+  auto canvas = std::make_unique<ImNodes::CanvasState>();
+  canvas->Style.CurveThickness = 1.0f;
+  canvas->Style.ConnectionIndent = 0.0f;
 
   while (true) {
     SDL_Event event;

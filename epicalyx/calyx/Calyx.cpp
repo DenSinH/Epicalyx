@@ -103,13 +103,7 @@ static std::string cmp_string(CmpType type) {
 }
 
 static std::string to_string(const Pointer& ptr) {
-  if (std::holds_alternative<i64>(ptr.value)) {
-    return cotyl::Format("%016x", std::get<i64>(ptr.value));
-  }
-  else {
-    auto pval = std::get<label_offset_t>(ptr.value);
-    return cotyl::FormatStr("%s+%s", pval.label, pval.offset);
-  }
+  return cotyl::Format("%016x", ptr.value);
 }
 
 template<typename T>

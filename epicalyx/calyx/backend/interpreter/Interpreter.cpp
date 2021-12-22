@@ -143,10 +143,10 @@ void Interpreter::EmitCast(Cast<To, From>& op) {
     To value;
     From from = std::get<From>(vars.Get(op.right_idx));
     if constexpr(std::is_same_v<From, Pointer>) {
-      vars.Set(op.idx, calyx::Pointer{from.value});
+      vars.Set(op.idx, MakePointer(ReadPointer(from.value)));
     }
     else {
-      vars.Set(op.idx, calyx::Pointer{(i64)from});
+      vars.Set(op.idx, MakePointer((i64)from));
     }
   }
   else if constexpr(std::is_same_v<From, Pointer>) {
@@ -155,7 +155,7 @@ void Interpreter::EmitCast(Cast<To, From>& op) {
     From from = std::get<From>(vars.Get(op.right_idx));
 
     // assume we don't get label offsets here
-    value = std::get<i64>(from.value);
+    value = std::get<i64>(ReadPointer(from.value));
     vars.Get(op.idx) = value;
   }
   else {
@@ -195,7 +195,7 @@ void Interpreter::EmitLoadLocal(LoadLocal<T>& op) {
 }
 
 void Interpreter::Emit(LoadLocalAddr& op) {
-  vars.Set(op.idx, Pointer{locals.Get(op.loc_idx).first});
+  vars.Set(op.idx, MakePointer(locals.Get(op.loc_idx).first));
 }
 
 template<typename T>
@@ -227,10 +227,10 @@ void Interpreter::EmitLoadGlobal(LoadGlobal<T>& op) {
 
 void Interpreter::Emit(LoadGlobalAddr& op) {
   if (program.functions.contains(op.symbol)) {
-    vars.Set(op.idx, Pointer{op.symbol, 0});
+    vars.Set(op.idx, MakePointer(calyx::label_offset_t{op.symbol, 0}));
   }
   else {
-    vars.Set(op.idx, Pointer{-globals.at(op.symbol)});
+    vars.Set(op.idx, MakePointer(-globals.at(op.symbol)));
   }
 }
 
@@ -249,23 +249,25 @@ void Interpreter::EmitStoreGlobal(StoreGlobal<T>& op) {
 
 template<typename T>
 void Interpreter::EmitLoadFromPointer(LoadFromPointer<T>& op) {
-  auto pointer = std::get<Pointer>(vars.Get(op.ptr_idx));
+  auto pointer = ReadPointer(std::get<Pointer>(vars.Get(op.ptr_idx)).value);
   if constexpr(std::is_same_v<T, Struct>) {
     throw std::runtime_error("Unimplemented: load struct from pointer");
   }
   else {
     T value;
-    if (std::holds_alternative<i64>(pointer.value)) {
-      const auto pval = std::get<i64>(pointer.value);
-      if (pval > 0) {
+    if (std::holds_alternative<i64>(pointer)) {
+      const auto pval = std::get<i64>(pointer);
+      if (pval >= 0) {
         memcpy(&value, &stack[pval] + op.offset, sizeof(T));
       }
       else {
+        cotyl::Assert(global_data[-pval].size() >= sizeof(T));
         memcpy(&value, global_data[-pval].data() + op.offset, sizeof(T));
       }
     }
     else {
-      const auto pval = std::get<calyx::label_offset_t>(pointer.value);
+      const auto pval = std::get<calyx::label_offset_t>(pointer);
+      cotyl::Assert(global_data[globals[pval.label]].size() - op.offset - pval.offset >= sizeof(T));
       memcpy(&value, global_data[globals[pval.label]].data() + op.offset + pval.offset, sizeof(T));
     }
     vars.Set(op.idx, (calyx_upcast_t<T>)value);
@@ -274,24 +276,26 @@ void Interpreter::EmitLoadFromPointer(LoadFromPointer<T>& op) {
 
 template<typename T>
 void Interpreter::EmitStoreToPointer(StoreToPointer<T>& op) {
-  auto pointer = std::get<Pointer>(vars.Get(op.ptr_idx));
+  auto pointer = ReadPointer(std::get<Pointer>(vars.Get(op.ptr_idx)).value);
   if constexpr(std::is_same_v<T, Struct>) {
     throw std::runtime_error("Unimplemented: store struct to pointer");
   }
   else {
     T value = std::get<calyx_upcast_t<T>>(vars.Get(op.src));
 
-    if (std::holds_alternative<i64>(pointer.value)) {
-      const auto pval = std::get<i64>(pointer.value);
-      if (pval > 0) {
+    if (std::holds_alternative<i64>(pointer)) {
+      const auto pval = std::get<i64>(pointer);
+      if (pval >= 0) {
         memcpy(&stack[pval + op.offset], &value, sizeof(T));
       }
       else {
+        cotyl::Assert(global_data[-pval].size() >= sizeof(T));
         memcpy(global_data[-pval].data() + op.offset, &value, sizeof(T));
       }
     }
     else {
-      const auto pval = std::get<calyx::label_offset_t>(pointer.value);
+      const auto pval = std::get<calyx::label_offset_t>(pointer);
+      cotyl::Assert(global_data[globals[pval.label]].size() - op.offset - pval.offset >= sizeof(T));
       memcpy(global_data[globals[pval.label]].data() + op.offset + pval.offset, &value, sizeof(T));
     }
   }
@@ -300,12 +304,12 @@ void Interpreter::EmitStoreToPointer(StoreToPointer<T>& op) {
 template<typename T>
 void Interpreter::EmitCall(Call<T>& op) {
   call_stack.emplace(pos, op.idx, op.args, op.var_args);
-  auto pointer = std::get<Pointer>(vars.Get(op.fn_idx));
-  if (std::holds_alternative<i64>(pointer.value)) {
-    pos.first = std::get<i64>(pointer.value);
+  auto pointer = ReadPointer(std::get<Pointer>(vars.Get(op.fn_idx)).value);
+  if (std::holds_alternative<i64>(pointer)) {
+    pos.first = std::get<i64>(pointer);
   }
   else {
-    auto pval = std::get<calyx::label_offset_t>(pointer.value);
+    auto pval = std::get<calyx::label_offset_t>(pointer);
     pos.first = program.functions.at(pval.label);
     cotyl::Assert(pval.offset == 0, "Cannot jump to offset label in call");
   }
@@ -602,9 +606,11 @@ void Interpreter::EmitCompare(Compare<T>& op) {
   i32 result;
 
   if constexpr(std::is_same_v<T, calyx::Pointer>) {
-    if (std::holds_alternative<i64>(left.value) && std::holds_alternative<i64>(right.value)) {
-      auto lval = std::get<i64>(left.value);
-      auto rval = std::get<i64>(right.value);
+    auto lptr = ReadPointer(left.value);
+    auto rptr = ReadPointer(right.value);
+    if (std::holds_alternative<i64>(lptr) && std::holds_alternative<i64>(rptr)) {
+      auto lval = std::get<i64>(lptr);
+      auto rval = std::get<i64>(rptr);
       switch (op.op) {
         case CmpType::Eq: result = lval == rval; break;
         case CmpType::Ne: result = lval != rval; break;
@@ -615,8 +621,7 @@ void Interpreter::EmitCompare(Compare<T>& op) {
       }
     }
     else {
-      // comparing symbol does not yield any interesting information
-      result = true;
+      throw std::runtime_error("unimplemented: symbol compare");
     }
   }
   else {
@@ -638,9 +643,11 @@ void Interpreter::EmitCompareImm(CompareImm<T>& op) {
   i32 result;
 
   if constexpr(std::is_same_v<T, calyx::Pointer>) {
-    if (std::holds_alternative<i64>(left.value) && std::holds_alternative<i64>(op.right.value)) {
-      auto lval = std::get<i64>(left.value);
-      auto rval = std::get<i64>(op.right.value);
+    auto lptr = ReadPointer(left.value);
+    auto rptr = ReadPointer(op.right.value);
+    if (std::holds_alternative<i64>(lptr) && std::holds_alternative<i64>(rptr)) {
+      auto lval = std::get<i64>(lptr);
+      auto rval = std::get<i64>(rptr);
       switch (op.op) {
         case CmpType::Eq: result = lval == rval; break;
         case CmpType::Ne: result = lval != rval; break;
@@ -651,8 +658,7 @@ void Interpreter::EmitCompareImm(CompareImm<T>& op) {
       }
     }
     else {
-      // comparing symbol does not yield any interesting information
-      result = true;
+      throw std::runtime_error("unimplemented: symbol compare");
     }
   }
   else {
@@ -680,9 +686,11 @@ void Interpreter::EmitBranchCompare(BranchCompare<T>& op) {
   bool branch;
 
   if constexpr(std::is_same_v<T, Pointer>) {
-    if (std::holds_alternative<i64>(left.value) && std::holds_alternative<i64>(right.value)) {
-      auto lval = std::get<i64>(left.value);
-      auto rval = std::get<i64>(right.value);
+    auto lptr = ReadPointer(left.value);
+    auto rptr = ReadPointer(right.value);
+    if (std::holds_alternative<i64>(lptr) && std::holds_alternative<i64>(rptr)) {
+      auto lval = std::get<i64>(lptr);
+      auto rval = std::get<i64>(rptr);
       switch (op.op) {
         case CmpType::Eq: branch = lval == rval; break;
         case CmpType::Ne: branch = lval != rval; break;
@@ -693,8 +701,7 @@ void Interpreter::EmitBranchCompare(BranchCompare<T>& op) {
       }
     }
     else {
-      // comparing symbol does not yield any interesting information
-      branch = true;
+      throw std::runtime_error("unimplemented: symbol compare");
     }
   }
   else {
@@ -721,9 +728,11 @@ void Interpreter::EmitBranchCompareImm(BranchCompareImm<T>& op) {
   bool branch;
 
   if constexpr(std::is_same_v<T, Pointer>) {
-    if (std::holds_alternative<i64>(left.value) && std::holds_alternative<i64>(right.value)) {
-      auto lval = std::get<i64>(left.value);
-      auto rval = std::get<i64>(right.value);
+    auto lptr = ReadPointer(left.value);
+    auto rptr = ReadPointer(op.right.value);
+    if (std::holds_alternative<i64>(lptr) && std::holds_alternative<i64>(rptr)) {
+      auto lval = std::get<i64>(lptr);
+      auto rval = std::get<i64>(rptr);
       switch (op.op) {
         case CmpType::Eq: branch = lval == rval; break;
         case CmpType::Ne: branch = lval != rval; break;
@@ -734,8 +743,7 @@ void Interpreter::EmitBranchCompareImm(BranchCompareImm<T>& op) {
       }
     }
     else {
-      // comparing symbol does not yield any interesting information
-      branch = true;
+      throw std::runtime_error("unimplemented: symbol compare");
     }
   }
   else {
@@ -771,28 +779,30 @@ void Interpreter::Emit(Select& op) {
 template<typename T>
 void Interpreter::EmitAddToPointer(AddToPointer<T>& op) {
   calyx::Pointer left = std::get<calyx::Pointer>(vars.Get(op.ptr_idx));
+  const auto lptr = ReadPointer(left.value);
   T right = std::get<T>(vars.Get(op.right_idx));
   calyx::Pointer result;
-  if (std::holds_alternative<i64>(left.value)) {
-    result = {std::get<i64>(left.value) + (i64)op.stride * (i64)right};
+  if (std::holds_alternative<i64>(lptr)) {
+    result = MakePointer(std::get<i64>(lptr) + (i64)op.stride * (i64)right);
   }
   else {
-    auto pval = std::get<calyx::label_offset_t>(left.value);
-    result = {calyx::label_offset_t{pval.label, pval.offset + (i64) op.stride * (i64) right}};
+    auto pval = std::get<calyx::label_offset_t>(lptr);
+    result = MakePointer(calyx::label_offset_t{pval.label, pval.offset + (i64) op.stride * (i64) right});
   }
   vars.Set(op.idx, result);
 }
 
 void Interpreter::Emit(AddToPointerImm& op) {
   calyx::Pointer left = std::get<calyx::Pointer>(vars.Get(op.ptr_idx));
+  const auto lptr = ReadPointer(left.value);
   i64 right = op.right;
   calyx::Pointer result;
-  if (std::holds_alternative<i64>(left.value)) {
-    result = {std::get<i64>(left.value) + (i64)op.stride * (i64)right};
+  if (std::holds_alternative<i64>(lptr)) {
+    result = MakePointer(std::get<i64>(lptr) + (i64)op.stride * (i64)right);
   }
   else {
-    auto pval = std::get<calyx::label_offset_t>(left.value);
-    result = {calyx::label_offset_t{pval.label, pval.offset + (i64) op.stride * (i64) right}};
+    auto pval = std::get<calyx::label_offset_t>(lptr);
+    result = MakePointer(calyx::label_offset_t{pval.label, pval.offset + (i64) op.stride * (i64) right});
   }
   vars.Set(op.idx, result);
 }

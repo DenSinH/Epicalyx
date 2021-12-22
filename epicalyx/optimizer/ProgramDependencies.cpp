@@ -169,6 +169,8 @@ void ProgramDependencies::EmitStoreGlobal(StoreGlobal<T>& op) {
 
 template<typename T>
 void ProgramDependencies::EmitLoadFromPointer(LoadFromPointer<T>& op) {
+  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  var_graph.at(op.idx).deps.emplace(op.ptr_idx);
   detail::get_default(var_graph, op.ptr_idx).read_count++;
 }
 

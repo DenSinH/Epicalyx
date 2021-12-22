@@ -25,11 +25,11 @@ struct label_offset_t {
 struct Pointer {
   Pointer() : value(0) { }
   Pointer(i64 value) : value(value) { }
-  Pointer(std::variant<i64, label_offset_t> value) : value(value) { }
-  Pointer(std::string label, i64 offset = 0) : value(label_offset_t{std::move(label), offset}) { }
 
-  std::variant<i64, label_offset_t> value;
+  i64 value;
 };
+
+static_assert(sizeof(Pointer) == sizeof(i64));
 
 struct Struct;
 
@@ -569,6 +569,7 @@ struct StoreGlobal : Expr<calyx_upcast_t<T>> {
 };
 
 struct AllocateLocal : Directive {
+
   AllocateLocal(var_index_t loc_idx, u64 size) :
       Directive(Class::Stack, GetTID()), loc_idx(loc_idx), size(size) {
 
@@ -583,10 +584,12 @@ struct AllocateLocal : Directive {
 };
 
 struct DeallocateLocal : Directive {
+
   DeallocateLocal(var_index_t loc_idx, u64 size) :
       Directive(Class::Stack, GetTID()), loc_idx(loc_idx), size(size) {
 
   }
+
   var_index_t loc_idx;
   u64 size;
 
@@ -599,7 +602,7 @@ template<typename T>
 struct LoadFromPointer : Expr<calyx_upcast_t<T>> {
 
   LoadFromPointer(var_index_t idx, var_index_t ptr_idx, i32 offset = 0) :
-      Expr<calyx_upcast_t<T>>(idx, GetTID()), ptr_idx(ptr_idx), offset(offset) {
+      Expr<calyx_upcast_t<T>>(GetTID(), idx), ptr_idx(ptr_idx), offset(offset) {
 
   }
 

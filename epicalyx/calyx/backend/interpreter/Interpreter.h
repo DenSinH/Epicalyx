@@ -21,6 +21,17 @@ struct Interpreter : Backend {
   const Program& program;
 
   std::vector<u8> stack{};
+  std::vector<std::variant<i64, label_offset_t>> pointer_values{};
+
+  calyx::Pointer MakePointer(std::variant<i64, label_offset_t> value) {
+    const auto idx = pointer_values.size();
+    pointer_values.emplace_back(value);
+    return calyx::Pointer{(i64)idx};
+  }
+
+  std::variant<i64, label_offset_t> ReadPointer(i64 idx) const {
+    return pointer_values.at(idx);
+  }
 
   // globals as raw data
   std::unordered_map<std::string, i64> globals{};
