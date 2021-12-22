@@ -208,7 +208,6 @@ void Interpreter::EmitStoreLocal(StoreLocal<T>& op) {
     // works the same for pointers
     T value = (T)std::get<calyx_upcast_t<T>>(vars.Get(op.src));
     memcpy(&stack[locals.Get(op.loc_idx).first], &value, sizeof(T));
-    vars.Set(op.idx, (calyx_upcast_t<T>)value);
   }
 }
 
@@ -243,7 +242,6 @@ void Interpreter::EmitStoreGlobal(StoreGlobal<T>& op) {
     cotyl::Assert(global_data[globals.at(op.symbol)].size() == sizeof(T));
     T value = (T)std::get<calyx_upcast_t<T>>(vars.Get(op.src));
     std::memcpy(global_data[globals.at(op.symbol)].data(), &value, sizeof(T));
-    vars.Set(op.idx, (calyx_upcast_t<T>)value);
   };
 }
 

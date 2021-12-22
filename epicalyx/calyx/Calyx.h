@@ -505,10 +505,10 @@ struct LoadLocalAddr : Expr<Pointer> {
 };
 
 template<typename T>
-struct StoreLocal : Expr<calyx_upcast_t<T>> {
+struct StoreLocal : Directive {
 
-  StoreLocal(var_index_t idx, var_index_t loc_idx, var_index_t src, i32 offset = 0) :
-      Expr<calyx_upcast_t<T>>(GetTID(), idx), loc_idx(loc_idx), src(src), offset(offset) {
+  StoreLocal(var_index_t loc_idx, var_index_t src, i32 offset = 0) :
+      Directive(Class::Store, GetTID()), loc_idx(loc_idx), src(src), offset(offset) {
 
   }
 
@@ -552,10 +552,10 @@ struct LoadGlobalAddr : Expr<Pointer> {
 };
 
 template<typename T>
-struct StoreGlobal : Expr<calyx_upcast_t<T>> {
+struct StoreGlobal : Directive {
 
-  StoreGlobal(var_index_t idx, std::string symbol, var_index_t src, i32 offset = 0) :
-      Expr<calyx_upcast_t<T>>(GetTID(), idx), symbol(std::move(symbol)), src(src), offset(offset) {
+  StoreGlobal(std::string symbol, var_index_t src, i32 offset = 0) :
+      Directive(Class::Store, GetTID()), symbol(std::move(symbol)), src(src), offset(offset) {
 
   }
 
@@ -618,7 +618,7 @@ template<typename T>
 struct StoreToPointer : Directive {
 
   StoreToPointer(var_index_t ptr_idx, var_index_t src, i32 offset = 0) :
-          Directive(Class::Store, GetTID()), src(src), ptr_idx(ptr_idx), offset(offset) {
+      Directive(Class::Store, GetTID()), src(src), ptr_idx(ptr_idx), offset(offset) {
 
   }
 
@@ -636,7 +636,7 @@ requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
 struct Return : Directive {
 
   Return(var_index_t idx) :
-        Directive(Class::Return, GetTID()), idx(idx) {
+    Directive(Class::Return, GetTID()), idx(idx) {
 
   }
 
@@ -651,7 +651,7 @@ template<typename T>
 struct Call : Directive {
 
   Call(var_index_t idx, var_index_t fn_idx, arg_list_t args, arg_list_t var_args) :
-        Directive(Class::Call, GetTID()), idx(idx), fn_idx(fn_idx), args(std::move(args)), var_args(std::move(var_args)) {
+      Directive(Class::Call, GetTID()), idx(idx), fn_idx(fn_idx), args(std::move(args)), var_args(std::move(var_args)) {
 
   }
 
@@ -669,7 +669,7 @@ template<typename T>
 struct CallLabel : Directive {
 
   CallLabel(var_index_t idx, std::string label, arg_list_t args, arg_list_t var_args) :
-        Directive(Class::Call, GetTID()), idx(idx), label(std::move(label)), args(std::move(args)), var_args(std::move(var_args)) {
+    Directive(Class::Call, GetTID()), idx(idx), label(std::move(label)), args(std::move(args)), var_args(std::move(var_args)) {
 
   }
 
@@ -686,7 +686,7 @@ struct CallLabel : Directive {
 struct ArgMakeLocal : Directive {
 
   ArgMakeLocal(Argument arg, var_index_t loc_idx) :
-        Directive(Class::Stack, GetTID()), arg(arg), loc_idx(loc_idx) {
+      Directive(Class::Stack, GetTID()), arg(arg), loc_idx(loc_idx) {
 
   }
 
@@ -701,7 +701,7 @@ struct ArgMakeLocal : Directive {
 struct Select : Directive {
 
   Select(var_index_t idx) :
-        Directive(Class::Select, GetTID()), idx(idx) {
+      Directive(Class::Select, GetTID()), idx(idx) {
 
   }
 

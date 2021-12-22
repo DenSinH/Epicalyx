@@ -153,10 +153,12 @@ void ASTWalker::Visit(Identifier& decl) {
         break;
       }
       case State::Assign: {
+        const auto stored = state.top().second.var;
         auto visitor = detail::EmitterTypeVisitor<detail::StoreLocalEmitter>(
-                *this, { cvar.idx, state.top().second.var }
+                *this, { cvar.idx, stored }
         );
         type->Visit(visitor);
+        current = stored;
         break;
       }
       case State::Address: {
@@ -189,10 +191,12 @@ void ASTWalker::Visit(Identifier& decl) {
         break;
       }
       case State::Assign: {
+        const auto stored = state.top().second.var;
         auto visitor = detail::EmitterTypeVisitor<detail::StoreGlobalEmitter>(
-                *this, { decl.name, state.top().second.var }
+                *this, { decl.name, stored }
         );
         type->Visit(visitor);
+        current = stored;
         break;
       }
       case State::Address: {
@@ -787,6 +791,7 @@ void ASTWalker::Visit(Binop& expr) {
           // store result to temp cvar
           auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ calyx::Var::Type::I32 }, 1);
           emitter.EmitExpr<calyx::StoreLocal<i32>>({ calyx::Var::Type::I32 }, c_idx, imm);
+          current = imm;
           emitter.Emit<calyx::UnconditionalBranch>(post_block);
         }
 
@@ -795,6 +800,7 @@ void ASTWalker::Visit(Binop& expr) {
           // store result to temp cvar
           auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ calyx::Var::Type::I32 }, 0);
           emitter.EmitExpr<calyx::StoreLocal<i32>>({ calyx::Var::Type::I32 }, c_idx, imm);
+          current = imm;
           emitter.Emit<calyx::UnconditionalBranch>(post_block);
         }
 
@@ -874,10 +880,12 @@ void ASTWalker::Visit(Ternary& expr) {
       emitter.SelectBlock(true_block);
       expr._true->Visit(*this);
       // store result to temp cvar
+      const auto stored = current;
       auto store_visitor = detail::EmitterTypeVisitor<detail::StoreLocalEmitter>(
-              *this, { c_idx, current }
+              *this, { c_idx, stored }
       );
       type->Visit(store_visitor);
+      current = stored;
       emitter.Emit<calyx::UnconditionalBranch>(post_block);
     }
 
@@ -885,10 +893,12 @@ void ASTWalker::Visit(Ternary& expr) {
       emitter.SelectBlock(false_block);
       expr._false->Visit(*this);
       // store result to temp cvar
+      const auto stored = current;
       auto store_visitor = detail::EmitterTypeVisitor<detail::StoreLocalEmitter>(
-              *this, { c_idx, current }
+              *this, { c_idx, stored }
       );
       type->Visit(store_visitor);
+      current = stored;
       emitter.Emit<calyx::UnconditionalBranch>(post_block);
     }
 

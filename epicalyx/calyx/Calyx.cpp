@@ -205,7 +205,7 @@ std::string LoadLocalAddr::ToString() const {
 
 template<typename T>
 std::string StoreLocal<T>::ToString() const {
-  return cotyl::FormatStr("store c%s = v%s <-<%s> v%s", loc_idx, this->idx, detail::type_string<T>::value, src);
+  return cotyl::FormatStr("store c%s = <%s> v%s", loc_idx, detail::type_string<T>::value, src);
 }
 
 template<typename T>
@@ -219,7 +219,7 @@ std::string LoadGlobalAddr::ToString() const {
 
 template<typename T>
 std::string StoreGlobal<T>::ToString() const {
-  return cotyl::FormatStr("sglob [%s] = v%s <-<%s> v%s", symbol, this->idx, detail::type_string<T>::value, src);
+  return cotyl::FormatStr("sglob [%s] = <%s> v%s", symbol, detail::type_string<T>::value, src);
 }
 
 template<typename T>

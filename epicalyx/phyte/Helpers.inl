@@ -170,14 +170,14 @@ struct LoadLocalAddrEmitter {
 
 template<typename T>
 struct StoreLocalEmitter {
-  static calyx::var_index_t emit_value(ASTWalker& walker, calyx::var_index_t c_idx, calyx::var_index_t src) {
+  static void emit_value(ASTWalker& walker, calyx::var_index_t c_idx, calyx::var_index_t src) {
     calyx::var_index_t cast = CastToEmitter<T>::emit_value(walker, src);
-    return walker.emitter.EmitExpr<calyx::StoreLocal<T>>({calyx_type_v<calyx::calyx_upcast_t<T>> }, c_idx, cast);
+    walker.emitter.Emit<calyx::StoreLocal<T>>(c_idx, cast);
   }
 
-  static calyx::var_index_t emit_pointer(ASTWalker& walker, u64 stride, calyx::var_index_t c_idx, calyx::var_index_t src) {
+  static void emit_pointer(ASTWalker& walker, u64 stride, calyx::var_index_t c_idx, calyx::var_index_t src) {
     calyx::var_index_t cast = CastToEmitter<T>::emit_pointer(walker, stride, src);
-    return walker.emitter.EmitExpr<calyx::StoreLocal<T>>({calyx::Var::Type::Pointer, stride }, c_idx, cast);
+    walker.emitter.Emit<calyx::StoreLocal<T>>(c_idx, cast);
   }
 };
 
@@ -205,14 +205,14 @@ struct LoadGlobalAddrEmitter {
 
 template<typename T>
 struct StoreGlobalEmitter {
-  static calyx::var_index_t emit_value(ASTWalker& walker, const std::string& symbol, calyx::var_index_t src) {
+  static void emit_value(ASTWalker& walker, const std::string& symbol, calyx::var_index_t src) {
     calyx::var_index_t cast = CastToEmitter<T>::emit_value(walker, src);
-    return walker.emitter.EmitExpr<calyx::StoreGlobal<T>>({calyx_type_v<calyx::calyx_upcast_t<T>> }, symbol, cast);
+    walker.emitter.Emit<calyx::StoreGlobal<T>>(symbol, cast);
   }
 
-  static calyx::var_index_t emit_pointer(ASTWalker& walker, u64 stride, const std::string& symbol, calyx::var_index_t src) {
+  static void emit_pointer(ASTWalker& walker, u64 stride, const std::string& symbol, calyx::var_index_t src) {
     calyx::var_index_t cast = CastToEmitter<T>::emit_pointer(walker, stride, src);
-    return walker.emitter.EmitExpr<calyx::StoreGlobal<T>>({calyx::Var::Type::Pointer, stride }, symbol, cast);
+    walker.emitter.Emit<calyx::StoreGlobal<T>>(symbol, cast);
   }
 };
 

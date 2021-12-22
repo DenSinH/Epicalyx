@@ -109,7 +109,7 @@ void BasicOptimizer::Emit(LoadLocalAddr& op) {
 template<typename T>
 void BasicOptimizer::EmitStoreLocal(StoreLocal<T>& op) {
   TryReplace(op.src);
-  EmitExprCopy(op);
+  EmitNew<StoreLocal<T>>(op);
 }
 
 template<typename T>
@@ -129,7 +129,7 @@ void BasicOptimizer::Emit(LoadGlobalAddr& op) {
 template<typename T>
 void BasicOptimizer::EmitStoreGlobal(StoreGlobal<T>& op) {
   TryReplace(op.src);
-  EmitExprCopy(op);
+  EmitNew<StoreGlobal<T>>(op);
 }
 
 template<typename T>
