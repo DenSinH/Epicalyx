@@ -180,17 +180,18 @@ void ProgramDependencies::EmitStoreToPointer(StoreToPointer<T>& op) {
 
 template<typename T>
 void ProgramDependencies::EmitCall(Call<T>& op) {
+  detail::get_default(var_graph, op.fn_idx).read_count++;
   if constexpr(!std::is_same_v<T, void>) {
     detail::get_default(var_graph, op.idx).block_made = pos.first;
-    detail::get_default(var_graph, op.fn_idx).read_count++;
-    for (const auto& [var_idx, arg] : op.args) {
-      detail::get_default(var_graph, op.idx).deps.emplace(var_idx);
-      detail::get_default(var_graph, var_idx).read_count++;
-    }
-    for (const auto& [var_idx, arg] : op.var_args) {
-      detail::get_default(var_graph, op.idx).deps.emplace(var_idx);
-      detail::get_default(var_graph, var_idx).read_count++;
-    }
+  }
+
+  for (const auto& [var_idx, arg] : op.args) {
+    detail::get_default(var_graph, op.idx).deps.emplace(var_idx);
+    detail::get_default(var_graph, var_idx).read_count++;
+  }
+  for (const auto& [var_idx, arg] : op.var_args) {
+    detail::get_default(var_graph, op.idx).deps.emplace(var_idx);
+    detail::get_default(var_graph, var_idx).read_count++;
   }
 }
 
@@ -198,14 +199,14 @@ template<typename T>
 void ProgramDependencies::EmitCallLabel(CallLabel<T>& op) {
   if constexpr(!std::is_same_v<T, void>) {
     detail::get_default(var_graph, op.idx).block_made = pos.first;
-    for (const auto&[var_idx, arg] : op.args) {
-      detail::get_default(var_graph, op.idx).deps.emplace(var_idx);
-      detail::get_default(var_graph, var_idx).read_count++;
-    }
-    for (const auto&[var_idx, arg] : op.var_args) {
-      detail::get_default(var_graph, op.idx).deps.emplace(var_idx);
-      detail::get_default(var_graph, var_idx).read_count++;
-    }
+  }
+  for (const auto&[var_idx, arg] : op.args) {
+    detail::get_default(var_graph, op.idx).deps.emplace(var_idx);
+    detail::get_default(var_graph, var_idx).read_count++;
+  }
+  for (const auto&[var_idx, arg] : op.var_args) {
+    detail::get_default(var_graph, op.idx).deps.emplace(var_idx);
+    detail::get_default(var_graph, var_idx).read_count++;
   }
 }
 

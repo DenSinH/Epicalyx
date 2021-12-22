@@ -155,6 +155,7 @@ void BasicOptimizer::EmitCall(Call<T>& op) {
     TryReplace(var_idx);
   }
 
+  vars_found[op.idx] = std::make_pair(current_block_idx, current_block->size());
   EmitNew<Call<T>>(op);
 }
 
@@ -167,6 +168,7 @@ void BasicOptimizer::EmitCallLabel(CallLabel<T>& op) {
     TryReplace(var_idx);
   }
 
+  vars_found[op.idx] = std::make_pair(current_block_idx, current_block->size());
   EmitNew<CallLabel<T>>(op);
 }
 

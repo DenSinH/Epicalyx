@@ -19,7 +19,7 @@
 
 int main() {
   // auto file = epi::File("tests/test.c");
-  auto file = epi::File("examples/emitting/first.c");
+  auto file = epi::File("examples/emitting/functions.c");
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
@@ -54,6 +54,15 @@ int main() {
   }
 
   auto program = std::move(emitter.program);
+
+  std::cout << std::endl << std::endl;
+  std::cout << "-- program" << std::endl;
+  for (int i = 0; i < program.blocks.size(); i++) {
+    std::cout << 'L' << i << std::endl;
+    for (const auto& op : program.blocks[i]) {
+      std::cout << "    " << op->ToString() << std::endl;
+    }
+  }
 
   try {
     auto optimizer = epi::BasicOptimizer();
