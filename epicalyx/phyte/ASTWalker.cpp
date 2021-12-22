@@ -762,7 +762,6 @@ void ASTWalker::Visit(Binop& expr) {
         auto rhs_block = emitter.MakeBlock();
         auto true_block = emitter.MakeBlock();
         auto false_block = emitter.MakeBlock();
-        auto post_block = emitter.MakeBlock();
 
         if (expr.op == TokenType::LogicalAnd) {
           state.push({State::ConditionalBranch, {.true_block = rhs_block, .false_block = false_block}});
@@ -780,6 +779,8 @@ void ASTWalker::Visit(Binop& expr) {
         expr.right->Visit(*this);
         state.pop();
 
+        // make post block here to improve optimization ancestry finding
+        auto post_block = emitter.MakeBlock();
         // emitter should have emitted branches to blocks
         {
           emitter.SelectBlock(true_block);
@@ -861,12 +862,13 @@ void ASTWalker::Visit(Ternary& expr) {
     // now basically add an if statement
     auto true_block = emitter.MakeBlock();
     auto false_block = emitter.MakeBlock();
-    calyx::var_index_t post_block = emitter.MakeBlock();
 
     state.push({State::ConditionalBranch, {.true_block = true_block, .false_block = false_block}});
     expr.cond->Visit(*this);
     state.pop();
 
+    // create post block here to improve optimization ancestry finding
+    auto post_block = emitter.MakeBlock();
     // emitter should have emitted branches to blocks
     {
       emitter.SelectBlock(true_block);
@@ -1042,18 +1044,19 @@ void ASTWalker::Visit(Empty& stat) {
 void ASTWalker::Visit(If& stat) {
   auto true_block = emitter.MakeBlock();
   auto false_block = emitter.MakeBlock();
-  calyx::var_index_t post_block;
+  calyx::block_label_t post_block;
+
+  state.push({State::ConditionalBranch, {.true_block = true_block, .false_block = false_block}});
+  stat.cond->Visit(*this);
+  state.pop();
+
+  // create post block here to improve optimization ancestry finding
   if (stat._else) {
     post_block = emitter.MakeBlock();
   }
   else {
     post_block = false_block;
   }
-
-  state.push({State::ConditionalBranch, {.true_block = true_block, .false_block = false_block}});
-  stat.cond->Visit(*this);
-  state.pop();
-
   // true, then jump to post block
   // emitter should have emitted branches to blocks
   emitter.SelectBlock(true_block);
@@ -1066,6 +1069,7 @@ void ASTWalker::Visit(If& stat) {
     emitter.Emit<calyx::UnconditionalBranch>(post_block);
   }
 
+  // create post block here to improve optimization ancestry finding
   emitter.SelectBlock(post_block);
   cotyl::Assert(emitter.program.blocks[post_block].empty());
 }
@@ -1136,10 +1140,6 @@ void ASTWalker::Visit(DoWhile& stat) {
 void ASTWalker::Visit(For& stat) {
   
   auto init_block = emitter.MakeBlock();
-  auto cond_block = emitter.MakeBlock();
-  auto update_block = emitter.MakeBlock();
-  auto loop_block = emitter.MakeBlock();
-  auto post_block = emitter.MakeBlock();
 
   // new scope for declarations in for loop
   variables.NewLayer();
@@ -1154,6 +1154,9 @@ void ASTWalker::Visit(For& stat) {
     init->Visit(*this);
   }
 
+  auto cond_block = emitter.MakeBlock();
+  auto loop_block = emitter.MakeBlock();
+  auto post_block = emitter.MakeBlock();
   // go to condition
   emitter.Emit<calyx::UnconditionalBranch>(cond_block);
   emitter.SelectBlock(cond_block);
@@ -1162,6 +1165,7 @@ void ASTWalker::Visit(For& stat) {
   stat.cond->Visit(*this);
   state.pop();
 
+  auto update_block = emitter.MakeBlock();
   // branching case should have been handled by condition
   emitter.SelectBlock(loop_block);
 

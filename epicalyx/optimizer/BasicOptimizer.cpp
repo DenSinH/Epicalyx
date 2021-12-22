@@ -14,7 +14,8 @@ void BasicOptimizer::TryReplace(calyx::var_index_t& var_idx) const {
 calyx::block_label_t BasicOptimizer::CommonBlockAncestor(calyx::block_label_t first, calyx::block_label_t second) const {
   std::set<calyx::block_label_t> ancestors{first, second};
 
-  // we use the fact that if block1 > block2 then block1 can never be an ancestor of block2
+  // we use the fact that in general block1 > block2 then block1 can never be an ancestor of block2
+  // it may happen for loops, but then the loop entry is the minimum block, so we want to go there
   while (ancestors.size() > 1) {
     auto max_ancestor = *ancestors.rbegin();
     ancestors.erase(std::prev(ancestors.end()));
@@ -34,8 +35,10 @@ calyx::block_label_t BasicOptimizer::CommonBlockAncestor(calyx::block_label_t fi
   return *ancestors.begin();
 }
 
-std::set<calyx::block_label_t> BasicOptimizer::UpwardClosure(calyx::block_label_t base) const {
-  std::unordered_set<calyx::block_label_t> closure{base};
+std::vector<calyx::block_label_t> BasicOptimizer::UpwardClosure(calyx::block_label_t base) const {
+  std::unordered_set<calyx::block_label_t> closure_found{base};
+  std::vector<calyx::block_label_t> closure{};
+  closure.push_back(base);
   std::unordered_set<calyx::block_label_t> search{base};
 
   while (!search.empty()) {
@@ -44,19 +47,45 @@ std::set<calyx::block_label_t> BasicOptimizer::UpwardClosure(calyx::block_label_
 
     if (dependencies.block_graph.contains(current)) {
       for (const auto& dep : dependencies.block_graph.at(current).to) {
-        if (!closure.contains(dep)) {
-          closure.emplace(dep);
+        if (!closure_found.contains(dep)) {
+          closure_found.emplace(dep);
+          search.emplace(dep);
+          closure.push_back(dep);
+        }
+      }
+    }
+  }
+
+  return closure;
+}
+
+bool BasicOptimizer::IsAncestorOf(calyx::block_label_t base, calyx::block_label_t other) const {
+  std::unordered_set<calyx::block_label_t> closure_found{base};
+  std::unordered_set<calyx::block_label_t> search{base};
+
+  while (!search.empty()) {
+    auto current = *search.begin();
+    search.erase(search.begin());
+
+    if (dependencies.block_graph.contains(current)) {
+      for (const auto& dep : dependencies.block_graph.at(current).to) {
+        if (dep == other) {
+          return true;
+        }
+
+        if (!closure_found.contains(dep)) {
+          closure_found.emplace(dep);
           search.emplace(dep);
         }
       }
     }
   }
 
-  return {closure.begin(), closure.end()};
+  return false;
 }
 
 template<typename T, class F>
-bool BasicOptimizer::ReplaceIf(T& op, F predicate) {
+bool BasicOptimizer::FindReplacement(T& op, F predicate) {
   for (const auto& [var_idx, loc] : vars_found) {
     auto& directive = new_program.blocks.at(loc.first)[loc.second];
     if (IsType<T>(directive)) {
@@ -113,17 +142,17 @@ void BasicOptimizer::EmitProgram(Program& program) {
 }
 
 void BasicOptimizer::Emit(AllocateLocal& op) {
-  EmitNew(std::make_unique<AllocateLocal>(op));
+  EmitNew<AllocateLocal>(op);
 }
 
 void BasicOptimizer::Emit(DeallocateLocal& op) {
-  EmitNew(std::make_unique<DeallocateLocal>(op));
+  EmitNew<DeallocateLocal>(op);
 }
 
 template<typename To, typename From>
 void BasicOptimizer::EmitCast(Cast<To, From>& op) {
   TryReplace(op.right_idx);
-  auto replaced = ReplaceIf(op, [&](auto& op, auto& candidate) {
+  auto replaced = FindReplacement(op, [&](auto& op, auto& candidate) {
     return candidate.right_idx == op.right_idx;
   });
   if (!replaced) {
@@ -132,60 +161,60 @@ void BasicOptimizer::EmitCast(Cast<To, From>& op) {
       auto& right_directive = new_program.blocks.at(block)[in_block];
       if (IsType<Imm<From>>(right_directive)) {
         auto* right_imm = cotyl::unique_ptr_cast<Imm<From>>(right_directive);
-        vars_found.emplace(op.idx, EmitNew(std::make_unique<Imm<calyx_upcast_t<To>>>(op.idx, (To)right_imm->value)));
+        EmitExpr<Imm<calyx_upcast_t<To>>>(op.idx, (To)right_imm->value);
         return;
       }
     }
-    vars_found.emplace(op.idx, EmitNew(std::make_unique<Cast<To, From>>(op)));
+    EmitExprCopy(op);
   }
 }
 
 template<typename T>
 void BasicOptimizer::EmitLoadLocal(LoadLocal<T>& op) {
-  EmitNew(std::make_unique<LoadLocal<T>>(op));
+  EmitExprCopy(op);
 }
 
 void BasicOptimizer::Emit(LoadLocalAddr& op) {
-  EmitNew(std::make_unique<LoadLocalAddr>(op));
+  EmitExprCopy(op);
 }
 
 template<typename T>
 void BasicOptimizer::EmitStoreLocal(StoreLocal<T>& op) {
   TryReplace(op.src);
-  EmitNew(std::make_unique<StoreLocal<T>>(op));
+  EmitExprCopy(op);
 }
 
 template<typename T>
 void BasicOptimizer::EmitLoadGlobal(LoadGlobal<T>& op) {
-  EmitNew(std::make_unique<LoadGlobal<T>>(op));
+  EmitExprCopy(op);
 }
 
 void BasicOptimizer::Emit(LoadGlobalAddr& op) {
-  auto replaced = ReplaceIf(op, [&](auto& op, auto& candidate) {
+  auto replaced = FindReplacement(op, [&](auto& op, auto& candidate) {
     return candidate.symbol == op.symbol;
   });
   if (!replaced) {
-    vars_found.emplace(op.idx, EmitNew(std::make_unique<LoadGlobalAddr>(op)));
+    EmitExprCopy(op);
   }
 }
 
 template<typename T>
 void BasicOptimizer::EmitStoreGlobal(StoreGlobal<T>& op) {
   TryReplace(op.src);
-  EmitNew(std::make_unique<StoreGlobal<T>>(op));
+  EmitExprCopy(op);
 }
 
 template<typename T>
 void BasicOptimizer::EmitLoadFromPointer(LoadFromPointer<T>& op) {
   TryReplace(op.ptr_idx);
-  EmitNew(std::make_unique<LoadFromPointer<T>>(op));
+  EmitExprCopy(op);
 }
 
 template<typename T>
 void BasicOptimizer::EmitStoreToPointer(StoreToPointer<T>& op) {
   TryReplace(op.src);
   TryReplace(op.ptr_idx);
-  EmitNew(std::make_unique<StoreToPointer<T>>(op));
+  EmitNew<StoreToPointer<T>>(op);
 }
 
 template<typename T>
@@ -198,7 +227,7 @@ void BasicOptimizer::EmitCall(Call<T>& op) {
     TryReplace(var_idx);
   }
 
-  EmitNew(std::make_unique<Call<T>>(op));
+  EmitNew<Call<T>>(op);
 }
 
 template<typename T>
@@ -210,34 +239,33 @@ void BasicOptimizer::EmitCallLabel(CallLabel<T>& op) {
     TryReplace(var_idx);
   }
 
-  EmitNew(std::make_unique<CallLabel<T>>(op));
+  EmitNew<CallLabel<T>>(op);
 }
 
 void BasicOptimizer::Emit(ArgMakeLocal& op) {
-  EmitNew(std::make_unique<ArgMakeLocal>(op));
+  EmitNew<ArgMakeLocal>(op);
 }
 
 template<typename T>
 void BasicOptimizer::EmitReturn(Return<T>& op) {
   TryReplace(op.idx);
-  EmitNew(std::make_unique<Return<T>>(op));
+  EmitNew<Return<T>>(op);
 }
 
 template<typename T>
 void BasicOptimizer::EmitImm(Imm<T>& op) {
-  TryReplace(op.idx);
-  auto replaced = ReplaceIf(op, [&](auto& op, auto& candidate) {
+  auto replaced = FindReplacement(op, [&](auto& op, auto& candidate) {
     return candidate.value == op.value;
   });
   if (!replaced) {
-    vars_found.emplace(op.idx, EmitNew(std::make_unique<Imm<T>>(op)));
+    EmitExprCopy(op);
   }
 }
 
 template<typename T>
 void BasicOptimizer::EmitUnop(Unop<T>& op) {
   TryReplace(op.right_idx);
-  EmitNew(std::make_unique<Unop<T>>(op));
+  EmitExprCopy(op);
 }
 
 template<typename T>
@@ -251,7 +279,7 @@ void BasicOptimizer::EmitBinop(Binop<T>& op) {
     auto& right_directive = new_program.blocks.at(block)[in_block];
     if (IsType<Imm<T>>(right_directive)) {
       T right_imm = cotyl::unique_ptr_cast<Imm<T>>(right_directive)->value;
-      vars_found.emplace(op.idx, EmitNew(std::make_unique<BinopImm<T>>(op.idx, op.left_idx, op.op, right_imm)));
+      EmitExpr<BinopImm<T>>(op.idx, op.left_idx, op.op, right_imm);
       return;
     }
   }
@@ -269,10 +297,10 @@ void BasicOptimizer::EmitBinop(Binop<T>& op) {
         case BinopType::BinOr:
         case BinopType::BinXor:
         case BinopType::Mul:
-          vars_found.emplace(op.idx, EmitNew(std::make_unique<BinopImm<T>>(op.idx, op.right_idx, op.op, left_imm)));
+          EmitExpr<BinopImm<T>>(op.idx, op.right_idx, op.op, left_imm);
           return;
         case BinopType::Sub:
-          vars_found.emplace(op.idx, EmitNew(std::make_unique<BinopImm<T>>(op.idx, -left_imm, BinopType::Add, op.right_idx)));
+          EmitExpr<BinopImm<T>>(op.idx, -left_imm, BinopType::Add, op.right_idx);
           return;
         case BinopType::Div:
         case BinopType::Mod:
@@ -282,13 +310,13 @@ void BasicOptimizer::EmitBinop(Binop<T>& op) {
     }
   }
 
-  EmitNew(std::make_unique<Binop<T>>(op));
+  EmitExprCopy(op);
 }
 
 template<typename T>
 void BasicOptimizer::EmitBinopImm(BinopImm<T>& op) {
   TryReplace(op.left_idx);
-  EmitNew(std::make_unique<BinopImm<T>>(op));
+  EmitExprCopy(op);
 }
 
 template<typename T>
@@ -302,18 +330,18 @@ void BasicOptimizer::EmitShift(Shift<T>& op) {
     auto& right_directive = new_program.blocks.at(block)[in_block];
     if (IsType<Imm<u32>>(right_directive)) {
       u32 right_imm = cotyl::unique_ptr_cast<Imm<u32>>(right_directive)->value;
-      vars_found.emplace(op.idx, EmitNew(std::make_unique<ShiftImm<T>>(op.idx, op.left_idx, op.op, right_imm)));
+      EmitExpr<ShiftImm<T>>(op.idx, op.left_idx, op.op, right_imm);
       return;
     }
   }
 
-  EmitNew(std::make_unique<Shift<T>>(op));
+  EmitExprCopy(op);
 }
 
 template<typename T>
 void BasicOptimizer::EmitShiftImm(ShiftImm<T>& op) {
   TryReplace(op.left_idx);
-  EmitNew(std::make_unique<ShiftImm<T>>(op));
+  EmitExprCopy(op);
 }
 
 template<typename T>
@@ -328,7 +356,7 @@ void BasicOptimizer::EmitCompare(Compare<T>& op) {
     auto& right_directive = new_program.blocks.at(block)[in_block];
     if (IsType<Imm<T>>(right_directive)) {
       T right_imm = cotyl::unique_ptr_cast<Imm<T>>(right_directive)->value;
-      vars_found.emplace(op.idx, EmitNew(std::make_unique<CompareImm<T>>(op.idx, op.left_idx, op.op, right_imm)));
+      EmitExpr<CompareImm<T>>(op.idx, op.left_idx, op.op, right_imm);
       return;
     }
   }
@@ -350,21 +378,21 @@ void BasicOptimizer::EmitCompare(Compare<T>& op) {
         case CmpType::Gt: flipped = CmpType::Lt; break;
         case CmpType::Ge: flipped = CmpType::Le; break;
       }
-      vars_found.emplace(op.idx, EmitNew(std::make_unique<CompareImm<T>>(op.idx, op.right_idx, flipped, left_imm)));
+      EmitExpr<CompareImm<T>>(op.idx, op.right_idx, flipped, left_imm);
     }
   }
 
-  EmitNew(std::make_unique<Compare<T>>(op));
+  EmitExprCopy(op);
 }
 
 template<typename T>
 void BasicOptimizer::EmitCompareImm(CompareImm<T>& op) {
   TryReplace(op.left_idx);
-  EmitNew(std::make_unique<CompareImm<T>>(op));
+  EmitExprCopy(op);
 }
 
 void BasicOptimizer::Emit(UnconditionalBranch& op) {
-  EmitNew(std::make_unique<UnconditionalBranch>(op));
+  EmitNew<UnconditionalBranch>(op);
 }
 
 template<typename T>
@@ -378,7 +406,7 @@ void BasicOptimizer::EmitBranchCompare(BranchCompare<T>& op) {
     auto& right_directive = new_program.blocks.at(block)[in_block];
     if (IsType<Imm<T>>(right_directive)) {
       T right_imm = cotyl::unique_ptr_cast<Imm<T>>(right_directive)->value;
-      EmitNew(std::make_unique<BranchCompareImm<T>>(op.dest, op.left_idx, op.op, right_imm));
+      EmitNew<BranchCompareImm<T>>(op.dest, op.left_idx, op.op, right_imm);
       return;
     }
   }
@@ -400,33 +428,33 @@ void BasicOptimizer::EmitBranchCompare(BranchCompare<T>& op) {
         case CmpType::Gt: flipped = CmpType::Lt; break;
         case CmpType::Ge: flipped = CmpType::Le; break;
       }
-      EmitNew(std::make_unique<BranchCompareImm<T>>(op.dest, op.right_idx, flipped, left_imm));
+      EmitNew<BranchCompareImm<T>>(op.dest, op.right_idx, flipped, left_imm);
     }
   }
-  EmitNew(std::make_unique<BranchCompare<T>>(op));
+  EmitNew<BranchCompare<T>>(op);
 }
 
 template<typename T>
 void BasicOptimizer::EmitBranchCompareImm(BranchCompareImm<T>& op) {
   TryReplace(op.left_idx);
-  EmitNew(std::make_unique<BranchCompareImm<T>>(op));
+  EmitNew<BranchCompareImm<T>>(op);
 }
 
 void BasicOptimizer::Emit(Select& op) {
   TryReplace(op.idx);
-  EmitNew(std::make_unique<Select>(op));
+  EmitNew<Select>(op);
 }
 
 template<typename T>
 void BasicOptimizer::EmitAddToPointer(AddToPointer<T>& op) {
   TryReplace(op.ptr_idx);
   TryReplace(op.right_idx);
-  EmitNew(std::make_unique<AddToPointer<T>>(op));
+  EmitExprCopy(op);
 }
 
 void BasicOptimizer::Emit(AddToPointerImm& op) {
   TryReplace(op.ptr_idx);
-  EmitNew(std::make_unique<AddToPointerImm>(op));
+  EmitExprCopy(op);
 }
 
 #define BACKEND_NAME BasicOptimizer

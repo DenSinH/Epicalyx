@@ -24,19 +24,31 @@ struct BasicOptimizer : calyx::Backend {
   block_label_t current_block_idx;
 
   template<typename T, class F>
-  bool ReplaceIf(T& op, F predicate);
+  bool FindReplacement(T& op, F predicate);
 
-  std::pair<calyx::block_label_t, int> EmitNew(pDirective&& directive) {
+  template<typename T, typename... Args>
+  std::pair<calyx::block_label_t, int> EmitNew(Args... args) {
     const u64 in_block = current_block->size();
-    current_block->push_back(std::move(directive));
+    current_block->push_back(std::make_unique<T>(args...));
     return std::make_pair(current_block_idx, in_block);
+  }
+
+  template<typename T, typename... Args>
+  void EmitExpr(calyx::var_index_t idx, const Args&... args) {
+    vars_found.emplace(idx, EmitNew<T>(idx, args...));
+  }
+
+  template<typename T>
+  void EmitExprCopy(const T& expr) {
+    vars_found.emplace(expr.idx, EmitNew<T>(expr));
   }
 
   void TryReplace(calyx::var_index_t& var_idx) const;
 
   // find common ancestor for 2 blocks such that all paths to these blocks go through that ancestor
   calyx::block_label_t CommonBlockAncestor(calyx::block_label_t first, calyx::block_label_t second) const;
-  std::set<calyx::block_label_t> UpwardClosure(calyx::block_label_t base) const;
+  std::vector<calyx::block_label_t> UpwardClosure(calyx::block_label_t base) const;
+  bool IsAncestorOf(calyx::block_label_t base, calyx::block_label_t other) const;
 
   void EmitProgram(Program& program) final;
 
