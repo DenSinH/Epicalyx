@@ -790,7 +790,7 @@ void ASTWalker::Visit(Binop& expr) {
           emitter.SelectBlock(true_block);
           // store result to temp cvar
           auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ calyx::Var::Type::I32 }, 1);
-          emitter.EmitExpr<calyx::StoreLocal<i32>>({ calyx::Var::Type::I32 }, c_idx, imm);
+          emitter.Emit<calyx::StoreLocal<i32>>(c_idx, imm);
           current = imm;
           emitter.Emit<calyx::UnconditionalBranch>(post_block);
         }
@@ -799,7 +799,7 @@ void ASTWalker::Visit(Binop& expr) {
           emitter.SelectBlock(false_block);
           // store result to temp cvar
           auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ calyx::Var::Type::I32 }, 0);
-          emitter.EmitExpr<calyx::StoreLocal<i32>>({ calyx::Var::Type::I32 }, c_idx, imm);
+          emitter.Emit<calyx::StoreLocal<i32>>(c_idx, imm);
           current = imm;
           emitter.Emit<calyx::UnconditionalBranch>(post_block);
         }

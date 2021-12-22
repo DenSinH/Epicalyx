@@ -19,7 +19,7 @@
 
 int main() {
   // auto file = epi::File("tests/test.c");
-  auto file = epi::File("examples/emitting/functions.c");
+  auto file = epi::File("examples/emitting/logical_operators.c");
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
