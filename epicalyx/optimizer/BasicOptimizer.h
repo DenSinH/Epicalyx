@@ -45,11 +45,6 @@ struct BasicOptimizer : calyx::Backend {
 
   void TryReplace(calyx::var_index_t& var_idx) const;
 
-  // find common ancestor for 2 blocks such that all paths to these blocks go through that ancestor
-  calyx::block_label_t CommonBlockAncestor(calyx::block_label_t first, calyx::block_label_t second) const;
-  std::vector<calyx::block_label_t> UpwardClosure(calyx::block_label_t base) const;
-  bool IsAncestorOf(calyx::block_label_t base, calyx::block_label_t other) const;
-
   void EmitProgram(Program& program) final;
 
   void Emit(AllocateLocal& op) final;

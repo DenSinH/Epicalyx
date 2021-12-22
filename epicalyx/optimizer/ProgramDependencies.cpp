@@ -23,6 +23,81 @@ T& get_default(std::unordered_map<K, T>& graph, const K& key) {
 
 }
 
+
+calyx::block_label_t ProgramDependencies::CommonBlockAncestor(calyx::block_label_t first, calyx::block_label_t second) const {
+  std::set<calyx::block_label_t> ancestors{first, second};
+
+  // we use the fact that in general block1 > block2 then block1 can never be an ancestor of block2
+  // it may happen for loops, but then the loop entry is the minimum block, so we want to go there
+  while (ancestors.size() > 1) {
+    auto max_ancestor = *ancestors.rbegin();
+    ancestors.erase(std::prev(ancestors.end()));
+    if (!block_graph.contains(max_ancestor)) {
+      return 0;
+    }
+    auto& deps = block_graph.at(max_ancestor);
+    if (deps.from.empty()) {
+      return 0;
+    }
+    for (auto dep : deps.from) {
+      ancestors.insert(dep);
+    }
+  }
+
+  // at this point only one ancestor should be left
+  return *ancestors.begin();
+}
+
+std::vector<calyx::block_label_t> ProgramDependencies::UpwardClosure(calyx::block_label_t base) const {
+  std::unordered_set<calyx::block_label_t> closure_found{base};
+  std::vector<calyx::block_label_t> closure{};
+  closure.push_back(base);
+  std::unordered_set<calyx::block_label_t> search{base};
+
+  while (!search.empty()) {
+    auto current = *search.begin();
+    search.erase(search.begin());
+
+    if (block_graph.contains(current)) {
+      for (const auto& dep : block_graph.at(current).to) {
+        if (!closure_found.contains(dep)) {
+          closure_found.emplace(dep);
+          search.emplace(dep);
+          closure.push_back(dep);
+        }
+      }
+    }
+  }
+
+  return closure;
+}
+
+bool ProgramDependencies::IsAncestorOf(calyx::block_label_t base, calyx::block_label_t other) const {
+  std::unordered_set<calyx::block_label_t> closure_found{base};
+  std::unordered_set<calyx::block_label_t> search{base};
+
+  while (!search.empty()) {
+    auto current = *search.begin();
+    search.erase(search.begin());
+
+    if (block_graph.contains(current)) {
+      for (const auto& dep : block_graph.at(current).to) {
+        if (dep == other) {
+          return true;
+        }
+
+        if (!closure_found.contains(dep)) {
+          closure_found.emplace(dep);
+          search.emplace(dep);
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+
 void ProgramDependencies::VisualizeVars() {
   auto graph = std::make_unique<epi::cycle::Graph>();
 

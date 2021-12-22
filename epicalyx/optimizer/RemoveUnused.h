@@ -1,40 +1,36 @@
 #pragma once
 
+#pragma once
+
 #include "calyx/backend/Backend.h"
+#include "ProgramDependencies.h"
 
 #include <vector>
 #include <unordered_map>
-#include <unordered_set>
+#include <set>
 
 namespace epi {
 
 using namespace calyx;
 
-struct ProgramDependencies : calyx::Backend {
+struct RemoveUnused : calyx::Backend {
+  std::unordered_map<var_index_t, var_index_t> replacement{};
 
-  // find common ancestor for 2 blocks such that all paths to these blocks go through that ancestor
-  calyx::block_label_t CommonBlockAncestor(calyx::block_label_t first, calyx::block_label_t second) const;
-  std::vector<calyx::block_label_t> UpwardClosure(calyx::block_label_t base) const;
-  bool IsAncestorOf(calyx::block_label_t base, calyx::block_label_t other) const;
+  ProgramDependencies dependencies{};
+  calyx::Program new_program{};
+  calyx::Program::block_t* current_block{};
 
-  struct Edge {
-    std::unordered_set<block_label_t> to{};
-    std::unordered_set<block_label_t> from{};
-  };
+  template<typename T>
+  void EmitCopy(T& directive) {
+    current_block->push_back(std::make_unique<T>(directive));
+  }
 
-  std::unordered_map<block_label_t, Edge> block_graph{};
-
-  struct Var {
-    block_label_t block_made = -1;
-    std::unordered_set<var_index_t> deps{};
-    u64 read_count = 0;
-  };
-
-  std::unordered_map<var_index_t, Var> var_graph{};
-
-  std::pair<block_label_t, size_t> pos{};
-
-  void VisualizeVars();
+  template<typename T>
+  void EmitExpr(T& directive) {
+    if (dependencies.var_graph.at(directive.idx).read_count > 0) {
+      current_block->push_back(std::make_unique<T>(directive));
+    }
+  }
 
   void EmitProgram(Program& program) final;
 

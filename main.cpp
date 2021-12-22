@@ -4,6 +4,7 @@
 #include "calyx/backend/interpreter/Interpreter.h"
 #include "optimizer/ProgramDependencies.h"
 #include "optimizer/BasicOptimizer.h"
+#include "optimizer/RemoveUnused.h"
 #include "file/File.h"
 #include "file/SString.h"
 #include "tokenizer/Tokenizer.h"
@@ -63,6 +64,19 @@ int main() {
   catch_e {
     Log::ConsoleColor<Log::Color::Red>();
     std::cout << "Optimizer error:" << std::endl << std::endl;
+    std::cout << e.what() << std::endl;
+    return 1;
+  }
+
+  try {
+    auto cleanup = epi::RemoveUnused();
+    cleanup.EmitProgram(program);
+
+    program = std::move(cleanup.new_program);
+  }
+  catch_e {
+    Log::ConsoleColor<Log::Color::Red>();
+    std::cout << "Cleanup error:" << std::endl << std::endl;
     std::cout << e.what() << std::endl;
     return 1;
   }

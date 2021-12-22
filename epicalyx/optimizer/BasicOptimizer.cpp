@@ -11,86 +11,13 @@ void BasicOptimizer::TryReplace(calyx::var_index_t& var_idx) const {
   }
 }
 
-calyx::block_label_t BasicOptimizer::CommonBlockAncestor(calyx::block_label_t first, calyx::block_label_t second) const {
-  std::set<calyx::block_label_t> ancestors{first, second};
-
-  // we use the fact that in general block1 > block2 then block1 can never be an ancestor of block2
-  // it may happen for loops, but then the loop entry is the minimum block, so we want to go there
-  while (ancestors.size() > 1) {
-    auto max_ancestor = *ancestors.rbegin();
-    ancestors.erase(std::prev(ancestors.end()));
-    if (!dependencies.block_graph.contains(max_ancestor)) {
-      return 0;
-    }
-    auto& deps = dependencies.block_graph.at(max_ancestor);
-    if (deps.from.empty()) {
-      return 0;
-    }
-    for (auto dep : deps.from) {
-      ancestors.insert(dep);
-    }
-  }
-
-  // at this point only one ancestor should be left
-  return *ancestors.begin();
-}
-
-std::vector<calyx::block_label_t> BasicOptimizer::UpwardClosure(calyx::block_label_t base) const {
-  std::unordered_set<calyx::block_label_t> closure_found{base};
-  std::vector<calyx::block_label_t> closure{};
-  closure.push_back(base);
-  std::unordered_set<calyx::block_label_t> search{base};
-
-  while (!search.empty()) {
-    auto current = *search.begin();
-    search.erase(search.begin());
-
-    if (dependencies.block_graph.contains(current)) {
-      for (const auto& dep : dependencies.block_graph.at(current).to) {
-        if (!closure_found.contains(dep)) {
-          closure_found.emplace(dep);
-          search.emplace(dep);
-          closure.push_back(dep);
-        }
-      }
-    }
-  }
-
-  return closure;
-}
-
-bool BasicOptimizer::IsAncestorOf(calyx::block_label_t base, calyx::block_label_t other) const {
-  std::unordered_set<calyx::block_label_t> closure_found{base};
-  std::unordered_set<calyx::block_label_t> search{base};
-
-  while (!search.empty()) {
-    auto current = *search.begin();
-    search.erase(search.begin());
-
-    if (dependencies.block_graph.contains(current)) {
-      for (const auto& dep : dependencies.block_graph.at(current).to) {
-        if (dep == other) {
-          return true;
-        }
-
-        if (!closure_found.contains(dep)) {
-          closure_found.emplace(dep);
-          search.emplace(dep);
-        }
-      }
-    }
-  }
-
-  return false;
-}
-
 template<typename T, class F>
 bool BasicOptimizer::FindReplacement(T& op, F predicate) {
   for (const auto& [var_idx, loc] : vars_found) {
     auto& directive = new_program.blocks.at(loc.first)[loc.second];
     if (IsType<T>(directive)) {
       auto candidate_block = dependencies.var_graph.at(var_idx).block_made;
-      auto ancestor = CommonBlockAncestor(candidate_block, current_block_idx);
+      auto ancestor = dependencies.CommonBlockAncestor(candidate_block, current_block_idx);
 
       // todo: shift directives back for earlier ancestor blocks
       if (ancestor == current_block_idx || ancestor == candidate_block) {
@@ -117,7 +44,7 @@ void BasicOptimizer::EmitProgram(Program& program) {
   // copy over global initializer blocks
   for (const auto& [symbol, global_init] : new_program.global_init) {
     if (std::holds_alternative<calyx::block_label_t>(global_init)) {
-      auto closure = UpwardClosure(std::get<calyx::block_label_t>(global_init));
+      auto closure = dependencies.UpwardClosure(std::get<calyx::block_label_t>(global_init));
 
       for (auto block : closure) {
         new_program.blocks.emplace(block, std::move(program.blocks[block]));
@@ -127,7 +54,7 @@ void BasicOptimizer::EmitProgram(Program& program) {
   }
 
   for (const auto& [symbol, entry] : new_program.functions) {
-    auto closure = UpwardClosure(entry);
+    auto closure = dependencies.UpwardClosure(entry);
     vars_found = {};
 
     for (const auto& block : closure) {
