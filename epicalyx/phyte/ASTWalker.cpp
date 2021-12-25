@@ -219,6 +219,10 @@ void ASTWalker::Visit(Identifier& decl) {
 
 template<typename T>
 void ASTWalker::ConstVisitImpl(NumericalConstant<T>& expr) {
+  if (state.top().first == State::Empty) {
+    // statement has no effect
+    return;
+  }
   cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   if (state.top().first == State::ConditionalBranch) {
     if (expr.value) {
@@ -250,6 +254,12 @@ void ASTWalker::Visit(StringConstant& expr) {
 }
 
 void ASTWalker::Visit(ArrayAccess& expr) {
+  if (state.top().first == State::Empty) {
+    // increments/decrements might happen
+    expr.left->Visit(*this);
+    expr.right->Visit(*this);
+    return;
+  }
   cotyl::Assert(cotyl::Is(state.top().first).AnyOf<State::Read, State::ConditionalBranch, State::Assign, State::Address>());
 
   state.push({State::Read, {}});
@@ -355,6 +365,12 @@ void ASTWalker::Visit(FunctionCall& expr) {
   else {
     auto visitor = detail::EmitterTypeVisitor<detail::CallEmitter>(*this, { fn, std::move(args), std::move(var_args) });
     signature->contained->Visit(visitor);
+
+    if (state.top().first == State::ConditionalBranch) {
+      auto false_block = state.top().second.false_block;
+      EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, false_block, current, calyx::CmpType::Eq, 0);
+      emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
+    }
   }
 }
 
@@ -367,7 +383,7 @@ void ASTWalker::Visit(TypeInitializer& expr) {
 }
 
 void ASTWalker::Visit(PostFix& expr) {
-  cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+  cotyl::Assert(state.top().first == State::Empty || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   
   bool conditional_branch = state.top().first == State::ConditionalBranch;
 
@@ -400,7 +416,6 @@ void ASTWalker::Visit(PostFix& expr) {
       break;
     }
     case TokenType::Decr: {
-      cotyl::Assert(state.top().first == State::Read);
       state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
@@ -440,11 +455,15 @@ void ASTWalker::Visit(PostFix& expr) {
 }
 
 void ASTWalker::Visit(Unary& expr) {
+  cotyl::Assert(state.top().first == State::Empty || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   const bool conditional_branch = state.top().first == State::ConditionalBranch;
 
   switch (expr.op) {
     case TokenType::Minus: {
-      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+      if (state.top().first == State::Empty) {
+        expr.left->Visit(*this);
+        return;
+      }
       // no need to push a new state
       expr.left->Visit(*this);
       if (!conditional_branch) {
@@ -454,7 +473,6 @@ void ASTWalker::Visit(Unary& expr) {
       return;
     }
     case TokenType::Plus: {
-      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       // no need to push a new state
       // does nothing
       // return, no need to check for conditional branches, is handled in visiting the expr
@@ -462,7 +480,10 @@ void ASTWalker::Visit(Unary& expr) {
       return;
     }
     case TokenType::Tilde: {
-      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+      if (state.top().first == State::Empty) {
+        expr.left->Visit(*this);
+        return;
+      }
       // no need to push a new state
       expr.left->Visit(*this);
       EmitArithExpr<calyx::Unop>(emitter.vars[current].type, calyx::UnopType::BinNot, current);
@@ -470,7 +491,10 @@ void ASTWalker::Visit(Unary& expr) {
       break;
     }
     case TokenType::Exclamation: {
-      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+      if (state.top().first == State::Empty) {
+        expr.left->Visit(*this);
+        return;
+      }
       state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
@@ -489,7 +513,6 @@ void ASTWalker::Visit(Unary& expr) {
       return;
     }
     case TokenType::Incr: {
-      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
@@ -519,7 +542,6 @@ void ASTWalker::Visit(Unary& expr) {
       break;
     }
     case TokenType::Decr: {
-      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       // read value
       state.push({State::Read, {}});
       expr.left->Visit(*this);
@@ -553,15 +575,21 @@ void ASTWalker::Visit(Unary& expr) {
       break;
     }
     case TokenType::Ampersand: {
-      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+      if (state.top().first == State::Empty) {
+        expr.left->Visit(*this);
+        return;
+      }
       state.push({ State::Address, {} });
       expr.left->Visit(*this);
       state.pop();
       break;
     }
     case TokenType::Asterisk: {
-      cotyl::Assert(cotyl::Is(state.top().first).AnyOf<State::Read, State::ConditionalBranch, State::Assign, State::Address>());
-      if (state.top().first == State::Assign) {
+      if (state.top().first == State::Empty) {
+        expr.left->Visit(*this);
+        return;
+      }
+      else if (state.top().first == State::Assign) {
         state.push({ State::Read, {} });
         expr.left->Visit(*this);
         state.pop();
@@ -607,6 +635,10 @@ void ASTWalker::Visit(Unary& expr) {
 }
 
 void ASTWalker::Visit(Cast& expr) {
+  if (state.top().first == State::Empty) {
+    expr.expr->Visit(*this);
+    return;
+  }
   cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   // no need to push a new state
   expr.expr->Visit(*this);
@@ -619,6 +651,12 @@ void ASTWalker::Visit(Cast& expr) {
 }
 
 void ASTWalker::Visit(Binop& expr) {
+  if (state.top().first == State::Empty) {
+    // increments / decrements might happen on either side
+    expr.left->Visit(*this);
+    expr.right->Visit(*this);
+    return;
+  }
   cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   
   // only need to push a new state for conditional branches
