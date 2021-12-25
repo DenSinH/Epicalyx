@@ -1,6 +1,7 @@
 #include "BasicOptimizer.h"
 #include "IRCompare.h"
 #include "Cast.h"
+#include "Is.h"
 
 
 namespace epi {
@@ -56,22 +57,8 @@ void BasicOptimizer::EmitProgram(Program& _program) {
   dependencies.EmitProgram(_program);
   new_program.functions    = std::move(_program.functions);
   new_program.globals      = std::move(_program.globals);
-  new_program.global_init  = std::move(_program.global_init);
   new_program.local_labels = std::move(_program.local_labels);
   new_program.strings      = std::move(_program.strings);
-
-
-  // copy over global initializer blocks
-  for (const auto& [symbol, global_init] : new_program.global_init) {
-    if (std::holds_alternative<calyx::block_label_t>(global_init)) {
-      auto closure = dependencies.UpwardClosure(std::get<calyx::block_label_t>(global_init));
-
-      for (auto block : closure) {
-        new_program.blocks.emplace(block, std::move(_program.blocks[block]));
-        _program.blocks.erase(block);
-      }
-    }
-  }
 
   for (const auto& [symbol, entry] : new_program.functions) {
     std::unordered_set<block_label_t> visited = {};

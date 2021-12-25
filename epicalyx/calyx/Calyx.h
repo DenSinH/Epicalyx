@@ -175,6 +175,7 @@ struct Branch : Directive {
 struct Program {
   using block_t = std::vector<pDirective>;
   using blocks_t = std::unordered_map<block_label_t, block_t>;
+  using global_t = std::variant<i8, u8, i16, u16, i32, u32, i64, u64, float, double, Pointer, label_offset_t>;
 
   Program() {
     blocks.emplace(0, block_t{});
@@ -195,15 +196,7 @@ struct Program {
   std::vector<std::string> strings{};
 
   // global variable sizes
-  std::unordered_map<std::string, size_t> globals{};
-
-  // global variable initializer
-  // possible constant, possibly a label with some offset, possibly requires some code
-  // for example, weird expressions like "long long k = 2 * (long long)test" are too hard to parse
-  // where test is another symbol (e.g. int test(int);)
-  // (try this on godbolt for example)
-  // these require a block to run
-  std::unordered_map<std::string, std::variant<std::vector<u8>, label_offset_t, block_label_t>> global_init{};
+  std::unordered_map<std::string, global_t> globals{};
 };
 
 enum class BinopType {

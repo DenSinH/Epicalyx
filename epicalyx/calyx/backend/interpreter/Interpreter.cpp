@@ -13,6 +13,7 @@
 
 namespace epi::calyx {
 
+
 void Interpreter::VisualizeProgram(const Program& program) {
   auto graph = std::make_unique<epi::cycle::Graph>();
 
@@ -49,56 +50,68 @@ void Interpreter::VisualizeProgram(const Program& program) {
     graph->n(block).title(symbol + "(*)");
   }
 
-  for (const auto& [symbol, global_init] : program.global_init) {
-    if (std::holds_alternative<calyx::block_label_t>(global_init)) {
-      auto block = std::get<calyx::block_label_t>(global_init);
-      graph->n(block)->title("init " + symbol);
-    }
-  }
-
   graph->Visualize();
   graph->Join();
 }
 
+void Interpreter::InterpretGlobalInitializer(Program::global_t& dest, block_label_t entry) {
+    pos.first = entry;
+    pos.second = 0;
+    call_stack.emplace(std::make_pair(0, 0), -1, arg_list_t{}, arg_list_t{});
+    vars.NewLayer();
+    locals.NewLayer();
+
+    while (pos.first) {
+      auto& directive = program.blocks.at(pos.first)[pos.second];
+      pos.second++;
+      directive->Emit(*this);
+    }
+
+    std::visit([&](auto& var) {
+      using var_t = std::decay_t<decltype(var)>;
+
+      std::visit([&](auto& glob) {
+        using glob_t = std::decay_t<decltype(glob)>;
+
+        if constexpr(std::is_same_v<var_t, Pointer>) {
+          auto pval = ReadPointer(var.value);
+          if (std::holds_alternative<label_offset_t>(pval)) {
+            dest = std::get<label_offset_t>(pval);
+          }
+          else {
+            dest = Pointer{std::get<i64>(pval)};
+          }
+        }
+        else {
+          if constexpr(std::is_same_v<calyx_upcast_t<glob_t>, var_t>) {
+            glob = var;
+          }
+          else cotyl::Assert(false);
+        }
+      }, dest);
+    }, vars.Get(-1));
+
+    vars.Reset();
+    locals.Reset();
+}
+
 void Interpreter::EmitProgram(Program& program) {
-  for (const auto& [symbol, size] : program.globals) {
+  for (const auto& [symbol, global] : program.globals) {
     auto index = global_data.size();
     globals.emplace(symbol, index);
-    global_data.push_back(std::vector<u8>(size));
-  }
+    std::visit([&](auto& glob) {
+      using glob_t = std::decay_t<decltype(glob)>;
 
-  for (const auto& [symbol, global_init] : program.global_init) {
-    if (std::holds_alternative<std::vector<u8>>(global_init)) {
-      const auto& data = std::get<std::vector<u8>>(global_init);
-      std::memcpy(global_data[globals.at(symbol)].data(), data.data(), global_data[globals.at(symbol)].size());
-    }
-    else if (std::holds_alternative<calyx::label_offset_t>(global_init)) {
-      throw std::runtime_error("Unimplemented: global label offset init");
-    }
-    else if (std::holds_alternative<calyx::block_label_t>(global_init)) {
-      pos.first = std::get<calyx::block_label_t>(global_init);
-      pos.second = 0;
-      call_stack.emplace(std::make_pair(0, 0), -1, arg_list_t{}, arg_list_t{});
-      vars.NewLayer();
-      locals.NewLayer();
-
-      while (pos.first) {
-        auto& directive = program.blocks[pos.first][pos.second];
-        pos.second++;
-        directive->Emit(*this);
+      if constexpr(std::is_same_v<glob_t, label_offset_t>) {
+        Pointer ptr = MakePointer(glob);
+        global_data.emplace_back(sizeof(ptr));
+        std::memcpy(global_data.back().data(), &ptr, sizeof(ptr));
       }
-
-      auto _symbol = symbol;
-      std::visit([&](auto& var) {
-        std::memcpy(global_data[globals.at(_symbol)].data(), &var, global_data[globals.at(_symbol)].size());
-      }, vars.Get(-1));
-
-      vars.Reset();
-      locals.Reset();
-    }
-    else {
-      throw std::runtime_error("Bad global initializer");
-    }
+      else {
+        global_data.emplace_back(sizeof(glob));
+        std::memcpy(global_data.back().data(), &glob, sizeof(glob));
+      }
+    }, global);
   }
 
   pos.first = program.functions.at("main");
@@ -154,9 +167,12 @@ void Interpreter::EmitCast(Cast<To, From>& op) {
     To value;
     From from = std::get<From>(vars.Get(op.right_idx));
 
-    // assume we don't get label offsets here
-    value = std::get<i64>(ReadPointer(from.value));
-    vars.Get(op.idx) = value;
+    // assume we don't get label offsets here, otherwise we read garbage anyway
+    auto pval = ReadPointer(from.value);
+    if (std::holds_alternative<i64>(pval)) {
+      value = std::get<i64>(pval);
+    }
+    vars.Set(op.idx, value);
   }
   else {
     To value;
@@ -221,16 +237,11 @@ void Interpreter::EmitLoadGlobal(LoadGlobal<T>& op) {
     T value;
     std::memcpy(&value, global_data[globals.at(op.symbol)].data(), sizeof(T));
     vars.Set(op.idx, (calyx_upcast_t<T>)value);
-  };
+  }
 }
 
 void Interpreter::Emit(LoadGlobalAddr& op) {
-  if (program.functions.contains(op.symbol)) {
-    vars.Set(op.idx, MakePointer(calyx::label_offset_t{op.symbol, 0}));
-  }
-  else {
-    vars.Set(op.idx, MakePointer(-globals.at(op.symbol)));
-  }
+  vars.Set(op.idx, MakePointer(calyx::label_offset_t{op.symbol, 0}));
 }
 
 template<typename T>
@@ -242,7 +253,7 @@ void Interpreter::EmitStoreGlobal(StoreGlobal<T>& op) {
     cotyl::Assert(global_data[globals.at(op.symbol)].size() == sizeof(T));
     T value = (T)std::get<calyx_upcast_t<T>>(vars.Get(op.src));
     std::memcpy(global_data[globals.at(op.symbol)].data(), &value, sizeof(T));
-  };
+  }
 }
 
 template<typename T>
@@ -255,13 +266,8 @@ void Interpreter::EmitLoadFromPointer(LoadFromPointer<T>& op) {
     T value;
     if (std::holds_alternative<i64>(pointer)) {
       const auto pval = std::get<i64>(pointer);
-      if (pval >= 0) {
-        memcpy(&value, &stack[pval] + op.offset, sizeof(T));
-      }
-      else {
-        cotyl::Assert(global_data[-pval].size() >= sizeof(T));
-        memcpy(&value, global_data[-pval].data() + op.offset, sizeof(T));
-      }
+      cotyl::Assert(pval >= 0);
+      memcpy(&value, &stack[pval] + op.offset, sizeof(T));
     }
     else {
       const auto pval = std::get<calyx::label_offset_t>(pointer);
@@ -283,13 +289,8 @@ void Interpreter::EmitStoreToPointer(StoreToPointer<T>& op) {
 
     if (std::holds_alternative<i64>(pointer)) {
       const auto pval = std::get<i64>(pointer);
-      if (pval >= 0) {
-        memcpy(&stack[pval + op.offset], &value, sizeof(T));
-      }
-      else {
-        cotyl::Assert(global_data[-pval].size() >= sizeof(T));
-        memcpy(global_data[-pval].data() + op.offset, &value, sizeof(T));
-      }
+      cotyl::Assert(pval >= 0);
+      memcpy(&stack[pval + op.offset], &value, sizeof(T));
     }
     else {
       const auto pval = std::get<calyx::label_offset_t>(pointer);

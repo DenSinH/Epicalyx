@@ -16,10 +16,23 @@
 
 #include "Log.h"
 
+void PrintProgram(epi::Program& program) {
+  std::cout << std::endl << std::endl;
+  std::cout << "-- program" << std::endl;
+  for (int i = 0; i < program.blocks.size(); i++) {
+    if (!program.blocks[i].empty()) {
+      std::cout << 'L' << i << std::endl;
+      for (const auto& op : program.blocks[i]) {
+        std::cout << "    " << op->ToString() << std::endl;
+      }
+    }
+  }
+}
+
 
 int main() {
   // auto file = epi::File("tests/test.c");
-  auto file = epi::File("examples/emitting/pointers.c");
+  auto file = epi::File("examples/emitting/globals.c");
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
@@ -54,15 +67,7 @@ int main() {
   }
 
   auto program = std::move(emitter.program);
-
-  std::cout << std::endl << std::endl;
-  std::cout << "-- program" << std::endl;
-  for (int i = 0; i < program.blocks.size(); i++) {
-    std::cout << 'L' << i << std::endl;
-    for (const auto& op : program.blocks[i]) {
-      std::cout << "    " << op->ToString() << std::endl;
-    }
-  }
+  PrintProgram(program);
 
   // repeating multiple times will link more blocks
   for (int i = 0; i < 2; i++) {
@@ -93,19 +98,31 @@ int main() {
     }
   }
 
-  std::cout << std::endl << std::endl;
-  std::cout << "-- program" << std::endl;
-  for (int i = 0; i < program.blocks.size(); i++) {
-    std::cout << 'L' << i << std::endl;
-    for (const auto& op : program.blocks[i]) {
-      std::cout << "    " << op->ToString() << std::endl;
-    }
-  }
+  PrintProgram(program);
+
   std::cout << std::endl << std::endl;
   std::cout << "-- globals" << std::endl;
-  for (const auto& [symbol, size] : program.globals) {
-    std::cout << symbol << " " << size << std::endl;
+  for (const auto& [symbol, global] : program.globals) {
+    std::cout << symbol << " ";
+    std::visit([](auto& glob) {
+      using glob_t = std::decay_t<decltype(glob)>;
+      if constexpr(std::is_same_v<glob_t, epi::calyx::Pointer>) {
+        std::cout << "%p" << std::hex << glob.value << std::endl;
+      }
+      else if constexpr(std::is_same_v<glob_t, epi::calyx::label_offset_t>) {
+        if (glob.offset) {
+          std::cout << glob.label << "+" << glob.offset << std::endl;
+        }
+        else {
+          std::cout << glob.label << std::endl;
+        }
+      }
+      else {
+        std::cout << glob << std::endl;
+      }
+    }, global);
   }
+
   for (const auto& string : program.strings) {
     std::cout << '"' << string << '"' << std::endl;
   }
@@ -115,7 +132,6 @@ int main() {
     std::cout << std::endl << std::endl;
     std::cout << "-- interpreted" << std::endl;
     interpreter.EmitProgram(program);
-    std::cout << std::endl << std::endl;
     interpreter.VisualizeProgram(program);
 
     auto dependencies = epi::ProgramDependencies();

@@ -9,22 +9,8 @@ void RemoveUnused::EmitProgram(Program& program) {
   dependencies.EmitProgram(program);
   new_program.functions    = std::move(program.functions);
   new_program.globals      = std::move(program.globals);
-  new_program.global_init  = std::move(program.global_init);
   new_program.local_labels = std::move(program.local_labels);
   new_program.strings      = std::move(program.strings);
-
-
-  // copy over global initializer blocks
-  for (const auto& [symbol, global_init] : new_program.global_init) {
-    if (std::holds_alternative<calyx::block_label_t>(global_init)) {
-      auto closure = dependencies.UpwardClosure(std::get<calyx::block_label_t>(global_init));
-
-      for (auto block : closure) {
-        new_program.blocks.emplace(block, std::move(program.blocks[block]));
-        program.blocks.erase(block);
-      }
-    }
-  }
 
   for (const auto& [symbol, entry] : new_program.functions) {
     auto closure = dependencies.UpwardClosure(entry);

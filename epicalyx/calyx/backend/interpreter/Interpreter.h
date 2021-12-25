@@ -12,7 +12,7 @@
 namespace epi::calyx {
 
 struct Interpreter : Backend {
-  using program_counter_t = std::pair<calyx::var_index_t, calyx::var_index_t>;
+  using program_counter_t = std::pair<block_label_t, int>;
 
   Interpreter(const Program& program) : program(program) {
 
@@ -22,6 +22,8 @@ struct Interpreter : Backend {
 
   std::vector<u8> stack{};
   std::vector<std::variant<i64, label_offset_t>> pointer_values{};
+
+  void InterpretGlobalInitializer(Program::global_t& dest, block_label_t entry);
 
   calyx::Pointer MakePointer(std::variant<i64, label_offset_t> value) {
     const auto idx = pointer_values.size();

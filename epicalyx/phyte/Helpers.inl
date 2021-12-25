@@ -236,7 +236,7 @@ struct LoadFromPointerEmitter {
   }
 
   static calyx::var_index_t emit_pointer(ASTWalker& walker, u64 stride, calyx::var_index_t ptr_idx) {
-    return walker.emitter.EmitExpr<calyx::LoadLocal<calyx::Pointer>>({calyx::Var::Type::Pointer, stride }, ptr_idx);
+    return walker.emitter.EmitExpr<calyx::LoadFromPointer<calyx::Pointer>>({calyx::Var::Type::Pointer, stride }, ptr_idx);
   }
 };
 
@@ -278,6 +278,28 @@ struct ArgumentTypeVisitor : TypeVisitor {
   void Visit(const FunctionType& type) final { result.type = calyx::Argument::Type::Pointer; result.stride = 0; }
   void Visit(const StructType& type) final { result.type = calyx::Argument::Type::Struct; result.size = type.Sizeof(); }
   void Visit(const UnionType& type) final { result.type = calyx::Argument::Type::Struct; result.size = type.Sizeof(); }
+};
+
+
+struct GlobalInitializerVisitor : TypeVisitor {
+  calyx::Program::global_t result{};
+
+  void Visit(const VoidType& type) final { throw std::runtime_error("Incomplete type for global initializer"); }
+  void Visit(const ValueType<i8>& type) final { result = i8{0}; }
+  void Visit(const ValueType<u8>& type) final { result = u8{0}; }
+  void Visit(const ValueType<i16>& type) final { result = i16{0}; }
+  void Visit(const ValueType<u16>& type) final { result = u16{0}; }
+  void Visit(const ValueType<i32>& type) final { result = i32{0}; }
+  void Visit(const ValueType<u32>& type) final { result = u32{0}; }
+  void Visit(const ValueType<i64>& type) final { result = i64{0}; }
+  void Visit(const ValueType<u64>& type) final { result = u64{0}; }
+  void Visit(const ValueType<float>& type) final { result = float{0}; }
+  void Visit(const ValueType<double>& type) final { result = double{0}; }
+  void Visit(const PointerType& type) final { result = calyx::Pointer{0}; }
+  void Visit(const ArrayType& type) final { throw std::runtime_error("Unimplemented: global array"); }
+  void Visit(const FunctionType& type) final { result = calyx::Pointer{0}; }
+  void Visit(const StructType& type) final { throw std::runtime_error("Unimplemented: global struct"); }
+  void Visit(const UnionType& type) final { throw std::runtime_error("Unimplemented: global struct");  }
 };
 
 }

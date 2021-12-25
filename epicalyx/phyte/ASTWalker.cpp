@@ -1,6 +1,7 @@
 #include "ASTWalker.h"
 #include "Emitter.h"
 #include "calyx/Calyx.h"
+#include "calyx/backend/interpreter/Interpreter.h"
 #include "types/EpiCType.h"
 #include "taxy/Declaration.h"
 #include "taxy/Statement.h"
@@ -18,23 +19,28 @@ namespace epi::phyte {
 void ASTWalker::Visit(epi::taxy::Declaration& decl) {
   if (variables.Depth() == 1) {
     // global symbols
-    u64 size = decl.type->Sizeof();
-    emitter.program.globals[decl.name] = size;
     c_types.Set(decl.name, decl.type);
+
+    auto global_init_visitor = detail::GlobalInitializerVisitor();
+    decl.type->Visit(global_init_visitor);
+    calyx::Program::global_t& global = emitter.program.globals[decl.name] = global_init_visitor.result;
+
     if (decl.value.has_value()) {
       if (std::holds_alternative<pExpr>(decl.value.value())) {
         auto& expr = std::get<pExpr>(decl.value.value());
 
-        auto block = emitter.MakeBlock();
-        emitter.SelectBlock(block);
+        auto global_entry = emitter.MakeBlock();
+        emitter.SelectBlock(global_entry);
 
         state.push({State::Read, {}});
         expr->Visit(*this);
-        auto visitor = detail::EmitterTypeVisitor<detail::ReturnEmitter>(*this, { current });
-        decl.type->Visit(visitor);
         state.pop();
 
-        emitter.program.global_init[decl.name] = block;
+        auto global_block_return_visitor = detail::EmitterTypeVisitor<detail::ReturnEmitter>(*this, { current });
+        decl.type->Visit(global_block_return_visitor);
+
+        calyx::Interpreter interpreter = {emitter.program};
+        interpreter.InterpretGlobalInitializer(global, global_entry);
       }
       else {
         // todo: handle initializer list
@@ -116,7 +122,7 @@ void ASTWalker::Visit(epi::taxy::FunctionDefinition& decl) {
 
 void ASTWalker::Visit(Identifier& decl) {
   // after the AST, the only identifiers left are C variables
-  if (state.empty()) {
+  if (state.top().first == State::Empty) {
     // statement has no effect
     return;
   }
@@ -213,7 +219,7 @@ void ASTWalker::Visit(Identifier& decl) {
 
 template<typename T>
 void ASTWalker::ConstVisitImpl(NumericalConstant<T>& expr) {
-  cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+  cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   if (state.top().first == State::ConditionalBranch) {
     if (expr.value) {
       emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
@@ -244,7 +250,7 @@ void ASTWalker::Visit(StringConstant& expr) {
 }
 
 void ASTWalker::Visit(ArrayAccess& expr) {
-  cotyl::Assert(state.empty() || cotyl::Is(state.top().first).AnyOf<State::Read, State::ConditionalBranch, State::Assign, State::Address>());
+  cotyl::Assert(cotyl::Is(state.top().first).AnyOf<State::Read, State::ConditionalBranch, State::Assign, State::Address>());
 
   state.push({State::Read, {}});
   calyx::var_index_t ptr_idx, offs_idx;
@@ -268,7 +274,7 @@ void ASTWalker::Visit(ArrayAccess& expr) {
   );
   ptr_idx = current;
 
-  if (state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch) {
+  if (state.top().first == State::Read || state.top().first == State::ConditionalBranch) {
     auto visitor = detail::EmitterTypeVisitor<detail::LoadFromPointerEmitter>(*this, { ptr_idx });
     if (expr.left->GetType()->IsPointer()) {
       expr.left->GetType()->Deref()->Visit(visitor);
@@ -277,7 +283,7 @@ void ASTWalker::Visit(ArrayAccess& expr) {
       expr.right->GetType()->Deref()->Visit(visitor);
     }
 
-    if (!state.empty() && state.top().first == State::ConditionalBranch) {
+    if (state.top().first == State::ConditionalBranch) {
       auto false_block = state.top().second.false_block;
       EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, false_block, current, calyx::CmpType::Eq, 0);
       emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
@@ -361,9 +367,9 @@ void ASTWalker::Visit(TypeInitializer& expr) {
 }
 
 void ASTWalker::Visit(PostFix& expr) {
-  cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+  cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   
-  bool conditional_branch = !state.empty() && state.top().first == State::ConditionalBranch;
+  bool conditional_branch = state.top().first == State::ConditionalBranch;
 
   switch (expr.op) {
     case TokenType::Incr: {
@@ -394,7 +400,7 @@ void ASTWalker::Visit(PostFix& expr) {
       break;
     }
     case TokenType::Decr: {
-      cotyl::Assert(state.empty() || state.top().first == State::Read);
+      cotyl::Assert(state.top().first == State::Read);
       state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
@@ -434,11 +440,11 @@ void ASTWalker::Visit(PostFix& expr) {
 }
 
 void ASTWalker::Visit(Unary& expr) {
-  const bool conditional_branch = !state.empty() && state.top().first == State::ConditionalBranch;
+  const bool conditional_branch = state.top().first == State::ConditionalBranch;
 
   switch (expr.op) {
     case TokenType::Minus: {
-      cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       // no need to push a new state
       expr.left->Visit(*this);
       if (!conditional_branch) {
@@ -448,7 +454,7 @@ void ASTWalker::Visit(Unary& expr) {
       return;
     }
     case TokenType::Plus: {
-      cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       // no need to push a new state
       // does nothing
       // return, no need to check for conditional branches, is handled in visiting the expr
@@ -456,7 +462,7 @@ void ASTWalker::Visit(Unary& expr) {
       return;
     }
     case TokenType::Tilde: {
-      cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       // no need to push a new state
       expr.left->Visit(*this);
       EmitArithExpr<calyx::Unop>(emitter.vars[current].type, calyx::UnopType::BinNot, current);
@@ -464,7 +470,7 @@ void ASTWalker::Visit(Unary& expr) {
       break;
     }
     case TokenType::Exclamation: {
-      cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
@@ -483,7 +489,7 @@ void ASTWalker::Visit(Unary& expr) {
       return;
     }
     case TokenType::Incr: {
-      cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
@@ -513,7 +519,7 @@ void ASTWalker::Visit(Unary& expr) {
       break;
     }
     case TokenType::Decr: {
-      cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       // read value
       state.push({State::Read, {}});
       expr.left->Visit(*this);
@@ -547,15 +553,15 @@ void ASTWalker::Visit(Unary& expr) {
       break;
     }
     case TokenType::Ampersand: {
-      cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       state.push({ State::Address, {} });
       expr.left->Visit(*this);
       state.pop();
       break;
     }
     case TokenType::Asterisk: {
-      cotyl::Assert(state.empty() || cotyl::Is(state.top().first).AnyOf<State::Read, State::ConditionalBranch, State::Assign, State::Address>());
-      if (!state.empty() && state.top().first == State::Assign) {
+      cotyl::Assert(cotyl::Is(state.top().first).AnyOf<State::Read, State::ConditionalBranch, State::Assign, State::Address>());
+      if (state.top().first == State::Assign) {
         state.push({ State::Read, {} });
         expr.left->Visit(*this);
         state.pop();
@@ -568,7 +574,7 @@ void ASTWalker::Visit(Unary& expr) {
         current = var;
         return;
       }
-      else if (!state.empty() && state.top().first == State::Address) {
+      else if (state.top().first == State::Address) {
         // &(*pointer) == pointer
         state.push({ State::Read, {} });
         expr.left->Visit(*this);
@@ -601,22 +607,22 @@ void ASTWalker::Visit(Unary& expr) {
 }
 
 void ASTWalker::Visit(Cast& expr) {
-  cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+  cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   // no need to push a new state
   expr.expr->Visit(*this);
 
   // only need to emit an actual cast if we are not checking for 0
-  if (state.empty() || state.top().first != State::ConditionalBranch) {
+  if (state.top().first != State::ConditionalBranch) {
     auto visitor = detail::EmitterTypeVisitor<detail::CastToEmitter>(*this, { current });
     expr.type->Visit(visitor);
   }
 }
 
 void ASTWalker::Visit(Binop& expr) {
-  cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+  cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   
   // only need to push a new state for conditional branches
-  const bool conditional_branch = !state.empty() && (state.top().first == State::ConditionalBranch);
+  const bool conditional_branch = state.top().first == State::ConditionalBranch;
   calyx::var_index_t left, right;
 
   if (expr.op != TokenType::LogicalAnd && expr.op != TokenType::LogicalOr) {
@@ -752,7 +758,7 @@ void ASTWalker::Visit(Binop& expr) {
     }
     case TokenType::LogicalAnd:
     case TokenType::LogicalOr: {
-      if (state.empty() || state.top().first == State::Read) {
+      if (state.top().first == State::Read) {
         // we create a "fake local" in order to do this
         auto c_idx = emitter.c_counter++;
         std::string name = "$logop" + std::to_string(c_idx);
@@ -851,9 +857,9 @@ void ASTWalker::Visit(Binop& expr) {
 }
 
 void ASTWalker::Visit(Ternary& expr) {
-  cotyl::Assert(state.empty() || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
+  cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   
-  if (state.empty() || state.top().first == State::Read) {
+  if (state.top().first == State::Read) {
     // we create a "fake local" in order to do this
     auto c_idx = emitter.c_counter++;
     std::string name = "$tern" + std::to_string(c_idx);
@@ -936,7 +942,7 @@ void ASTWalker::Visit(Ternary& expr) {
 }
 
 void ASTWalker::Visit(Assignment& expr) {
-  cotyl::Assert(state.empty() || state.top().first == State::Read);
+  cotyl::Assert(state.top().first == State::Empty || state.top().first == State::Read);
   
   state.push({State::Read, {}});
   expr.right->Visit(*this);

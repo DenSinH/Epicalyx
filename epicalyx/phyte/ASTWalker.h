@@ -15,11 +15,11 @@ using namespace taxy;
 struct ASTWalker : public taxy::NodeVisitor {
   ASTWalker(Emitter& emitter) :
       emitter(emitter) {
-
+    state.push({State::Empty, {}});
   }
 
   enum class State {
-    Assign, Address, Read, ConditionalBranch,
+    Empty, Assign, Address, Read, ConditionalBranch,
   };
 
   union StateData {

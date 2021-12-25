@@ -146,11 +146,11 @@ void ProgramDependencies::EmitCast(Cast<To, From>& op) {
 
 template<typename T>
 void ProgramDependencies::EmitLoadLocal(LoadLocal<T>& op) {
-
+  detail::get_default(var_graph, op.idx).block_made = pos.first;
 }
 
 void ProgramDependencies::Emit(LoadLocalAddr& op) {
-
+  detail::get_default(var_graph, op.idx).block_made = pos.first;
 }
 
 template<typename T>
@@ -160,7 +160,7 @@ void ProgramDependencies::EmitStoreLocal(StoreLocal<T>& op) {
 
 template<typename T>
 void ProgramDependencies::EmitLoadGlobal(LoadGlobal<T>& op) {
-
+  detail::get_default(var_graph, op.idx).block_made = pos.first;
 }
 
 void ProgramDependencies::Emit(LoadGlobalAddr& op) {
