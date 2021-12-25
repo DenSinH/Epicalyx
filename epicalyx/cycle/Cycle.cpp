@@ -196,6 +196,9 @@ Graph::top_sort_t Graph::FindOrder() {
           least_inputs = inputs;
           least_id = id;
         }
+        else if (inputs == least_inputs) {
+          least_id = std::min(least_id, id);
+        }
       }
 
       result.back().push_back(least_id);
