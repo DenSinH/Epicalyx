@@ -1085,7 +1085,7 @@ void ASTWalker::Visit(If& stat) {
 }
 
 void ASTWalker::Visit(While& stat) {
-  
+  // loop entry is lowest index
   auto cond_block = emitter.MakeBlock();
   emitter.Emit<calyx::UnconditionalBranch>(cond_block);
   emitter.SelectBlock(cond_block);
@@ -1116,7 +1116,7 @@ void ASTWalker::Visit(While& stat) {
 }
 
 void ASTWalker::Visit(DoWhile& stat) {
-  
+  // loop entry is lowest index
   auto loop_block = emitter.MakeBlock();
   auto cond_block = emitter.MakeBlock();
   auto post_block = emitter.MakeBlock();
@@ -1153,6 +1153,7 @@ void ASTWalker::Visit(For& stat) {
 
   // new scope for declarations in for loop
   variables.NewLayer();
+  c_types.NewLayer();
 
   // always go to initialization
   emitter.Emit<calyx::UnconditionalBranch>(init_block);
@@ -1164,6 +1165,7 @@ void ASTWalker::Visit(For& stat) {
     init->Visit(*this);
   }
 
+  // loop entry is lowest block
   auto cond_block = emitter.MakeBlock();
   auto loop_block = emitter.MakeBlock();
   auto post_block = emitter.MakeBlock();
@@ -1202,6 +1204,7 @@ void ASTWalker::Visit(For& stat) {
 //    emitter.Emit<calyx::DeallocateCVar>(var->second.idx, var->second.size);
 //  }
   variables.PopLayer();
+  c_types.PopLayer();
 
   // go to block after loop
   emitter.SelectBlock(post_block);
@@ -1329,6 +1332,7 @@ void ASTWalker::Visit(Continue& stat) {
 
 void ASTWalker::Visit(Compound& stat) {
   variables.NewLayer();
+  c_types.NewLayer();
   for (const auto& node : stat.stats) {
     node->Visit(*this);
   }
@@ -1336,6 +1340,7 @@ void ASTWalker::Visit(Compound& stat) {
     emitter.Emit<calyx::DeallocateLocal>(var.idx, var.size);
   }
   variables.PopLayer();
+  c_types.PopLayer();
 }
 
 }

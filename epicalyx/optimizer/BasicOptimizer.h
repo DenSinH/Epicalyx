@@ -14,6 +14,13 @@ namespace epi {
 using namespace calyx;
 
 struct BasicOptimizer : calyx::Backend {
+
+  BasicOptimizer(const Program& program) : program(program) {
+
+  }
+
+  const Program& program;
+
   std::unordered_map<var_index_t, var_index_t> replacement{};
 
   ProgramDependencies dependencies{};
@@ -24,7 +31,8 @@ struct BasicOptimizer : calyx::Backend {
   block_label_t current_block_idx;
 
   template<typename T, class F>
-  bool FindReplacement(T& op, F predicate);
+  bool FindExprResultReplacement(T& op, F predicate);
+  bool ResolveBranchIndirection(calyx::Branch& op);
 
   template<typename T, typename... Args>
   std::pair<calyx::block_label_t, int> EmitNew(Args... args) {

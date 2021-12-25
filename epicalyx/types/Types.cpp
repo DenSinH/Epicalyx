@@ -283,8 +283,18 @@ pType<ValueType<i32>> CType::TruthinessAsCType() const {
 pType<ValueType<i32>> CType::LogAnd(const CType& other) const {
   auto l = this->TruthinessAsCType();
   auto r = other.TruthinessAsCType();
-  if (l->HasValue() && r->HasValue()) {
-    return MakeBool(l->Get() && r->Get());
+  if (l->HasValue()) {
+    if (!l->Get()) {
+      return MakeBool(false);
+    }
+    else if (r->HasValue() && r->Get()) {
+      return MakeBool(true);
+    }
+  }
+  if (r->HasValue()) {
+    if (!r->Get()) {
+      return MakeBool(false);
+    }
   }
   return MakeBool();
 }
@@ -292,8 +302,18 @@ pType<ValueType<i32>> CType::LogAnd(const CType& other) const {
 pType<ValueType<i32>> CType::LogOr(const CType& other) const {
   auto l = this->TruthinessAsCType();
   auto r = other.TruthinessAsCType();
-  if (l->HasValue() && r->HasValue()) {
-    return MakeBool(l->Get() || r->Get());
+  if (l->HasValue()) {
+    if (l->Get()) {
+      return MakeBool(true);
+    }
+    else if (r->HasValue() && !r->Get()) {
+      return MakeBool(false);
+    }
+  }
+  if (r->HasValue()) {
+    if (r->Get()) {
+      return MakeBool(true);
+    }
   }
   return MakeBool();
 }

@@ -29,18 +29,24 @@ calyx::block_label_t ProgramDependencies::CommonBlockAncestor(calyx::block_label
 
   // we use the fact that in general block1 > block2 then block1 can never be an ancestor of block2
   // it may happen for loops, but then the loop entry is the minimum block, so we want to go there
+  std::unordered_set<calyx::block_label_t> ancestors_considered{};
+
   while (ancestors.size() > 1) {
     auto max_ancestor = *ancestors.rbegin();
     ancestors.erase(std::prev(ancestors.end()));
-    if (!block_graph.contains(max_ancestor)) {
+    ancestors_considered.emplace(max_ancestor);
+    if (!block_graph.contains(max_ancestor)) [[unlikely]] {
       return 0;
     }
+
     auto& deps = block_graph.at(max_ancestor);
-    if (deps.from.empty()) {
+    if (deps.from.empty()) [[unlikely]] {
       return 0;
     }
     for (auto dep : deps.from) {
-      ancestors.insert(dep);
+      if (dep < max_ancestor || !ancestors_considered.contains(dep)) {
+        ancestors.insert(dep);
+      }
     }
   }
 
@@ -114,6 +120,7 @@ void ProgramDependencies::VisualizeVars() {
 
 void ProgramDependencies::EmitProgram(Program& program) {
   for (const auto& [i, block] : program.blocks) {
+    detail::get_default(block_graph, i);
     pos.first = i;
     for (int j = 0; j < block.size(); j++) {
       pos.second = j;
@@ -303,6 +310,10 @@ void ProgramDependencies::Emit(Select& op) {
   for (const auto& [value, block] : op.table) {
     detail::get_default(block_graph, pos.first).to.emplace(block);
     detail::get_default(block_graph, block).from.emplace(pos.first);
+  }
+  if (op._default) {
+    detail::get_default(block_graph, pos.first).to.emplace(op._default);
+    detail::get_default(block_graph, op._default).from.emplace(pos.first);
   }
 }
 

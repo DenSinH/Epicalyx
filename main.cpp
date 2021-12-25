@@ -19,7 +19,7 @@
 
 int main() {
   // auto file = epi::File("tests/test.c");
-  auto file = epi::File("examples/emitting/logical_operators.c");
+  auto file = epi::File("examples/emitting/pointers.c");
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
@@ -64,30 +64,33 @@ int main() {
     }
   }
 
-  try {
-    auto optimizer = epi::BasicOptimizer();
-    optimizer.EmitProgram(program);
+  // repeating multiple times will link more blocks
+  for (int i = 0; i < 2; i++) {
+    try {
+      auto optimizer = epi::BasicOptimizer(program);
+      optimizer.EmitProgram(program);
 
-    program = std::move(optimizer.new_program);
-  }
-  catch_e {
-    Log::ConsoleColor<Log::Color::Red>();
-    std::cout << "Optimizer error:" << std::endl << std::endl;
-    std::cout << e.what() << std::endl;
-    return 1;
-  }
+      program = std::move(optimizer.new_program);
+    }
+    catch_e {
+      Log::ConsoleColor<Log::Color::Red>();
+      std::cout << "Optimizer error:" << std::endl << std::endl;
+      std::cout << e.what() << std::endl;
+      return 1;
+    }
 
-  try {
-    auto cleanup = epi::RemoveUnused();
-    cleanup.EmitProgram(program);
+    try {
+      auto cleanup = epi::RemoveUnused();
+      cleanup.EmitProgram(program);
 
-    program = std::move(cleanup.new_program);
-  }
-  catch_e {
-    Log::ConsoleColor<Log::Color::Red>();
-    std::cout << "Cleanup error:" << std::endl << std::endl;
-    std::cout << e.what() << std::endl;
-    return 1;
+      program = std::move(cleanup.new_program);
+    }
+    catch_e {
+      Log::ConsoleColor<Log::Color::Red>();
+      std::cout << "Cleanup error:" << std::endl << std::endl;
+      std::cout << e.what() << std::endl;
+      return 1;
+    }
   }
 
   std::cout << std::endl << std::endl;

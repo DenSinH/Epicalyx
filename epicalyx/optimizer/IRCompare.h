@@ -10,7 +10,7 @@ namespace epi {
 using namespace calyx;
 
 template<typename T>
-bool IsType(pDirective& directive) {
+bool IsType(const pDirective& directive) {
   return directive->type_id == T::GetTID();
 }
 

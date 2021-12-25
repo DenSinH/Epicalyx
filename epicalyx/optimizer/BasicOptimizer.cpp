@@ -12,7 +12,7 @@ void BasicOptimizer::TryReplace(calyx::var_index_t& var_idx) const {
 }
 
 template<typename T, class F>
-bool BasicOptimizer::FindReplacement(T& op, F predicate) {
+bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
   for (const auto& [var_idx, loc] : vars_found) {
     auto& directive = new_program.blocks.at(loc.first)[loc.second];
     if (IsType<T>(directive)) {
@@ -32,13 +32,33 @@ bool BasicOptimizer::FindReplacement(T& op, F predicate) {
   return false;
 }
 
-void BasicOptimizer::EmitProgram(Program& program) {
-  dependencies.EmitProgram(program);
-  new_program.functions    = std::move(program.functions);
-  new_program.globals      = std::move(program.globals);
-  new_program.global_init  = std::move(program.global_init);
-  new_program.local_labels = std::move(program.local_labels);
-  new_program.strings      = std::move(program.strings);
+
+bool BasicOptimizer::ResolveBranchIndirection(calyx::Branch& op) {
+  if (program.blocks.at(op.dest).size() == 1) {
+    // single branch block
+    // recursion resolves single branch chains
+    auto& link_directive = program.blocks.at(op.dest)[0];
+    if (IsType<UnconditionalBranch>(link_directive)) {
+      auto* link = cotyl::unique_ptr_cast<UnconditionalBranch>(link_directive);
+      dependencies.block_graph.at(link->dest).from.insert(current_block_idx);
+      auto& to = dependencies.block_graph.at(current_block_idx).to;
+      to.erase(op.dest);
+      to.insert(link->dest);
+      op.dest = link->dest;
+      op.Emit(*this);
+      return true;
+    }
+  }
+  return false;
+}
+
+void BasicOptimizer::EmitProgram(Program& _program) {
+  dependencies.EmitProgram(_program);
+  new_program.functions    = std::move(_program.functions);
+  new_program.globals      = std::move(_program.globals);
+  new_program.global_init  = std::move(_program.global_init);
+  new_program.local_labels = std::move(_program.local_labels);
+  new_program.strings      = std::move(_program.strings);
 
 
   // copy over global initializer blocks
@@ -47,22 +67,55 @@ void BasicOptimizer::EmitProgram(Program& program) {
       auto closure = dependencies.UpwardClosure(std::get<calyx::block_label_t>(global_init));
 
       for (auto block : closure) {
-        new_program.blocks.emplace(block, std::move(program.blocks[block]));
-        program.blocks.erase(block);
+        new_program.blocks.emplace(block, std::move(_program.blocks[block]));
+        _program.blocks.erase(block);
       }
     }
   }
 
   for (const auto& [symbol, entry] : new_program.functions) {
-    auto closure = dependencies.UpwardClosure(entry);
+    std::unordered_set<block_label_t> visited = {};
+    std::unordered_set<block_label_t> todo = {entry};
     vars_found = {};
 
-    for (const auto& block : closure) {
+    while (!todo.empty()) {
+      auto block = *todo.begin();
+      todo.erase(todo.begin());
+
       auto inserted = new_program.blocks.emplace(block, calyx::Program::block_t{}).first;
       current_block = &inserted->second;
       current_block_idx = block;
-      for (const auto& directive : program.blocks.at(block)) {
-        directive->Emit(*this);
+
+      while (block) {
+        for (const auto& directive : _program.blocks.at(block)) {
+          directive->Emit(*this);
+        }
+        visited.insert(block);
+
+        const auto& block_deps = dependencies.block_graph.at(block);
+        if (block_deps.to.size() == 1) {
+          auto next = *block_deps.to.begin();
+          if (!visited.contains(next) && dependencies.block_graph.at(next).from.size() == 1) {
+            // pop ending branch
+            dependencies.block_graph.at(block).to = dependencies.block_graph.at(next).to;
+            current_block->pop_back();
+            block = next;
+          }
+          else {
+            if (!visited.contains(next)) {
+              todo.insert(next);
+            }
+            block = 0;
+          }
+        }
+        else {
+          for (const auto next : block_deps.to) {
+            if (!visited.contains(next)) {
+              todo.insert(next);
+            }
+          }
+          block = 0;
+        }
       }
     }
   }
@@ -79,7 +132,7 @@ void BasicOptimizer::Emit(DeallocateLocal& op) {
 template<typename To, typename From>
 void BasicOptimizer::EmitCast(Cast<To, From>& op) {
   TryReplace(op.right_idx);
-  auto replaced = FindReplacement(op, [&](auto& op, auto& candidate) {
+  auto replaced = FindExprResultReplacement(op, [&](auto& op, auto& candidate) {
     return candidate.right_idx == op.right_idx;
   });
   if (!replaced) {
@@ -118,7 +171,7 @@ void BasicOptimizer::EmitLoadGlobal(LoadGlobal<T>& op) {
 }
 
 void BasicOptimizer::Emit(LoadGlobalAddr& op) {
-  auto replaced = FindReplacement(op, [&](auto& op, auto& candidate) {
+  auto replaced = FindExprResultReplacement(op, [&](auto& op, auto& candidate) {
     return candidate.symbol == op.symbol;
   });
   if (!replaced) {
@@ -184,7 +237,7 @@ void BasicOptimizer::EmitReturn(Return<T>& op) {
 
 template<typename T>
 void BasicOptimizer::EmitImm(Imm<T>& op) {
-  auto replaced = FindReplacement(op, [&](auto& op, auto& candidate) {
+  auto replaced = FindExprResultReplacement(op, [&](auto& op, auto& candidate) {
     return candidate.value == op.value;
   });
   if (!replaced) {
@@ -414,7 +467,9 @@ void BasicOptimizer::EmitCompareImm(CompareImm<T>& op) {
 }
 
 void BasicOptimizer::Emit(UnconditionalBranch& op) {
-  EmitNew<UnconditionalBranch>(op);
+  if (!ResolveBranchIndirection(op)) {
+    EmitNew<UnconditionalBranch>(op);
+  }
 }
 
 template<typename T>
@@ -456,13 +511,43 @@ void BasicOptimizer::EmitBranchCompare(BranchCompare<T>& op) {
       return;
     }
   }
-  EmitNew<BranchCompare<T>>(op);
+
+  if (!ResolveBranchIndirection(op)) {
+    EmitNew<BranchCompare<T>>(op);
+  }
 }
 
 template<typename T>
 void BasicOptimizer::EmitBranchCompareImm(BranchCompareImm<T>& op) {
   TryReplace(op.left_idx);
-  EmitNew<BranchCompareImm<T>>(op);
+
+  if constexpr(!std::is_same_v<T, Pointer>) {
+    auto [block, in_block] = vars_found.at(op.left_idx);
+    auto& left_directive = new_program.blocks.at(block)[in_block];
+    if (IsType<Imm<T>>(left_directive)) {
+      T left_imm = cotyl::unique_ptr_cast<Imm<T>>(left_directive)->value;
+      CmpType flipped = op.op;
+
+      auto to_unconditional = [&] {
+        auto repl = UnconditionalBranch(op.dest);
+        Emit(repl);
+      };
+
+      switch (op.op) {
+        case CmpType::Eq: if (left_imm == op.right) to_unconditional(); break;
+        case CmpType::Ne: if (left_imm != op.right) to_unconditional(); break;
+        case CmpType::Lt: if (left_imm <  op.right) to_unconditional(); break;
+        case CmpType::Le: if (left_imm <= op.right) to_unconditional(); break;
+        case CmpType::Gt: if (left_imm >  op.right) to_unconditional(); break;
+        case CmpType::Ge: if (left_imm >= op.right) to_unconditional(); break;
+      }
+      return;
+    }
+  }
+
+  if (!ResolveBranchIndirection(op)) {
+    EmitNew<BranchCompareImm<T>>(op);
+  }
 }
 
 void BasicOptimizer::Emit(Select& op) {

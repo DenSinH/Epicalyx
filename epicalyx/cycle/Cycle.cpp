@@ -216,7 +216,6 @@ void Graph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, std::ma
           "ImNodes",
           nullptr,
           ImGuiWindowFlags_NoScrollbar
-        | ImGuiWindowFlags_NoScrollbar
         | ImGuiWindowFlags_NoResize
         | ImGuiWindowFlags_NoMove))
   {
