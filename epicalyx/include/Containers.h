@@ -1,0 +1,68 @@
+#pragma once
+
+#ifdef USE_BOOST
+
+#include <boost/container/set.hpp>
+#include <boost/container/map.hpp>
+#include <boost/container/flat_set.hpp>
+#include <boost/container/flat_map.hpp>
+#include <boost/unordered_set.hpp>
+#include <boost/unordered_map.hpp>
+
+namespace epi::cotyl {
+
+template<typename T>
+using set = boost::container::set<T>;
+template<typename K, typename V>
+using map = boost::container::map<K, V>;
+
+template<typename T>
+struct unordered_set : public boost::unordered_set<T> {
+  using boost::unordered_set<T>::unordered_set;
+
+  bool contains(const T& key) const {
+    return this->find(key) != this->end();
+  }
+};
+
+template<typename K, typename V>
+struct unordered_map : public boost::unordered_map<K, V> {
+  using boost::unordered_map<K, V>::unordered_map;
+
+  bool contains(const K& key) const {
+    return this->find(key) != this->end();
+  }
+};
+
+template<typename T>
+using flat_set = boost::container::flat_set<T>;
+template<typename K, typename V>
+using flat_map = boost::container::flat_map<K, V>;
+
+}
+
+#else
+
+#include <set>
+#include <map>
+#include <unordered_set>
+#include <unordered_map>
+
+namespace epi::cotyl {
+
+template<typename T>
+using set = std::set<T>;
+template<typename K, typename V>
+using map = std::map<K, V>;
+template<typename T>
+using unordered_set = std::unordered_set<T>;
+template<typename K, typename V>
+using unordered_map = std::unordered_map<K, V>;
+template<typename T>
+using flat_set = std::unordered_set<T>;
+template<typename K, typename V>
+using flat_map = std::unordered_map<K, V>;
+
+}
+
+#endif

@@ -2,6 +2,7 @@
 
 #include "Default.h"
 #include "Is.h"
+#include "Containers.h"
 
 #include <memory>
 #include <string>
@@ -174,7 +175,7 @@ struct Branch : Directive {
 
 struct Program {
   using block_t = std::vector<pDirective>;
-  using blocks_t = std::unordered_map<block_label_t, block_t>;
+  using blocks_t = cotyl::unordered_map<block_label_t, block_t>;
   using global_t = std::variant<i8, u8, i16, u16, i32, u32, i64, u64, float, double, Pointer, label_offset_t>;
 
   Program() {
@@ -186,17 +187,13 @@ struct Program {
   blocks_t blocks{};
 
   // function symbols -> block ID
-  std::unordered_map<std::string, calyx::block_label_t> functions{};
-
-  // local label -> block ID
-  // todo: move this back to the AST walker
-  std::unordered_map<std::string, calyx::block_label_t> local_labels{};
+  cotyl::unordered_map<std::string, calyx::block_label_t> functions{};
 
   // string constants
   std::vector<std::string> strings{};
 
   // global variable sizes
-  std::unordered_map<std::string, global_t> globals{};
+  cotyl::unordered_map<std::string, global_t> globals{};
 };
 
 enum class BinopType {
@@ -699,7 +696,7 @@ struct Select : Directive {
   }
 
   var_index_t idx;
-  std::unordered_map<i64, block_label_t> table{};
+  cotyl::unordered_map<i64, block_label_t> table{};
   block_label_t _default = 0;
 
   std::string ToString() const final;

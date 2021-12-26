@@ -1,11 +1,14 @@
 #pragma once
 
 #include "Default.h"
+#include "Containers.h"
 
 #include <thread>
-#include <map>
 #include <vector>
-#include <set>
+
+#define WINDOW_WIDTH 1280
+#define WINDOW_HEIGHT 720
+
 
 namespace ImNodes {
 struct CanvasState;
@@ -27,7 +30,7 @@ private:
     NodeRef(Graph& graph, u64 from) :
         graph(graph), from(from) {
       if (!graph.nodes.contains(from)) {
-        graph.nodes.insert({from, Node(from)});
+        graph.nodes.emplace(from, Node(from));
       }
     }
 
@@ -40,7 +43,7 @@ private:
 
     NodeRef n(u64 to, const std::string& output = "") {
       if (!graph.edges.contains(to)) {
-        graph.edges.insert({to, {}});
+        graph.edges.emplace(to, std::vector<Edge>{});
       }
       graph.edges[to].emplace_back(from, output);
       graph.nodes.at(from).outputs.emplace(output);
@@ -59,7 +62,7 @@ private:
     bool selected = false;
     std::string title;
     std::vector<std::string> body{};
-    std::set<std::string> outputs{};
+    cotyl::set<std::string> outputs{};
   };
 
   struct Edge {
@@ -69,25 +72,26 @@ private:
     std::string output;
   };
 
-  std::map<u64, Node> nodes{};
-  std::map<u64, std::vector<Edge>> edges{};  // { to: Edge }
+  cotyl::map<u64, Node> nodes{};
+  cotyl::map<u64, std::vector<Edge>> edges{};  // { to: Edge }
 
   std::thread thread;
 
   void* window;
+  int width = WINDOW_WIDTH, height = WINDOW_HEIGHT;
   void* gl_context;
 
   void InitSDL();
   void InitImGui();
   top_sort_t FindOrder();
   void VisualizeImpl();
-  void Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, std::map<u64, ImVec2>& positions);
+  void Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, cotyl::unordered_map<u64, ImVec2>& positions);
 
 public:
   NodeRef n(u64 from, std::string line = "") {
     if (!line.empty()) {
       if (!nodes.contains(from)) {
-        nodes.insert({from, Node(from)});
+        nodes.emplace(from, Node(from));
       }
       nodes.at(from).body.push_back(line);
     }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Default.h"
-#include "Assert.h"
+#include "CustomAssert.h"
 #include "types/EpiCType.h"
 
 #include <memory>

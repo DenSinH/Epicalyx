@@ -1,8 +1,8 @@
 #pragma once
 
-#include <unordered_map>
+#include "Containers.h"
+
 #include <vector>
-#include <unordered_set>
 #include <stdexcept>
 
 namespace epi::cotyl {
@@ -30,8 +30,8 @@ protected:
 };
 
 template<typename K, typename V, bool allow_multiple_assignment = false>
-struct MapScope : public Scope<std::unordered_map<K, V>> {
-  using base = Scope<std::unordered_map<K, V>>;
+struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
+  using base = Scope<cotyl::unordered_map<K, V>>;
 
   void Set(const K& key, const V& value) {
     if constexpr(!allow_multiple_assignment) {
@@ -76,8 +76,8 @@ struct MapScope : public Scope<std::unordered_map<K, V>> {
 
 
 template<typename K>
-struct SetScope : public Scope<std::unordered_set<K>> {
-  using base = Scope<std::unordered_set<K>>;
+struct SetScope : public Scope<cotyl::unordered_set<K>> {
+  using base = Scope<cotyl::unordered_set<K>>;
 
   void Add(const K& key) {
     if (base::scope.back().contains(key)) {

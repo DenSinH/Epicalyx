@@ -36,7 +36,7 @@ struct Interpreter : Backend {
   }
 
   // globals as raw data
-  std::unordered_map<std::string, i64> globals{};
+  cotyl::unordered_map<std::string, i64> globals{};
   std::vector<std::vector<u8>> global_data{{}};
 
   // points to stack location of locals

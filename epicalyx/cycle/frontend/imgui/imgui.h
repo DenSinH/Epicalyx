@@ -75,7 +75,7 @@ Index of this file:
 
 // Helper Macros
 #ifndef IM_ASSERT
-#include "Assert.h"
+#include "CustomAssert.h"
 #define IM_ASSERT(_EXPR)            epi::cotyl::Assert(_EXPR, "ImGui assertion failed")                               // You can override the default assert handler by editing imconfig.h
 #endif
 #if !defined(IMGUI_USE_STB_SPRINTF) && (defined(__clang__) || defined(__GNUC__))

@@ -37,9 +37,10 @@ struct ASTWalker : public taxy::NodeVisitor {
   std::stack<calyx::block_label_t> break_stack{};
   std::stack<calyx::block_label_t> continue_stack{};
   std::stack<calyx::Select*> select_stack{};
+  cotyl::unordered_map<std::string, calyx::block_label_t> local_labels{};
 
-  cotyl::MapScope<std::string, calyx::Local> variables{};
-  cotyl::MapScope<std::string, pType<const CType>> c_types{};
+  cotyl::MapScope<std::string, calyx::Local> locals{};
+  cotyl::MapScope<std::string, pType<const CType>> local_types{};
 
   calyx::var_index_t current;
   Emitter& emitter;

@@ -1,10 +1,9 @@
 #pragma once
 
 #include "calyx/backend/Backend.h"
+#include "Containers.h"
 
 #include <vector>
-#include <unordered_map>
-#include <unordered_set>
 
 namespace epi {
 
@@ -18,19 +17,19 @@ struct ProgramDependencies : calyx::Backend {
   bool IsAncestorOf(calyx::block_label_t base, calyx::block_label_t other) const;
 
   struct Edge {
-    std::unordered_set<block_label_t> to{};
-    std::unordered_set<block_label_t> from{};
+    cotyl::unordered_set<block_label_t> to{};
+    cotyl::unordered_set<block_label_t> from{};
   };
 
-  std::unordered_map<block_label_t, Edge> block_graph{};
+  cotyl::unordered_map<block_label_t, Edge> block_graph{};
 
   struct Var {
     block_label_t block_made = -1;
-    std::unordered_set<var_index_t> deps{};
+    cotyl::unordered_set<var_index_t> deps{};
     u64 read_count = 0;
   };
 
-  std::unordered_map<var_index_t, Var> var_graph{};
+  cotyl::unordered_map<var_index_t, Var> var_graph{};
 
   std::pair<block_label_t, size_t> pos{};
 

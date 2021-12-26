@@ -4,10 +4,10 @@
 
 #include "taxy/Node.h"
 #include "parser/ConstTokenVisitor.h"
+#include "Containers.h"
 
 #include <string>
 #include <utility>
-#include <map>
 
 
 namespace epi {
@@ -92,9 +92,9 @@ struct TokenInfo {
   TokenClass cls;
 };
 
-extern const std::map<const std::string, TokenType> Punctuators;
-extern const std::map<const std::string, TokenType> Keywords;
-extern const std::map<TokenType, TokenInfo> TokenData;
+extern const cotyl::unordered_map<const std::string, TokenType> Punctuators;
+extern const cotyl::unordered_map<const std::string, TokenType> Keywords;
+extern const cotyl::unordered_map<TokenType, TokenInfo> TokenData;
 
 
 struct Token {

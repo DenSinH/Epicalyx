@@ -6,6 +6,14 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # set( CMAKE_VERBOSE_MAKEFILE on )
 
+find_package(Boost 1.75.0 REQUIRED)
+
+if(${Boost_FOUND})
+    message(STATUS "Found Boost at ${Boost_INCLUDE_DIR}")
+    include_directories(epicalyx ${Boost_INCLUDE_DIR})
+    add_compile_options(-DUSE_BOOST)
+endif()
+
 include_directories(epicalyx epicalyx/include)
 
 if (MSVC)
@@ -26,7 +34,11 @@ add_executable(
         epicalyx/include/Scope.h
         epicalyx/include/Log.h
         epicalyx/include/Log.cpp
-        epicalyx/include/Escape.h epicalyx/include/Cast.h epicalyx/include/Assert.h)
+        epicalyx/include/Escape.h
+        epicalyx/include/Cast.h
+        epicalyx/include/CustomAssert.h
+        epicalyx/include/Containers.h
+)
 
 
 
@@ -50,3 +62,7 @@ target_link_libraries(epicalyx Calyx)
 target_link_libraries(epicalyx Cycle)
 target_link_libraries(epicalyx Phyte)
 target_link_libraries(epicalyx Optimizer)
+
+if(${Boost_FOUND})
+    target_link_libraries(epicalyx ${Boost_LIBRARY})
+endif()

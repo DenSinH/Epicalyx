@@ -1,6 +1,7 @@
 #include "Cycle.h"
 
 #include "Format.h"
+#include "Containers.h"
 
 #include <SDL.h>
 #include <imgui/imgui.h>
@@ -9,10 +10,6 @@
 #include <imnodes/ImNodesEz.h>
 #include <glad/glad.h>
 #include <thread>
-#include <unordered_set>
-
-#define WINDOW_WIDTH 1280
-#define WINDOW_HEIGHT 720
 
 namespace epi::cycle {
 
@@ -47,9 +44,9 @@ void Graph::InitSDL() {
   SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
   SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
 
-  auto window_flags = (SDL_WindowFlags) (SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | // SDL_WINDOW_RESIZABLE |
+  auto window_flags = (SDL_WindowFlags) (SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE |
                                          SDL_WINDOW_ALLOW_HIGHDPI);
-  window = SDL_CreateWindow("Graph", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT,
+  window = SDL_CreateWindow("Graph", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
                             window_flags);
 
   gl_context = SDL_GL_CreateContext((SDL_Window*)window);
@@ -83,7 +80,7 @@ void Graph::InitImGui() {
 
 void Graph::VisualizeImpl() {
   auto sort = FindOrder();
-  std::map<u64, ImVec2> positions;
+  cotyl::unordered_map<u64, ImVec2> positions;
   ImVec2 pos{50, 100};
   for (const auto& layer : sort) {
     pos.y = 100;
@@ -107,6 +104,19 @@ void Graph::VisualizeImpl() {
       ImGui_ImplSDL2_ProcessEvent(&event);
 
       switch (event.type) {
+        case SDL_WINDOWEVENT: {
+          switch (event.window.event) {
+            case SDL_WINDOWEVENT_RESIZED:
+            case SDL_WINDOWEVENT_SIZE_CHANGED: {
+              width = event.window.data1;
+              height = event.window.data2;
+              break;
+            }
+            default:
+              break;
+          }
+          break;
+        }
         case SDL_QUIT: {
           // Cleanup
           ImGui_ImplOpenGL3_Shutdown();
@@ -146,7 +156,7 @@ void Graph::VisualizeImpl() {
 
 Graph::top_sort_t Graph::FindOrder() {
   top_sort_t result{};
-  std::unordered_set<u64> todo{};
+  cotyl::unordered_set<u64> todo{};
   result.push_back({});
   for (const auto &[id, node] : nodes) {
     // first layer is only nodes that have no inputs
@@ -212,8 +222,8 @@ Graph::top_sort_t Graph::FindOrder() {
   return std::move(result);
 }
 
-void Graph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, std::map<u64, ImVec2>& positions) {
-  ImGui::SetNextWindowSize(ImVec2(WINDOW_WIDTH, WINDOW_HEIGHT));
+void Graph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, cotyl::unordered_map<u64, ImVec2>& positions) {
+  ImGui::SetNextWindowSize(ImVec2(width, height));
   ImGui::SetNextWindowPos(ImVec2(0, 0));
   if (ImGui::Begin(
           "ImNodes",

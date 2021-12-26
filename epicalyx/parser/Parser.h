@@ -2,6 +2,7 @@
 
 #include "Stream.h"
 #include "Scope.h"
+#include "Containers.h"
 #include "tokenizer/Token.h"
 #include "types/Types.h"
 #include "taxy/Initializer.h"
@@ -82,8 +83,8 @@ struct Parser final : public cotyl::Locatable {
 
   std::deque<Loop> loop_scope{};
   cotyl::SetScope<i64> case_scope{};
-  std::unordered_set<std::string> labels{};
-  std::unordered_set<std::string> unresolved_labels{};
+  cotyl::unordered_set<std::string> labels{};
+  cotyl::unordered_set<std::string> unresolved_labels{};
   cotyl::MapScope<std::string, pType<const CType>> variables{};
 
   // external results

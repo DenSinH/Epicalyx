@@ -14,7 +14,7 @@ namespace epi {
 using namespace calyx;
 
 struct RemoveUnused : calyx::Backend {
-  std::unordered_map<var_index_t, var_index_t> replacement{};
+  cotyl::unordered_map<var_index_t, var_index_t> replacement{};
 
   ProgramDependencies dependencies{};
   calyx::Program new_program{};

@@ -2,6 +2,7 @@
 #include "IRCompare.h"
 #include "Cast.h"
 #include "Is.h"
+#include "Containers.h"
 
 
 namespace epi {
@@ -57,12 +58,11 @@ void BasicOptimizer::EmitProgram(Program& _program) {
   dependencies.EmitProgram(_program);
   new_program.functions    = std::move(_program.functions);
   new_program.globals      = std::move(_program.globals);
-  new_program.local_labels = std::move(_program.local_labels);
   new_program.strings      = std::move(_program.strings);
 
   for (const auto& [symbol, entry] : new_program.functions) {
-    std::unordered_set<block_label_t> visited = {};
-    std::unordered_set<block_label_t> todo = {entry};
+    cotyl::unordered_set<block_label_t> visited = {};
+    cotyl::unordered_set<block_label_t> todo = {entry};
     vars_found = {};
 
     while (!todo.empty()) {

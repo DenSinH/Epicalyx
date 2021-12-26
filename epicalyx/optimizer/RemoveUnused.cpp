@@ -9,7 +9,6 @@ void RemoveUnused::EmitProgram(Program& program) {
   dependencies.EmitProgram(program);
   new_program.functions    = std::move(program.functions);
   new_program.globals      = std::move(program.globals);
-  new_program.local_labels = std::move(program.local_labels);
   new_program.strings      = std::move(program.strings);
 
   for (const auto& [symbol, entry] : new_program.functions) {

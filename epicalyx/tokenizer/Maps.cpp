@@ -1,9 +1,10 @@
 #include "Token.h"
+#include "Containers.h"
 
 
 namespace epi {
 
-const std::map<const std::string, TokenType> Keywords = {
+const cotyl::unordered_map<const std::string, TokenType> Keywords = {
         { "auto",           TokenType::Auto },
         { "break",          TokenType::Break },
         { "case",           TokenType::Case },
@@ -50,7 +51,7 @@ const std::map<const std::string, TokenType> Keywords = {
         { "_Thread_local",  TokenType::ThreadLocal },
 };
 
-const std::map<const std::string, TokenType> Punctuators = {
+const cotyl::unordered_map<const std::string, TokenType> Punctuators = {
     { "[",   TokenType::LBracket },
     { "]",   TokenType::RBracket },
     { "(",   TokenType::LParen },
@@ -102,7 +103,7 @@ const std::map<const std::string, TokenType> Punctuators = {
 };
 
 
-const std::map<TokenType, TokenInfo> TokenData = {
+const cotyl::unordered_map<TokenType, TokenInfo> TokenData = {
         { TokenType::Invalid, { "<Invalid token>" } },
         { TokenType::Auto, { "auto", TokenClass::Keyword } },
         { TokenType::Break, { "break", TokenClass::Keyword } },

@@ -1,7 +1,7 @@
 #include "Interpreter.h"
 
 #include "cycle/Cycle.h"
-#include "Assert.h"
+#include "CustomAssert.h"
 #include "Format.h"
 #include "Cast.h"
 

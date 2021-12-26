@@ -1,5 +1,6 @@
 #include "ProgramDependencies.h"
 
+#include "Containers.h"
 #include "cycle/Cycle.h"
 
 
@@ -8,7 +9,7 @@ namespace epi {
 namespace detail {
 
 template<typename K, typename T>
-T& get_default(std::unordered_map<K, T>& graph, const K& key) {
+T& get_default(cotyl::unordered_map<K, T>& graph, const K& key) {
   if (!graph.contains(key)) {
     graph[key] = {};
   }
@@ -16,7 +17,7 @@ T& get_default(std::unordered_map<K, T>& graph, const K& key) {
 }
 
 //template<typename K, typename T>
-//void add_default(std::unordered_map<K, std::vector<T>>& graph, const K& key, const T& value) {
+//void add_default(cotyl::unordered_map<K, std::vector<T>>& graph, const K& key, const T& value) {
 //  get_default(graph, key);
 //  graph.at(key).push_back(value);
 //}
@@ -25,11 +26,11 @@ T& get_default(std::unordered_map<K, T>& graph, const K& key) {
 
 
 calyx::block_label_t ProgramDependencies::CommonBlockAncestor(calyx::block_label_t first, calyx::block_label_t second) const {
-  std::set<calyx::block_label_t> ancestors{first, second};
+  cotyl::set<calyx::block_label_t> ancestors{first, second};
 
   // we use the fact that in general block1 > block2 then block1 can never be an ancestor of block2
   // it may happen for loops, but then the loop entry is the minimum block, so we want to go there
-  std::unordered_set<calyx::block_label_t> ancestors_considered{};
+  cotyl::unordered_set<calyx::block_label_t> ancestors_considered{};
 
   while (ancestors.size() > 1) {
     auto max_ancestor = *ancestors.rbegin();
@@ -55,10 +56,10 @@ calyx::block_label_t ProgramDependencies::CommonBlockAncestor(calyx::block_label
 }
 
 std::vector<calyx::block_label_t> ProgramDependencies::UpwardClosure(calyx::block_label_t base) const {
-  std::unordered_set<calyx::block_label_t> closure_found{base};
+  cotyl::unordered_set<calyx::block_label_t> closure_found{base};
   std::vector<calyx::block_label_t> closure{};
   closure.push_back(base);
-  std::unordered_set<calyx::block_label_t> search{base};
+  cotyl::unordered_set<calyx::block_label_t> search{base};
 
   while (!search.empty()) {
     auto current = *search.begin();
@@ -79,8 +80,8 @@ std::vector<calyx::block_label_t> ProgramDependencies::UpwardClosure(calyx::bloc
 }
 
 bool ProgramDependencies::IsAncestorOf(calyx::block_label_t base, calyx::block_label_t other) const {
-  std::unordered_set<calyx::block_label_t> closure_found{base};
-  std::unordered_set<calyx::block_label_t> search{base};
+  cotyl::unordered_set<calyx::block_label_t> closure_found{base};
+  cotyl::unordered_set<calyx::block_label_t> search{base};
 
   while (!search.empty()) {
     auto current = *search.begin();

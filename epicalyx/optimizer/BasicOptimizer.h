@@ -21,12 +21,12 @@ struct BasicOptimizer : calyx::Backend {
 
   const Program& program;
 
-  std::unordered_map<var_index_t, var_index_t> replacement{};
+  cotyl::unordered_map<var_index_t, var_index_t> replacement{};
 
   ProgramDependencies dependencies{};
   calyx::Program new_program{};
 
-  std::unordered_map<calyx::var_index_t, std::pair<calyx::block_label_t, u64>> vars_found{};
+  cotyl::unordered_map<calyx::var_index_t, std::pair<calyx::block_label_t, u64>> vars_found{};
   calyx::Program::block_t* current_block{};
   block_label_t current_block_idx;
 

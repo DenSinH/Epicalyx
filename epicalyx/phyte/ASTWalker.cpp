@@ -9,7 +9,7 @@
 #include "Is.h"
 #include "Cast.h"
 
-#include "Assert.h"
+#include "CustomAssert.h"
 
 #include "Helpers.inl"
 
@@ -17,9 +17,9 @@
 namespace epi::phyte {
 
 void ASTWalker::Visit(epi::taxy::Declaration& decl) {
-  if (variables.Depth() == 1) {
+  if (locals.Depth() == 1) {
     // global symbols
-    c_types.Set(decl.name, decl.type);
+    local_types.Set(decl.name, decl.type);
 
     auto global_init_visitor = detail::GlobalInitializerVisitor();
     decl.type->Visit(global_init_visitor);
@@ -51,10 +51,10 @@ void ASTWalker::Visit(epi::taxy::Declaration& decl) {
   else {
     auto c_idx = emitter.c_counter++;
     u64 size = decl.type->Sizeof();
-    variables.Set(decl.name, calyx::Local{
+    locals.Set(decl.name, calyx::Local{
             c_idx, calyx::Local::Location::Either, size
     });
-    c_types.Set(decl.name, decl.type);
+    local_types.Set(decl.name, decl.type);
     emitter.Emit<calyx::AllocateLocal>(c_idx, size);
 
     if (decl.value.has_value()) {
@@ -76,23 +76,23 @@ void ASTWalker::Visit(epi::taxy::Declaration& decl) {
 }
 
 void ASTWalker::Visit(epi::taxy::FunctionDefinition& decl) {
-  c_types.Set(decl.symbol, decl.signature);
+  local_types.Set(decl.symbol, decl.signature);
 
   auto block = emitter.MakeBlock();
   emitter.SelectBlock(block);
   emitter.program.functions.emplace(decl.symbol, block);
 
   // same as normal compound statement besides arguments
-  variables.NewLayer();
-  c_types.NewLayer();
+  locals.NewLayer();
+  local_types.NewLayer();
   for (int i = 0; i < decl.signature->arg_types.size(); i++) {
     // turn arguments into locals
     auto& arg = decl.signature->arg_types[i];
     auto c_idx = emitter.c_counter++;
-    variables.Set(arg.name, calyx::Local{
+    locals.Set(arg.name, calyx::Local{
             c_idx, calyx::Local::Location::Either, arg.type->Sizeof()
     });
-    c_types.Set(arg.name, arg.type);
+    local_types.Set(arg.name, arg.type);
     auto visitor = detail::ArgumentTypeVisitor(i, false);
     arg.type->Visit(visitor);
 
@@ -100,28 +100,28 @@ void ASTWalker::Visit(epi::taxy::FunctionDefinition& decl) {
   }
 
   // locals layer
-  variables.NewLayer();
-  c_types.NewLayer();
+  locals.NewLayer();
+  local_types.NewLayer();
 
   function = &decl;
   for (const auto& node : decl.body->stats) {
     node->Visit(*this);
   }
-  for (auto [_, var] : variables.Top()) {
+  for (auto [_, var] : locals.Top()) {
     emitter.Emit<calyx::DeallocateLocal>(var.idx, var.size);
   }
   emitter.Emit<calyx::Return<void>>(0);
   // locals layer
-  variables.PopLayer();
-  c_types.NewLayer();
+  locals.PopLayer();
+  local_types.NewLayer();
 
   // arguments layer
-  variables.PopLayer();
-  c_types.NewLayer();
+  locals.PopLayer();
+  local_types.NewLayer();
 }
 
 void ASTWalker::Visit(Identifier& decl) {
-  // after the AST, the only identifiers left are C variables
+  // after the AST, the only identifiers left are C locals
   if (state.top().first == State::Empty) {
     // statement has no effect
     return;
@@ -143,10 +143,10 @@ void ASTWalker::Visit(Identifier& decl) {
     return;
   }
 
-  auto type = c_types.Get(decl.name);
-  if (variables.Has(decl.name)) {
+  auto type = local_types.Get(decl.name);
+  if (locals.Has(decl.name)) {
     // local variable
-    auto cvar = variables.Get(decl.name);
+    auto cvar = locals.Get(decl.name);
     switch (state.top().first) {
       case State::Read: {
         if (type->IsArray()) {
@@ -169,7 +169,7 @@ void ASTWalker::Visit(Identifier& decl) {
       }
       case State::Address: {
         // we can't get the address of a variable that is not on the stack
-        variables.Get(decl.name).loc = calyx::Local::Location::Stack;
+        locals.Get(decl.name).loc = calyx::Local::Location::Stack;
         auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalAddrEmitter>(*this, {cvar.idx});
         type->Visit(visitor);
         break;
@@ -800,10 +800,10 @@ void ASTWalker::Visit(Binop& expr) {
         // we create a "fake local" in order to do this
         auto c_idx = emitter.c_counter++;
         std::string name = "$logop" + std::to_string(c_idx);
-        variables.Set(name, calyx::Local{
+        locals.Set(name, calyx::Local{
                 c_idx, calyx::Local::Location::Either, sizeof(i32)
         });
-        c_types.Set(name, CType::MakeBool());
+        local_types.Set(name, CType::MakeBool());
         emitter.Emit<calyx::AllocateLocal>(c_idx, sizeof(i32));
 
         // now basically add an if statement
@@ -903,10 +903,10 @@ void ASTWalker::Visit(Ternary& expr) {
     std::string name = "$tern" + std::to_string(c_idx);
     const auto& type = expr.GetType();
     u64 size = type->Sizeof();
-    variables.Set(name, calyx::Local{
+    locals.Set(name, calyx::Local{
             c_idx, calyx::Local::Location::Either, size
     });
-    c_types.Set(name, type);
+    local_types.Set(name, type);
     emitter.Emit<calyx::AllocateLocal>(c_idx, size);
 
     // now basically add an if statement
@@ -1196,8 +1196,8 @@ void ASTWalker::Visit(For& stat) {
   auto init_block = emitter.MakeBlock();
 
   // new scope for declarations in for loop
-  variables.NewLayer();
-  c_types.NewLayer();
+  locals.NewLayer();
+  local_types.NewLayer();
 
   // always go to initialization
   emitter.Emit<calyx::UnconditionalBranch>(init_block);
@@ -1242,27 +1242,27 @@ void ASTWalker::Visit(For& stat) {
   }
   emitter.Emit<calyx::UnconditionalBranch>(cond_block);
 
-  // pop variables layer
+  // pop locals layer
   // todo: dealloc?
-//  for (auto var = variables.Top().rbegin(); var != variables.Top().rend(); var++) {
+//  for (auto var = locals.Top().rbegin(); var != locals.Top().rend(); var++) {
 //    emitter.Emit<calyx::DeallocateCVar>(var->second.idx, var->second.size);
 //  }
-  variables.PopLayer();
-  c_types.PopLayer();
+  locals.PopLayer();
+  local_types.PopLayer();
 
   // go to block after loop
   emitter.SelectBlock(post_block);
 }
 
 void ASTWalker::Visit(Label& stat) {
-  if (!emitter.program.local_labels.contains(stat.name)) {
+  if (!local_labels.contains(stat.name)) {
     auto block = emitter.MakeBlock();
-    emitter.program.local_labels.emplace(stat.name, block);
+    local_labels.emplace(stat.name, block);
     emitter.Emit<calyx::UnconditionalBranch>(block);
     emitter.SelectBlock(block);
   }
   else {
-    auto block = emitter.program.local_labels.at(stat.name);
+    auto block = local_labels.at(stat.name);
     emitter.Emit<calyx::UnconditionalBranch>(block);
     emitter.SelectBlock(block);
   }
@@ -1341,13 +1341,13 @@ void ASTWalker::Visit(Default& stat) {
 }
 
 void ASTWalker::Visit(Goto& stat) {
-  if (!emitter.program.local_labels.contains(stat.label)) {
+  if (!local_labels.contains(stat.label)) {
     auto block = emitter.MakeBlock();
-    emitter.program.local_labels.emplace(stat.label, block);
+    local_labels.emplace(stat.label, block);
     emitter.Emit<calyx::UnconditionalBranch>(block);
   }
   else {
-    emitter.Emit<calyx::UnconditionalBranch>(emitter.program.local_labels.at(stat.label));
+    emitter.Emit<calyx::UnconditionalBranch>(local_labels.at(stat.label));
   }
 }
 
@@ -1375,16 +1375,16 @@ void ASTWalker::Visit(Continue& stat) {
 }
 
 void ASTWalker::Visit(Compound& stat) {
-  variables.NewLayer();
-  c_types.NewLayer();
+  locals.NewLayer();
+  local_types.NewLayer();
   for (const auto& node : stat.stats) {
     node->Visit(*this);
   }
-  for (auto [_, var] : variables.Top()) {
+  for (auto [_, var] : locals.Top()) {
     emitter.Emit<calyx::DeallocateLocal>(var.idx, var.size);
   }
-  variables.PopLayer();
-  c_types.PopLayer();
+  locals.PopLayer();
+  local_types.PopLayer();
 }
 
 }
