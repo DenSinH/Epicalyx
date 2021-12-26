@@ -35,11 +35,13 @@ static_assert(sizeof(Pointer) == sizeof(i64));
 struct Struct;
 
 template<typename T>
-constexpr bool is_calyx_type_v = epi::cotyl::is_in_v<T, i32, u32, i64, u64, float, double, Struct, Pointer>;
-template<typename T>
-constexpr bool is_calyx_arithmetic_type_v = epi::cotyl::is_in_v<T, i32, u32, i64, u64, float, double>;
-template<typename T>
 constexpr bool is_calyx_integral_type_v = epi::cotyl::is_in_v<T, i32, u32, i64, u64>;
+template<typename T>
+constexpr bool is_calyx_arithmetic_type_v = is_calyx_integral_type_v<T> || epi::cotyl::is_in_v<T, float, double>;
+template<typename T>
+constexpr bool is_calyx_arithmetic_ptr_type_v = is_calyx_arithmetic_type_v<T> || std::is_same_v<T, Pointer>;
+template<typename T>
+constexpr bool is_calyx_type_v = is_calyx_arithmetic_ptr_type_v<T> || std::is_same_v<T, Struct>;
 
 template<typename T> struct calyx_upcast { using type = T; };
 template<> struct calyx_upcast<i8> { using type = i32; };
@@ -137,8 +139,6 @@ struct Directive {
 
 using pDirective = std::unique_ptr<Directive>;
 
-template<typename T>
-requires (is_calyx_type_v<T>)
 struct Expr : Directive {
   
   Expr(size_t type_id, var_index_t idx) :
@@ -216,9 +216,11 @@ enum class CmpType {
 };
 
 template<typename To, typename From>
-struct Cast : Expr<calyx_upcast_t<To>> {
+requires (!std::is_same_v<To, Struct> && is_calyx_arithmetic_ptr_type_v<From>)
+struct Cast : Expr {
+  using result_t = calyx_upcast_t<To>;
   Cast(var_index_t idx, var_index_t right_idx) :
-      Expr<calyx_upcast_t<To>>(GetTID(), idx), right_idx(right_idx) {
+      Expr(GetTID(), idx), right_idx(right_idx) {
 
   }
 
@@ -231,10 +233,10 @@ struct Cast : Expr<calyx_upcast_t<To>> {
 
 template<typename T>
 requires (is_calyx_arithmetic_type_v<T>)
-struct Binop : Expr<T> {
-
+struct Binop : Expr {
+  using result_t = T;
   Binop(var_index_t idx, var_index_t left, BinopType op, var_index_t right) :
-      Expr<T>(GetTID(), idx), left_idx(left), op(op), right_idx(right) {
+      Expr(GetTID(), idx), left_idx(left), op(op), right_idx(right) {
 
   }
 
@@ -249,10 +251,10 @@ struct Binop : Expr<T> {
 
 template<typename T>
 requires (is_calyx_arithmetic_type_v<T>)
-struct BinopImm : Expr<T> {
-
+struct BinopImm : Expr {
+  using result_t = T;
   BinopImm(var_index_t idx, var_index_t left, BinopType op, T right) :
-      Expr<T>(GetTID(), idx), left_idx(left), op(op), right(right) {
+      Expr(GetTID(), idx), left_idx(left), op(op), right(right) {
 
   }
 
@@ -267,10 +269,10 @@ struct BinopImm : Expr<T> {
 
 template<typename T>
 requires (is_calyx_integral_type_v<T>)
-struct Shift : Expr<T> {
-
+struct Shift : Expr {
+  using result_t = T;
   Shift(var_index_t idx, var_index_t left, ShiftType op, var_index_t right) :
-      Expr<T>(GetTID(), idx), left_idx(left), op(op), right_idx(right) {
+      Expr(GetTID(), idx), left_idx(left), op(op), right_idx(right) {
 
   }
 
@@ -285,10 +287,10 @@ struct Shift : Expr<T> {
 
 template<typename T>
 requires (is_calyx_integral_type_v<T>)
-struct ShiftImm : Expr<T> {
-
+struct ShiftImm : Expr {
+  using result_t = T;
   ShiftImm(var_index_t idx, var_index_t left, ShiftType op, T right) :
-      Expr<T>(GetTID(), idx), left_idx(left), op(op), right(right) {
+      Expr(GetTID(), idx), left_idx(left), op(op), right(right) {
 
   }
 
@@ -303,10 +305,10 @@ struct ShiftImm : Expr<T> {
 
 template<typename T>
 requires (is_calyx_type_v<T>)
-struct Compare : Expr<i32> {
-
+struct Compare : Expr {
+  using result_t = i32;
   Compare(var_index_t idx, var_index_t left, CmpType op, var_index_t right) :
-          Expr<i32>(GetTID(), idx), left_idx(left), op(op), right_idx(right) {
+          Expr(GetTID(), idx), left_idx(left), op(op), right_idx(right) {
 
   }
 
@@ -321,10 +323,10 @@ struct Compare : Expr<i32> {
 
 template<typename T>
 requires (is_calyx_type_v<T>)
-struct CompareImm : Expr<i32> {
-
+struct CompareImm : Expr {
+  using result_t = i32;
   CompareImm(var_index_t idx, var_index_t left, CmpType op, T right) :
-          Expr<i32>(GetTID(), idx), left_idx(left), op(op), right(right) {
+          Expr(GetTID(), idx), left_idx(left), op(op), right(right) {
 
   }
 
@@ -386,10 +388,10 @@ struct BranchCompareImm : Branch {
 
 template<typename T>
 requires (is_calyx_integral_type_v<T>)
-struct AddToPointer : Expr<Pointer> {
-
+struct AddToPointer : Expr {
+  using result_t = Pointer;
   AddToPointer(var_index_t idx, var_index_t ptr, PtrAddType op, u64 stride, var_index_t right) :
-      Expr<Pointer>(GetTID(), idx), ptr_idx(ptr), op(op), stride(stride), right_idx(right) {
+      Expr(GetTID(), idx), ptr_idx(ptr), op(op), stride(stride), right_idx(right) {
 
   }
 
@@ -403,10 +405,10 @@ struct AddToPointer : Expr<Pointer> {
   static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
-struct AddToPointerImm : Expr<Pointer> {
-
+struct AddToPointerImm : Expr {
+  using result_t = Pointer;
   AddToPointerImm(var_index_t idx, var_index_t ptr, u64 stride, i64 right) :
-      Expr<Pointer>(GetTID(), idx), ptr_idx(ptr), stride(stride), right(right) {
+      Expr(GetTID(), idx), ptr_idx(ptr), stride(stride), right(right) {
 
   }
 
@@ -421,10 +423,10 @@ struct AddToPointerImm : Expr<Pointer> {
 
 template<typename T>
 requires (is_calyx_type_v<T>)
-struct Imm : Expr<T> {
-
+struct Imm : Expr {
+  using result_t = T;
   Imm(var_index_t idx, T value) :
-      Expr<T>(GetTID(), idx), value(value) {
+      Expr(GetTID(), idx), value(value) {
 
   }
 
@@ -437,10 +439,10 @@ struct Imm : Expr<T> {
 
 template<typename T>
 requires (is_calyx_arithmetic_type_v<T>)
-struct Unop : Expr<T> {
-
+struct Unop : Expr {
+  using result_t = T;
   Unop(var_index_t idx, UnopType op, var_index_t right) :
-      Expr<T>(GetTID(), idx), op(op), right_idx(right) {
+      Expr(GetTID(), idx), op(op), right_idx(right) {
 
   }
 
@@ -453,10 +455,10 @@ struct Unop : Expr<T> {
 };
 
 template<typename T>
-struct LoadLocal : Expr<calyx_upcast_t<T>> {
-
+struct LoadLocal : Expr {
+  using result_t = calyx_upcast_t<T>;
   LoadLocal(var_index_t idx, var_index_t loc_idx, i32 offset = 0) :
-      Expr<calyx_upcast_t<T>>(GetTID(), idx), loc_idx(loc_idx), offset(offset) {
+      Expr(GetTID(), idx), loc_idx(loc_idx), offset(offset) {
 
   }
 
@@ -468,10 +470,10 @@ struct LoadLocal : Expr<calyx_upcast_t<T>> {
   static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
-struct LoadLocalAddr : Expr<Pointer> {
-
+struct LoadLocalAddr : Expr {
+  using result_t = Pointer;
   LoadLocalAddr(var_index_t idx, var_index_t loc_idx) :
-          Expr<Pointer>(GetTID(), idx), loc_idx(loc_idx){
+          Expr(GetTID(), idx), loc_idx(loc_idx){
 
   }
 
@@ -500,10 +502,10 @@ struct StoreLocal : Directive {
 };
 
 template<typename T>
-struct LoadGlobal : Expr<calyx_upcast_t<T>> {
-
+struct LoadGlobal : Expr {
+  using result_t = calyx_upcast_t<T>;
   LoadGlobal(var_index_t idx, std::string symbol, i32 offset = 0) :
-      Expr<calyx_upcast_t<T>>(GetTID(), idx), symbol(std::move(symbol)), offset(offset) {
+      Expr(GetTID(), idx), symbol(std::move(symbol)), offset(offset) {
 
   }
 
@@ -515,10 +517,10 @@ struct LoadGlobal : Expr<calyx_upcast_t<T>> {
   static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
-struct LoadGlobalAddr : Expr<Pointer> {
-
+struct LoadGlobalAddr : Expr {
+  using result_t = Pointer;
   LoadGlobalAddr(var_index_t idx, std::string symbol) :
-          Expr<Pointer>(GetTID(), idx), symbol(std::move(symbol)){
+          Expr(GetTID(), idx), symbol(std::move(symbol)){
 
   }
 
@@ -577,10 +579,10 @@ struct DeallocateLocal : Directive {
 };
 
 template<typename T>
-struct LoadFromPointer : Expr<calyx_upcast_t<T>> {
-
+struct LoadFromPointer : Expr {
+  using result_t = calyx_upcast_t<T>;
   LoadFromPointer(var_index_t idx, var_index_t ptr_idx, i32 offset = 0) :
-      Expr<calyx_upcast_t<T>>(GetTID(), idx), ptr_idx(ptr_idx), offset(offset) {
+      Expr(GetTID(), idx), ptr_idx(ptr_idx), offset(offset) {
 
   }
 

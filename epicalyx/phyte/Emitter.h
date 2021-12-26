@@ -12,7 +12,6 @@ struct Emitter {
 
   Emitter();
 
-  // todo: blocks
   template<typename T, typename... Args>
   calyx::var_index_t EmitExpr(calyx::Var var, Args... args) {
     if (!reachable) {

@@ -5,9 +5,7 @@
 #include "calyx/backend/Backend.h"
 #include "ProgramDependencies.h"
 
-#include <vector>
-#include <unordered_map>
-#include <set>
+#include "Containers.h"
 
 namespace epi {
 

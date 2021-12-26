@@ -449,7 +449,6 @@ void ASTWalker::Visit(PostFix& expr) {
 }
 
 void ASTWalker::Visit(Unary& expr) {
-  cotyl::Assert(state.top().first == State::Empty || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   const bool conditional_branch = state.top().first == State::ConditionalBranch;
 
   switch (expr.op) {
@@ -458,6 +457,7 @@ void ASTWalker::Visit(Unary& expr) {
         expr.left->Visit(*this);
         return;
       }
+      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       // no need to push a new state
       expr.left->Visit(*this);
       if (!conditional_branch) {
@@ -467,6 +467,7 @@ void ASTWalker::Visit(Unary& expr) {
       return;
     }
     case TokenType::Plus: {
+      cotyl::Assert(state.top().first == State::Empty || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       // no need to push a new state
       // does nothing
       // return, no need to check for conditional branches, is handled in visiting the expr
@@ -478,6 +479,7 @@ void ASTWalker::Visit(Unary& expr) {
         expr.left->Visit(*this);
         return;
       }
+      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       // no need to push a new state
       expr.left->Visit(*this);
       EmitArithExpr<calyx::Unop>(emitter.vars[current].type, calyx::UnopType::BinNot, current);
@@ -489,6 +491,7 @@ void ASTWalker::Visit(Unary& expr) {
         expr.left->Visit(*this);
         return;
       }
+      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       state.push({State::Read, {}});
       expr.left->Visit(*this);
       state.pop();
@@ -573,6 +576,7 @@ void ASTWalker::Visit(Unary& expr) {
         expr.left->Visit(*this);
         return;
       }
+      cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
       state.push({ State::Address, {} });
       expr.left->Visit(*this);
       state.pop();

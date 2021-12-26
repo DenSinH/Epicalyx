@@ -364,13 +364,13 @@ pType<> CType::Gt(const CType& other) const {
 pType<> CType::Le(const CType& other) const {
   auto lt = this->Lt(other);
   auto eq = this->Eq(other);
-  return lt->LogOr(other);  // < || ==
+  return lt->LogOr(*eq);  // < || ==
 }
 
 pType<> CType::Ge(const CType& other) const {
   auto gt = this->Gt(other);
   auto eq = this->Eq(other);
-  return gt->LogOr(other);  // > || ==
+  return gt->LogOr(*eq);  // > || ==
 }
 
 pType<> CType::Neq(const CType& other) const {

@@ -87,6 +87,7 @@ pNode<Stat> If::SReduce(const Parser& parser) {
   }
 
   if (cond->IsConstexpr()) {
+    std::printf("Constexpr cond %d\n", cond->GetType()->GetBoolValue());
     if (cond->GetType()->GetBoolValue()) {
       return std::move(stat);
     }

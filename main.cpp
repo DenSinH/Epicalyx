@@ -32,7 +32,7 @@ void PrintProgram(epi::Program& program) {
 
 int main() {
   // auto file = epi::File("tests/test.c");
-  auto file = epi::File("examples/emitting/loops.c");
+  auto file = epi::File("examples/emitting/pointers.c");
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
@@ -70,7 +70,7 @@ int main() {
   PrintProgram(program);
 
   // repeating multiple times will link more blocks
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < 4; i++) {
     try {
       auto optimizer = epi::BasicOptimizer(program);
       optimizer.EmitProgram(program);

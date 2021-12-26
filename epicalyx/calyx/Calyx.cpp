@@ -29,6 +29,7 @@ template<> const std::string type_string<Pointer>::value = "pointer";
 }
 
 template<typename To, typename From>
+requires (!std::is_same_v<To, Struct> && is_calyx_arithmetic_ptr_type_v<From>)
 std::string Cast<To, From>::ToString() const {
   return cotyl::FormatStr(
       "cast  v%s <%s> <- <%s>v%s", this->idx, detail::type_string<To>::value, detail::type_string<From>::value, right_idx
@@ -305,6 +306,7 @@ std::string ArgMakeLocal::ToString() const {
 }
 
 template<typename To, typename From>
+requires (!std::is_same_v<To, Struct> && is_calyx_arithmetic_ptr_type_v<From>)
 void Cast<To, From>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
