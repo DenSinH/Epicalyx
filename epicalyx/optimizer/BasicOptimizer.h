@@ -4,24 +4,25 @@
 
 #include "calyx/backend/Backend.h"
 #include "ProgramDependencies.h"
+#include "Containers.h"
 
 #include <vector>
-#include <unordered_map>
-#include <set>
+
 
 namespace epi {
 
 using namespace calyx;
 
-struct BasicOptimizer : calyx::Backend {
+struct BasicOptimizer final : ProgramDependencies {
+  using PD = ProgramDependencies;
 
-  BasicOptimizer(const Program& program) : program(program) {
+  BasicOptimizer(const Program& program, ProgramDependencies&& deps) :
+      program(program), ProgramDependencies(deps) {
 
   }
 
   const Program& program;
 
-  ProgramDependencies dependencies{};
   calyx::Program new_program{};
 
   // direct variable replacements
@@ -44,22 +45,32 @@ struct BasicOptimizer : calyx::Backend {
   // variable found location in new program
   cotyl::unordered_map<calyx::var_index_t, std::pair<calyx::block_label_t, u64>> vars_found{};
 
+
   // current block that is being built
   calyx::Program::block_t* current_block{};
-  block_label_t current_block_idx;
+  block_label_t current_old_block_idx;      // block index we are scanning in the old program
+  block_label_t current_new_block_idx;      // block index we are building in the new program
+  bool conditional_branch_from;             // conditional branch has happened from current block
+  cotyl::unordered_set<block_label_t> visited{};
+  cotyl::unordered_set<block_label_t> todo{};
+  bool reachable;
 
   template<typename T, class F>
   bool FindExprResultReplacement(T& op, F predicate);
   bool ResolveBranchIndirection(calyx::Branch& op);
+  void LinkBlocks(block_label_t next_block);
 
   template<typename T>
   T* TryGetVarDirective(var_index_t idx);
 
   template<typename T, typename... Args>
   std::pair<calyx::block_label_t, int> EmitNew(Args... args) {
+    cotyl::Assert(reachable);
     const u64 in_block = current_block->size();
-    current_block->push_back(std::make_unique<T>(args...));
-    return std::make_pair(current_block_idx, in_block);
+    auto directive = std::make_unique<T>(args...);
+    this->PD::Emit(*directive);
+    current_block->push_back(std::move(directive));
+    return std::make_pair(current_new_block_idx, in_block);
   }
 
   template<typename T>
@@ -69,11 +80,13 @@ struct BasicOptimizer : calyx::Backend {
 
   template<typename T, typename... Args>
   void EmitExpr(calyx::var_index_t idx, const Args&... args) {
+    var_graph[idx] = {};
     vars_found.emplace(idx, EmitNew<T>(idx, args...));
   }
 
   template<typename T>
   void EmitExprCopy(const T& expr) {
+    var_graph[expr.idx] = {};
     vars_found.emplace(expr.idx, EmitNew<T>(expr));
   }
 

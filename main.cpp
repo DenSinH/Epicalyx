@@ -16,13 +16,13 @@
 
 #include "Log.h"
 
-void PrintProgram(epi::Program& program) {
+void PrintProgram(const epi::Program& program) {
   std::cout << std::endl << std::endl;
   std::cout << "-- program" << std::endl;
-  for (int i = 0; i < program.blocks.size(); i++) {
-    if (!program.blocks[i].empty()) {
+  for (const auto& [i, block] : program.blocks) {
+    if (!block.empty()) {
       std::cout << 'L' << i << std::endl;
-      for (const auto& op : program.blocks[i]) {
+      for (const auto& op : block) {
         std::cout << "    " << op->ToString() << std::endl;
       }
     }
@@ -32,7 +32,7 @@ void PrintProgram(epi::Program& program) {
 
 int main() {
   // auto file = epi::File("tests/test.c");
-  auto file = epi::File("examples/emitting/pointers.c");
+  auto file = epi::File("examples/emitting/logical_operators.c");
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
@@ -72,7 +72,10 @@ int main() {
   // repeating multiple times will link more blocks
   for (int i = 0; i < 4; i++) {
     try {
-      auto optimizer = epi::BasicOptimizer(program);
+      auto dependencies = epi::ProgramDependencies{};
+      dependencies.EmitProgram(program);
+
+      auto optimizer = epi::BasicOptimizer(program, std::move(dependencies));
       optimizer.EmitProgram(program);
 
       program = std::move(optimizer.new_program);

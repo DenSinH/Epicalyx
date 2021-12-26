@@ -13,15 +13,16 @@ struct ProgramDependencies : calyx::Backend {
 
   // find common ancestor for 2 blocks such that all paths to these blocks go through that ancestor
   calyx::block_label_t CommonBlockAncestor(calyx::block_label_t first, calyx::block_label_t second) const;
-  std::vector<calyx::block_label_t> UpwardClosure(calyx::block_label_t base) const;
+  std::vector<calyx::block_label_t> OrderedUpwardClosure(calyx::block_label_t base) const;
+  cotyl::unordered_set<calyx::block_label_t> UpwardClosure(cotyl::unordered_set<calyx::block_label_t>&& base) const;
   bool IsAncestorOf(calyx::block_label_t base, calyx::block_label_t other) const;
 
-  struct Edge {
+  struct Block {
     cotyl::unordered_set<block_label_t> to{};
     cotyl::unordered_set<block_label_t> from{};
   };
 
-  cotyl::unordered_map<block_label_t, Edge> block_graph{};
+  cotyl::unordered_map<block_label_t, Block> block_graph{};
 
   struct Var {
     block_label_t block_made = -1;
@@ -31,17 +32,17 @@ struct ProgramDependencies : calyx::Backend {
 
   cotyl::unordered_map<var_index_t, Var> var_graph{};
 
-  std::pair<block_label_t, size_t> pos{};
+  block_label_t current_block_idx;
 
   void VisualizeVars();
 
-  void EmitProgram(Program& program) final;
+  void EmitProgram(Program& program) override;
 
-  void Emit(AllocateLocal& op) final;
-  void Emit(DeallocateLocal& op) final;
-  void Emit(LoadLocalAddr& op) final;
-  void Emit(LoadGlobalAddr& op) final;
-  void Emit(ArgMakeLocal& op) final;
+  void Emit(AllocateLocal& op) override;
+  void Emit(DeallocateLocal& op) override;
+  void Emit(LoadLocalAddr& op) override;
+  void Emit(LoadGlobalAddr& op) override;
+  void Emit(ArgMakeLocal& op) override;
 
   template<typename To, typename From>
   void EmitCast(Cast<To, From>& op);
@@ -86,7 +87,9 @@ struct ProgramDependencies : calyx::Backend {
   template<typename T>
   void EmitAddToPointer(AddToPointer<T>& op);
 
+#define final override
 #include "calyx/backend/Methods.inl"
+#undef final
 
 };
 

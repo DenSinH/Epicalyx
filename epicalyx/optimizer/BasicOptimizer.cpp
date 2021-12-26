@@ -4,6 +4,7 @@
 #include "Is.h"
 #include "Containers.h"
 #include "CustomAssert.h"
+#include "Algorithm.h"
 
 #include <iostream>
 
@@ -33,11 +34,11 @@ bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
   for (const auto& [var_idx, loc] : vars_found) {
     auto& directive = new_program.blocks.at(loc.first)[loc.second];
     if (IsType<T>(directive)) {
-      auto candidate_block = dependencies.var_graph.at(var_idx).block_made;
-      auto ancestor = dependencies.CommonBlockAncestor(candidate_block, current_block_idx);
+      auto candidate_block = this->var_graph.at(var_idx).block_made;
+      auto ancestor = CommonBlockAncestor(candidate_block, current_new_block_idx);
 
       // todo: shift directives back for earlier ancestor blocks
-      if (ancestor == current_block_idx || ancestor == candidate_block) {
+      if (ancestor == current_new_block_idx || ancestor == candidate_block) {
         const auto* candidate = cotyl::unique_ptr_cast<const T>(directive);
         if (predicate(*candidate, op)) {
           var_replacement[op.idx] = candidate->idx;
@@ -57,10 +58,13 @@ bool BasicOptimizer::ResolveBranchIndirection(calyx::Branch& op) {
     auto& link_directive = program.blocks.at(op.dest)[0];
     if (IsType<UnconditionalBranch>(link_directive)) {
       auto* link = cotyl::unique_ptr_cast<UnconditionalBranch>(link_directive);
-      dependencies.block_graph.at(link->dest).from.insert(current_block_idx);
-      auto& to = dependencies.block_graph.at(current_block_idx).to;
-      to.erase(op.dest);
-      to.insert(link->dest);
+
+      // update block graph
+      // blocks reached from indirect branch are now reached from the current_new_block_idx
+      auto& link_from = block_graph.at(link->dest).from;
+      link_from.erase(op.dest);
+      link_from.insert(current_new_block_idx);
+
       op.dest = link->dest;
       op.Emit(*this);
       return true;
@@ -79,56 +83,72 @@ T* BasicOptimizer::TryGetVarDirective(var_index_t idx) {
   return nullptr;
 }
 
+void BasicOptimizer::LinkBlocks(block_label_t next_block) {
+  // we need the current block to have no outputs
+  cotyl::Assert(block_graph.at(current_new_block_idx).to.empty());
+  // sanity checks that the current block is indeed the only input for the linked block
+  cotyl::Assert(block_graph.at(next_block).from.size() == 1);
+  // the ID should already have been updated from the old_block_idx to the new_block_idx earlier
+  // if they differ at all
+  cotyl::Assert(*block_graph.at(next_block).from.begin() == current_new_block_idx);
+
+  // change block inputs for jumped blocks
+  for (auto block_idx : block_graph.at(next_block).to) {
+    block_graph.at(block_idx).from.erase(next_block);
+    block_graph.at(block_idx).from.insert(current_new_block_idx);
+
+    // update current block output to determine new upward closure to remove unused blocks right away
+    block_graph.at(current_new_block_idx).to.insert(block_idx);
+  }
+
+  // erase linked block
+  block_graph.erase(next_block);
+
+  // update the block graph
+  const auto closure = UpwardClosure({visited.begin(), visited.end()});
+  const auto not_in_closure = [&](const block_label_t& block_idx) { return !closure.contains(block_idx); };
+
+  for (auto& [block_idx, deps] : block_graph) {
+    cotyl::erase_if(deps.to, not_in_closure);
+    cotyl::erase_if(deps.from, not_in_closure);
+  }
+
+  // make current new_block_idx have empty output again
+  block_graph.at(current_new_block_idx).to = {};
+  current_old_block_idx = next_block;
+}
+
 void BasicOptimizer::EmitProgram(Program& _program) {
-  dependencies.EmitProgram(_program);
+  // find initial dependencies
   new_program.functions    = std::move(_program.functions);
   new_program.globals      = std::move(_program.globals);
   new_program.strings      = std::move(_program.strings);
 
   for (const auto& [symbol, entry] : new_program.functions) {
-    cotyl::unordered_set<block_label_t> visited = {};
-    cotyl::unordered_set<block_label_t> todo = {entry};
+    visited = {};
+    todo = {entry};
     vars_found = {};
 
     while (!todo.empty()) {
       cotyl::Assert(locals.empty());
 
-      auto block = *todo.begin();
+      current_old_block_idx = current_new_block_idx = *todo.begin();
+      this->PD::current_block_idx = current_new_block_idx;
+      // clear block dependencies
+      block_graph[current_new_block_idx] = {};
+      reachable = true;
       todo.erase(todo.begin());
 
-      auto inserted = new_program.blocks.emplace(block, calyx::Program::block_t{}).first;
+      auto inserted = new_program.blocks.emplace(current_new_block_idx, calyx::Program::block_t{}).first;
       current_block = &inserted->second;
-      current_block_idx = block;
 
-      while (block) {
+      while (!visited.contains(current_old_block_idx)) {
+        const auto block = current_old_block_idx;
+        visited.insert(block);
         for (const auto& directive : _program.blocks.at(block)) {
           directive->Emit(*this);
-        }
-        visited.insert(block);
-
-        const auto& block_deps = dependencies.block_graph.at(block);
-        if (block_deps.to.size() == 1) {
-          auto next = *block_deps.to.begin();
-          if (!visited.contains(next) && dependencies.block_graph.at(next).from.size() == 1) {
-            // pop ending branch
-            dependencies.block_graph.at(block).to = dependencies.block_graph.at(next).to;
-            current_block->pop_back();
-            block = next;
-          }
-          else {
-            if (!visited.contains(next)) {
-              todo.insert(next);
-            }
-            block = 0;
-          }
-        }
-        else {
-          for (const auto next : block_deps.to) {
-            if (!visited.contains(next)) {
-              todo.insert(next);
-            }
-          }
-          block = 0;
+          if (!reachable) break;  // hit return statement
+          if (current_old_block_idx != block) break;  // jumped to linked block
         }
       }
     }
@@ -181,6 +201,7 @@ void BasicOptimizer::EmitCast(Cast<To, From>& op) {
 template<typename T>
 void BasicOptimizer::EmitLoadLocal(LoadLocal<T>& op) {
   if (locals.contains(op.loc_idx)) {
+    // local value stored in IR var
     auto& repl = locals.at(op.loc_idx).replacement;
     repl->idx = op.idx;
     repl->Emit(*this);
@@ -201,6 +222,7 @@ void BasicOptimizer::EmitStoreLocal(StoreLocal<T>& op) {
   if constexpr(!std::is_same_v<T, Struct>) {
     var_index_t aliases = 0;
     if (var_aliases.contains(op.src)) {
+      // var alias stored to local (i.e. int var; int* al = &var; int* al2 = al;)
       aliases = var_aliases.at(op.src);
     }
     locals[op.loc_idx] = Local{
@@ -238,9 +260,10 @@ template<typename T>
 void BasicOptimizer::EmitLoadFromPointer(LoadFromPointer<T>& op) {
   TryReplaceVar(op.ptr_idx);
   if (var_aliases.contains(op.ptr_idx)) {
+    // pointer aliases local variable
     auto alias = var_aliases.at(op.ptr_idx);
     if (locals.contains(alias) && op.offset == 0) {
-      // emit aliased local replacement
+      // IR var holds local value, emit aliased local replacement
       auto& repl = locals.at(alias).replacement;
       repl->idx = op.idx;
       repl->Emit(*this);
@@ -248,6 +271,7 @@ void BasicOptimizer::EmitLoadFromPointer(LoadFromPointer<T>& op) {
     else {
       // load aliased local directly
       auto repl = LoadLocal<T>(op.idx, alias, op.offset);
+      Emit(repl);
     }
     return;
   }
@@ -263,7 +287,7 @@ void BasicOptimizer::EmitStoreToPointer(StoreToPointer<T>& op) {
       auto alias = var_aliases.at(op.ptr_idx);
 
       // storing aliased variable to another alias
-      // i.e. int* zalias1 = &z; int* zalias2 = zalias1;
+      // i.e. int* zalias1 = &z; int** zaliasptr; *zaliasptr = zalias1;
       var_index_t aliases = 0;
       if (var_aliases.contains(op.src)) {
         aliases = var_aliases.at(op.src);
@@ -291,7 +315,7 @@ void BasicOptimizer::EmitCall(Call<T>& op) {
     TryReplaceVar(var_idx);
   }
 
-  vars_found[op.idx] = std::make_pair(current_block_idx, current_block->size());
+  vars_found[op.idx] = std::make_pair(current_new_block_idx, current_block->size());
   EmitCopy(op);
 }
 
@@ -304,7 +328,7 @@ void BasicOptimizer::EmitCallLabel(CallLabel<T>& op) {
     TryReplaceVar(var_idx);
   }
 
-  vars_found[op.idx] = std::make_pair(current_block_idx, current_block->size());
+  vars_found[op.idx] = std::make_pair(current_new_block_idx, current_block->size());
   EmitCopy(op);
 }
 
@@ -318,6 +342,7 @@ void BasicOptimizer::EmitReturn(Return<T>& op) {
   // no need to flush locals right before a return
   locals = {};
   EmitCopy(op);
+  reachable = false;
 }
 
 template<typename T>
@@ -349,7 +374,6 @@ void BasicOptimizer::EmitUnop(Unop<T>& op) {
       switch (op.op) {
         case UnopType::Neg: result = -right_imm->value; break;
         case UnopType::BinNot: if constexpr(calyx::is_calyx_integral_type_v<T>) result = ~right_imm->value; break;
-          break;
       }
       auto repl = Imm<T>(op.idx, result);
       Emit(repl);
@@ -373,6 +397,8 @@ void BasicOptimizer::EmitBinop(Binop<T>& op) {
       Emit(repl);
       return;
     }
+
+    // fold unary expression into binop
     auto* right_unop = TryGetVarDirective<Unop<T>>(op.right_idx);
     if (right_unop) {
       if (right_unop->op == UnopType::Neg) {
@@ -417,6 +443,7 @@ void BasicOptimizer::EmitBinop(Binop<T>& op) {
       }
     }
 
+    // fold unop into binop
     auto* left_unop = TryGetVarDirective<Unop<T>>(op.left_idx);
     if (left_unop) {
       if (left_unop->op == UnopType::Neg) {
@@ -435,43 +462,6 @@ void BasicOptimizer::EmitBinop(Binop<T>& op) {
 template<typename T>
 void BasicOptimizer::EmitBinopImm(BinopImm<T>& op) {
   TryReplaceVar(op.left_idx);
-
-  switch (op.op) {
-    case BinopType::Add:
-    case BinopType::Sub:
-    case BinopType::BinOr:
-    case BinopType::BinXor:
-      if (op.right == 0) {
-        var_replacement[op.idx] = op.left_idx;
-        return;
-      }
-      break;
-    case BinopType::Mul:
-      if (op.right == 1) {
-        var_replacement[op.idx] = op.left_idx;
-        return;
-      }
-      else if (op.right == 0) {
-        auto repl = Imm<T>(op.idx, 0);
-        Emit(repl);
-        return;
-      }
-      break;
-    case BinopType::Div:
-      if (op.right == 1) {
-        var_replacement[op.idx] = op.left_idx;
-        return;
-      }
-    case BinopType::Mod:
-      break;
-    case BinopType::BinAnd:
-      if (op.right == 0) {
-        auto repl = Imm<T>(op.idx, 0);
-        Emit(repl);
-        return;
-      }
-      break;
-  }
 
   {
     auto* left_imm = TryGetVarDirective<Imm<T>>(op.left_idx);
@@ -589,14 +579,27 @@ void BasicOptimizer::EmitCompare(Compare<T>& op) {
 template<typename T>
 void BasicOptimizer::EmitCompareImm(CompareImm<T>& op) {
   TryReplaceVar(op.left_idx);
-  FlushCurrentLocals();
   EmitExprCopy(op);
 }
 
 void BasicOptimizer::Emit(UnconditionalBranch& op) {
   if (!ResolveBranchIndirection(op)) {
+    const auto& block_deps = this->block_graph.at(current_new_block_idx);
+    if (block_deps.to.empty()) {
+      // no dependencies so far, we can link this block if the next block only has one input
+      if (this->block_graph.at(op.dest).from.size() == 1) {
+        LinkBlocks(op.dest);
+        return;
+      }
+    }
+
+    // only flush locals on the unconditional branch non-linked blocks
     FlushCurrentLocals();
+    if (!visited.contains(op.dest)) {
+      todo.insert(op.dest);
+    }
     EmitCopy(op);
+    reachable = false;
   }
 }
 
@@ -638,6 +641,9 @@ void BasicOptimizer::EmitBranchCompare(BranchCompare<T>& op) {
 
   if (!ResolveBranchIndirection(op)) {
     FlushCurrentLocals();
+    if (!visited.contains(op.dest)) {
+      todo.insert(op.dest);
+    }
     EmitCopy(op);
   }
 }
@@ -670,6 +676,9 @@ void BasicOptimizer::EmitBranchCompareImm(BranchCompareImm<T>& op) {
 
   if (!ResolveBranchIndirection(op)) {
     FlushCurrentLocals();
+    if (!visited.contains(op.dest)) {
+      todo.insert(op.dest);
+    }
     EmitCopy(op);
   }
 }
@@ -691,10 +700,12 @@ void BasicOptimizer::Emit(Select& op) {
       throw std::runtime_error("Invalid switch selection with constant expression");
     }
     Emit(repl);
+    reachable = false;
     return;
   }
 
   EmitCopy(op);
+  reachable = false;
 }
 
 template<typename T>

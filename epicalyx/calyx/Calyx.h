@@ -116,7 +116,7 @@ struct Directive {
     Expression,  // includes loads
     Store,
     Stack,
-    Branch,
+    ConditionalBranch,
     UnconditionalBranch,
     Call,
     Return,
@@ -355,7 +355,7 @@ requires (is_calyx_type_v<T>)
 struct BranchCompare : Branch {
 
   BranchCompare(block_label_t dest, var_index_t left, CmpType op, var_index_t right) :
-      Branch(Class::Branch, GetTID(), dest), left_idx(left), op(op), right_idx(right) {
+          Branch(Class::ConditionalBranch, GetTID(), dest), left_idx(left), op(op), right_idx(right) {
 
   }
 
@@ -373,7 +373,7 @@ requires (is_calyx_type_v<T>)
 struct BranchCompareImm : Branch {
 
   BranchCompareImm(block_label_t dest, var_index_t left, CmpType op, T right) :
-    Branch(Class::Branch, GetTID(), dest), left_idx(left), op(op), right(right) {
+          Branch(Class::ConditionalBranch, GetTID(), dest), left_idx(left), op(op), right(right) {
 
   }
 

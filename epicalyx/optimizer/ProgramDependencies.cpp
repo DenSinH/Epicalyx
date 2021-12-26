@@ -3,6 +3,8 @@
 #include "Containers.h"
 #include "cycle/Cycle.h"
 
+#include <algorithm>
+
 
 namespace epi {
 
@@ -55,7 +57,7 @@ calyx::block_label_t ProgramDependencies::CommonBlockAncestor(calyx::block_label
   return *ancestors.begin();
 }
 
-std::vector<calyx::block_label_t> ProgramDependencies::UpwardClosure(calyx::block_label_t base) const {
+std::vector<calyx::block_label_t> ProgramDependencies::OrderedUpwardClosure(calyx::block_label_t base) const {
   cotyl::unordered_set<calyx::block_label_t> closure_found{base};
   std::vector<calyx::block_label_t> closure{};
   closure.push_back(base);
@@ -71,6 +73,27 @@ std::vector<calyx::block_label_t> ProgramDependencies::UpwardClosure(calyx::bloc
           closure_found.emplace(dep);
           search.emplace(dep);
           closure.push_back(dep);
+        }
+      }
+    }
+  }
+
+  return closure;
+}
+
+cotyl::unordered_set<calyx::block_label_t> ProgramDependencies::UpwardClosure(cotyl::unordered_set<calyx::block_label_t>&& base) const {
+  cotyl::unordered_set<calyx::block_label_t> closure = std::move(base);
+  cotyl::unordered_set<calyx::block_label_t> search = {closure.begin(), closure.end()};
+
+  while (!search.empty()) {
+    auto current = *search.begin();
+    search.erase(search.begin());
+
+    if (block_graph.contains(current)) {
+      for (const auto& dep : block_graph.at(current).to) {
+        if (!closure.contains(dep)) {
+          closure.emplace(dep);
+          search.emplace(dep);
         }
       }
     }
@@ -122,9 +145,8 @@ void ProgramDependencies::VisualizeVars() {
 void ProgramDependencies::EmitProgram(Program& program) {
   for (const auto& [i, block] : program.blocks) {
     detail::get_default(block_graph, i);
-    pos.first = i;
+    current_block_idx = i;
     for (int j = 0; j < block.size(); j++) {
-      pos.second = j;
       block[j]->Emit(*this);
     }
   }
@@ -140,18 +162,18 @@ void ProgramDependencies::Emit(DeallocateLocal& op) {
 
 template<typename To, typename From>
 void ProgramDependencies::EmitCast(Cast<To, From>& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
   var_graph.at(op.idx).deps.emplace(op.right_idx);
   detail::get_default(var_graph, op.right_idx).read_count++;
 }
 
 template<typename T>
 void ProgramDependencies::EmitLoadLocal(LoadLocal<T>& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
 }
 
 void ProgramDependencies::Emit(LoadLocalAddr& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
 }
 
 template<typename T>
@@ -161,11 +183,11 @@ void ProgramDependencies::EmitStoreLocal(StoreLocal<T>& op) {
 
 template<typename T>
 void ProgramDependencies::EmitLoadGlobal(LoadGlobal<T>& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
 }
 
 void ProgramDependencies::Emit(LoadGlobalAddr& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
 }
 
 template<typename T>
@@ -175,7 +197,7 @@ void ProgramDependencies::EmitStoreGlobal(StoreGlobal<T>& op) {
 
 template<typename T>
 void ProgramDependencies::EmitLoadFromPointer(LoadFromPointer<T>& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
   var_graph.at(op.idx).deps.emplace(op.ptr_idx);
   detail::get_default(var_graph, op.ptr_idx).read_count++;
 }
@@ -190,7 +212,7 @@ template<typename T>
 void ProgramDependencies::EmitCall(Call<T>& op) {
   detail::get_default(var_graph, op.fn_idx).read_count++;
   if constexpr(!std::is_same_v<T, void>) {
-    detail::get_default(var_graph, op.idx).block_made = pos.first;
+    detail::get_default(var_graph, op.idx).block_made = current_block_idx;
   }
 
   for (const auto& [var_idx, arg] : op.args) {
@@ -206,7 +228,7 @@ void ProgramDependencies::EmitCall(Call<T>& op) {
 template<typename T>
 void ProgramDependencies::EmitCallLabel(CallLabel<T>& op) {
   if constexpr(!std::is_same_v<T, void>) {
-    detail::get_default(var_graph, op.idx).block_made = pos.first;
+    detail::get_default(var_graph, op.idx).block_made = current_block_idx;
   }
   for (const auto&[var_idx, arg] : op.args) {
     detail::get_default(var_graph, op.idx).deps.emplace(var_idx);
@@ -229,19 +251,19 @@ void ProgramDependencies::EmitReturn(Return<T>& op) {
 
 template<typename T>
 void ProgramDependencies::EmitImm(Imm<T>& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
 }
 
 template<typename T>
 void ProgramDependencies::EmitUnop(Unop<T>& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
   var_graph.at(op.idx).deps.emplace(op.right_idx);
   detail::get_default(var_graph, op.right_idx).read_count++;
 }
 
 template<typename T>
 void ProgramDependencies::EmitBinop(Binop<T>& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
   detail::get_default(var_graph, op.idx).deps.emplace(op.left_idx);
   detail::get_default(var_graph, op.left_idx).read_count++;
   detail::get_default(var_graph, op.idx).deps.emplace(op.right_idx);
@@ -250,14 +272,14 @@ void ProgramDependencies::EmitBinop(Binop<T>& op) {
 
 template<typename T>
 void ProgramDependencies::EmitBinopImm(BinopImm<T>& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
   detail::get_default(var_graph, op.idx).deps.emplace(op.left_idx);
   detail::get_default(var_graph, op.left_idx).read_count++;
 }
 
 template<typename T>
 void ProgramDependencies::EmitShift(Shift<T>& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
   detail::get_default(var_graph, op.idx).deps.emplace(op.left_idx);
   detail::get_default(var_graph, op.left_idx).read_count++;
   detail::get_default(var_graph, op.idx).deps.emplace(op.right_idx);
@@ -266,14 +288,14 @@ void ProgramDependencies::EmitShift(Shift<T>& op) {
 
 template<typename T>
 void ProgramDependencies::EmitShiftImm(ShiftImm<T>& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
   detail::get_default(var_graph, op.idx).deps.emplace(op.left_idx);
   detail::get_default(var_graph, op.left_idx).read_count++;
 }
 
 template<typename T>
 void ProgramDependencies::EmitCompare(Compare<T>& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
   detail::get_default(var_graph, op.idx).deps.emplace(op.left_idx);
   detail::get_default(var_graph, op.left_idx).read_count++;
   detail::get_default(var_graph, op.idx).deps.emplace(op.right_idx);
@@ -287,40 +309,40 @@ void ProgramDependencies::EmitCompareImm(CompareImm<T>& op) {
 }
 
 void ProgramDependencies::Emit(UnconditionalBranch& op) {
-  detail::get_default(block_graph, pos.first).to.emplace(op.dest);
-  detail::get_default(block_graph, op.dest).from.emplace(pos.first);
+  detail::get_default(block_graph, current_block_idx).to.emplace(op.dest);
+  detail::get_default(block_graph, op.dest).from.emplace(current_block_idx);
 }
 
 template<typename T>
 void ProgramDependencies::EmitBranchCompare(BranchCompare<T>& op) {
-  detail::get_default(block_graph, pos.first).to.emplace(op.dest);
-  detail::get_default(block_graph, op.dest).from.emplace(pos.first);
+  detail::get_default(block_graph, current_block_idx).to.emplace(op.dest);
+  detail::get_default(block_graph, op.dest).from.emplace(current_block_idx);
   detail::get_default(var_graph, op.left_idx).read_count++;
   detail::get_default(var_graph, op.right_idx).read_count++;
 }
 
 template<typename T>
 void ProgramDependencies::EmitBranchCompareImm(BranchCompareImm<T>& op) {
-  detail::get_default(block_graph, pos.first).to.emplace(op.dest);
-  detail::get_default(block_graph, op.dest).from.emplace(pos.first);
+  detail::get_default(block_graph, current_block_idx).to.emplace(op.dest);
+  detail::get_default(block_graph, op.dest).from.emplace(current_block_idx);
   detail::get_default(var_graph, op.left_idx).read_count++;
 }
 
 void ProgramDependencies::Emit(Select& op) {
   detail::get_default(var_graph, op.idx).read_count++;
   for (const auto& [value, block] : op.table) {
-    detail::get_default(block_graph, pos.first).to.emplace(block);
-    detail::get_default(block_graph, block).from.emplace(pos.first);
+    detail::get_default(block_graph, current_block_idx).to.emplace(block);
+    detail::get_default(block_graph, block).from.emplace(current_block_idx);
   }
   if (op._default) {
-    detail::get_default(block_graph, pos.first).to.emplace(op._default);
-    detail::get_default(block_graph, op._default).from.emplace(pos.first);
+    detail::get_default(block_graph, current_block_idx).to.emplace(op._default);
+    detail::get_default(block_graph, op._default).from.emplace(current_block_idx);
   }
 }
 
 template<typename T>
 void ProgramDependencies::EmitAddToPointer(AddToPointer<T>& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
   detail::get_default(var_graph, op.idx).deps.emplace(op.ptr_idx);
   detail::get_default(var_graph, op.ptr_idx).read_count++;
   detail::get_default(var_graph, op.idx).deps.emplace(op.right_idx);
@@ -328,7 +350,7 @@ void ProgramDependencies::EmitAddToPointer(AddToPointer<T>& op) {
 }
 
 void ProgramDependencies::Emit(AddToPointerImm& op) {
-  detail::get_default(var_graph, op.idx).block_made = pos.first;
+  detail::get_default(var_graph, op.idx).block_made = current_block_idx;
   detail::get_default(var_graph, op.idx).deps.emplace(op.ptr_idx);
   detail::get_default(var_graph, op.ptr_idx).read_count++;
 }

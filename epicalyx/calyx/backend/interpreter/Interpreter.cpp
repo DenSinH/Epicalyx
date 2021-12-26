@@ -27,7 +27,7 @@ void Interpreter::VisualizeProgram(const Program& program) {
         case Directive::Class::Call:  // todo
           graph->n(i, directive->ToString());
           break;
-        case Directive::Class::Branch:
+        case Directive::Class::ConditionalBranch:
         case Directive::Class::UnconditionalBranch:
           graph->n(i, directive->ToString())->n(cotyl::unique_ptr_cast<Branch>(directive)->dest);
           break;

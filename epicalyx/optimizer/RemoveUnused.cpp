@@ -1,7 +1,5 @@
 #include "RemoveUnused.h"
-#include "IRCompare.h"
 #include "Cast.h"
-
 
 namespace epi {
 
@@ -12,7 +10,7 @@ void RemoveUnused::EmitProgram(Program& program) {
   new_program.strings      = std::move(program.strings);
 
   for (const auto& [symbol, entry] : new_program.functions) {
-    auto closure = dependencies.UpwardClosure(entry);
+    auto closure = dependencies.OrderedUpwardClosure(entry);
 
     for (const auto& block : closure) {
       auto inserted = new_program.blocks.emplace(block, calyx::Program::block_t{}).first;
