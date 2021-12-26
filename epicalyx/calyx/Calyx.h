@@ -62,18 +62,6 @@ struct calyx_imm_type<Pointer> {
 template<typename T>
 using calyx_imm_type_t = typename calyx_imm_type<T>::type;
 
-struct Local {
-  enum class Location {
-    Stack,  // if address is taken
-    Register,
-    Either,
-  };
-
-  var_index_t idx;
-  Location loc;
-  u64 size;
-};
-
 struct Argument {
   enum class Type {
     I8, U8, I16, U16, I32, U32, I64, U64, Float, Double, Pointer, Struct

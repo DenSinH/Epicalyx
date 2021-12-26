@@ -51,9 +51,7 @@ void ASTWalker::Visit(epi::taxy::Declaration& decl) {
   else {
     auto c_idx = emitter.c_counter++;
     u64 size = decl.type->Sizeof();
-    locals.Set(decl.name, calyx::Local{
-            c_idx, calyx::Local::Location::Either, size
-    });
+    locals.Set(decl.name, Local{c_idx, size});
     local_types.Set(decl.name, decl.type);
     emitter.Emit<calyx::AllocateLocal>(c_idx, size);
 
@@ -89,9 +87,7 @@ void ASTWalker::Visit(epi::taxy::FunctionDefinition& decl) {
     // turn arguments into locals
     auto& arg = decl.signature->arg_types[i];
     auto c_idx = emitter.c_counter++;
-    locals.Set(arg.name, calyx::Local{
-            c_idx, calyx::Local::Location::Either, arg.type->Sizeof()
-    });
+    locals.Set(arg.name, Local{c_idx, arg.type->Sizeof()});
     local_types.Set(arg.name, arg.type);
     auto visitor = detail::ArgumentTypeVisitor(i, false);
     arg.type->Visit(visitor);
@@ -168,8 +164,6 @@ void ASTWalker::Visit(Identifier& decl) {
         break;
       }
       case State::Address: {
-        // we can't get the address of a variable that is not on the stack
-        locals.Get(decl.name).loc = calyx::Local::Location::Stack;
         auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalAddrEmitter>(*this, {cvar.idx});
         type->Visit(visitor);
         break;
@@ -800,9 +794,7 @@ void ASTWalker::Visit(Binop& expr) {
         // we create a "fake local" in order to do this
         auto c_idx = emitter.c_counter++;
         std::string name = "$logop" + std::to_string(c_idx);
-        locals.Set(name, calyx::Local{
-                c_idx, calyx::Local::Location::Either, sizeof(i32)
-        });
+        locals.Set(name, Local{c_idx, sizeof(i32)});
         local_types.Set(name, CType::MakeBool());
         emitter.Emit<calyx::AllocateLocal>(c_idx, sizeof(i32));
 
@@ -903,9 +895,7 @@ void ASTWalker::Visit(Ternary& expr) {
     std::string name = "$tern" + std::to_string(c_idx);
     const auto& type = expr.GetType();
     u64 size = type->Sizeof();
-    locals.Set(name, calyx::Local{
-            c_idx, calyx::Local::Location::Either, size
-    });
+    locals.Set(name, Local{c_idx, size});
     local_types.Set(name, type);
     emitter.Emit<calyx::AllocateLocal>(c_idx, size);
 

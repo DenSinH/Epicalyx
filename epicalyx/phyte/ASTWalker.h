@@ -33,13 +33,18 @@ struct ASTWalker : public taxy::NodeVisitor {
     };
   };
 
+  struct Local {
+    calyx::var_index_t idx;
+    u64 size;
+  };
+
   std::stack<std::pair<State, StateData>> state{};
   std::stack<calyx::block_label_t> break_stack{};
   std::stack<calyx::block_label_t> continue_stack{};
   std::stack<calyx::Select*> select_stack{};
   cotyl::unordered_map<std::string, calyx::block_label_t> local_labels{};
 
-  cotyl::MapScope<std::string, calyx::Local> locals{};
+  cotyl::MapScope<std::string, Local> locals{};
   cotyl::MapScope<std::string, pType<const CType>> local_types{};
 
   calyx::var_index_t current;
