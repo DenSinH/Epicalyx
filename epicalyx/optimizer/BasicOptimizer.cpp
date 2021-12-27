@@ -6,8 +6,6 @@
 #include "CustomAssert.h"
 #include "Algorithm.h"
 
-#include <iostream>
-
 
 namespace epi {
 
@@ -147,7 +145,7 @@ void BasicOptimizer::EmitProgram(Program& _program) {
         visited.insert(block);
         for (const auto& directive : _program.blocks.at(block)) {
           directive->Emit(*this);
-          if (!reachable) break;  // hit return statement
+          if (!reachable) break;  // hit return statement/branch
           if (current_old_block_idx != block) break;  // jumped to linked block
         }
       }
@@ -587,7 +585,7 @@ void BasicOptimizer::Emit(UnconditionalBranch& op) {
     const auto& block_deps = this->block_graph.at(current_new_block_idx);
     if (block_deps.to.empty()) {
       // no dependencies so far, we can link this block if the next block only has one input
-      if (this->block_graph.at(op.dest).from.size() == 1) {
+      if (!visited.contains(op.dest) && this->block_graph.at(op.dest).from.size() == 1) {
         LinkBlocks(op.dest);
         return;
       }
@@ -700,7 +698,6 @@ void BasicOptimizer::Emit(Select& op) {
       throw std::runtime_error("Invalid switch selection with constant expression");
     }
     Emit(repl);
-    reachable = false;
     return;
   }
 
@@ -730,9 +727,9 @@ void BasicOptimizer::EmitAddToPointer(AddToPointer<T>& op) {
   }
 
   // todo: is this correct behavior?
-  if (var_aliases.contains(op.ptr_idx)) {
-    var_aliases[op.idx] = var_aliases.at(op.ptr_idx);
-  }
+//  if (var_aliases.contains(op.ptr_idx)) {
+//    var_aliases[op.idx] = var_aliases.at(op.ptr_idx);
+//  }
 
   EmitExprCopy(op);
 }

@@ -50,7 +50,6 @@ struct BasicOptimizer final : ProgramDependencies {
   calyx::Program::block_t* current_block{};
   block_label_t current_old_block_idx;      // block index we are scanning in the old program
   block_label_t current_new_block_idx;      // block index we are building in the new program
-  bool conditional_branch_from;             // conditional branch has happened from current block
   cotyl::unordered_set<block_label_t> visited{};
   cotyl::unordered_set<block_label_t> todo{};
   bool reachable;
