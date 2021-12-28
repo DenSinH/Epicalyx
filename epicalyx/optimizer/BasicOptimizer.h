@@ -1,7 +1,5 @@
 #pragma once
 
-#pragma once
-
 #include "calyx/backend/Backend.h"
 #include "ProgramDependencies.h"
 #include "Containers.h"
@@ -60,7 +58,7 @@ struct BasicOptimizer final : ProgramDependencies {
   void LinkBlocks(block_label_t next_block);
 
   template<typename T>
-  T* TryGetVarDirective(var_index_t idx);
+  const T* TryGetVarDirective(var_index_t idx);
 
   template<typename T, typename... Args>
   std::pair<calyx::block_label_t, int> EmitNew(Args... args) {
@@ -87,6 +85,12 @@ struct BasicOptimizer final : ProgramDependencies {
   void EmitExprCopy(const T& expr) {
     var_graph[expr.idx] = {};
     vars_found.emplace(expr.idx, EmitNew<T>(expr));
+  }
+
+  template<typename T, typename... Args>
+  void EmitRepl(Args... args) {
+    auto repl = T(args...);
+    Emit(repl);
   }
 
   void TryReplaceVar(calyx::var_index_t& var_idx) const;

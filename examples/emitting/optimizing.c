@@ -1,11 +1,10 @@
+int func() {
+  return 1;
+}
+
 int main() {
-  int i = (float)0;
-
-  int j = -(-i);
-  j += -(-(-i));
-
-  if (i == 0) {
-    return (i + 1) << 1;
-  }
-  return i == 1;
+  int test = func();
+  test += 1;
+  test += 1;
+  return test;
 }

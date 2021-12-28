@@ -2,9 +2,6 @@
 
 #include "calyx/backend/Backend.h"
 
-#include <vector>
-#include <unordered_map>
-
 namespace epi {
 
 using namespace calyx;

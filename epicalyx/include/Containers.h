@@ -66,3 +66,16 @@ using flat_map = std::unordered_map<K, V>;
 }
 
 #endif
+
+
+namespace std {
+
+// basic hash for std::pair s
+template<typename T1, typename T2>
+struct hash<std::pair<T1, T2>> {
+  size_t operator()(const std::pair<T1, T2>& pair) const {
+    return hash<T1>()(pair.first) ^ hash<T2>()(pair.second);
+  }
+};
+
+}
