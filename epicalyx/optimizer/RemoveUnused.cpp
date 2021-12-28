@@ -26,7 +26,6 @@ static void NullifyUnusedLocals(calyx::Program& program, ProgramDependencies& de
   }
 }
 
-
 static void NullifyUnusedVars(calyx::Program& program, ProgramDependencies& dependencies) {
   cotyl::unordered_set<var_index_t> todo{};
   // copy map keys
@@ -64,7 +63,7 @@ void RemoveUnused(calyx::Program& program) {
   // remove nullified directives
   for (auto& [block_idx, block] : program.blocks) {
     block.erase(
-        std::remove_if(block.begin(), block.end(), [](const auto& directive) { return directive == nullptr; }),
+        std::remove(block.begin(), block.end(), nullptr),
         block.end()
     );
   }

@@ -72,7 +72,7 @@ bool BasicOptimizer::ResolveBranchIndirection(calyx::Branch& op) {
 }
 
 template<typename T>
-const T* BasicOptimizer::TryGetVarDirective(var_index_t idx) {
+const T* BasicOptimizer::TryGetVarDirective(var_index_t idx) const {
   auto [block, in_block] = vars_found.at(idx);
   auto& directive = new_program.blocks.at(block)[in_block];
   if (IsType<T>(directive)) {
@@ -81,7 +81,7 @@ const T* BasicOptimizer::TryGetVarDirective(var_index_t idx) {
   return nullptr;
 }
 
-void BasicOptimizer::LinkBlocks(block_label_t next_block) {
+void BasicOptimizer::LinkBlock(block_label_t next_block) {
   // we need the current block to have no outputs
   cotyl::Assert(block_graph.at(current_new_block_idx).to.empty());
   // sanity checks that the current block is indeed the only input for the linked block
@@ -493,7 +493,7 @@ void BasicOptimizer::EmitBinopImm(BinopImm<T>& op) {
       using result_pair_t = std::pair<BinopType, T(*)(T, T)>;
       using enum BinopType;
 
-      static const std::unordered_map<op_pair_t, result_pair_t> binim_fold = {
+      static const cotyl::unordered_map<op_pair_t, result_pair_t> binim_fold = {
               { {Add, Add}, {Add, [](T a, T b) { return a + b; }} },
               { {Add, Sub}, {Add, [](T a, T b) { return a - b; }} },
               { {Sub, Add}, {Add, [](T a, T b) { return b - a; }} },
@@ -627,7 +627,7 @@ void BasicOptimizer::Emit(UnconditionalBranch& op) {
     if (block_deps.to.empty()) {
       // no dependencies so far, we can link this block if the next block only has one input
       if (!visited.contains(op.dest) && this->block_graph.at(op.dest).from.size() == 1) {
-        LinkBlocks(op.dest);
+        LinkBlock(op.dest);
         return;
       }
     }

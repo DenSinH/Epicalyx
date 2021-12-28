@@ -55,10 +55,10 @@ struct BasicOptimizer final : ProgramDependencies {
   template<typename T, class F>
   bool FindExprResultReplacement(T& op, F predicate);
   bool ResolveBranchIndirection(calyx::Branch& op);
-  void LinkBlocks(block_label_t next_block);
+  void LinkBlock(block_label_t next_block);
 
   template<typename T>
-  const T* TryGetVarDirective(var_index_t idx);
+  const T* TryGetVarDirective(var_index_t idx) const;
 
   template<typename T, typename... Args>
   std::pair<calyx::block_label_t, int> EmitNew(Args... args) {

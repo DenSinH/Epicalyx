@@ -8,10 +8,7 @@
 #include "file/File.h"
 #include "file/SString.h"
 #include "tokenizer/Tokenizer.h"
-#include "types/Types.h"
 #include "parser/Parser.h"
-#include "taxy/Declaration.h"
-#include "taxy/Statement.h"
 
 
 #include "Log.h"
