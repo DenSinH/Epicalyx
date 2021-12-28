@@ -21,7 +21,7 @@ static std::string to_string(const T& t) {
 
 template<typename T> static std::string to_string(const std::unique_ptr<T>& t) { return t->ToString(); }
 template<typename T> static std::string to_string(const std::shared_ptr<T>& t) { return t->ToString(); }
-static std::string to_string(const std::string& s) { return s; }
+[[maybe_unused]] static std::string to_string(const std::string& s) { return s; }
 
 template<typename... Args>
 std::string Format(const std::string& format, const Args& ... args) {

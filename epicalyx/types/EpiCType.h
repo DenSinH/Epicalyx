@@ -112,8 +112,8 @@ struct CType {
   };
 
   CType(LValueNess lvalue, u32 flags = 0) :
-          lvalue(lvalue),
-          qualifiers(flags) {
+      qualifiers(flags),
+      lvalue(lvalue) {
 
   }
 

@@ -1,165 +1,73 @@
 #include "RemoveUnused.h"
-#include "Cast.h"
+#include "calyx/Calyx.h"
+#include "ProgramDependencies.h"
+
+#include <algorithm>
+
 
 namespace epi {
 
-void RemoveUnused::EmitProgram(Program& program) {
-  dependencies.EmitProgram(program);
-  new_program.functions    = std::move(program.functions);
-  new_program.globals      = std::move(program.globals);
-  new_program.strings      = std::move(program.strings);
+static void NullifyUnusedLocals(calyx::Program& program, ProgramDependencies& dependencies) {
+  // remove unused locals
+  for (const auto& [loc_idx, local] : dependencies.local_graph) {
+    if (local.reads == 0) {
+      // local is never read/aliased
+      // remove creation and all local writes
+      program.blocks.at(local.pos_made.first)[local.pos_made.second] = nullptr;
+      for (auto [pos, var_idx] : local.writes) {
+        program.blocks.at(pos.first)[pos.second] = nullptr;
 
-  for (const auto& [symbol, entry] : new_program.functions) {
-    auto closure = dependencies.OrderedUpwardClosure(entry);
-
-    for (const auto& block : closure) {
-      auto inserted = new_program.blocks.emplace(block, calyx::Program::block_t{}).first;
-      current_block = &inserted->second;
-      for (const auto& directive : program.blocks.at(block)) {
-        directive->Emit(*this);
+        if (var_idx) {
+          // remove use case from stored var
+          dependencies.var_graph.at(var_idx).other_uses--;
+        }
       }
     }
   }
 }
 
-void RemoveUnused::Emit(AllocateLocal& op) {
-  EmitCopy(op);
+
+static void NullifyUnusedVars(calyx::Program& program, ProgramDependencies& dependencies) {
+  cotyl::unordered_set<var_index_t> todo{};
+  // copy map keys
+  std::transform(dependencies.var_graph.begin(), dependencies.var_graph.end(), std::inserter(todo, todo.begin()),
+                 [](auto& kv) { return kv.first; });
+
+  while (!todo.empty()) {
+    const auto var_idx = *todo.begin();
+    todo.erase(todo.begin());
+    const auto& var = dependencies.var_graph.at(var_idx);
+
+    if (var.other_uses == 0 && var.read_for.empty()) {
+      // remove from all dependencies
+      for (auto other : var.deps) {
+        dependencies.var_graph.at(other).read_for.erase(var_idx);
+
+        // other var is now also possibly unused
+        todo.insert(other);
+      }
+
+      // nullify write
+      program.blocks.at(var.pos_made.first)[var.pos_made.second] = nullptr;
+    }
+  }
 }
 
-void RemoveUnused::Emit(DeallocateLocal& op) {
-  EmitCopy(op);
-}
+void RemoveUnused(calyx::Program& program) {
+  ProgramDependencies dependencies;
+  dependencies.EmitProgram(program);
 
-template<typename To, typename From>
-void RemoveUnused::EmitCast(Cast<To, From>& op) {
-  EmitExpr(op);
-}
+  // this also removed any uses from the stored vars
+  NullifyUnusedLocals(program, dependencies);
+  NullifyUnusedVars(program, dependencies);
 
-template<typename T>
-void RemoveUnused::EmitLoadLocal(LoadLocal<T>& op) {
-  EmitExpr(op);
+  // remove nullified directives
+  for (auto& [block_idx, block] : program.blocks) {
+    block.erase(
+        std::remove_if(block.begin(), block.end(), [](const auto& directive) { return directive == nullptr; }),
+        block.end()
+    );
+  }
 }
-
-void RemoveUnused::Emit(LoadLocalAddr& op) {
-  EmitExpr(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitStoreLocal(StoreLocal<T>& op) {
-  EmitCopy(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitLoadGlobal(LoadGlobal<T>& op) {
-  EmitExpr(op);
-}
-
-void RemoveUnused::Emit(LoadGlobalAddr& op) {
-  EmitExpr(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitStoreGlobal(StoreGlobal<T>& op) {
-  EmitCopy(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitLoadFromPointer(LoadFromPointer<T>& op) {
-  EmitExpr(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitStoreToPointer(StoreToPointer<T>& op) {
-  EmitCopy(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitCall(Call<T>& op) {
-  EmitCopy(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitCallLabel(CallLabel<T>& op) {
-  EmitCopy(op);
-}
-
-void RemoveUnused::Emit(ArgMakeLocal& op) {
-  EmitCopy(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitReturn(Return<T>& op) {
-  EmitCopy(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitImm(Imm<T>& op) {
-  EmitExpr(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitUnop(Unop<T>& op) {
-  EmitExpr(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitBinop(Binop<T>& op) {
-  EmitExpr(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitBinopImm(BinopImm<T>& op) {
-  EmitExpr(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitShift(Shift<T>& op) {
-  EmitExpr(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitShiftImm(ShiftImm<T>& op) {
-  EmitExpr(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitCompare(Compare<T>& op) {
-  EmitExpr(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitCompareImm(CompareImm<T>& op) {
-  EmitExpr(op);
-}
-
-void RemoveUnused::Emit(UnconditionalBranch& op) {
-  EmitCopy(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitBranchCompare(BranchCompare<T>& op) {
-  EmitCopy(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitBranchCompareImm(BranchCompareImm<T>& op) {
-  EmitCopy(op);
-}
-
-void RemoveUnused::Emit(Select& op) {
-  EmitCopy(op);
-}
-
-template<typename T>
-void RemoveUnused::EmitAddToPointer(AddToPointer<T>& op) {
-  EmitExpr(op);
-}
-
-void RemoveUnused::Emit(AddToPointerImm& op) {
-  EmitExpr(op);
-}
-
-#define BACKEND_NAME RemoveUnused
-#include "calyx/backend/Templates.inl"
 
 }

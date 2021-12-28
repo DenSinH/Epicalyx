@@ -32,7 +32,7 @@ bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
   for (const auto& [var_idx, loc] : vars_found) {
     auto& directive = new_program.blocks.at(loc.first)[loc.second];
     if (IsType<T>(directive)) {
-      auto candidate_block = this->var_graph.at(var_idx).block_made;
+      auto candidate_block = this->var_graph.at(var_idx).pos_made.first;
       auto ancestor = CommonBlockAncestor(candidate_block, current_new_block_idx);
 
       // todo: shift directives back for earlier ancestor blocks
@@ -131,7 +131,7 @@ void BasicOptimizer::EmitProgram(Program& _program) {
       cotyl::Assert(locals.empty());
 
       current_old_block_idx = current_new_block_idx = *todo.begin();
-      this->PD::current_block_idx = current_new_block_idx;
+      this->PD::pos.first = current_new_block_idx;  // set this properly to determine the new graph right
       // clear block dependencies
       block_graph[current_new_block_idx] = {};
       reachable = true;
@@ -140,10 +140,12 @@ void BasicOptimizer::EmitProgram(Program& _program) {
       auto inserted = new_program.blocks.emplace(current_new_block_idx, calyx::Program::block_t{}).first;
       current_block = &inserted->second;
 
+      this->PD::pos.second = 0;
       while (!visited.contains(current_old_block_idx)) {
         const auto block = current_old_block_idx;
         visited.insert(block);
         for (const auto& directive : _program.blocks.at(block)) {
+          this->PD::pos.second++;
           directive->Emit(*this);
           if (!reachable) break;  // hit return statement/branch
           if (current_old_block_idx != block) break;  // jumped to linked block
@@ -160,6 +162,8 @@ void BasicOptimizer::Emit(AllocateLocal& op) {
 void BasicOptimizer::Emit(DeallocateLocal& op) {
   EmitCopy(op);
 }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Woverloaded-virtual"
 
 template<typename To, typename From>
 void BasicOptimizer::EmitCast(Cast<To, From>& op) {
@@ -586,6 +590,7 @@ void BasicOptimizer::Emit(UnconditionalBranch& op) {
     if (block_deps.to.empty()) {
       // no dependencies so far, we can link this block if the next block only has one input
       if (!visited.contains(op.dest) && this->block_graph.at(op.dest).from.size() == 1) {
+        std::printf("link %llu to %llu\n", op.dest, current_new_block_idx);
         LinkBlocks(op.dest);
         return;
       }
@@ -749,5 +754,6 @@ void BasicOptimizer::Emit(AddToPointerImm& op) {
 
 #define BACKEND_NAME BasicOptimizer
 #include "calyx/backend/Templates.inl"
+#pragma clang diagnostic pop
 
 }

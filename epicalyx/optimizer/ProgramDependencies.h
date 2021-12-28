@@ -25,14 +25,25 @@ struct ProgramDependencies : calyx::Backend {
   cotyl::unordered_map<block_label_t, Block> block_graph{};
 
   struct Var {
-    block_label_t block_made = -1;
+    std::pair<block_label_t, int> pos_made = {0, -1};
     cotyl::unordered_set<var_index_t> deps{};
-    u64 read_count = 0;
+    cotyl::unordered_set<var_index_t> read_for{};
+    u64 other_uses = 0;  // call arg/return val/store to pointer etc.
   };
 
   cotyl::unordered_map<var_index_t, Var> var_graph{};
 
-  block_label_t current_block_idx;
+  struct Local {
+    using Write = std::pair<std::pair<block_label_t, int>, var_index_t>;
+
+    std::pair<block_label_t, int> pos_made = {0, -1};
+    cotyl::unordered_set<Write> writes{};
+    u64 reads = 0;
+  };
+
+  cotyl::unordered_map<var_index_t, Local> local_graph{};
+
+  std::pair<block_label_t, int> pos;
 
   void VisualizeVars();
 

@@ -598,7 +598,7 @@ template<typename T>
 struct StoreToPointer : Directive {
 
   StoreToPointer(var_index_t ptr_idx, var_index_t src, i32 offset = 0) :
-      Directive(Class::Store, GetTID()), src(src), ptr_idx(ptr_idx), offset(offset) {
+      Directive(Class::Store, GetTID()), ptr_idx(ptr_idx), src(src), offset(offset) {
 
   }
 

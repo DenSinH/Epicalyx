@@ -87,18 +87,7 @@ int main() {
       return 1;
     }
 
-    try {
-      auto cleanup = epi::RemoveUnused();
-      cleanup.EmitProgram(program);
-
-      program = std::move(cleanup.new_program);
-    }
-    catch_e {
-      Log::ConsoleColor<Log::Color::Red>();
-      std::cout << "Cleanup error:" << std::endl << std::endl;
-      std::cout << e.what() << std::endl;
-      return 1;
-    }
+    epi::RemoveUnused(program);
   }
 
   PrintProgram(program);
