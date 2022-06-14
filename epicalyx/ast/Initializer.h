@@ -12,11 +12,11 @@ namespace epi {
 struct StructUnionType;
 }
 
-namespace epi::taxy {
+namespace epi::ast {
 
 struct InitializerList;
 
-using Designator = std::variant<std::string, i32>;
+using Designator = std::variant<std::string, i64>;
 using DesignatorList = std::vector<Designator>;
 using Initializer = std::variant<pExpr, pNode<InitializerList>>;
 

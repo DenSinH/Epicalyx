@@ -11,7 +11,7 @@ namespace epi {
 struct Parser;
 }
 
-namespace epi::taxy {
+namespace epi::ast {
 
 struct Declaration;
 struct FunctionDefinition;

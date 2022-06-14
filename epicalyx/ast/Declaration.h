@@ -10,7 +10,7 @@
 #include <optional>
 
 
-namespace epi::taxy {
+namespace epi::ast {
 
 struct Compound;
 

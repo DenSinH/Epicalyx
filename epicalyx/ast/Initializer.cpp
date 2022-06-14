@@ -7,7 +7,7 @@
 #include <sstream>
 #include <regex>
 
-namespace epi::taxy {
+namespace epi::ast {
 
 
 std::string InitializerList::ToString() const {
@@ -20,7 +20,7 @@ std::string InitializerList::ToString() const {
         repr << '.' << std::get<std::string>(des);
       }
       else {
-        repr << '[' << std::get<i32>(des) << ']';
+        repr << '[' << std::get<i64>(des) << ']';
       }
     }
     if (!init.first.empty()) {

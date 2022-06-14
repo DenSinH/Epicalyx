@@ -1,11 +1,9 @@
 #include "ConstTokenVisitor.h"
-#include "taxy/Expression.h"
+#include "ast/Expression.h"
 #include "tokenizer/Token.h"
 
 
 namespace epi {
-
-using namespace taxy;
 
 pExpr ConstTokenVisitor::Visit(const Token& tok) {
   throw std::runtime_error("Visited node is not a constant expression");

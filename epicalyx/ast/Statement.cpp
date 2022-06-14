@@ -7,7 +7,7 @@
 #include <regex>
 #include <sstream>
 
-namespace epi::taxy {
+namespace epi::ast {
 
 For::For(std::vector<pNode<Declaration>>&& decls,
          std::vector<pExpr>&& inits,

@@ -4,7 +4,7 @@
 #include "parser/Parser.h"
 
 
-namespace epi::taxy {
+namespace epi::ast {
 
 pExpr Expr::EReduce(const Parser& parser) {
   return ConstTypeVisitor(parser).GetConstNode(*SemanticAnalysis(parser));

@@ -5,13 +5,13 @@
 #include "Containers.h"
 #include "tokenizer/Token.h"
 #include "types/Types.h"
-#include "taxy/Initializer.h"
+#include "ast/Initializer.h"
 
 #include <stack>
 
 namespace epi {
 
-namespace taxy {
+namespace ast {
 
 struct Declaration;
 enum class StorageClass;
@@ -20,7 +20,7 @@ struct FunctionDefinition;
 
 }
 
-using namespace taxy;
+using namespace ast;
 
 
 struct Parser final : public cotyl::Locatable {

@@ -3,9 +3,9 @@
 #include "calyx/Calyx.h"
 #include "calyx/backend/interpreter/Interpreter.h"
 #include "types/EpiCType.h"
-#include "taxy/Declaration.h"
-#include "taxy/Statement.h"
-#include "taxy/Expression.h"
+#include "ast/Declaration.h"
+#include "ast/Statement.h"
+#include "ast/Expression.h"
 #include "Is.h"
 #include "Cast.h"
 
@@ -14,9 +14,9 @@
 #include "Helpers.inl"
 
 
-namespace epi::phyte {
+namespace epi {
 
-void ASTWalker::Visit(epi::taxy::Declaration& decl) {
+void ASTWalker::Visit(epi::ast::Declaration& decl) {
   if (locals.Depth() == 1) {
     // global symbols
     local_types.Set(decl.name, decl.type);
@@ -73,7 +73,7 @@ void ASTWalker::Visit(epi::taxy::Declaration& decl) {
   }
 }
 
-void ASTWalker::Visit(epi::taxy::FunctionDefinition& decl) {
+void ASTWalker::Visit(FunctionDefinition& decl) {
   local_types.Set(decl.symbol, decl.signature);
 
   auto block = emitter.MakeBlock();

@@ -5,7 +5,7 @@
 #include "parser/Parser.h"
 
 
-namespace epi::taxy {
+namespace epi::ast {
 
 FunctionDefinition::FunctionDefinition(pType<const FunctionType> signature, std::string symbol, pNode<Compound>&& body) :
     signature(std::move(signature)),

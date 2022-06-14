@@ -1,5 +1,7 @@
 
-namespace epi::phyte {
+namespace epi {
+
+using namespace ast;
 
 namespace detail {
 

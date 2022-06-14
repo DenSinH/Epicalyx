@@ -3,7 +3,7 @@
 #include "Node.h"
 
 
-namespace epi::taxy {
+namespace epi::ast {
 
 struct NodeVisitor {
   virtual void Visit(Declaration& decl) = 0;

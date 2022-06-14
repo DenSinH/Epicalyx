@@ -1,6 +1,6 @@
 #include "Parser.h"
-#include "taxy/Expression.h"
-#include "taxy/Declaration.h"
+#include "ast/Expression.h"
+#include "ast/Declaration.h"
 #include "tokenizer/Token.h"
 #include "ConstTokenVisitor.h"
 #include "Is.h"
@@ -9,7 +9,7 @@
 
 namespace epi {
 
-using namespace taxy;
+using namespace ast;
 
 pExpr Parser::EPrimary() {
   auto current = in_stream.Get();

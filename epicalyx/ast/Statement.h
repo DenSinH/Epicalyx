@@ -6,7 +6,7 @@
 #include "NodeVisitor.h"
 
 
-namespace epi::taxy {
+namespace epi::ast {
 
 struct Declaration;
 

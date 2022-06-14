@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "phyte/Emitter.h"
+#include "ir_emitter/Emitter.h"
 #include "calyx/backend/interpreter/Interpreter.h"
 #include "optimizer/ProgramDependencies.h"
 #include "optimizer/BasicOptimizer.h"
@@ -29,7 +29,7 @@ void PrintProgram(const epi::Program& program) {
 
 int main() {
   // auto file = epi::File("tests/test.c");
-  auto file = epi::File("examples/emitting/optimizing.c");
+  auto file = epi::File("examples/emitting/loops.c");
   auto tokenizer = epi::Tokenizer(file);
   auto parser = epi::Parser(tokenizer);
 
@@ -52,7 +52,7 @@ int main() {
     return 1;
   }
 
-  auto emitter = epi::phyte::Emitter();
+  auto emitter = epi::Emitter();
   try {
     emitter.MakeProgram(parser.declarations);
   }

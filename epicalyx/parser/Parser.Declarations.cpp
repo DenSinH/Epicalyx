@@ -1,8 +1,8 @@
 #include "Parser.h"
 #include "Is.h"
 #include "Cast.h"
-#include "taxy/Declaration.h"
-#include "taxy/Statement.h"
+#include "ast/Declaration.h"
+#include "ast/Statement.h"
 
 #include <optional>
 #include <iostream>

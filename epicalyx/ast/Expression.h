@@ -13,7 +13,7 @@
 #include <variant>
 
 
-namespace epi::taxy {
+namespace epi::ast {
 
 struct ConstTypeVisitor : public TypeVisitor {
   ConstTypeVisitor(const Parser& parser) : parser(parser) { }

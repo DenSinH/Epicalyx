@@ -2,7 +2,7 @@
 
 #include "Format.h"
 
-#include "taxy/Node.h"
+#include "ast/Node.h"
 #include "parser/ConstTokenVisitor.h"
 #include "Containers.h"
 
@@ -106,7 +106,7 @@ struct Token {
 
   }
 
-  virtual taxy::pExpr GetConst(ConstTokenVisitor& v) const { return v.Visit(*this); }
+  virtual ast::pExpr GetConst(ConstTokenVisitor& v) const { return v.Visit(*this); }
   void Expect(TokenType t) const;
 
   virtual std::string ToString() const {
@@ -129,7 +129,7 @@ struct tIdentifier final : public Token {
 
   }
 
-  taxy::pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
+  ast::pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
 
   std::string ToString() const final {
     return name;
@@ -151,7 +151,7 @@ struct tNumericConstant final : public Token {
 
   }
 
-  taxy::pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
+  ast::pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
 
   std::string ToString() const final {
     return std::to_string(value);
@@ -172,7 +172,7 @@ struct tStringConstant : public Token {
 
   }
 
-  taxy::pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
+  ast::pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
 
   std::string ToString() const final {
     return cotyl::Format("\"%s\"", value.c_str());

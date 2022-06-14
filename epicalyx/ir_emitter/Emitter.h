@@ -1,12 +1,12 @@
 #pragma once
 
 #include "calyx/Calyx.h"
-#include "taxy/Node.h"
+#include "ast/Node.h"
 
 #include <vector>
 #include <unordered_map>
 
-namespace epi::phyte {
+namespace epi {
 
 struct Emitter {
 
@@ -54,7 +54,7 @@ struct Emitter {
     current_block = id;
   }
 
-  void MakeProgram(std::vector<taxy::pNode<taxy::Decl>>& ast);
+  void MakeProgram(std::vector<ast::pNode<ast::Decl>>& ast);
 
   // 0 are special IDs
   calyx::var_index_t ir_counter = 1;  // ir vars
