@@ -7,7 +7,7 @@ namespace epi {
 
 struct File final : public cotyl::Stream<char> {
 
-  File(std::string filename);
+  File(const std::string& filename);
   ~File();
 
   void PrintLoc() const final;

@@ -5,8 +5,8 @@
 #include "optimizer/ProgramDependencies.h"
 #include "optimizer/BasicOptimizer.h"
 #include "optimizer/RemoveUnused.h"
-#include "file/File.h"
 #include "file/SString.h"
+#include "tokenizer/Preprocessor.h"
 #include "tokenizer/Tokenizer.h"
 #include "parser/Parser.h"
 
@@ -29,8 +29,8 @@ void PrintProgram(const epi::Program& program) {
 
 int main() {
   // auto file = epi::File("tests/test.c");
-  auto file = epi::File("examples/emitting/loops.c");
-  auto tokenizer = epi::Tokenizer(file);
+  auto preprocessor = epi::Preprocessor("examples/emitting/preprocessing.c");
+  auto tokenizer = epi::Tokenizer(preprocessor);
   auto parser = epi::Parser(tokenizer);
 
 #if 1
@@ -48,7 +48,7 @@ int main() {
     Log::ConsoleColor<Log::Color::Red>();
     std::cout << "Parser error:" << std::endl << std::endl;
     std::cout << e.what() << std::endl;
-    file.PrintLoc();
+    preprocessor.PrintLoc();
     return 1;
   }
 

@@ -4,10 +4,11 @@
 #include "Token.h"
 
 #include <memory>
+#include <queue>
 
 namespace epi {
 
-class Tokenizer final : public cotyl::Stream<std::unique_ptr<Token>> {
+class Tokenizer : public cotyl::Stream<std::unique_ptr<Token>> {
 public:
 
   Tokenizer(cotyl::Stream<char>& in_stream) :
@@ -17,15 +18,14 @@ public:
   void PrintLoc() const final { in_stream.PrintLoc(); };
 
 protected:
-  pToken GetNew() final;
-  bool IsEOS() final;
+  pToken GetNew() override;
+  bool IsEOS() override;
 
+  virtual void SkipBlanks();
 
-private:
   cotyl::Stream<char>& in_stream;
 
-  void SkipBlanks();
-
+private:
   template<typename T, typename ...Args>
   static pToken Make(Args... args) {
     return std::make_unique<T>(args...);

@@ -2,7 +2,9 @@ add_library(Tokenizer STATIC
         Token.h
         Tokenizer.h
         Maps.cpp
-        Tokenizer.cpp Token.cpp)
+        Tokenizer.cpp
+        Token.cpp
+        Preprocessor.cpp Preprocessor.h)
 
 set_target_properties(Tokenizer PROPERTIES LINKER_LANGUAGE CXX)
 

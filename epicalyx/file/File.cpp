@@ -4,7 +4,7 @@
 
 namespace epi {
 
-File::File(std::string filename) {
+File::File(const std::string& filename) {
   file = std::ifstream(filename, std::ios::binary);
   if (!file.good()) {
     throw std::runtime_error("Failed to open file!");
@@ -69,7 +69,6 @@ char File::GetNew() {
   if (!value && file.eof()) {
     throw std::runtime_error("Unexpected end of file");
   }
-
   return value;
 }
 

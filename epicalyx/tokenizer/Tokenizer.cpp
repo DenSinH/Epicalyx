@@ -7,13 +7,13 @@
 
 namespace epi {
 
+void Tokenizer::SkipBlanks() {
+  in_stream.SkipWhile(std::isspace);
+}
+
 bool Tokenizer::IsEOS() {
   SkipBlanks();
   return in_stream.EOS();
-}
-
-void Tokenizer::SkipBlanks() {
-  in_stream.SkipWhile(std::isspace);
 }
 
 pToken Tokenizer::GetNew() {
