@@ -27,18 +27,21 @@ void PrintProgram(const epi::Program& program) {
 }
 
 
-int main() {
-  // auto file = epi::File("tests/test.c");
-  auto preprocessor = epi::Preprocessor("examples/emitting/preprocessing.c");
-  auto tokenizer = epi::Tokenizer(preprocessor);
-  auto parser = epi::Parser(tokenizer);
+#undef catch_errors
 
-#if 1
+#ifndef catch_errors
 #define try if (true)
 #define catch_e ; for (std::runtime_error e(""); false;)
 #else
 #define catch_e catch (std::runtime_error& e)
 #endif
+
+
+int main() {
+  // auto file = epi::File("tests/test.c");
+  auto preprocessor = epi::Preprocessor("examples/emitting/preprocessing.c");
+  auto tokenizer = epi::Tokenizer(preprocessor);
+  auto parser = epi::Parser(tokenizer);
 
   try {
     parser.Parse();
