@@ -73,7 +73,7 @@ void Preprocessor::SetNewline(bool status) {
 char Preprocessor::NextCharacter() {
   if (CurrentStream().EOS()) {
     if (include_stack.empty()) {
-      throw std::runtime_error("Unexpected end of file");
+      throw cotyl::EndOfFileException();
     }
     include_stack.pop_back();
 
@@ -82,7 +82,7 @@ char Preprocessor::NextCharacter() {
   }
   char c;
   if (!CurrentStream().Peek(c)) {
-    throw std::runtime_error("Unexpected end of file");
+      throw cotyl::EndOfFileException();
   }
   return c;
 }
@@ -206,7 +206,15 @@ i64 Preprocessor::EatConstexpr() {
   // constant expressions
   auto parser = ConstParser(tokenizer);
 
-  return parser.EConstexpr();
+  try {
+    return parser.EConstexpr();
+  }
+  catch (cotyl::EndOfFileException& e) {
+    throw std::runtime_error("Invalid expression");
+  }
+  catch (cotyl::UnexpectedIdentifierException& e) {
+    throw std::runtime_error("Unexpected identifier in constant expression");
+  }
 }
 
 char Preprocessor::GetNew() {
@@ -470,7 +478,7 @@ void Preprocessor::PreprocessorDirective() {
   }
   else if (pp_token == "pragma") {
     // todo
-    throw std::runtime_error("Unimplemented: #pragma preprocessing directive");
+    throw cotyl::UnimplementedException("#pragma preprocessing directive");
   }
   else {
     throw cotyl::FormatExcept("Unexpected token after '#': %s", pp_token.c_str());

@@ -299,18 +299,18 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
       case TokenType::Double: {
         in_stream.Skip();
         if (type.has_value() && type.value() == Type::Long) {
-          throw std::runtime_error("Unimplemented type: long double");
+          throw cotyl::UnimplementedException("long double");
         }
         type = Type::Double;
         break;
       }
       case TokenType::Bool: {
         in_stream.Skip();
-        throw std::runtime_error("Unimplemented type: _Bool");
+        throw cotyl::UnimplementedException("_Bool");
       }
       case TokenType::Complex: {
         in_stream.Skip();
-        throw std::runtime_error("Unimplemented type: _Complex");
+        throw cotyl::UnimplementedException("_Complex");
       }
 
       case TokenType::Struct:
@@ -368,7 +368,7 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
       case TokenType::Atomic: {
         in_stream.Skip();
         if (in_stream.IsAfter(1, TokenType::LParen)) {
-          throw std::runtime_error("Unimplemented specifier: _Atomic");
+          throw cotyl::UnimplementedException("_Atomic");
         }
         qualifiers |= CType::Qualifier::Atomic;
         break;
@@ -384,7 +384,7 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
 
       case TokenType::Alignas: {
         in_stream.Skip();
-        throw std::runtime_error("Unimplemented specifier: _Alignas");
+        throw cotyl::UnimplementedException("_Alignas");
       }
 
       case TokenType::Identifier: {

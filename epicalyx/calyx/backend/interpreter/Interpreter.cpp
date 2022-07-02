@@ -2,6 +2,7 @@
 
 #include "cycle/Cycle.h"
 #include "CustomAssert.h"
+#include "Exceptions.h"
 #include "Format.h"
 #include "Cast.h"
 
@@ -200,7 +201,7 @@ template<typename T>
 void Interpreter::EmitLoadLocal(LoadLocal<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<T, Struct>) {
-    throw std::runtime_error("Unimplemented: load struct cvar");
+    throw cotyl::UnimplementedException("load struct cvar");
   }
   else {
     // works the same for pointers
@@ -218,7 +219,7 @@ template<typename T>
 void Interpreter::EmitStoreLocal(StoreLocal<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<T, Struct>) {
-    throw std::runtime_error("Unimplemented: store struct local");
+    throw cotyl::UnimplementedException("store struct local");
   }
   else {
     // works the same for pointers
@@ -230,7 +231,7 @@ void Interpreter::EmitStoreLocal(StoreLocal<T>& op) {
 template<typename T>
 void Interpreter::EmitLoadGlobal(LoadGlobal<T>& op) {
   if constexpr(std::is_same_v<T, Struct>) {
-    throw std::runtime_error("Unimplemented: load struct global");
+    throw cotyl::UnimplementedException("load struct global");
   }
   else {
     cotyl::Assert(global_data[globals.at(op.symbol)].size() == sizeof(T));
@@ -247,7 +248,7 @@ void Interpreter::Emit(LoadGlobalAddr& op) {
 template<typename T>
 void Interpreter::EmitStoreGlobal(StoreGlobal<T>& op) {
   if constexpr(std::is_same_v<T, Struct>) {
-    throw std::runtime_error("Unimplemented: load struct global");
+    throw cotyl::UnimplementedException("store struct global");
   }
   else {
     cotyl::Assert(global_data[globals.at(op.symbol)].size() == sizeof(T));
@@ -260,7 +261,7 @@ template<typename T>
 void Interpreter::EmitLoadFromPointer(LoadFromPointer<T>& op) {
   auto pointer = ReadPointer(std::get<Pointer>(vars.Get(op.ptr_idx)).value);
   if constexpr(std::is_same_v<T, Struct>) {
-    throw std::runtime_error("Unimplemented: load struct from pointer");
+    throw cotyl::UnimplementedException("load struct from pointer");
   }
   else {
     T value;
@@ -282,7 +283,7 @@ template<typename T>
 void Interpreter::EmitStoreToPointer(StoreToPointer<T>& op) {
   auto pointer = ReadPointer(std::get<Pointer>(vars.Get(op.ptr_idx)).value);
   if constexpr(std::is_same_v<T, Struct>) {
-    throw std::runtime_error("Unimplemented: store struct to pointer");
+    throw cotyl::UnimplementedException("store struct to pointer");
   }
   else {
     T value = std::get<calyx_upcast_t<T>>(vars.Get(op.src));
@@ -410,15 +411,15 @@ void Interpreter::Emit(ArgMakeLocal& op) {
       break;
     }
     case Argument::Type::Struct: {
-      throw std::runtime_error("Unimplemented: struct argument");
+    throw cotyl::UnimplementedException("struct argument");
     }
   }
 }
 
 template<typename T>
 void Interpreter::EmitReturn(Return<T>& op) {
-  auto top_vars = std::move(vars.Top());
-  auto top_locals = std::move(locals.Top());
+  auto top_vars = vars.Top();
+  auto top_locals = locals.Top();
   locals.PopLayer();
   vars.PopLayer();
 
@@ -620,7 +621,7 @@ void Interpreter::EmitCompare(Compare<T>& op) {
       }
     }
     else {
-      throw std::runtime_error("unimplemented: symbol compare");
+      throw cotyl::UnimplementedException("symbol compare");
     }
   }
   else {
@@ -657,7 +658,7 @@ void Interpreter::EmitCompareImm(CompareImm<T>& op) {
       }
     }
     else {
-      throw std::runtime_error("unimplemented: symbol compare");
+      throw cotyl::UnimplementedException("symbol compare");
     }
   }
   else {
@@ -700,7 +701,7 @@ void Interpreter::EmitBranchCompare(BranchCompare<T>& op) {
       }
     }
     else {
-      throw std::runtime_error("unimplemented: symbol compare");
+      throw cotyl::UnimplementedException("symbol compare");
     }
   }
   else {
@@ -742,7 +743,7 @@ void Interpreter::EmitBranchCompareImm(BranchCompareImm<T>& op) {
       }
     }
     else {
-      throw std::runtime_error("unimplemented: symbol compare");
+      throw cotyl::UnimplementedException("symbol compare");
     }
   }
   else {

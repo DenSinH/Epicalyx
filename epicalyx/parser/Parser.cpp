@@ -13,7 +13,7 @@ void ConstParser::PrintLoc() const {
 }
 
 pType<const CType> ConstParser::ResolveIdentifierType(const std::string& name) const {
-  throw std::runtime_error("Unexpected identifier");
+  throw cotyl::UnexpectedIdentifierException();
 }
 
 pType<const CType> Parser::ResolveIdentifierType(const std::string& name) const {

@@ -88,8 +88,8 @@ struct EmitterTypeVisitor : TypeVisitor {
   void Visit(const PointerType& type) final { VisitPointerImpl(type.Deref()->Sizeof()); }
   void Visit(const ArrayType& type) final { VisitPointerImpl(type.Deref()->Sizeof()); }
   void Visit(const FunctionType& type) final { VisitPointerImpl(type.Deref()->Sizeof()); }
-  void Visit(const StructType& type) final { throw std::runtime_error("Unimplemented"); }
-  void Visit(const UnionType& type) final { throw std::runtime_error("Unimplemented"); }
+  void Visit(const StructType& type) final { throw cotyl::UnimplementedException(); }
+  void Visit(const UnionType& type) final { throw cotyl::UnimplementedException(); }
 };
 
 
@@ -298,10 +298,10 @@ struct GlobalInitializerVisitor : TypeVisitor {
   void Visit(const ValueType<float>& type) final { result = float{0}; }
   void Visit(const ValueType<double>& type) final { result = double{0}; }
   void Visit(const PointerType& type) final { result = calyx::Pointer{0}; }
-  void Visit(const ArrayType& type) final { throw std::runtime_error("Unimplemented: global array"); }
+  void Visit(const ArrayType& type) final { throw cotyl::UnimplementedException("global array"); }
   void Visit(const FunctionType& type) final { result = calyx::Pointer{0}; }
-  void Visit(const StructType& type) final { throw std::runtime_error("Unimplemented: global struct"); }
-  void Visit(const UnionType& type) final { throw std::runtime_error("Unimplemented: global struct");  }
+  void Visit(const StructType& type) final { throw cotyl::UnimplementedException("global struct"); }
+  void Visit(const UnionType& type) final { throw cotyl::UnimplementedException("global struct");  }
 };
 
 }

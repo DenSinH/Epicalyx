@@ -15,7 +15,7 @@ pExpr ConstParser::EPrimary() {
   auto current = in_stream.Get();
   switch (current->Class()) {
     case TokenClass::Identifier: {
-      throw std::runtime_error("Unexpected identifier in BaseParser expression");
+      throw cotyl::UnexpectedIdentifierException();
     }
     case TokenClass::StringConstant:
     case TokenClass::NumericalConstant: {

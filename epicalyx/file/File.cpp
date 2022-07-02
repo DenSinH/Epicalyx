@@ -1,5 +1,7 @@
 #include "File.h"
 
+#include "Exceptions.h"
+
 #include <iostream>
 
 namespace epi {
@@ -67,7 +69,7 @@ char File::GetNew() {
     line = file.tellg();
   }
   if (!value && file.eof()) {
-    throw std::runtime_error("Unexpected end of file");
+    throw cotyl::EndOfFileException();
   }
   return value;
 }

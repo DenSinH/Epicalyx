@@ -3,6 +3,7 @@
 #include "types/Types.h"
 #include "parser/Parser.h"
 #include "Log.h"
+#include "Exceptions.h"
 
 #include <sstream>
 #include <regex>
@@ -57,11 +58,11 @@ void ValidInitializerListVisitor::VisitScalar(const CType& type) {
 }
 
 void ValidInitializerListVisitor::VisitStructLike(const StructUnionType& type) {
-  throw std::runtime_error("Unimplemented");
+  throw cotyl::UnimplementedException();
 }
 
 void ValidInitializerListVisitor::Visit(const ArrayType& type) {
-  throw std::runtime_error("Unimplemented");
+  throw cotyl::UnimplementedException();
 }
 
 void ReduceInitializerListVisitor::VisitScalar(const CType& type) {

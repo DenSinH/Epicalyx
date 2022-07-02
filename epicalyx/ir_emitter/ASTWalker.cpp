@@ -1,14 +1,16 @@
 #include "ASTWalker.h"
 #include "Emitter.h"
+
 #include "calyx/Calyx.h"
 #include "calyx/backend/interpreter/Interpreter.h"
 #include "types/EpiCType.h"
 #include "ast/Declaration.h"
 #include "ast/Statement.h"
 #include "ast/Expression.h"
+
 #include "Is.h"
 #include "Cast.h"
-
+#include "Exceptions.h"
 #include "CustomAssert.h"
 
 #include "Helpers.inl"
@@ -44,7 +46,7 @@ void ASTWalker::Visit(epi::ast::Declaration& decl) {
       }
       else {
         // todo: handle initializer list
-        throw std::runtime_error("Unimplemented: global initializer list declaration");
+        throw cotyl::UnimplementedException("global initializer list declaration");
       }
     }
   }
@@ -67,7 +69,7 @@ void ASTWalker::Visit(epi::ast::Declaration& decl) {
       }
       else {
         // todo: handle initializer list
-        throw std::runtime_error("Unimplemented: initializer list declaration");
+        throw cotyl::UnimplementedException("initializer list declaration");
       }
     }
   }
@@ -244,7 +246,7 @@ template void ASTWalker::ConstVisitImpl(NumericalConstant<double>&);
 
 void ASTWalker::Visit(StringConstant& expr) {
   // load from rodata
-  throw std::runtime_error("unimplemented: string constant");
+  throw cotyl::UnimplementedException("string constant");
 }
 
 void ASTWalker::Visit(ArrayAccess& expr) {
@@ -369,11 +371,11 @@ void ASTWalker::Visit(FunctionCall& expr) {
 }
 
 void ASTWalker::Visit(MemberAccess& expr) {
-  throw std::runtime_error("unimplemented: member access");
+  throw cotyl::UnimplementedException("member access");
 }
 
 void ASTWalker::Visit(TypeInitializer& expr) {
-  throw std::runtime_error("unimplemented: type initializer");
+  throw cotyl::UnimplementedException("type initializer");
 }
 
 void ASTWalker::Visit(PostFix& expr) {
@@ -699,7 +701,7 @@ void ASTWalker::Visit(Binop& expr) {
       if (emitter.vars[left].type == calyx::Var::Type::Pointer) {
         auto var = emitter.vars[left];
         if (emitter.vars[right].type == calyx::Var::Type::Pointer) {
-          throw std::runtime_error("Uniplemented: pointer diff");
+          throw cotyl::UnimplementedException("pointer diff");
         }
         else {
           EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, calyx::PtrAddType::Sub, var.stride, right);

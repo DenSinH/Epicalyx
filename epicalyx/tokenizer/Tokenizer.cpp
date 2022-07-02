@@ -20,7 +20,7 @@ pToken Tokenizer::GetNew() {
   char c;
   SkipBlanks();
   if (!in_stream.Peek(c)) {
-    throw cotyl::FormatExcept("Unexpected end of file while fetching token");
+    throw cotyl::EndOfFileException();
   }
 
   if (std::isalpha(c) || c == '_') {
@@ -108,7 +108,7 @@ pToken Tokenizer::GetNew() {
       return Make<Token>(Punctuators.at(punctuator));
     }
 
-    throw std::runtime_error("Unexpected end of stream while reading punctuator");
+    throw cotyl::EndOfFileException();
   }
 }
 

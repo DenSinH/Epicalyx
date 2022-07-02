@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Format.h"
+#include "Exceptions.h"
 
 #include <deque>
 #include <string>
@@ -57,7 +58,7 @@ struct Stream : public Locatable {
 
   void Skip() {
     if (EOS()) {
-      throw std::runtime_error("Unexpected EOS");
+      throw cotyl::EndOfFileException();
     }
     [[maybe_unused]] T _ = Get();
   }
@@ -99,7 +100,7 @@ struct Stream : public Locatable {
   const base_t* ForcePeek(size_t amount = 0) {
     const base_t* value;
     if (!Peek(value, amount)) {
-      throw std::runtime_error("Unexpected end of stream");
+      throw cotyl::EndOfFileException();
     }
     return value;
   }
@@ -184,56 +185,5 @@ protected:
 
   virtual bool IsEOS() = 0;
 };
-
-
-//template<typename T>
-//struct pStream : public Stream<std::shared_ptr<T>> {
-//
-//  bool IsAfter(size_t amount, const T& expect) {
-//    std::shared_ptr<T> value;
-//    return Stream<std::shared_ptr<T>>::Peek(value, amount) && *value == expect;
-//  }
-//
-//  bool IsAfter(size_t amount, const std::shared_ptr<T>& expect) override {
-//    return IsAfter(amount, *expect);
-//  }
-//
-//  template<typename ...Args>
-//  bool IsAfter(size_t amount, const T& expect, const Args&... args) {
-//    return IsAfter(amount, expect) || IsAfter(amount, args...);
-//  }
-//
-//  void Expect(const T& expect) {
-//    if (!IsAfter(0, expect)) {
-//      throw cotyl::FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, Stream<std::shared_ptr<T>>::Get());
-//    }
-//  }
-//
-//  std::shared_ptr<T> Eat(const T& expect) {
-//    using std::to_string;
-//
-//    const auto got = Stream<std::shared_ptr<T>>::Get();
-//    if (!(*got == expect)) {
-//      throw FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, got);
-//    }
-//    return got;
-//  }
-//
-//
-//  std::shared_ptr<T> Eat(const std::shared_ptr<T>& expect) override {
-//    return Eat(*expect);
-//  }
-//
-//  void EatSequence(const T& expect) {
-//    Eat(expect);
-//  }
-//
-//  template<typename ...Args>
-//  void EatSequence(const T& expect, const Args&... args) {
-//    Eat(expect);
-//    EatSequence(args...);
-//  }
-//
-//};
 
 }
