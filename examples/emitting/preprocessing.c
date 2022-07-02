@@ -10,7 +10,7 @@
 int global = 0;
 
 /* comment */void test() {
-#ifdef macro
+#if (0 + 1) == 1
   global = 1;
 #elifdef macro2
 #ifdef macro3

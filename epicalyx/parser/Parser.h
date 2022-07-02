@@ -1,11 +1,9 @@
 #pragma once
 
-#include "Stream.h"
+#include "ConstParser.h"
 #include "Scope.h"
 #include "Containers.h"
-#include "tokenizer/Token.h"
 #include "types/Types.h"
-#include "ast/Initializer.h"
 
 #include <stack>
 
@@ -23,30 +21,22 @@ struct FunctionDefinition;
 using namespace ast;
 
 
-struct Parser final : public cotyl::Locatable {
-
-  Parser(cotyl::Stream<pToken>& in_stream);
-
-  void PrintLoc() const final;
+struct Parser final : public ConstParser {
+  using ConstParser::ConstParser;
 
   using enum_type = i32;
 
-  pExpr EPrimary();
+  pExpr EPrimary() final;
   pExpr EPostfix();
   pExpr EUnary();
   pType<const CType> ETypeName();
-  pExpr ECast();
-  template<pExpr (Parser::*SubNode)(), enum TokenType... types>
-  pExpr EBinopImpl();
-  pExpr EBinop();
-  pExpr ETernary();
-  pExpr EAssignment();
+  pExpr ECast() final;
+  pExpr EAssignment() final;
   pExpr EExpression();
-  i64 EConstexpr();
-  void EExpressionList(std::vector<pExpr>& dest);
-
   Initializer EInitializer();
   pNode<InitializerList> EInitializerList();
+  pType<const CType> ResolveIdentifierType(const std::string& name) const final;
+  void EExpressionList(std::vector<pExpr>& dest);
 
   void DStaticAssert();
   std::pair<pType<>, StorageClass> DSpecifier();
@@ -72,7 +62,6 @@ struct Parser final : public cotyl::Locatable {
     For, While, DoWhile
   };
 
-  cotyl::Stream<pToken>& in_stream;
   cotyl::MapScope<std::string, enum_type> enum_values{};
   cotyl::SetScope<std::string> enums{};
   cotyl::MapScope<std::string, pType<const CType>> typedefs{};

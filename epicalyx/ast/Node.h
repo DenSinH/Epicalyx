@@ -8,6 +8,7 @@
 #include <string>
 
 namespace epi {
+struct ConstParser;
 struct Parser;
 }
 
@@ -91,13 +92,13 @@ struct Expr : public Stat {
     return type;
   }
 
-  pType<const CType> SemanticAnalysis(const Parser& parser) {
+  pType<const CType> SemanticAnalysis(const ConstParser& parser) {
     type = SemanticAnalysisImpl(parser);
     return type;
   }
 
 protected:
-  virtual pType<const CType> SemanticAnalysisImpl(const Parser&) const = 0;
+  virtual pType<const CType> SemanticAnalysisImpl(const ConstParser&) const = 0;
 
 public:
   bool IsConstexpr() const { return GetType()->IsConstexpr(); }

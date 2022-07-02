@@ -17,7 +17,7 @@ template<typename K, typename V>
 using map = boost::container::map<K, V>;
 
 template<typename T>
-struct unordered_set : public boost::unordered_set<T> {
+struct unordered_set final : public boost::unordered_set<T> {
   using boost::unordered_set<T>::unordered_set;
 
   bool contains(const T& key) const {
@@ -26,7 +26,7 @@ struct unordered_set : public boost::unordered_set<T> {
 };
 
 template<typename K, typename V>
-struct unordered_map : public boost::unordered_map<K, V> {
+struct unordered_map final : public boost::unordered_map<K, V> {
   using boost::unordered_map<K, V>::unordered_map;
 
   bool contains(const K& key) const {

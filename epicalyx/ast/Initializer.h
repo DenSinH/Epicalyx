@@ -32,11 +32,14 @@ struct InitializerList {
 };
 
 
+template<typename P>
+// todo:
+//requires (std::is_base_of_v<BaseParser, P>)
 struct InitializerListVisitor : public TypeVisitor {
-  InitializerListVisitor(const Parser& parser, InitializerList& list) : parser(parser), list(list) { }
+  InitializerListVisitor(const P& parser, InitializerList& list) : parser(parser), list(list) { }
 
   InitializerList& list;
-  const Parser& parser;
+  const P& parser;
 
   virtual void VisitScalar(const CType& type) = 0;
   virtual void VisitStructLike(const StructUnionType& type) = 0;
@@ -59,8 +62,8 @@ struct InitializerListVisitor : public TypeVisitor {
   void Visit(const UnionType& type) final { VisitStructLike(type); }
 };
 
-struct ValidInitializerListVisitor final : public InitializerListVisitor {
-  ValidInitializerListVisitor(const Parser& parser, InitializerList& list) :
+struct ValidInitializerListVisitor final : public InitializerListVisitor<ConstParser> {
+  ValidInitializerListVisitor(const ConstParser& parser, InitializerList& list) :
       InitializerListVisitor(parser, list) {
 
   }
@@ -70,7 +73,7 @@ struct ValidInitializerListVisitor final : public InitializerListVisitor {
   void Visit(const ArrayType& type) final;
 };
 
-struct ReduceInitializerListVisitor final : public InitializerListVisitor {
+struct ReduceInitializerListVisitor final : public InitializerListVisitor<Parser> {
   ReduceInitializerListVisitor(const Parser& parser, InitializerList& list) :
         InitializerListVisitor(parser, list) {
 

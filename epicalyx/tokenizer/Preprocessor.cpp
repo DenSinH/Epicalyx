@@ -1,5 +1,9 @@
 #include "Preprocessor.h"
 
+#include "file/SString.h"
+#include "Tokenizer.h"
+#include "parser/ConstParser.h"
+
 
 namespace epi {
 
@@ -17,6 +21,11 @@ constexpr bool is_valid_ident_char(char c) {
 }
 
 void Preprocessor::PrintLoc() const {
+  if (include_stack.empty()) {
+    in_stream.stream.PrintLoc();
+    return;
+  }
+
   for (const auto& file : include_stack) {
     std::cout << "in " << file.name << ":" << file.line << std::endl;
   }
@@ -24,28 +33,49 @@ void Preprocessor::PrintLoc() const {
   include_stack.back().stream.PrintLoc();
 }
 
-File& Preprocessor::CurrentStream() {
+cotyl::Stream<char>& Preprocessor::CurrentStream() {
+  if (include_stack.empty()) return in_stream.stream;
   return include_stack.back().stream;
 }
 
+int& Preprocessor::CurrentLine() {
+  if (include_stack.empty()) return in_stream.line;
+  return include_stack.back().line;
+}
+
 bool Preprocessor::Enabled() const {
-  return if_group_stack.empty() || if_group_stack.top().enabled;
+  // only enabled if all nested groups are enabled
+  return if_group_stack.empty() || std::all_of(
+          if_group_stack.begin(),
+          if_group_stack.end(),
+          [](auto& group) { return group.enabled; }
+  );
 }
 
 bool Preprocessor::IsNewline() const {
-  return include_stack.back().is_newline;
+  if (include_stack.empty()) {
+    return in_stream.is_newline;
+  }
+  else {
+    return include_stack.back().is_newline;
+  }
 }
 
 void Preprocessor::SetNewline(bool status) {
-  include_stack.back().is_newline = status;
+  if (include_stack.empty()) {
+    in_stream.is_newline = status;
+  }
+  else {
+    include_stack.back().is_newline = status;
+  }
 }
 
 char Preprocessor::NextCharacter() {
   if (CurrentStream().EOS()) {
-    include_stack.pop_back();
     if (include_stack.empty()) {
       throw std::runtime_error("Unexpected end of file");
     }
+    include_stack.pop_back();
 
     // insert newline character when file ends (for #include safety)
     return '\n';
@@ -58,7 +88,8 @@ char Preprocessor::NextCharacter() {
 }
 
 void Preprocessor::SkipBlanks(bool skip_newlines) {
-  do {
+  // we do not want to crash on an end of stream while skipping whitespace
+  while (!IsEOS()) {
     char c = NextCharacter();
     if (c == '\\') {
       // escaped newline (no newline, do increment line number)
@@ -66,7 +97,7 @@ void Preprocessor::SkipBlanks(bool skip_newlines) {
         CurrentStream().Skip();  // skip \ character
         CurrentStream().SkipWhile([&](char c) -> bool {
           if (c == '\n') {
-            include_stack.back().line++;
+            CurrentLine()++;
             return false;  // only skip one line with escaped newline
           }
           return std::isspace(c);
@@ -77,7 +108,7 @@ void Preprocessor::SkipBlanks(bool skip_newlines) {
       if (skip_newlines) {
         CurrentStream().Skip();
         SetNewline(true);
-        include_stack.back().line++;
+        CurrentLine()++;
       }
       else {
         break;
@@ -89,13 +120,13 @@ void Preprocessor::SkipBlanks(bool skip_newlines) {
     else {
       break;
     }
-  } while (true);
+  }
 }
 
 std::string Preprocessor::FetchLine() {
   std::stringstream line;
 
-  do {
+  while (!IsEOS()) {
     char c = NextCharacter();
     if (c == '\\') {
       // escaped newline (no newline, do increment line number)
@@ -103,7 +134,7 @@ std::string Preprocessor::FetchLine() {
         CurrentStream().Skip();  // skip \ character
         CurrentStream().SkipWhile([&](char c) -> bool {
           if (c == '\n') {
-            include_stack.back().line++;
+            CurrentLine()++;
             return false;  // only skip one line with escaped newline
           }
           return std::isspace(c);
@@ -122,14 +153,15 @@ std::string Preprocessor::FetchLine() {
       CurrentStream().Skip();
       line << c;
     }
-  } while (true);
+  }
+  return line.str();
 }
 
 bool Preprocessor::IsEOS() {
   if (!pre_processor_queue.empty()) {
     return false;
   }
-  return include_stack.size() == 1 && CurrentStream().EOS();
+  return include_stack.empty() && in_stream.stream.EOS();
 }
 
 void Preprocessor::EatNewline() {
@@ -154,8 +186,32 @@ std::string Preprocessor::EatIdentifier() {
   return identifier;
 }
 
+i64 Preprocessor::EatConstexpr() {
+  std::string line = FetchLine();
+
+  auto line_stream = SString(line);
+
+  // copy over definitions to allow using preprocessing definitions in condition
+  // todo: prevent having to allocate new preprocessor and copy over data
+  auto preprocessor = Preprocessor(line_stream);
+  preprocessor.definitions = definitions;
+  preprocessor.in_stream.line = CurrentLine();
+  preprocessor.in_stream.is_newline = false;
+
+  // the Tokenizer class does not allocate any memory anyway
+  auto tokenizer = Tokenizer(preprocessor);
+
+  // ConstParser does not take up any memory (besides the vtable)
+  // this saves us having to copy over the code for parsing
+  // constant expressions
+  auto parser = ConstParser(tokenizer);
+
+  return parser.EConstexpr();
+}
+
 char Preprocessor::GetNew() {
 
+  // no need to check end of stream, since it is expected a new character even exists
   while (true) {
     if (!pre_processor_queue.empty()) {
       char c = pre_processor_queue.front();
@@ -222,7 +278,7 @@ char Preprocessor::GetNew() {
     }
     else if (c == '/' && CurrentStream().SequenceAfter(0, '/', '/')) {
       // comment
-      while (true) {
+      while (!IsEOS()) {
         char k = NextCharacter();
         if (k == '\\') {
           CurrentStream().Skip(2);  // will also skip newlines
@@ -274,19 +330,21 @@ void Preprocessor::PreprocessorDirective() {
   const std::string pp_token = EatIdentifier();
 
   if (pp_token == "if") {
-    // todo
+    SkipBlanks(false);
+    if_group_stack.push_back(IfGroup::If(EatConstexpr() != 0));
+    EatNewline();
   }
   else if (pp_token == "ifdef") {
     SkipBlanks(false);
     auto identifier = EatIdentifier();
-    if_group_stack.push(IfGroup::If(definitions.contains(identifier)));
+    if_group_stack.push_back(IfGroup::If(definitions.contains(identifier)));
 
     EatNewline();
   }
   else if (pp_token == "ifndef") {
     SkipBlanks(false);
     auto identifier = EatIdentifier();
-    if_group_stack.push(IfGroup::If(!definitions.contains(identifier)));
+    if_group_stack.push_back(IfGroup::If(!definitions.contains(identifier)));
 
     EatNewline();
   }
@@ -294,8 +352,9 @@ void Preprocessor::PreprocessorDirective() {
     if (if_group_stack.empty()) {
       throw std::runtime_error("Unexpected elif group");
     }
-    // todo
-    throw std::runtime_error("unimplemented: #elif");
+    SkipBlanks(false);
+    if_group_stack.back().Elif(EatConstexpr() != 0);
+    EatNewline();
   }
   else if (pp_token == "elifdef") {
     // non-standard
@@ -304,7 +363,7 @@ void Preprocessor::PreprocessorDirective() {
     }
     SkipBlanks(false);
     auto identifier = EatIdentifier();
-    if_group_stack.top().Elif(definitions.contains(identifier));
+    if_group_stack.back().Elif(definitions.contains(identifier));
 
     EatNewline();
   }
@@ -315,7 +374,7 @@ void Preprocessor::PreprocessorDirective() {
     }
     SkipBlanks(false);
     auto identifier = EatIdentifier();
-    if_group_stack.top().Elif(!definitions.contains(identifier));
+    if_group_stack.back().Elif(!definitions.contains(identifier));
 
     EatNewline();
   }
@@ -323,7 +382,7 @@ void Preprocessor::PreprocessorDirective() {
     if (if_group_stack.empty()) {
       throw std::runtime_error("Unexpected else group");
     }
-    if_group_stack.top().Else();
+    if_group_stack.back().Else();
 
     EatNewline();
   }
@@ -331,7 +390,7 @@ void Preprocessor::PreprocessorDirective() {
     if (if_group_stack.empty()) {
       throw std::runtime_error("Unexpected end if preprocessor if group");
     }
-    if_group_stack.pop();
+    if_group_stack.pop_back();
     EatNewline();
   }
   else if (pp_token == "define") {
@@ -339,13 +398,15 @@ void Preprocessor::PreprocessorDirective() {
     auto name = EatIdentifier();
     Definition def = {};
 
-    if (NextCharacter() == '(') {
+    if (!IsEOS() && NextCharacter() == '(') {
       // functional macro
       def.arguments = {};
       auto& arguments = def.arguments.value();
       CurrentStream().Skip();  // skip ( character
 
       SkipBlanks(false);
+      // we do end of stream cannot happen here,
+      // since the macro needs to be complete
       if (NextCharacter() != ')') {
         while (true) {
           auto arg = EatIdentifier();
@@ -397,8 +458,8 @@ void Preprocessor::PreprocessorDirective() {
     EatNewline();
   }
   else if (pp_token == "line") {
-    // todo (local parser for expression)
-    throw std::runtime_error("Unimplemented: #line preprocessing directive");
+    CurrentLine() = EatConstexpr();
+    EatNewline();
   }
   else if (pp_token == "error") {
     std::stringstream message{};

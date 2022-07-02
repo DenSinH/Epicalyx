@@ -11,9 +11,32 @@ namespace epi {
 
 using namespace ast;
 
+pExpr ConstParser::EPrimary() {
+  auto current = in_stream.Get();
+  switch (current->Class()) {
+    case TokenClass::Identifier: {
+      throw std::runtime_error("Unexpected identifier in BaseParser expression");
+    }
+    case TokenClass::StringConstant:
+    case TokenClass::NumericalConstant: {
+      auto visitor = ConstTokenVisitor();
+      return current->GetConst(visitor);
+    }
+    case TokenClass::Punctuator: {
+      // has to be (ternary), since in the BaseParser we do not expect assignment
+      // type initializer caught in cast expression
+      current->Expect(TokenType::LParen);
+      auto expr = ETernary();
+      in_stream.Eat(TokenType::RParen);
+      return expr;
+    }
+    default:
+      throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", current);
+  }
+}
+
 pExpr Parser::EPrimary() {
   auto current = in_stream.Get();
-  auto visitor = ConstTokenVisitor();
   switch (current->Class()) {
     case TokenClass::Identifier: {
       // identifier might be enum value
@@ -25,6 +48,7 @@ pExpr Parser::EPrimary() {
     } [[fallthrough]];
     case TokenClass::StringConstant:
     case TokenClass::NumericalConstant: {
+      auto visitor = ConstTokenVisitor();
       return current->GetConst(visitor);
     }
     case TokenClass::Punctuator: {
@@ -154,6 +178,11 @@ pType<const CType> Parser::ETypeName() {
   return decl->type;
 }
 
+pExpr ConstParser::ECast() {
+  // cast expressions are not allowed in BaseParser expressions
+  return this->ConstParser::EPrimary();
+}
+
 pExpr Parser::ECast() {
   const Token* current = in_stream.ForcePeek();
   if (current->type == TokenType::LParen) {
@@ -178,8 +207,8 @@ pExpr Parser::ECast() {
   return EUnary();
 }
 
-template<pExpr (Parser::*SubNode)(), enum TokenType... types>
-pExpr Parser::EBinopImpl() {
+template<pExpr (ConstParser::*SubNode)(), enum TokenType... types>
+pExpr ConstParser::EBinopImpl() {
   pExpr node = (this->*SubNode)();
   const Token* current;
   while (in_stream.Peek(current) && cotyl::Is(current->type).AnyOf<types...>()) {
@@ -189,22 +218,22 @@ pExpr Parser::EBinopImpl() {
   return node;
 }
 
-constexpr auto EMul = &Parser::EBinopImpl<&Parser::ECast, TokenType::Asterisk, TokenType::Div, TokenType::Mod>;
-constexpr auto EAdd = &Parser::EBinopImpl<EMul, TokenType::Plus, TokenType::Minus>;
-constexpr auto EShift = &Parser::EBinopImpl<EAdd, TokenType::LShift, TokenType::RShift>;
-constexpr auto ERelational = &Parser::EBinopImpl<EShift, TokenType::Less, TokenType::Greater, TokenType::LessEqual, TokenType::GreaterEqual>;
-constexpr auto EEquality = &Parser::EBinopImpl<ERelational, TokenType::Equal, TokenType::NotEqual>;
-constexpr auto EAnd = &Parser::EBinopImpl<EEquality, TokenType::Ampersand>;
-constexpr auto EOr = &Parser::EBinopImpl<EAnd, TokenType::BinOr>;
-constexpr auto EXor = &Parser::EBinopImpl<EOr, TokenType::BinXor>;
-constexpr auto ELogAnd = &Parser::EBinopImpl<EXor, TokenType::LogicalAnd>;
-constexpr auto ELogOr = &Parser::EBinopImpl<ELogAnd, TokenType::LogicalOr>;
+constexpr auto EMul = &ConstParser::EBinopImpl<&ConstParser::ECast, TokenType::Asterisk, TokenType::Div, TokenType::Mod>;
+constexpr auto EAdd = &ConstParser::EBinopImpl<EMul, TokenType::Plus, TokenType::Minus>;
+constexpr auto EShift = &ConstParser::EBinopImpl<EAdd, TokenType::LShift, TokenType::RShift>;
+constexpr auto ERelational = &ConstParser::EBinopImpl<EShift, TokenType::Less, TokenType::Greater, TokenType::LessEqual, TokenType::GreaterEqual>;
+constexpr auto EEquality = &ConstParser::EBinopImpl<ERelational, TokenType::Equal, TokenType::NotEqual>;
+constexpr auto EAnd = &ConstParser::EBinopImpl<EEquality, TokenType::Ampersand>;
+constexpr auto EOr = &ConstParser::EBinopImpl<EAnd, TokenType::BinOr>;
+constexpr auto EXor = &ConstParser::EBinopImpl<EOr, TokenType::BinXor>;
+constexpr auto ELogAnd = &ConstParser::EBinopImpl<EXor, TokenType::LogicalAnd>;
+constexpr auto ELogOr = &ConstParser::EBinopImpl<ELogAnd, TokenType::LogicalOr>;
 
-pExpr Parser::EBinop() {
+pExpr ConstParser::EBinop() {
   return (this->*ELogOr)();
 }
 
-pExpr Parser::ETernary() {
+pExpr ConstParser::ETernary() {
   auto left = EBinop();
   if (in_stream.IsAfter(0, TokenType::Question)) {
     in_stream.Skip();
@@ -226,6 +255,11 @@ pExpr Parser::ETernary() {
     return std::make_unique<Ternary>(std::move(left), std::move(_true), std::move(_false));
   }
   return left;
+}
+
+pExpr ConstParser::EAssignment() {
+  // Assignment expressions are not allowed in BaseParser expressions
+  return ETernary();
 }
 
 pExpr Parser::EAssignment() {
@@ -265,7 +299,7 @@ pExpr Parser::EExpression() {
   return std::move(expr);
 }
 
-i64 Parser::EConstexpr() {
+i64 ConstParser::EConstexpr() {
   auto expr = ETernary();
   expr->SemanticAnalysis(*this);
   return expr->ConstEval();

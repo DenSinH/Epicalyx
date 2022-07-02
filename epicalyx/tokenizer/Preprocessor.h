@@ -12,9 +12,7 @@ namespace epi {
 
 
 struct Preprocessor final : public cotyl::Stream<char> {
-  Preprocessor(const std::string& filename) {
-     include_stack.emplace_back(filename);
-  }
+  Preprocessor(cotyl::Stream<char>& in_stream) : in_stream{in_stream} { }
 
   void PrintLoc() const final;
 
@@ -23,8 +21,14 @@ protected:
   bool IsEOS() final;
 
 private:
-  struct PreprocessingFile {
-    PreprocessingFile(const std::string& name) : stream{name}, name{name} { }
+  struct BaseStream {
+    cotyl::Stream<char>& stream;
+    int line = 0;
+    bool is_newline = true;
+  };
+
+  struct IncludeStream {
+    IncludeStream(const std::string& name) : stream{name}, name{name} { }
 
     File stream;
     std::string name;
@@ -83,20 +87,25 @@ private:
   };
 
   std::queue<char> pre_processor_queue{};
-  std::deque<PreprocessingFile> include_stack{};
-  std::stack<IfGroup> if_group_stack{};
+  BaseStream in_stream;
+  std::deque<IncludeStream> include_stack{};
+  std::deque<IfGroup> if_group_stack{};
   cotyl::unordered_map<std::string, Definition> definitions{};
   cotyl::unordered_set<std::string> parsed_files{};
 
-  File& CurrentStream();
+  cotyl::Stream<char>& CurrentStream();
+  int& CurrentLine();
   bool IsNewline() const;
   bool Enabled() const;
   void SetNewline(bool status);
+
   void SkipBlanks(bool skip_newlines = true);
   std::string FetchLine();
   char NextCharacter();
+
   void EatNewline();
   std::string EatIdentifier();
+  i64 EatConstexpr();
 
   void PreprocessorDirective();
 };

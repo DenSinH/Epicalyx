@@ -45,30 +45,18 @@ std::string MemberAccess::ToString() const {
   return cotyl::FormatStr("(%s)->%s", left, member);
 }
 
-pType<const CType> Identifier::SemanticAnalysisImpl(const Parser& parser) const {
-  if (parser.enum_values.Has(name)) {
-    return MakeType<ValueType<Parser::enum_type>>(
-            parser.enum_values.Get(name),
-            CType::LValueNess::None,
-            CType::Qualifier::Const
-    );
-  }
-  else if (parser.variables.Has(name)) {
-    return parser.variables.Get(name);
-  }
-  else {
-    throw cotyl::FormatExceptStr("Undeclared identifier: '%s'", name);
-  }
+pType<const CType> Identifier::SemanticAnalysisImpl(const ConstParser& parser) const {
+  return parser.ResolveIdentifierType(name);
 }
 
 template<typename T>
-pType<const CType> NumericalConstant<T>::SemanticAnalysisImpl(const Parser&) const {
+pType<const CType> NumericalConstant<T>::SemanticAnalysisImpl(const ConstParser&) const {
   return MakeType<ValueType<T>>(
           value, CType::LValueNess::None, CType::Qualifier::Const
   );
 }
 
-pType<const CType> StringConstant::SemanticAnalysisImpl(const Parser&) const {
+pType<const CType> StringConstant::SemanticAnalysisImpl(const ConstParser&) const {
   return MakeType<PointerType>(
           MakeType<ValueType<i8>>(CType::LValueNess::Assignable, CType::Qualifier::Const),
           CType::LValueNess::None,
@@ -76,11 +64,11 @@ pType<const CType> StringConstant::SemanticAnalysisImpl(const Parser&) const {
   );
 }
 
-pType<const CType> ArrayAccess::SemanticAnalysisImpl(const Parser& parser) const {
+pType<const CType> ArrayAccess::SemanticAnalysisImpl(const ConstParser& parser) const {
   return left->SemanticAnalysis(parser)->ArrayAccess(*right->SemanticAnalysis(parser));
 }
 
-pType<const CType> FunctionCall::SemanticAnalysisImpl(const Parser& parser) const {
+pType<const CType> FunctionCall::SemanticAnalysisImpl(const ConstParser& parser) const {
   std::vector<pType<const CType>> call_args{};
   for (const auto& arg : args) {
     call_args.push_back(arg->SemanticAnalysis(parser));
@@ -88,20 +76,20 @@ pType<const CType> FunctionCall::SemanticAnalysisImpl(const Parser& parser) cons
   return left->SemanticAnalysis(parser)->FunctionCall(call_args);
 }
 
-pType<const CType> MemberAccess::SemanticAnalysisImpl(const Parser& parser) const {
+pType<const CType> MemberAccess::SemanticAnalysisImpl(const ConstParser& parser) const {
   if (direct) {
     return left->SemanticAnalysis(parser)->MemberAccess(member);
   }
   return left->SemanticAnalysis(parser)->Deref()->MemberAccess(member);
 }
 
-pType<const CType> TypeInitializer::SemanticAnalysisImpl(const Parser& parser) const {
+pType<const CType> TypeInitializer::SemanticAnalysisImpl(const ConstParser& parser) const {
   auto visitor = ValidInitializerListVisitor(parser, *list);
   type->Visit(visitor);
   return type;
 }
 
-pType<const CType> PostFix::SemanticAnalysisImpl(const Parser& parser) const {
+pType<const CType> PostFix::SemanticAnalysisImpl(const ConstParser& parser) const {
   switch (op) {
     case TokenType::Incr: return left->SemanticAnalysis(parser)->Incr();
     case TokenType::Decr: return left->SemanticAnalysis(parser)->Decr();
@@ -110,7 +98,7 @@ pType<const CType> PostFix::SemanticAnalysisImpl(const Parser& parser) const {
   }
 }
 
-pType<const CType> Unary::SemanticAnalysisImpl(const Parser& parser) const {
+pType<const CType> Unary::SemanticAnalysisImpl(const ConstParser& parser) const {
   switch (op) {
     case TokenType::Incr: return left->SemanticAnalysis(parser)->Incr();
     case TokenType::Decr: return left->SemanticAnalysis(parser)->Decr();
@@ -125,11 +113,11 @@ pType<const CType> Unary::SemanticAnalysisImpl(const Parser& parser) const {
   }
 }
 
-pType<const CType> Cast::SemanticAnalysisImpl(const Parser& parser) const {
+pType<const CType> Cast::SemanticAnalysisImpl(const ConstParser& parser) const {
   return type->Cast(*expr->SemanticAnalysis(parser));
 }
 
-pType<const CType> Binop::SemanticAnalysisImpl(const Parser& parser) const {
+pType<const CType> Binop::SemanticAnalysisImpl(const ConstParser& parser) const {
   switch (op) {
     case TokenType::Asterisk: return left->SemanticAnalysis(parser)->Mul(*right->SemanticAnalysis(parser));
     case TokenType::Div: return left->SemanticAnalysis(parser)->Div(*right->SemanticAnalysis(parser));
@@ -154,7 +142,7 @@ pType<const CType> Binop::SemanticAnalysisImpl(const Parser& parser) const {
   }
 }
 
-pType<const CType> Ternary::SemanticAnalysisImpl(const Parser& parser) const {
+pType<const CType> Ternary::SemanticAnalysisImpl(const ConstParser& parser) const {
   auto cond_t = cond->SemanticAnalysis(parser);
   auto true_t = _true->SemanticAnalysis(parser);
   auto false_t = _false->SemanticAnalysis(parser);
@@ -170,7 +158,7 @@ pType<const CType> Ternary::SemanticAnalysisImpl(const Parser& parser) const {
   return true_t->CommonType(*false_t);
 }
 
-pType<const CType> Assignment::SemanticAnalysisImpl(const Parser& parser) const {
+pType<const CType> Assignment::SemanticAnalysisImpl(const ConstParser& parser) const {
   auto left_t = left->SemanticAnalysis(parser);
   if (!left_t->IsAssignable()) {
     throw std::runtime_error("Cannot assign to expression");

@@ -66,7 +66,7 @@ struct Identifier final : public Expr {
   pExpr EReduce(const Parser& parser) final { return nullptr; }
 
 protected:
-  pType<const CType> SemanticAnalysisImpl(const Parser& parser) const final;
+  pType<const CType> SemanticAnalysisImpl(const ConstParser& parser) const final;
 };
 
 
@@ -86,7 +86,7 @@ struct NumericalConstant final : public Expr {
   pExpr EReduce(const Parser& parser) final { return nullptr; }
 
 protected:
-  pType<const CType> SemanticAnalysisImpl(const Parser& parser) const final;
+  pType<const CType> SemanticAnalysisImpl(const ConstParser& parser) const final;
 };
 
 
@@ -105,7 +105,7 @@ struct StringConstant final : public Expr {
   pExpr EReduce(const Parser& parser) final { return nullptr; }
 
 protected:
-  pType<const CType> SemanticAnalysisImpl(const Parser& parser) const final;
+  pType<const CType> SemanticAnalysisImpl(const ConstParser& parser) const final;
 };
 
 /*
@@ -127,7 +127,7 @@ struct ArrayAccess final : public Expr {
   pExpr EReduce(const Parser& parser) final;
 
 protected:
-  pType<const CType> SemanticAnalysisImpl(const Parser& parser) const final;
+  pType<const CType> SemanticAnalysisImpl(const ConstParser& parser) const final;
 };
 
 
@@ -151,7 +151,7 @@ struct FunctionCall final : public Expr {
   pExpr EReduce(const Parser& parser) final;
 
 protected:
-  pType<const CType> SemanticAnalysisImpl(const Parser& parser) const final;
+  pType<const CType> SemanticAnalysisImpl(const ConstParser& parser) const final;
 };
 
 
@@ -174,7 +174,7 @@ struct MemberAccess final : public Expr {
   pExpr EReduce(const Parser& parser) final;
 
 protected:
-  pType<const CType> SemanticAnalysisImpl(const Parser& parser) const final;
+  pType<const CType> SemanticAnalysisImpl(const ConstParser& parser) const final;
 };
 
 
@@ -194,7 +194,7 @@ struct TypeInitializer : public Expr {
   pExpr EReduce(const Parser& parser) final;
 
 protected:
-  pType<const CType> SemanticAnalysisImpl(const Parser& parser) const final;
+  pType<const CType> SemanticAnalysisImpl(const ConstParser& parser) const final;
 };
 
 
@@ -215,7 +215,7 @@ struct PostFix final : public Expr {
   // EReduce is just the constant node from the postfix operation (will always be nullptr)
 
 protected:
-  pType<const CType> SemanticAnalysisImpl(const Parser& parser) const final;
+  pType<const CType> SemanticAnalysisImpl(const ConstParser& parser) const final;
 };
 
 
@@ -236,7 +236,7 @@ struct Unary final : public Expr {
   // EReduce is just the constant node from the unary operation
 
 protected:
-  pType<const CType> SemanticAnalysisImpl(const Parser& parser) const final;
+  pType<const CType> SemanticAnalysisImpl(const ConstParser& parser) const final;
 };
 
 
@@ -257,7 +257,7 @@ struct Cast final : public Expr {
   // EReduce is just the constant node from the cast
 
 protected:
-  pType<const CType> SemanticAnalysisImpl(const Parser& parser) const final;
+  pType<const CType> SemanticAnalysisImpl(const ConstParser& parser) const final;
 };
 
 
@@ -282,7 +282,7 @@ struct Binop final : public Expr {
   pExpr EReduce(const Parser& parser) final;
 
 protected:
-  pType<const CType> SemanticAnalysisImpl(const Parser& parser) const final;
+  pType<const CType> SemanticAnalysisImpl(const ConstParser& parser) const final;
 };
 
 
@@ -307,7 +307,7 @@ struct Ternary final : public Expr {
   pExpr EReduce(const Parser& parser) final;
 
 protected:
-  pType<const CType> SemanticAnalysisImpl(const Parser& parser) const final;
+  pType<const CType> SemanticAnalysisImpl(const ConstParser& parser) const final;
 };
 
 
@@ -332,7 +332,7 @@ struct Assignment final : public Expr {
   pExpr EReduce(const Parser& parser) final;
 
 protected:
-  pType<const CType> SemanticAnalysisImpl(const Parser& parser) const final;
+  pType<const CType> SemanticAnalysisImpl(const ConstParser& parser) const final;
 };
 
 }

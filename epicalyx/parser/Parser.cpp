@@ -8,13 +8,28 @@
 
 namespace epi {
 
-Parser::Parser(cotyl::Stream<pToken>& in_stream) :
-        in_stream(in_stream) {
-
+void ConstParser::PrintLoc() const {
+  in_stream.PrintLoc();
 }
 
-void Parser::PrintLoc() const {
-  in_stream.PrintLoc();
+pType<const CType> ConstParser::ResolveIdentifierType(const std::string& name) const {
+  throw std::runtime_error("Unexpected identifier");
+}
+
+pType<const CType> Parser::ResolveIdentifierType(const std::string& name) const {
+  if (enum_values.Has(name)) {
+    return MakeType<ValueType<Parser::enum_type>>(
+            enum_values.Get(name),
+            CType::LValueNess::None,
+            CType::Qualifier::Const
+    );
+  }
+  else if (variables.Has(name)) {
+    return variables.Get(name);
+  }
+  else {
+    throw cotyl::FormatExceptStr("Undeclared identifier: '%s'", name);
+  }
 }
 
 void Parser::PushScope() {

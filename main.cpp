@@ -5,7 +5,6 @@
 #include "optimizer/ProgramDependencies.h"
 #include "optimizer/BasicOptimizer.h"
 #include "optimizer/RemoveUnused.h"
-#include "file/SString.h"
 #include "tokenizer/Preprocessor.h"
 #include "tokenizer/Tokenizer.h"
 #include "parser/Parser.h"
@@ -38,8 +37,8 @@ void PrintProgram(const epi::Program& program) {
 
 
 int main() {
-  // auto file = epi::File("tests/test.c");
-  auto preprocessor = epi::Preprocessor("examples/emitting/preprocessing.c");
+  auto file = epi::File("examples/emitting/preprocessing.c");
+  auto preprocessor = epi::Preprocessor(file);
   auto tokenizer = epi::Tokenizer(preprocessor);
   auto parser = epi::Parser(tokenizer);
 
