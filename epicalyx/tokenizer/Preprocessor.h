@@ -4,15 +4,19 @@
 #include "Containers.h"
 
 #include "file/File.h"
+#include "file/SString.h"
 
 #include <stack>
+#include <utility>
 
 
 namespace epi {
 
 
 struct Preprocessor final : public cotyl::Stream<char> {
-  Preprocessor(cotyl::Stream<char>& in_stream) : in_stream{in_stream} { }
+  Preprocessor(const std::string& in_stream) {
+    file_stack.emplace_back(in_stream);
+  }
 
   void PrintLoc() const final;
 
@@ -21,19 +25,22 @@ protected:
   bool IsEOS() final;
 
 private:
-  struct BaseStream {
-    cotyl::Stream<char>& stream;
-    int line = 0;
-    bool is_newline = true;
-  };
+  friend struct LinePreprocessor;
 
-  struct IncludeStream {
-    IncludeStream(const std::string& name) : stream{name}, name{name} { }
+  struct FileStream {
+    FileStream(const std::string& name) : stream{name}, name{name} { }
 
     File stream;
     std::string name;
-    int line = 0;
+    u64 line = 0;
     bool is_newline = true;
+  };
+
+  struct StringStream {
+    StringStream(std::string name, const std::string& s) : name{std::move(name)}, stream{s} { }
+
+    std::string name;
+    SString stream;
   };
 
   struct Definition {
@@ -87,24 +94,28 @@ private:
   };
 
   std::queue<char> pre_processor_queue{};
-  BaseStream in_stream;
-  std::deque<IncludeStream> include_stack{};
+  std::optional<SString> expression{};
+  std::deque<StringStream> macro_stack{};
+  std::deque<FileStream> file_stack{};
   std::deque<IfGroup> if_group_stack{};
   cotyl::unordered_map<std::string, Definition> definitions{};
   cotyl::unordered_set<std::string> parsed_files{};
 
   cotyl::Stream<char>& CurrentStream();
-  int& CurrentLine();
-  bool IsNewline() const;
+  u64& CurrentLine();
+  bool& IsNewline();
+  std::string CurrentFile();
+
   bool Enabled() const;
-  void SetNewline(bool status);
 
   void SkipBlanks(bool skip_newlines = true);
+  void SkipLineComment();
+  void SkipMultilineComment();
   std::string FetchLine();
   char NextCharacter();
 
+  void PushMacro(const std::string& macro);
   void EatNewline();
-  std::string EatIdentifier();
   i64 EatConstexpr();
 
   void PreprocessorDirective();

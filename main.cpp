@@ -37,8 +37,7 @@ void PrintProgram(const epi::Program& program) {
 
 
 int main() {
-  auto file = epi::File("examples/emitting/preprocessing.c");
-  auto preprocessor = epi::Preprocessor(file);
+  auto preprocessor = epi::Preprocessor("examples/emitting/preprocessing.c");
   auto tokenizer = epi::Tokenizer(preprocessor);
   auto parser = epi::Parser(tokenizer);
 

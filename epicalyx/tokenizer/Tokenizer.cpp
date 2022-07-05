@@ -1,4 +1,5 @@
 #include "Tokenizer.h"
+#include "Identifier.h"
 #include "Default.h"
 
 #include <sstream>
@@ -23,7 +24,7 @@ pToken Tokenizer::GetNew() {
     throw cotyl::EndOfFileException();
   }
 
-  if (std::isalpha(c) || c == '_') {
+  if (detail::is_valid_ident_start(c)) {
     // identifier, keyword or prefixed character sequence
     if (in_stream.IsAfter(0, 'L', 'u', 'U')) {
       if (in_stream.IsAfter(1, '\"')) {
@@ -52,17 +53,13 @@ pToken Tokenizer::GetNew() {
       }
     }
 
-    std::stringstream token{};
-    while (in_stream.PredicateAfter(0, [](char k) { return std::isalnum(k) || k == '_'; })) {
-      token << in_stream.Get();
-    }
-
-    std::string content = token.str();
-    if (Keywords.contains(content)) {
-      return Make<Token>(Keywords.at(content));
+    // identifier or keyword
+    auto identifier = detail::get_identifier(in_stream);
+    if (Keywords.contains(identifier)) {
+      return Make<Token>(Keywords.at(identifier));
     }
     else {
-      return Make<tIdentifier>(content);
+      return Make<tIdentifier>(identifier);
     }
   }
   else if (std::isdigit(c) || (c == '.' && in_stream.PredicateAfter(1, std::isdigit))) {

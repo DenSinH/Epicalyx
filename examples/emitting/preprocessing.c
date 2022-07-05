@@ -1,7 +1,7 @@
 #undef macro
 # define macro2
 #
-#define macro3
+#define macro3 12 + 1
 // comment
 /*
  * multiline comment
@@ -10,8 +10,10 @@
 int global = 0;
 
 /* comment */void test() {
-#if (0 + 1) == 1
+#if (macro3) == 13
   global = 1;
+#elif 0 // this is a comment\
+that goes up to here
 #elifdef macro2
 #ifdef macro3
   global = 0;
