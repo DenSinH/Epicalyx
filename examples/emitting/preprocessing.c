@@ -7,6 +7,8 @@
  * multiline comment
  * */
 
+#define functional_macro(arg) (arg + 1)
+
 int global = 0;
 
 /* comment */void test() {
@@ -36,5 +38,5 @@ int main() {
 #endif
   test();
   double one_added = add_half(add_half(global));
-  return add_half(add_half(one_added));
+  return functional_macro(add_half(add_half(one_added)));
 }

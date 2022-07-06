@@ -5,6 +5,8 @@
 
 #include "parser/ConstParser.h"
 
+#include <ranges>
+
 
 namespace epi {
 
@@ -235,22 +237,15 @@ i64 Preprocessor::EatConstexpr() {
   }
 }
 
-char Preprocessor::GetNew() {
-
+std::string Preprocessor::GetNextProcessed(MacroExpansion macro_expansion) {
   // no need to check end of stream, since it is expected a new character even exists
   while (true) {
-    if (!pre_processor_queue.empty()) {
-      char c = pre_processor_queue.front();
-      pre_processor_queue.pop();
-      return c;
-    }
-
     char c = NextCharacter();
 
     // parse whitespace normally to count newlines properly when current group is not enabled
     if (std::isspace(c)) {
       SkipBlanks();
-      return ' ';  // the exact whitespace character does not matter
+      return " ";  // the exact whitespace character does not matter
     }
 
     // potential new if group
@@ -263,7 +258,7 @@ char Preprocessor::GetNew() {
 
       // insert newline after preprocessing directive
       IsNewline() = true;
-      return '\n';
+      return "\n";
     }
 
     if (!Enabled()) {
@@ -277,30 +272,33 @@ char Preprocessor::GetNew() {
       // possible identifier, process entire identifier
       std::string identifier = detail::get_identifier(CurrentStream());
 
-      // todo: other macros (and recursive processing)
       if (identifier == "__FILE__") {
         const auto& file = CurrentFile();
-        pre_processor_queue.push('"');
-        for (char k : file) {
-          pre_processor_queue.push(k);
-        }
-        pre_processor_queue.push('"');
+        return cotyl::FormatStr("\"%s\"", file);
       }
       else if (identifier == "__LINE__") {
         const auto& line = std::to_string(CurrentLine());
-        pre_processor_queue.push('"');
-        for (char k : line) {
-          pre_processor_queue.push(k);
-        }
-        pre_processor_queue.push('"');
-
-      }
-      else if (definitions.contains(identifier)) {
-        PushMacro(identifier);
+        return cotyl::FormatStr("\"%s\"", line);
       }
       else {
-        for (char k : identifier) {
-          pre_processor_queue.push(k);
+        if (macro_expansion == MacroExpansion::Normal) {
+          if (!macro_stack.empty() && macro_stack.back().arguments.contains(identifier)) {
+            PushMacro(identifier, macro_stack.back().arguments.at(identifier));
+          }
+          else if (definitions.contains(identifier)) {
+            PushMacro(identifier, definitions.at(identifier));
+          }
+          else {
+            return identifier;
+          }
+        }
+        else if (macro_expansion == MacroExpansion::Argument &&
+            !macro_stack.empty() && macro_stack.back().arguments.contains(identifier)) {
+          PushMacro(identifier, macro_stack.back().arguments.at(identifier));
+        }
+        else {
+          // normal identifier
+          return identifier;
         }
       }
     }
@@ -313,27 +311,70 @@ char Preprocessor::GetNew() {
 
       // insert newline after comment
       IsNewline() = true;
-      return '\n';
+      return "\n";
     }
     else if (c == '/' && CurrentStream().SequenceAfter(0, '/', '*')) {
       /* multi-line comment */
       SkipMultilineComment();
+    }
+    else if (c == '"' || c == '\'') {
+      // strings have to be fetched fully
+      std::stringstream string;
+
+      CurrentStream().Skip();
+      const char quote = c;
+      string << quote;
+
+      while (NextCharacter() != quote) {
+        if (NextCharacter() == '\\') {
+          // feed 2 characters when escaped
+          // note that we do feed the escape code to be parsed in the tokenizer
+          string << '\\';
+          CurrentStream().Skip();
+          string << CurrentStream().Get();
+        }
+        else {
+          string << CurrentStream().Get();
+        }
+      }
+
+      // end string
+      CurrentStream().Eat(quote);
+      string << quote;
+      return string.str();
     }
     else {
       // other character
       IsNewline() = false;
 
       if (detail::is_valid_ident_char(c)) {
+        std::stringstream ident_char_string;
         // to prevent stuff like 1macro to parse as 1<macro definition>
         // we need to eat all valid identifier characters until we find one that is not
         while (CurrentStream().PredicateAfter(0, detail::is_valid_ident_char)) {
-          pre_processor_queue.push(CurrentStream().Get());
+          ident_char_string << CurrentStream().Get();
         }
+        return ident_char_string.str();
       }
       else {
         CurrentStream().Eat(c);
-        return c;
+        return std::string{c};
       }
+    }
+  }
+}
+
+char Preprocessor::GetNew() {
+  // no need to check end of stream, since it is expected a new character even exists
+  while (true) {
+    if (!pre_processor_queue.empty()) {
+      char c = pre_processor_queue.front();
+      pre_processor_queue.pop();
+      return c;
+    }
+
+    for (const auto& c : GetNextProcessed(MacroExpansion::Normal)) {
+      pre_processor_queue.push(c);
     }
   }
 }
@@ -422,7 +463,7 @@ void Preprocessor::PreprocessorDirective() {
 
     if (!IsEOS() && NextCharacter() == '(') {
       // functional macro
-      def.arguments = {};
+      def.arguments = Definition::Arguments{};
       auto& arguments = def.arguments.value();
       CurrentStream().Skip();  // skip ( character
 
@@ -494,24 +535,102 @@ void Preprocessor::PreprocessorDirective() {
     // todo
     throw cotyl::UnimplementedException("#pragma preprocessing directive");
   }
+  else if (pp_token == "include") {
+    // todo
+    throw cotyl::UnimplementedException("#include preprocessing directive");
+  }
   else {
     throw cotyl::FormatExcept("Unexpected token after '#': %s", pp_token.c_str());
   }
 }
 
-void Preprocessor::PushMacro(const std::string& macro) {
-  auto definition = definitions.at(macro);
+std::string Preprocessor::GetMacroArgumentValue(bool variadic) {
+  std::stringstream value;
+  SkipBlanks();
+
+  unsigned paren_count = 0;
+  while (true) {
+    // a comma or a brace is a part of a string if and only if the pre_processor_queue is not empty
+    const char next = NextCharacter();
+    if (next == ',' && !variadic && paren_count == 0) {
+      // next argument
+      return value.str();
+    }
+    else if (next == ')') {
+      // if paren_count is 0 there are no more arguments and this argument is done
+      if (paren_count == 0) return value.str();
+      else {
+        // otherwise, track the parenthesis
+        paren_count--;
+        CurrentStream().Eat(')');
+        value << ')';
+      }
+    }
+    else if (next == '(') {
+      // track parentheses
+      CurrentStream().Eat('(');
+      paren_count++;
+      value << '(';
+    }
+    else {
+      // add next single-shot characters without expanding macros to macro definition
+      for (const auto& n : GetNextProcessed(MacroExpansion::Argument)) {
+        value << n;
+      }
+    }
+  }
+}
+
+bool Preprocessor::IsDefinition(const std::string& name, Definition& definition) {
+  if (!macro_stack.empty()) {
+    // only top level macro argument names should be replaced
+    if (macro_stack.back().arguments.contains(name)) {
+      definition = macro_stack.back().arguments.at(name);
+      return true;
+    }
+  }
+  if (definitions.contains(name)) {
+    definition = definitions.at(name);
+    return true;
+  }
+  return false;
+}
+
+void Preprocessor::PushMacro(const std::string& name, const Definition& definition) {
   if (definition.value.empty()) {
+    // no use pushing an empty macro
     return;
   }
 
   if (definition.arguments.has_value()) {
     const auto& arguments = definition.arguments.value();
-    throw cotyl::UnimplementedException("Functional macro");
+    MacroMap arg_values{};
+    // when parsing macro usage, newlines can be skipped just fine
+    SkipBlanks();
+    CurrentStream().Eat('(');
+    for (const auto& arg : arguments.list) {
+      arg_values[arg] = {GetMacroArgumentValue(false)};
+
+      if (&arg == &arguments.list.back()) {
+        // last element
+        if (arguments.variadic && NextCharacter() != ')') {
+          CurrentStream().Eat(',');
+
+          arg_values["__VA_ARGS__"] = {GetMacroArgumentValue(true)};
+        }
+        else {
+          CurrentStream().Eat(')');
+        }
+      }
+      else {
+        CurrentStream().Eat(',');
+      }
+    }
+
+    macro_stack.emplace_back(name, definition.value, std::move(arg_values));
   }
   else {
-    // todo: this is unnecessarily complicated
-    macro_stack.emplace_back(cotyl::FormatStr("macro %s", macro), definition.value);
+    macro_stack.emplace_back(name, definition.value);
   }
 }
 
