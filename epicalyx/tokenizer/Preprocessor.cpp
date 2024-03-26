@@ -36,6 +36,11 @@ std::string Preprocessor::CurrentFile() {
 }
 
 bool Preprocessor::Enabled() const {
+  // always enabled when parsing expressions
+  if (expression.has_value()) {
+    return true;
+  }
+
   // only enabled if all nested groups are enabled
   return if_group_stack.empty() || std::all_of(
           if_group_stack.begin(),

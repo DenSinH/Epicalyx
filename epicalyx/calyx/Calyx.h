@@ -9,6 +9,7 @@
 #include <vector>
 #include <unordered_map>
 #include <variant>
+#include <bit>
 
 
 namespace epi::calyx {

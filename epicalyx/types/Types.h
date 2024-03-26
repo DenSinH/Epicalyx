@@ -179,7 +179,7 @@ private:
   pType<> CastTo(const ValueType<i64>& other) const final { return MakeType<ValueType<i64>>(value, LValueNess::None, other.qualifiers); }
   pType<> CastTo(const ValueType<float>& other) const final { return MakeType<ValueType<float>>(value, LValueNess::None, other.qualifiers); }
   pType<> CastTo(const ValueType<double>& other) const final { return MakeType<ValueType<double>>(value, LValueNess::None, other.qualifiers); }
-  pType<> CastTo(const PointerType& other) const final { return other.Clone(); }
+  pType<> CastTo(const PointerType& other) const final;
 
   bool EqualTypeImpl(const ValueType<T>& other) const final { return true; }
 };
@@ -444,5 +444,10 @@ private:
   pType<> CastTo(const UnionType& other) const final { return CastToImpl(other); }
   bool EqualTypeImpl(const UnionType& other) const final { return _EqualTypeImpl(other); }
 };
+
+template<typename T>
+pType<> ValueType<T>::CastTo(const PointerType& other) const { 
+  return other.Clone();
+}
 
 }

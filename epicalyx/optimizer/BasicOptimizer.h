@@ -3,6 +3,7 @@
 #include "calyx/backend/Backend.h"
 #include "ProgramDependencies.h"
 #include "Containers.h"
+#include "CustomAssert.h"
 
 #include <vector>
 

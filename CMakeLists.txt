@@ -63,6 +63,7 @@ target_link_libraries(epicalyx Cycle)
 target_link_libraries(epicalyx IREmitter)
 target_link_libraries(epicalyx Optimizer)
 
-if(${Boost_FOUND})
-    target_link_libraries(epicalyx ${Boost_LIBRARY})
-endif()
+# we are not using any boost libraries that need compiling
+# if(${Boost_FOUND})
+#     target_link_libraries(epicalyx ${Boost_LIBRARY})
+# endif()

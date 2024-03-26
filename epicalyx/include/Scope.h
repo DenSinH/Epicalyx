@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Containers.h"
+#include "Format.h"
 
 #include <vector>
 #include <stdexcept>
