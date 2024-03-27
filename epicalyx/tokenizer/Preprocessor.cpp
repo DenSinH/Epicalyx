@@ -569,6 +569,9 @@ void Preprocessor::PreprocessorDirective() {
 
     // fetch macro definition
     def.value = FetchLine();
+    if (def.value.empty() || !std::isspace(def.value.back())) {
+      def.value += " ";  // end macros in whitespace as to not glue preprocessing tokens
+    }
     ReplaceNewlines(def.value);
   
     // only save definitions if current group is enabled

@@ -198,6 +198,7 @@ pToken Tokenizer::ReadNumericalConstant() {
   }
   else if (in_stream.IsAfter(0, '.')) {
     dot = true;
+    is_float = true;
     value << '0' << '.';
     in_stream.Skip();
   }

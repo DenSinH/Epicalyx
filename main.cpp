@@ -38,6 +38,12 @@ void PrintProgram(const epi::Program& program) {
 
 int main() {
   auto preprocessor = epi::Preprocessor("examples/emitting/preprocessing.c");
+
+  // while (!preprocessor.EOS()) {
+  //   std::cout << preprocessor.Get();
+  // }
+  // return 0;
+
   auto tokenizer = epi::Tokenizer(preprocessor);
   auto parser = epi::Parser(tokenizer);
 
