@@ -2,6 +2,5 @@ venv/
 cmake-*/
 build/
 .idea/
-.vscode/
 *.exe
 *.ini
