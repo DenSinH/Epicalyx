@@ -476,37 +476,32 @@ void Preprocessor::PreprocessorDirective() {
       SkipBlanks(false);
       // we do end of stream cannot happen here,
       // since the macro needs to be complete
-      if (NextCharacter() != ')') {
-        while (true) {
+      while (NextCharacter() != ')') {
+        if (detail::is_valid_ident_start(NextCharacter())) {
           auto arg = detail::get_identifier(CurrentStream());
           arguments.list.push_back(arg);
           SkipBlanks(false);
 
-          if (NextCharacter() == ')') {
-            // end of argument list
-            CurrentStream().Eat(')');
-            break;
-          }
-          else {
+          if (NextCharacter() == ',') {
             // more arguments
             CurrentStream().Eat(',');
           }
-
-          if (NextCharacter() == '.') {
-            // variadic macro: #define variadic(arg1, arg2, ...)
-            CurrentStream().EatSequence('.', '.', '.');
-            SkipBlanks(false);
-            CurrentStream().Eat(')');
-            arguments.variadic = true;
-            break;
-          }
-
-          SkipBlanks(false);
         }
+        else if (NextCharacter() == '.') {
+          // variadic macro: #define variadic(arg1, arg2, ...)
+          CurrentStream().EatSequence('.', '.', '.');
+          SkipBlanks(false);
+          arguments.variadic = true;
+          // there cannot be any more arguments after this
+          break;
+        }
+        else {
+          throw cotyl::FormatExceptStr("Unexpected character in macro argument list: %c", NextCharacter());
+        }
+
+        SkipBlanks(false);
       }
-      else {
-        CurrentStream().Eat(')');
-      }
+      CurrentStream().Eat(')');
     }
 
     // fetch macro definition

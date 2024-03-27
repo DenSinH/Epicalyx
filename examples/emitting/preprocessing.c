@@ -8,6 +8,7 @@
  * */
 
 #define no_arg_macro() 1
+#define va_arg_marcro(...) __VA_ARGS__
 #define functional_macro(arg) (arg + no_arg_macro())
 
 int global = 0;
@@ -38,7 +39,7 @@ int main() {
   double one_added = add_half(add_half(global));
   return functional_macro(add_half(add_half(one_added)))
 #ifdef define_in_nested_group
-  -123
+  va_arg_marcro(-123)
 #endif
   ;
 }
