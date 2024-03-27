@@ -58,8 +58,8 @@ private:
     }
 
     std::string name;
-    SString stream;
-    MacroMap arguments{};
+    SString stream;        // value
+    MacroMap arguments{};  // argument values
   };
 
   struct IfGroup {
@@ -140,6 +140,7 @@ private:
   std::string GetNextProcessed(MacroExpansion macro_expansion = MacroExpansion::Normal);
 
   std::string GetMacroArgumentValue(bool variadic);
+  static void CleanMacroValue(std::string& value);
   bool IsDefinition(const std::string& name, Definition& definition);
   void PushMacro(const std::string& name, const Definition& definition);
   void EatNewline();

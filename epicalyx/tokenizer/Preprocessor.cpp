@@ -96,13 +96,11 @@ void Preprocessor::SkipBlanks(bool skip_newlines) {
     }
     else if (c == '\n') {
       if (skip_newlines || !macro_stack.empty()) {
-        // skip the newline in both cases, but only update the line status
-        // if we are not scanning a string
+        // skip the newline in both cases
         CurrentStream().Skip();
-        if (macro_stack.empty()) {
-          IsNewline() = true;
-          CurrentLine()++;
-        }
+        // macro definition newlines have been stripped
+        IsNewline() = true;
+        CurrentLine()++;
       }
       else {
         break;
@@ -157,7 +155,8 @@ std::string Preprocessor::FetchLine() {
         CurrentStream().Skip();  // skip \ character
         CurrentStream().SkipWhile([&](char c) -> bool {
           if (c == '\n') {
-            // no need to check macro_stack.empty() since it is already asserted
+            // by assertion, we are not scanning a macro
+            // newlines have been stripped from macro definitions anyway
             CurrentLine()++;
             return false;  // only skip one line with escaped newline
           }
@@ -506,6 +505,7 @@ void Preprocessor::PreprocessorDirective() {
 
     // fetch macro definition
     def.value = FetchLine();
+    CleanMacroValue(def.value);
   
     // only save definitions if current group is enabled
     if (Enabled()) {
@@ -543,6 +543,10 @@ void Preprocessor::PreprocessorDirective() {
   else {
     throw cotyl::FormatExcept("Unexpected token after '#': %s", pp_token.c_str());
   }
+}
+
+void Preprocessor::CleanMacroValue(std::string& value) {
+  std::replace(value.begin(), value.end(), '\n', ' ');
 }
 
 std::string Preprocessor::GetMacroArgumentValue(bool variadic) {
@@ -610,7 +614,9 @@ void Preprocessor::PushMacro(const std::string& name, const Definition& definiti
     SkipBlanks();
     CurrentStream().Eat('(');
     for (const auto& arg : arguments.list) {
-      arg_values[arg] = {GetMacroArgumentValue(false)};
+      auto arg_val = GetMacroArgumentValue(false);
+      CleanMacroValue(arg_val);
+      arg_values[arg] = {arg_val};
 
       if (&arg != &arguments.list.back() || arguments.variadic) {
         // not last element
@@ -618,13 +624,17 @@ void Preprocessor::PushMacro(const std::string& name, const Definition& definiti
       }
     }
     if (arguments.variadic && NextCharacter() != ')') {
-      arg_values["__VA_ARGS__"] = {GetMacroArgumentValue(true)};
+      auto arg_val = GetMacroArgumentValue(true);
+      CleanMacroValue(arg_val);
+      arg_values["__VA_ARGS__"] = {arg_val};
     }
     CurrentStream().Eat(')');
 
+    // definition value has already been cleaned on #define
     macro_stack.emplace_back(name, definition.value, std::move(arg_values));
   }
   else {
+    // definition value has already been cleaned on #define
     macro_stack.emplace_back(name, definition.value);
   }
 }
