@@ -190,13 +190,13 @@ std::string Preprocessor::FetchLine() {
 }
 
 bool Preprocessor::IsEOS() {
-  if (expression.has_value()) {
-    return expression.value().EOS();
-  }
-
   if (!pre_processor_queue.empty()) {
     // still processed characters to be fetched
+    // may be filled with characeters from an expression that should be parsed
     return false;
+  }
+  if (expression.has_value()) {
+    return expression.value().EOS();
   }
   if (!macro_stack.empty()) {
     // still string stack characters to be parsed
@@ -213,7 +213,8 @@ void Preprocessor::EatNewline() {
 }
 
 i64 Preprocessor::EatConstexpr() {
-  cotyl::Assert(macro_stack.empty() && !expression.has_value());
+  cotyl::Assert(macro_stack.empty() && !expression.has_value(), "Must start expression with empty macro stack and expression");
+  cotyl::Assert(pre_processor_queue.empty(), "Must start preprocessor expression with empty pre_processor_queue");
   std::string line = FetchLine();
 
   expression = line;
@@ -230,7 +231,7 @@ i64 Preprocessor::EatConstexpr() {
     auto result = parser.EConstexpr();
 
     // we expect the bottom string (expression) to be fully parsed
-    cotyl::Assert(macro_stack.empty());
+    cotyl::Assert(macro_stack.empty(), "Found unexpanded macros after expression");
     expression = {};
     return result;
   }

@@ -122,6 +122,32 @@ int main() {
     std::cout << std::endl << std::endl;
     std::cout << "-- interpreted" << std::endl;
     interpreter.EmitProgram(program);
+
+    // extract globals from interpreter
+    std::cout << "  -- globals" << std::endl;
+    for (const auto& [glob, glob_idx] : interpreter.globals) {
+      std::cout << glob << " ";
+      std::visit([&](auto& pglob) {
+        using glob_t = std::decay_t<decltype(pglob)>;
+        glob_t data;
+        std::memcpy(&data, interpreter.global_data[glob_idx].data(), sizeof(glob_t));
+        if constexpr(std::is_same_v<glob_t, epi::calyx::Pointer>) {
+          std::cout << "%p" << std::hex << data.value << std::endl;
+        }
+        else if constexpr(std::is_same_v<glob_t, epi::calyx::label_offset_t>) {
+          if (data.offset) {
+            std::cout << data.label << "+" << data.offset << std::endl;
+          }
+          else {
+            std::cout << data.label << std::endl;
+          }
+        }
+        else {
+          std::cout << data << std::endl;
+        }
+      }, program.globals.at(glob));
+    }
+
     interpreter.VisualizeProgram(program);
 
     auto dependencies = epi::ProgramDependencies();
