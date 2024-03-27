@@ -7,7 +7,8 @@
  * multiline comment
  * */
 
-#define functional_macro(arg) (arg + 1)
+#define no_arg_macro() 1
+#define functional_macro(arg) (arg + no_arg_macro())
 
 int global = 0;
 

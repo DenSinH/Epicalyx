@@ -126,7 +126,7 @@ int main() {
     // extract globals from interpreter
     std::cout << "  -- globals" << std::endl;
     for (const auto& [glob, glob_idx] : interpreter.globals) {
-      std::cout << glob << " ";
+      std::cout << "  " << glob << " ";
       std::visit([&](auto& pglob) {
         using glob_t = std::decay_t<decltype(pglob)>;
         glob_t data;

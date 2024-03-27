@@ -276,7 +276,7 @@ std::string Preprocessor::GetNextProcessed(MacroExpansion macro_expansion) {
     if (detail::is_valid_ident_start(c)) {
       IsNewline() = false;
       // possible identifier, process entire identifier
-      std::string identifier = detail::get_identifier(CurrentStream());
+      const std::string identifier = detail::get_identifier(CurrentStream());
 
       if (identifier == "__FILE__") {
         const auto& file = CurrentFile();
@@ -617,21 +617,15 @@ void Preprocessor::PushMacro(const std::string& name, const Definition& definiti
     for (const auto& arg : arguments.list) {
       arg_values[arg] = {GetMacroArgumentValue(false)};
 
-      if (&arg == &arguments.list.back()) {
-        // last element
-        if (arguments.variadic && NextCharacter() != ')') {
-          CurrentStream().Eat(',');
-
-          arg_values["__VA_ARGS__"] = {GetMacroArgumentValue(true)};
-        }
-        else {
-          CurrentStream().Eat(')');
-        }
-      }
-      else {
+      if (&arg != &arguments.list.back() || arguments.variadic) {
+        // not last element
         CurrentStream().Eat(',');
       }
     }
+    if (arguments.variadic && NextCharacter() != ')') {
+      arg_values["__VA_ARGS__"] = {GetMacroArgumentValue(true)};
+    }
+    CurrentStream().Eat(')');
 
     macro_stack.emplace_back(name, definition.value, std::move(arg_values));
   }
