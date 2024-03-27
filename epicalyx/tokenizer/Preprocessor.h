@@ -38,27 +38,42 @@ private:
   };
 
   struct Definition {
+    using value_t = std::vector<std::variant<std::string, i32>>;
     struct Arguments {
+      size_t count;
       bool variadic;
-      std::vector<std::string> list;
     };
 
-    std::string value;
+    Definition(const std::vector<std::string>& args, bool variadic, const std::string& val) :
+        arguments{Arguments{args.size(), variadic}} {
+      value = Parse(args, variadic, val);
+    }
+
+    Definition(std::string&& value) : arguments{}, value{std::move(value)} { }
+
+    static value_t Parse(const std::vector<std::string>& args, bool variadic, const std::string& value);
+
+    value_t value;
     std::optional<Arguments> arguments{};
   };
 
-  struct MacroStream {
-    MacroStream(std::string name, const std::string& s) : name{std::move(name)}, stream{s} { }
-    MacroStream(std::string name, const std::string& s, MacroMap&& arguments) :
+  struct MacroStream : cotyl::Stream<char> {
+    MacroStream(std::string name, const Definition& def) : name{std::move(name)}, def{def} { }
+    MacroStream(std::string name, const Definition& def, std::vector<std::string>&& arguments) :
         name{std::move(name)},
-        stream{s},
+        def{def},
         arguments{std::move(arguments)} {
 
     }
 
+  protected:
+    char GetNew() final;
+    bool IsEOS() final;
+  
+  private:
     std::string name;
-    SString stream;        // value
-    MacroMap arguments{};  // argument values
+    const Definition& def; // value
+    std::vector<std::string> arguments{};  // argument values, .back is variadic arguments
   };
 
   struct IfGroup {
@@ -142,16 +157,10 @@ private:
   void EatNextCharacter(char c);
   // if it is known that no extra checks are needed, we use this faster version
   void SkipNextCharacterSimple();
-
-  enum class MacroExpansion {
-    Normal, Argument
-  };
-
-  std::string GetNextProcessed(MacroExpansion macro_expansion = MacroExpansion::Normal);
+  std::string GetNextProcessed();
 
   std::string GetMacroArgumentValue(bool variadic);
   static void ReplaceNewlines(std::string& value);
-  bool IsDefinition(const std::string& name, Definition& definition);
   void PushMacro(const std::string& name, const Definition& definition);
   void EatNewline();
   i64 EatConstexpr();

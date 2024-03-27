@@ -21,7 +21,7 @@ void Preprocessor::PrintLoc() const {
 cotyl::Stream<char>& Preprocessor::CurrentStream() const {
   // macros go before the current expression, since expressions only
   // occur in #if statements, and the macro_stack is empty then
-  if (!macro_stack.empty()) return macro_stack.back().stream;
+  if (!macro_stack.empty()) return macro_stack.back();
   if (expression.has_value()) return expression.value();
   if (file_stack.empty()) {
     throw cotyl::EndOfFileException();
@@ -306,7 +306,7 @@ i64 Preprocessor::EatConstexpr() {
   }
 }
 
-std::string Preprocessor::GetNextProcessed(MacroExpansion macro_expansion) {
+std::string Preprocessor::GetNextProcessed() {
   // no need to check end of stream, since it is expected a new character even exists
   while (true) {
     char c = NextCharacter();
@@ -350,26 +350,11 @@ std::string Preprocessor::GetNextProcessed(MacroExpansion macro_expansion) {
       else if (identifier == "__LINE__") {
         return std::to_string(CurrentLine());
       }
+      else if (definitions.contains(identifier)) {
+        PushMacro(identifier, definitions.at(identifier));
+      }
       else {
-        if (macro_expansion == MacroExpansion::Normal) {
-          if (!macro_stack.empty() && macro_stack.back().arguments.contains(identifier)) {
-            PushMacro(identifier, macro_stack.back().arguments.at(identifier));
-          }
-          else if (definitions.contains(identifier)) {
-            PushMacro(identifier, definitions.at(identifier));
-          }
-          else {
-            return identifier;
-          }
-        }
-        else if (macro_expansion == MacroExpansion::Argument &&
-            !macro_stack.empty() && macro_stack.back().arguments.contains(identifier)) {
-          PushMacro(identifier, macro_stack.back().arguments.at(identifier));
-        }
-        else {
-          // normal identifier
-          return identifier;
-        }
+        return identifier;
       }
     }
     else if (c == '/' && CurrentStream().SequenceAfter(0, '/', '/')) {
@@ -445,7 +430,7 @@ char Preprocessor::GetNew() {
       return c;
     }
 
-    for (const auto& c : GetNextProcessed(MacroExpansion::Normal)) {
+    for (const auto& c : GetNextProcessed()) {
       pre_processor_queue.push(c);
     }
   }
@@ -526,12 +511,11 @@ void Preprocessor::PreprocessorDirective() {
   else if (pp_token == "define") {
     SkipBlanks(false);
     auto name = detail::get_identifier(CurrentStream());
-    Definition def = {};
 
     if (!IsEOS() && NextCharacter() == '(') {
       // functional macro
-      def.arguments = Definition::Arguments{};
-      auto& arguments = def.arguments.value();
+      std::vector<std::string> arguments = {};
+      bool variadic = false;
       SkipNextCharacterSimple();  // skip ( character
 
       SkipBlanks(false);
@@ -540,7 +524,7 @@ void Preprocessor::PreprocessorDirective() {
       while (NextCharacter() != ')') {
         if (detail::is_valid_ident_start(NextCharacter())) {
           auto arg = detail::get_identifier(CurrentStream());
-          arguments.list.push_back(arg);
+          arguments.push_back(arg);
           SkipBlanks(false);
 
           if (NextCharacter() == ',') {
@@ -554,7 +538,7 @@ void Preprocessor::PreprocessorDirective() {
           EatNextCharacter('.');
           EatNextCharacter('.');
           SkipBlanks(false);
-          arguments.variadic = true;
+          variadic = true;
           // there cannot be any more arguments after this
           break;
         }
@@ -565,18 +549,23 @@ void Preprocessor::PreprocessorDirective() {
         SkipBlanks(false);
       }
       EatNextCharacter(')');
-    }
 
-    // fetch macro definition
-    def.value = FetchLine();
-    if (def.value.empty() || !std::isspace(def.value.back())) {
-      def.value += " ";  // end macros in whitespace as to not glue preprocessing tokens
+      std::string value = FetchLine() + " ";  // end macros in whitespace as to not glue preprocessing tokens
+      ReplaceNewlines(value);
+
+      // only save definitions if current group is enabled
+      if (Enabled()) {
+        definitions[name] = Definition(arguments, variadic, value);
+      }
     }
-    ReplaceNewlines(def.value);
-  
-    // only save definitions if current group is enabled
-    if (Enabled()) {
-      definitions[name] = def;
+    else {
+      std::string value = FetchLine() + " ";  // end macros in whitespace as to not glue preprocessing tokens
+      ReplaceNewlines(value);
+
+      // only save definitions if current group is enabled
+      if (Enabled()) {
+        definitions[name] = Definition(std::move(value));
+      }
     }
     // newline eaten in FetchLine()
   }
@@ -642,27 +631,12 @@ std::string Preprocessor::GetMacroArgumentValue(bool variadic) {
       value << '(';
     }
     else {
-      // add next single-shot characters without expanding macros to macro definition
-      for (const auto& n : GetNextProcessed(MacroExpansion::Argument)) {
+      // process macro argument value, as they are unfolded properly in the definition anyway
+      for (const auto& n : GetNextProcessed()) {
         value << n;
       }
     }
   }
-}
-
-bool Preprocessor::IsDefinition(const std::string& name, Definition& definition) {
-  if (!macro_stack.empty()) {
-    // only top level macro argument names should be replaced
-    if (macro_stack.back().arguments.contains(name)) {
-      definition = macro_stack.back().arguments.at(name);
-      return true;
-    }
-  }
-  if (definitions.contains(name)) {
-    definition = definitions.at(name);
-    return true;
-  }
-  return false;
 }
 
 void Preprocessor::PushMacro(const std::string& name, const Definition& definition) {
@@ -673,16 +647,17 @@ void Preprocessor::PushMacro(const std::string& name, const Definition& definiti
 
   if (definition.arguments.has_value()) {
     const auto& arguments = definition.arguments.value();
-    MacroMap arg_values{};
+    std::vector<std::string> arg_values{};
+
     // when parsing macro usage, newlines can be skipped just fine
     SkipBlanks();
     EatNextCharacter('(');
-    for (const auto& arg : arguments.list) {
+    for (int i = 0; i < arguments.count; i++) {
       auto arg_val = GetMacroArgumentValue(false);
       ReplaceNewlines(arg_val);
-      arg_values[arg] = {arg_val};
+      arg_values.emplace_back(std::move(arg_val));
 
-      if (&arg != &arguments.list.back() || arguments.variadic) {
+      if ((i != (arguments.count - 1)) || arguments.variadic) {
         // not last element
         EatNextCharacter(',');
       }
@@ -690,7 +665,7 @@ void Preprocessor::PushMacro(const std::string& name, const Definition& definiti
     if (arguments.variadic && NextCharacter() != ')') {
       auto arg_val = GetMacroArgumentValue(true);
       ReplaceNewlines(arg_val);
-      arg_values["__VA_ARGS__"] = {arg_val};
+      arg_values.emplace_back(std::move(arg_val));
     }
    EatNextCharacter(')');
 
