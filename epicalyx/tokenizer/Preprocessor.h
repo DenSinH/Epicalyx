@@ -34,7 +34,7 @@ private:
 
     File stream;
     std::string name;
-    u64 line = 0;
+    u64 line = 1;  // line indexing starts at 1
   };
 
   struct Definition {
@@ -131,6 +131,7 @@ private:
 
   bool Enabled() const;
 
+  void SkipEscapedNewline();
   void SkipBlanks(bool skip_newlines = true);
   void SkipLineComment();
   void SkipMultilineComment();

@@ -119,30 +119,41 @@ bool Preprocessor::Enabled() const {
   );
 }
 
+void Preprocessor::SkipEscapedNewline() {
+  // escaped newline (no newline, do increment line number)
+  // we check the predicate after 1 character
+  // we cannot do this using ...NextCharacter without asserting that
+  // a next character even exists
+  // the use of CurrentStream() is "fixed" here, since we can only encounter
+  // newlines in file streams, in which case the line number is still updated
+  // a \ at the end of a file is invalid regardless, in which case we will not
+  // be skipping any blanks either
+  EatNextCharacter('\\');
+  cotyl::Assert(CurrentStream().PredicateAfter(0, std::isspace));
+
+  bool first_newline = true;
+  CurrentStream().SkipWhile([&](char c) -> bool {
+    if (c == '\n') {
+      if (first_newline) {
+        first_newline = false;  // only skip one line with escaped newline
+        // by assertion, we are not scanning a macro
+        // newlines have been stripped from macro definitions anyway
+        CurrentLine()++;
+        return true;
+      }
+      return false;  // don't skip multiple newlines
+    }
+    return std::isspace(c);
+  });
+}
+
 void Preprocessor::SkipBlanks(bool skip_newlines) {
   // we do not want to crash on an end of stream while skipping whitespace
   while (!IsEOS()) {
     char c = NextCharacter();
     if (c == '\\') {
-      // escaped newline (no newline, do increment line number)
-      // we check the predicate after 1 character
-      // we cannot do this using ...NextCharacter without asserting that
-      // a next character even exists
-      // the use of CurrentStream() is "fixed" here, since we can only encounter
-      // newlines in file streams, in which case the line number is still updated
-      // a \ at the end of a file is invalid regardless, in which case we will not
-      // be skipping any blanks either
       if (CurrentStream().PredicateAfter(1, std::isspace)) {
-        SkipNextCharacterSimple();  // skip \ character
-        CurrentStream().SkipWhile([&](char c) -> bool {
-          if (c == '\n') {
-            // macros do not contain newline characters anyway
-            CurrentLine()++;
-            // in this case, the is_newline state does NOT change
-            return false;  // only skip one line with escaped newline
-          }
-          return std::isspace(c);
-        });
+        SkipEscapedNewline();
       }
     }
     else if (c == '\n') {
@@ -168,7 +179,12 @@ void Preprocessor::SkipLineComment() {
   EatNextCharacter('/');
   is_newline = false;
   while (!IsEOS() && !is_newline) {
-    SkipNextCharacter();
+    if (NextCharacter() =='\\' && CurrentStream().PredicateAfter(1, std::isspace)) {
+      SkipEscapedNewline();
+    }
+    else {
+      SkipNextCharacter();
+    }
   }
 }
 
@@ -194,27 +210,23 @@ std::string Preprocessor::FetchLine() {
   while (!IsEOS()) {
     char c = NextCharacter();
     if (c == '\\') {
-      // escaped newline (no newline, do increment line number)
-      // see SkipBlanks comment about CurrentStream usage
+
+      // possible escaped newline (no newline, do increment line number)
       if (CurrentStream().PredicateAfter(1, std::isspace)) {
-        SkipNextCharacterSimple();  // skip \ character
-        CurrentStream().SkipWhile([&](char c) -> bool {
-          if (c == '\n') {
-            // by assertion, we are not scanning a macro
-            // newlines have been stripped from macro definitions anyway
-            CurrentLine()++;
-            return false;  // only skip one line with escaped newline
-          }
-          return std::isspace(c);
-        });
+        SkipEscapedNewline();
 
         // add single whitespace character to line
         line << ' ';
       }
+      else {
+        SkipNextCharacterSimple();  // skip \ character
+        line << '\\';
+      }
     }
     else if (c == '\n') {
       // end of line
-      // do not eat the line ending
+      EatNextCharacter('\n');
+
       // it is okay if allow_newline is false here because we do not eat the newline
       return line.str();
     }
@@ -281,6 +293,9 @@ i64 Preprocessor::EatConstexpr() {
     // we expect the bottom string (expression) to be fully parsed
     cotyl::Assert(macro_stack.empty(), "Found unexpanded macros after expression");
     expression = {};
+
+    // we fetched the whole line, so we are always at a new line after this
+    is_newline = true;
     return result;
   }
   catch (cotyl::EndOfFileException& e) {
@@ -363,11 +378,8 @@ std::string Preprocessor::GetNextProcessed(MacroExpansion macro_expansion) {
       // state should have been handled okay for this to behave properly
       SkipLineComment();
 
-      // eat line ending
-      EatNextCharacter('\n');
-
-      // insert newline after comment
-      is_newline = true;
+      // expect newline after comment
+      cotyl::Assert(is_newline);
       return "\n";
     }
     else if (c == '/' && CurrentStream().SequenceAfter(0, '/', '*')) {
@@ -455,17 +467,19 @@ void Preprocessor::PreprocessorDirective() {
   if (pp_token == "if") {
     SkipBlanks(false);
     if_group_stack.push_back(IfGroup::If(EatConstexpr() != 0));
-    EatNewline();
+    // newline eaten in EatConstexpr()
   }
   else if (pp_token == "ifdef") {
     SkipBlanks(false);
     auto identifier = detail::get_identifier(CurrentStream());
     if_group_stack.push_back(IfGroup::If(definitions.contains(identifier)));
+    EatNewline();
   }
   else if (pp_token == "ifndef") {
     SkipBlanks(false);
     auto identifier = detail::get_identifier(CurrentStream());
     if_group_stack.push_back(IfGroup::If(!definitions.contains(identifier)));
+    EatNewline();
   }
   else if (pp_token == "elif") {
     if (if_group_stack.empty()) {
@@ -473,6 +487,7 @@ void Preprocessor::PreprocessorDirective() {
     }
     SkipBlanks(false);
     if_group_stack.back().Elif(EatConstexpr() != 0);
+    // newline eaten in EatConstexpr()
   }
   else if (pp_token == "elifdef") {
     // non-standard
@@ -482,6 +497,7 @@ void Preprocessor::PreprocessorDirective() {
     SkipBlanks(false);
     auto identifier = detail::get_identifier(CurrentStream());
     if_group_stack.back().Elif(definitions.contains(identifier));
+    EatNewline();
   }
   else if (pp_token == "elifndef") {
     // non-standard
@@ -491,18 +507,21 @@ void Preprocessor::PreprocessorDirective() {
     SkipBlanks(false);
     auto identifier = detail::get_identifier(CurrentStream());
     if_group_stack.back().Elif(!definitions.contains(identifier));
+    EatNewline();
   }
   else if (pp_token == "else") {
     if (if_group_stack.empty()) {
       throw std::runtime_error("Unexpected else group");
     }
     if_group_stack.back().Else();
+    EatNewline();
   }
   else if (pp_token == "endif") {
     if (if_group_stack.empty()) {
       throw std::runtime_error("Unexpected end if preprocessor if group");
     }
     if_group_stack.pop_back();
+    EatNewline();
   }
   else if (pp_token == "define") {
     SkipBlanks(false);
@@ -556,15 +575,18 @@ void Preprocessor::PreprocessorDirective() {
     if (Enabled()) {
       definitions[name] = def;
     }
+    // newline eaten in FetchLine()
   }
   else if (pp_token == "undef") {
     SkipBlanks(false);
     auto identifier = detail::get_identifier(CurrentStream());
 
     definitions.erase(identifier);
+    EatNewline();
   }
   else if (pp_token == "line") {
     CurrentLine() = EatConstexpr();
+    // newline eaten in EatConstexpr()
   }
   else if (pp_token == "error") {
     std::string message = FetchLine();
@@ -581,7 +603,7 @@ void Preprocessor::PreprocessorDirective() {
   else {
     throw cotyl::FormatExcept("Unexpected token after '#': %s", pp_token.c_str());
   }
-  EatNewline();
+  cotyl::Assert(is_newline, "Expect to be at newline after preprocessor directive");
 }
 
 void Preprocessor::ReplaceNewlines(std::string& value) {

@@ -4,7 +4,7 @@
 #define macro3 12 + \
   \
   1
-// comment
+// comment /*
 /*
  * multiline comment
  * */
