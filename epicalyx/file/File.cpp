@@ -20,7 +20,7 @@ File::~File() {
 
 void File::PrintLoc() const {
   const std::streampos restore = file.tellg();
-  const std::streampos current = file.tellg() - (std::streampos)buf.size();
+  const std::streampos current = file.tellg() - (std::streampos)BufSize() - (lookahead ? 1 : 0);
   std::string l;
 
   if (prev != -1) {
@@ -43,26 +43,25 @@ void File::PrintLoc() const {
 }
 
 bool File::IsEOS() {
+  if (lookahead) {
+    return false;
+  }
   if (file.eof()) {
     return true;
   }
-  char value;
-  file.read(&value, 1);
-  if (!value && file.eof()) {
-    return true;
-  }
-  if (value == '\n') {
-    prev = line;
-    line = file.tellg();
-  }
-
-  buf.push_back(value);
-  return file.eof();
+  file.read(&lookahead, 1);
+  return !lookahead && file.eof();
 }
 
 char File::GetNew() {
   char value;
-  file.read(&value, 1);
+  if (lookahead) {
+    value = lookahead;
+    lookahead = 0;
+  }
+  else {
+    file.read(&value, 1);
+  }
 
   if (value == '\n') {
     prev = line;

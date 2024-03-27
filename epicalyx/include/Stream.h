@@ -83,7 +83,7 @@ struct Stream : public Locatable {
       return false;
     }
     while (buf.size() < amount + 1) {
-      if (EOS()) {
+      if (IsEOS()) {
         return false;
       }
       buf.push_back(GetNew());
@@ -179,11 +179,13 @@ struct Stream : public Locatable {
   }
 
 protected:
-  std::deque<T> buf;
-
+  size_t BufSize() const { return buf.size(); }
   virtual T GetNew() = 0;
-
   virtual bool IsEOS() = 0;
+
+private:
+  // only for internal EOS control
+  std::deque<T> buf;
 };
 
 }
