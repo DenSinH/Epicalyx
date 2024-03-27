@@ -1,13 +1,15 @@
 #undef macro
-# define macro2
-# 
-#define macro3 12 + 1
+# define macro2 /*
+*/#if true 
+#define macro3 12 + \
+  \
+  1
 // comment
 /*
  * multiline comment
  * */
 
-#define no_arg_macro() 1
+#define no_arg_macro() 0
 #define va_arg_marcro(...) __VA_ARGS__
 #define functional_macro(arg) (arg + no_arg_macro())
 
@@ -39,7 +41,7 @@ int main() {
   double one_added = add_half(add_half(global));
   return functional_macro(add_half(add_half(one_added)))
 #ifdef define_in_nested_group
-  va_arg_marcro(-123)
+  + va_arg_marcro(__LINE__)
 #endif
   ;
 }

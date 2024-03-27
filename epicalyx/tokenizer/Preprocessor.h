@@ -35,7 +35,6 @@ private:
     File stream;
     std::string name;
     u64 line = 0;
-    bool is_newline = true;
   };
 
   struct Definition {
@@ -107,22 +106,27 @@ private:
   std::queue<char> pre_processor_queue{};
 
   // current expression being parsed for #if condition
-  std::optional<SString> expression{};
+  mutable std::optional<SString> expression{};
 
   // stack of macros and arguments to be processed before anything else
-  std::deque<MacroStream> macro_stack{};
+  mutable std::deque<MacroStream> macro_stack{};
 
   // stack of included files to be processed
-  std::deque<FileStream> file_stack{};
+  mutable std::deque<FileStream> file_stack{};
+  bool is_newline = true;
 
   // stack of if groups that may or may not be enabled
   std::deque<IfGroup> if_group_stack{};
   MacroMap definitions{};
   cotyl::unordered_set<std::string> parsed_files{};
 
-  cotyl::Stream<char>& CurrentStream();
+  // we want to reduce the "CurrentStream" usage as much as possible,
+  // since it may introduce erroneous tracking of global preprocessor state
+  // i.e. current newline status or line number
+  // we comment on the use whenever we do use it, except in the wrapper
+  // functions that handle the state updates properly (...NextCharacter)
+  cotyl::Stream<char>& CurrentStream() const;
   u64& CurrentLine();
-  bool& IsNewline();
   std::string CurrentFile();
 
   bool Enabled() const;
@@ -131,7 +135,12 @@ private:
   void SkipLineComment();
   void SkipMultilineComment();
   std::string FetchLine();
-  char NextCharacter();
+  char NextCharacter() const;
+  char GetNextCharacter();
+  void SkipNextCharacter();
+  void EatNextCharacter(char c);
+  // if it is known that no extra checks are needed, we use this faster version
+  void SkipNextCharacterSimple();
 
   enum class MacroExpansion {
     Normal, Argument
@@ -140,7 +149,7 @@ private:
   std::string GetNextProcessed(MacroExpansion macro_expansion = MacroExpansion::Normal);
 
   std::string GetMacroArgumentValue(bool variadic);
-  static void CleanMacroValue(std::string& value);
+  static void ReplaceNewlines(std::string& value);
   bool IsDefinition(const std::string& name, Definition& definition);
   void PushMacro(const std::string& name, const Definition& definition);
   void EatNewline();
