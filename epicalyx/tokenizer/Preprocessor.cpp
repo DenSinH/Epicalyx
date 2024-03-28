@@ -5,6 +5,8 @@
 
 #include "parser/ConstParser.h"
 
+#include "SStream.h"
+
 #include <ranges>
 
 
@@ -205,7 +207,7 @@ void Preprocessor::SkipMultilineComment() {
 std::string Preprocessor::FetchLine() {
   cotyl::Assert(macro_stack.empty(), "Expected empty string stack in preprocessor line fetch");
   cotyl::Assert(!expression.has_value(), "Unexpected preprocessor line fetch while parsing expression");
-  std::stringstream line;
+  cotyl::StringStream line{};
 
   while (!IsEOS()) {
     char c = NextCharacter();
@@ -228,13 +230,13 @@ std::string Preprocessor::FetchLine() {
       EatNextCharacter('\n');
 
       // it is okay if allow_newline is false here because we do not eat the newline
-      return line.str();
+      return line.finalize();
     }
     else if (CurrentStream().SequenceAfter(0, '/', '/')) {
       // CurrentStream() usage okay, since we EatNextCharacter within the handler function
       // state should have been handled properly anyway
       SkipLineComment();
-      return line.str();
+      return line.finalize();
     }
     else if (CurrentStream().SequenceAfter(0, '/', '*')) {
       // CurrentStream() usage okay, since we EatNextCharacter within the handler function
@@ -245,7 +247,7 @@ std::string Preprocessor::FetchLine() {
       line << GetNextCharacter();
     }
   }
-  return line.str();
+  return line.finalize();
 }
 
 bool Preprocessor::IsEOS() {
@@ -375,7 +377,7 @@ std::string Preprocessor::GetNextProcessed() {
     }
     else if (c == '"' || c == '\'') {
       // strings have to be fetched fully
-      std::stringstream string;
+      cotyl::StringStream string{};
 
       SkipNextCharacter();
       const char quote = c;
@@ -397,21 +399,21 @@ std::string Preprocessor::GetNextProcessed() {
       // end string
       EatNextCharacter(quote);
       string << quote;
-      return string.str();
+      return string.finalize();
     }
     else {
       // other character
       is_newline = false;
 
       if (detail::is_valid_ident_char(c)) {
-        std::stringstream ident_char_string;
+        cotyl::StringStream ident_char_string{};
         // to prevent stuff like 1macro to parse as 1<macro definition>
         // we need to eat all valid identifier characters until we find one that is not
         // use of CurrentStream() is okay since we are not crossing any state changing boundaries
         while (CurrentStream().PredicateAfter(0, detail::is_valid_ident_char)) {
           ident_char_string << CurrentStream().Get();
         }
-        return ident_char_string.str();
+        return ident_char_string.finalize();
       }
       else {
         EatNextCharacter(c);
@@ -609,7 +611,7 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
 ) {
   value_t result{};
   auto valstream = SString(value);
-  std::stringstream current_val{};
+  cotyl::StringStream current_val{};
   char c;
 
   // any time we encounter a macro argument, we KNOW that current_val will be non-empty
@@ -619,7 +621,7 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
       auto ident = detail::get_identifier(valstream);
       if (variadic && ident == "__VA_ARGS__") {
         // variadic argument, emplace current intermediate text and reset
-        result.emplace_back(current_val.str());
+        result.emplace_back(current_val.finalize());
         current_val = {};
         result.emplace_back(-1);
       }
@@ -627,7 +629,7 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
         auto arg_idx = std::find(args.begin(), args.end(), ident);
         if (arg_idx != args.end()) {
           // argument id, emplace current intermediate text and reset
-          result.emplace_back(current_val.str());
+          result.emplace_back(current_val.finalize());
           current_val = {};
           result.emplace_back((i32)(arg_idx - args.begin()));
         }
@@ -642,8 +644,8 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
     }
   }
 
-  if (current_val.rdbuf()->in_avail()) {
-      result.emplace_back(current_val.str());
+  if (!current_val.empty()) {
+    result.emplace_back(current_val.finalize());
   }
   return result;
 }
@@ -686,7 +688,7 @@ void Preprocessor::MacroStream::PrintLoc() const {
 }
 
 std::string Preprocessor::GetMacroArgumentValue(bool variadic) {
-  std::stringstream value;
+  cotyl::StringStream value{};
   SkipBlanks();
 
   unsigned paren_count = 0;
@@ -695,11 +697,11 @@ std::string Preprocessor::GetMacroArgumentValue(bool variadic) {
     const char next = NextCharacter();
     if (next == ',' && !variadic && paren_count == 0) {
       // next argument
-      return value.str();
+      return value.finalize();
     }
     else if (next == ')') {
       // if paren_count is 0 there are no more arguments and this argument is done
-      if (paren_count == 0) return value.str();
+      if (paren_count == 0) return value.finalize();
       else {
         // otherwise, track the parenthesis
         paren_count--;

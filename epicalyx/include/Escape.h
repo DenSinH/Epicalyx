@@ -1,13 +1,14 @@
 #pragma once
 
+#include "SStream.h"
+
 #include <string>
-#include <sstream>
 
 
 namespace epi::cotyl {
 
 static std::string Escape(const std::string& in) {
-  std::stringstream result{};
+  cotyl::StringStream result{};
   for (const auto c : in) {
     switch (c) {
       case '\n': result << "\\n"; break;
@@ -24,7 +25,7 @@ static std::string Escape(const std::string& in) {
       default: result << c; break;
     }
   }
-  return result.str();
+  return result.finalize();
 }
 
 }

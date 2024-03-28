@@ -3,7 +3,6 @@
 #include "EpiCType.h"
 
 #include <type_traits>
-#include <sstream>
 #include <optional>
 
 #include "TypeUtils.h"

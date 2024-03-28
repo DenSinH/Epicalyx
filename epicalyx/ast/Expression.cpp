@@ -1,7 +1,6 @@
 #include "Expression.h"
 #include "parser/Parser.h"
-
-#include <sstream>
+#include "SStream.h"
 
 
 namespace epi::ast {
@@ -26,7 +25,7 @@ void ConstTypeVisitor::Visit(const ValueType<float>& type) { VisitValueType(type
 void ConstTypeVisitor::Visit(const ValueType<double>& type) { VisitValueType(type); }
 
 std::string FunctionCall::ToString() const {
-  std::stringstream result{};
+  cotyl::StringStream result{};
   result << left->ToString() << '(';
   for (int i = 0; i < args.size(); i++) {
     result << args[i]->ToString();
@@ -35,7 +34,7 @@ std::string FunctionCall::ToString() const {
     }
   }
   result << ')';
-  return result.str();
+  return result.finalize();
 }
 
 std::string MemberAccess::ToString() const {

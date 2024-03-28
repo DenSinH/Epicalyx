@@ -1,4 +1,5 @@
 #include "Calyx.h"
+#include "SStream.h"
 #include "backend/Backend.h"
 
 #include "Format.h"
@@ -245,14 +246,14 @@ std::string Return<T>::ToString() const {
 }
 
 std::string make_args_list(const arg_list_t& args) {
-  std::stringstream stream{};
+  cotyl::StringStream stream{};
   if (!args.empty()) {
     for (int i = 0; i < args.size() - 1; i++) {
       stream << "v" << args[i].first << ", ";
     }
     stream << "v" << args.back().first;
   }
-  return stream.str();
+  return stream.finalize();
 }
 
 template<typename T>

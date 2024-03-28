@@ -4,8 +4,9 @@
 
 #include "Cast.h"
 
+#include "SStream.h"
+
 #include <regex>
-#include <sstream>
 
 namespace epi::ast {
 
@@ -45,7 +46,7 @@ std::string Return::ToString() const {
 }
 
 std::string For::ToString() const {
-  std::stringstream result{};
+  cotyl::StringStream result{};
   result << "for (";
   result << cotyl::Join(", ", decls);
   result << cotyl::Join(", ", inits);
@@ -55,7 +56,7 @@ std::string For::ToString() const {
   result << cotyl::Join(", ", updates);
   result << ") ";
   result << stat->ToString();
-  return result.str();
+  return result.finalize();
 }
 
 std::string Switch::ToString() const {
@@ -63,7 +64,7 @@ std::string Switch::ToString() const {
 }
 
 std::string Compound::ToString() const {
-  std::stringstream repr{};
+  cotyl::StringStream repr{};
   repr << '{';
   for (const auto& stat : stats) {
     repr << '\n';
@@ -72,7 +73,7 @@ std::string Compound::ToString() const {
       repr << ';';
     }
   }
-  std::string result = std::regex_replace(repr.str(), std::regex("\n"), "\n  ");
+  std::string result = std::regex_replace(repr.finalize(), std::regex("\n"), "\n  ");
   return result + "\n}";
 }
 

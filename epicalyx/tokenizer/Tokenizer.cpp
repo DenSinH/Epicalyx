@@ -1,8 +1,8 @@
 #include "Tokenizer.h"
 #include "Identifier.h"
 #include "Default.h"
+#include "SStream.h"
 
-#include <sstream>
 #include <array>
 #include <iostream>
 
@@ -87,22 +87,21 @@ pToken Tokenizer::GetNew() {
       return Make<Token>(TokenType::Ellipsis);
     }
 
-    std::stringstream str{};
+    cotyl::StringStream str{};
     do {
       str << c;
-      if (Punctuators.contains(str.str())) {
+      if (Punctuators.contains(str.current())) {
         in_stream.Skip();
       }
       else {
-        std::string punctuator = str.str();
+        std::string punctuator = str.current();
         punctuator.erase(punctuator.size() - 1);
         return Make<Token>(Punctuators.at(punctuator));
       }
     } while (in_stream.Peek(c));
 
-    if (Punctuators.contains(str.str())) {
-      std::string punctuator = str.str();
-      return Make<Token>(Punctuators.at(punctuator));
+    if (Punctuators.contains(str.current())) {
+      return Make<Token>(Punctuators.at(str.finalize()));
     }
 
     throw cotyl::EndOfFileException();
@@ -122,7 +121,7 @@ static constexpr std::array<i32, 0x100> ASCIIHexToInt = {
 };
 
 std::string Tokenizer::ReadString(const char delimiter) {
-  std::stringstream str{};
+  cotyl::StringStream str{};
 
   in_stream.Eat(delimiter);
   char c;
@@ -174,11 +173,11 @@ std::string Tokenizer::ReadString(const char delimiter) {
     }
   }
 
-  return str.str();
+  return str.finalize();
 }
 
 pToken Tokenizer::ReadNumericalConstant() {
-  std::stringstream value{};
+  cotyl::StringStream value{};
   bool dot = false;
   bool exponent = false;
   bool octal = false;
@@ -302,7 +301,7 @@ pToken Tokenizer::ReadNumericalConstant() {
   }
 
   if (is_float) {
-    double val = std::stod(value.str());
+    double val = std::stod(value.finalize());
     if (is_long || (val != (float)val)) {
       return Make<tNumericConstant<double>>(val);
     }
@@ -313,7 +312,7 @@ pToken Tokenizer::ReadNumericalConstant() {
   if (is_unsigned) {
     u64 val = 0;
     if (octal) {
-      for (auto c : value.str()) {
+      for (auto c : value.finalize()) {
         if (c > '7') {
           throw std::runtime_error("Invalid octal constant");
         }
@@ -322,10 +321,10 @@ pToken Tokenizer::ReadNumericalConstant() {
       }
     }
     else if (hex) {
-      val = std::stoull(value.str(), nullptr, 16);
+      val = std::stoull(value.finalize(), nullptr, 16);
     }
     else {
-      val = std::stoull(value.str());
+      val = std::stoull(value.finalize());
     }
     if (is_long == 2 || val > UINT32_MAX) {
       return Make<tNumericConstant<u64>>(val);
@@ -337,7 +336,7 @@ pToken Tokenizer::ReadNumericalConstant() {
   else {
     i64 val = 0;
     if (octal) {
-      for (auto c : value.str()) {
+      for (auto c : value.finalize()) {
         if (c > '7') {
           throw std::runtime_error("Invalid octal constant");
         }
@@ -346,10 +345,10 @@ pToken Tokenizer::ReadNumericalConstant() {
       }
     }
     else if (hex) {
-      val = std::stoll(value.str(), nullptr, 16);
+      val = std::stoll(value.finalize(), nullptr, 16);
     }
     else {
-      val = std::stoll(value.str());
+      val = std::stoll(value.finalize());
     }
 
     if (is_long == 2 || val > INT32_MAX || val < INT32_MIN) {

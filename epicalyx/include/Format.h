@@ -1,9 +1,10 @@
 #pragma once
 
+#include "SStream.h"
+
 #include <stdexcept>
 #include <memory>
 #include <string>
-#include <sstream>
 #include <vector>
 
 
@@ -55,36 +56,36 @@ template<typename T>
 std::string Join(const std::string& delimiter, const std::vector<T>& values) {
   if (values.empty()) return "";
 
-  std::stringstream result{};
+  cotyl::StringStream result{};
   for (int i = 0; i < values.size() - 1; i++) {
     result << values[i].ToString() << ", ";
   }
   result << values.back().ToString();
-  return result.str();
+  return result.finalize();
 }
 
 template<typename T>
 std::string Join(const std::string& delimiter, const std::vector<std::unique_ptr<T>>& values) {
   if (values.empty()) return "";
 
-  std::stringstream result{};
+  cotyl::StringStream result{};
   for (int i = 0; i < values.size() - 1; i++) {
     result << values[i]->ToString() << ", ";
   }
   result << values.back()->ToString();
-  return result.str();
+  return result.finalize();
 }
 
 template<typename T>
 std::string Join(const std::string& delimiter, const std::vector<std::shared_ptr<T>>& values) {
   if (values.empty()) return "";
 
-  std::stringstream result{};
+  cotyl::StringStream result{};
   for (int i = 0; i < values.size() - 1; i++) {
     result << values[i]->to_string() << ", ";
   }
   result << values.back()->to_string();
-  return result.str();
+  return result.finalize();
 }
 
 }

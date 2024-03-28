@@ -4,15 +4,15 @@
 #include "parser/Parser.h"
 #include "Log.h"
 #include "Exceptions.h"
+#include "SStream.h"
 
-#include <sstream>
 #include <regex>
 
 namespace epi::ast {
 
 
 std::string InitializerList::ToString() const {
-  std::stringstream repr{};
+  cotyl::StringStream repr{};
   repr << '{';
   for (const auto& init : list) {
     repr << '\n';
@@ -34,7 +34,7 @@ std::string InitializerList::ToString() const {
       repr << std::get<pNode<InitializerList>>(init.second)->ToString() << ',';
     }
   }
-  std::string result = std::regex_replace(repr.str(), std::regex("\n"), "\n  ");
+  std::string result = std::regex_replace(repr.finalize(), std::regex("\n"), "\n  ");
   return result + "\n}";
 }
 

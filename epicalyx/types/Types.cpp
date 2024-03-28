@@ -1,5 +1,6 @@
 #include "Types.h"
 #include "Log.h"
+#include "SStream.h"
 
 #include <functional>
 #include <utility>
@@ -7,7 +8,7 @@
 namespace epi {
 
 std::string StructUnionType::ToString() const {
-  std::stringstream repr{};
+  cotyl::StringStream repr{};
   repr << BaseString();
   if (!name.empty()) {
     repr << ' ' << name;
@@ -22,7 +23,7 @@ std::string StructUnionType::ToString() const {
     repr << ';';
   }
   repr << "\n}";
-  return repr.str();
+  return repr.finalize();
 }
 
 u64 StructUnionType::Sizeof() const {
@@ -79,7 +80,7 @@ std::string FunctionType::Arg::ToString() const {
 }
 
 std::string FunctionType::ToString() const {
-  std::stringstream repr{};
+  cotyl::StringStream repr{};
   std::string formatted = cotyl::FormatStr("(%s)(", contained ? contained->ToString() : "%%");
   repr << formatted;
   repr << cotyl::Join(", ", arg_types);
@@ -87,7 +88,7 @@ std::string FunctionType::ToString() const {
     repr << ", ...";
   }
   repr << ')';
-  return repr.str();
+  return repr.finalize();
 }
 
 pType<> FunctionType::FunctionCall(const std::vector<pType<const CType>>& args) const {
