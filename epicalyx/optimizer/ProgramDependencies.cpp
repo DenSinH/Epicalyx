@@ -2,6 +2,8 @@
 
 #include "Containers.h"
 #include "cycle/Cycle.h"
+#include "SStream.h"
+#include "Format.h"
 
 #include <algorithm>
 
@@ -132,7 +134,24 @@ void ProgramDependencies::VisualizeVars() {
   auto graph = std::make_unique<epi::cycle::Graph>();
 
   for (const auto& [idx, var] : var_graph) {
-    graph->n(idx, std::to_string(var.read_for.size() + var.other_uses) + " reads");
+    if (!idx) continue;
+    cotyl::StringStream text{
+      cotyl::Format(
+        "created [%d].[%d]\n%d reads", 
+        var.pos_made.first, var.pos_made.second, var.read_for.size() + var.other_uses.size()
+      )
+    };
+    if (!var.read_for.empty() || !var.other_uses.empty()) {
+      text << ":\n";
+      for (const auto& for_idx : var.read_for) {
+        const auto& for_var = var_graph.at(for_idx);
+        text << cotyl::Format("read for v%d @[%d].[%d]\n", for_idx, for_var.pos_made.first, for_var.pos_made.second);
+      }
+      for (const auto& loc : var.other_uses) {
+        text << cotyl::Format("use          @[%d].[%d]\n", loc.first, loc.second);
+      }
+    }
+    graph->n(idx, text.finalize());
     for (const auto& dep : var.deps) {
       graph->n(idx)->n(dep);
     }
@@ -172,17 +191,17 @@ void ProgramDependencies::EmitCast(Cast<To, From>& op) {
 template<typename T>
 void ProgramDependencies::EmitLoadLocal(LoadLocal<T>& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
-  detail::get_default(local_graph, op.loc_idx).reads++;
+  detail::get_default(local_graph, op.loc_idx).reads.insert(pos);
 }
 
 void ProgramDependencies::Emit(LoadLocalAddr& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
-  detail::get_default(local_graph, op.loc_idx).reads++;
+  detail::get_default(local_graph, op.loc_idx).reads.insert(pos);
 }
 
 template<typename T>
 void ProgramDependencies::EmitStoreLocal(StoreLocal<T>& op) {
-  detail::get_default(var_graph, op.src).other_uses++;
+  detail::get_default(var_graph, op.src).other_uses.insert(pos);
   detail::get_default(local_graph, op.loc_idx).writes.insert({pos, op.src});
 }
 
@@ -197,7 +216,7 @@ void ProgramDependencies::Emit(LoadGlobalAddr& op) {
 
 template<typename T>
 void ProgramDependencies::EmitStoreGlobal(StoreGlobal<T>& op) {
-  detail::get_default(var_graph, op.src).other_uses++;
+  detail::get_default(var_graph, op.src).other_uses.insert(pos);
 }
 
 template<typename T>
@@ -209,24 +228,24 @@ void ProgramDependencies::EmitLoadFromPointer(LoadFromPointer<T>& op) {
 
 template<typename T>
 void ProgramDependencies::EmitStoreToPointer(StoreToPointer<T>& op) {
-  detail::get_default(var_graph, op.src).other_uses++;
-  detail::get_default(var_graph, op.ptr_idx).other_uses++;
+  detail::get_default(var_graph, op.src).other_uses.insert(pos);
+  detail::get_default(var_graph, op.ptr_idx).other_uses.insert(pos);
 }
 
 template<typename T>
 void ProgramDependencies::EmitCall(Call<T>& op) {
-  detail::get_default(var_graph, op.fn_idx).other_uses++;
+  detail::get_default(var_graph, op.fn_idx).other_uses.insert(pos);
   if constexpr(!std::is_same_v<T, void>) {
     detail::get_default(var_graph, op.idx).pos_made = pos;
   }
 
   for (const auto& [var_idx, arg] : op.args) {
     detail::get_default(var_graph, op.idx).deps.emplace(var_idx);
-    detail::get_default(var_graph, var_idx).other_uses++;
+    detail::get_default(var_graph, var_idx).other_uses.insert(pos);
   }
   for (const auto& [var_idx, arg] : op.var_args) {
     detail::get_default(var_graph, op.idx).deps.emplace(var_idx);
-    detail::get_default(var_graph, var_idx).other_uses++;
+    detail::get_default(var_graph, var_idx).other_uses.insert(pos);
   }
 }
 
@@ -237,11 +256,11 @@ void ProgramDependencies::EmitCallLabel(CallLabel<T>& op) {
   }
   for (const auto&[var_idx, arg] : op.args) {
     detail::get_default(var_graph, op.idx).deps.emplace(var_idx);
-    detail::get_default(var_graph, var_idx).other_uses++;
+    detail::get_default(var_graph, var_idx).other_uses.insert(pos);
   }
   for (const auto&[var_idx, arg] : op.var_args) {
     detail::get_default(var_graph, op.idx).deps.emplace(var_idx);
-    detail::get_default(var_graph, var_idx).other_uses++;
+    detail::get_default(var_graph, var_idx).other_uses.insert(pos);
   }
 }
 
@@ -251,7 +270,7 @@ void ProgramDependencies::Emit(ArgMakeLocal& op) {
 
 template<typename T>
 void ProgramDependencies::EmitReturn(Return<T>& op) {
-  detail::get_default(var_graph, op.idx).other_uses++;
+  detail::get_default(var_graph, op.idx).other_uses.insert(pos);
 }
 
 template<typename T>
@@ -322,19 +341,19 @@ template<typename T>
 void ProgramDependencies::EmitBranchCompare(BranchCompare<T>& op) {
   detail::get_default(block_graph, pos.first).to.emplace(op.dest);
   detail::get_default(block_graph, op.dest).from.emplace(pos.first);
-  detail::get_default(var_graph, op.left_idx).other_uses++;
-  detail::get_default(var_graph, op.right_idx).other_uses++;
+  detail::get_default(var_graph, op.left_idx).other_uses.insert(pos);
+  detail::get_default(var_graph, op.right_idx).other_uses.insert(pos);
 }
 
 template<typename T>
 void ProgramDependencies::EmitBranchCompareImm(BranchCompareImm<T>& op) {
   detail::get_default(block_graph, pos.first).to.emplace(op.dest);
   detail::get_default(block_graph, op.dest).from.emplace(pos.first);
-  detail::get_default(var_graph, op.left_idx).other_uses++;
+  detail::get_default(var_graph, op.left_idx).other_uses.insert(pos);
 }
 
 void ProgramDependencies::Emit(Select& op) {
-  detail::get_default(var_graph, op.idx).other_uses++;
+  detail::get_default(var_graph, op.idx).other_uses.insert(pos);
   for (const auto& [value, block] : op.table) {
     detail::get_default(block_graph, pos.first).to.emplace(block);
     detail::get_default(block_graph, block).from.emplace(pos.first);

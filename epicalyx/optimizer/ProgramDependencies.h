@@ -9,6 +9,8 @@ namespace epi {
 
 using namespace calyx;
 
+using program_pos_t = std::pair<block_label_t, int>;
+
 struct ProgramDependencies : calyx::Backend {
 
   // find common ancestor for 2 blocks such that all paths to these blocks go through that ancestor
@@ -25,25 +27,25 @@ struct ProgramDependencies : calyx::Backend {
   cotyl::unordered_map<block_label_t, Block> block_graph{};
 
   struct Var {
-    std::pair<block_label_t, int> pos_made = {0, -1};
+    program_pos_t pos_made = {0, -1};
     cotyl::unordered_set<var_index_t> deps{};
     cotyl::unordered_set<var_index_t> read_for{};
-    u64 other_uses = 0;  // call arg/return val/store to pointer etc.
+    cotyl::unordered_set<program_pos_t> other_uses{};  // call arg/return val/store to pointer etc.
   };
 
   cotyl::unordered_map<var_index_t, Var> var_graph{};
 
   struct Local {
-    using Write = std::pair<std::pair<block_label_t, int>, var_index_t>;
+    using Write = std::pair<program_pos_t, var_index_t>;
 
-    std::pair<block_label_t, int> pos_made = {0, -1};
+    program_pos_t pos_made = {0, -1};
     cotyl::unordered_set<Write> writes{};
-    u64 reads = 0;
+    cotyl::unordered_set<program_pos_t> reads{};
   };
 
   cotyl::unordered_map<var_index_t, Local> local_graph{};
 
-  std::pair<block_label_t, int> pos;
+  program_pos_t pos;
 
   void VisualizeVars();
 

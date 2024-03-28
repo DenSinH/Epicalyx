@@ -21,7 +21,7 @@ std::string InitializerList::ToString() const {
         repr << '.' << std::get<std::string>(des);
       }
       else {
-        repr << '[' << std::get<i64>(des) << ']';
+        repr << '[' << std::to_string(std::get<i64>(des)) << ']';
       }
     }
     if (!init.first.empty()) {

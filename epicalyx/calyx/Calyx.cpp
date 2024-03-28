@@ -249,9 +249,9 @@ std::string make_args_list(const arg_list_t& args) {
   cotyl::StringStream stream{};
   if (!args.empty()) {
     for (int i = 0; i < args.size() - 1; i++) {
-      stream << "v" << args[i].first << ", ";
+      stream << "v" << std::to_string(args[i].first) << ", ";
     }
-    stream << "v" << args.back().first;
+    stream << "v" << std::to_string(args.back().first);
   }
   return stream.finalize();
 }

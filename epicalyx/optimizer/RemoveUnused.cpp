@@ -10,7 +10,7 @@ namespace epi {
 static void NullifyUnusedLocals(calyx::Program& program, ProgramDependencies& dependencies) {
   // remove unused locals
   for (const auto& [loc_idx, local] : dependencies.local_graph) {
-    if (local.reads == 0) {
+    if (local.reads.empty()) {
       // local is never read/aliased
       // remove creation and all local writes
       program.blocks.at(local.pos_made.first)[local.pos_made.second] = nullptr;
@@ -19,7 +19,7 @@ static void NullifyUnusedLocals(calyx::Program& program, ProgramDependencies& de
 
         if (var_idx) {
           // remove use case from stored var
-          dependencies.var_graph.at(var_idx).other_uses--;
+          dependencies.var_graph.at(var_idx).other_uses.erase(pos);
         }
       }
     }
@@ -37,7 +37,7 @@ static void NullifyUnusedVars(calyx::Program& program, ProgramDependencies& depe
     todo.erase(todo.begin());
     const auto& var = dependencies.var_graph.at(var_idx);
 
-    if (var.other_uses == 0 && var.read_for.empty()) {
+    if (var.other_uses.empty() && var.read_for.empty()) {
       // remove from all dependencies
       for (auto other : var.deps) {
         dependencies.var_graph.at(other).read_for.erase(var_idx);
