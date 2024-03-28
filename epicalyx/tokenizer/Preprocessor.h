@@ -45,9 +45,8 @@ private:
     };
 
     Definition(const std::vector<std::string>& args, bool variadic, const std::string& val) :
-        arguments{Arguments{args.size(), variadic}} {
-      value = Parse(args, variadic, val);
-    }
+        arguments{Arguments{args.size(), variadic}},
+        value{Parse(args, variadic, val)} { }
 
     Definition(std::string&& value) : arguments{}, value{std::move(value)} { }
 
@@ -57,14 +56,20 @@ private:
     std::optional<Arguments> arguments{};
   };
 
-  struct MacroStream : cotyl::Stream<char> {
-    MacroStream(std::string name, const Definition& def) : name{std::move(name)}, def{def} { }
-    MacroStream(std::string name, const Definition& def, std::vector<std::string>&& arguments) :
-        name{std::move(name)},
-        def{def},
-        arguments{std::move(arguments)} {
-
+  struct MacroStream final : public cotyl::Stream<char> {
+    MacroStream(const std::string& name, const Definition& def, std::vector<std::string>&& arguments, std::string&& va_args) :
+        name{name}, 
+        def{def}, 
+        arguments{std::move(arguments)},
+        va_args{std::move(va_args)},
+        current_stream{" "},
+        current_index{-1} {
+        
     }
+    MacroStream(const std::string& name, const Definition& def) : MacroStream{name, def, {}, ""} { }
+    ~MacroStream() = default;
+
+    void PrintLoc() const final;
 
   protected:
     char GetNew() final;
@@ -73,7 +78,12 @@ private:
   private:
     std::string name;
     const Definition& def; // value
-    std::vector<std::string> arguments{};  // argument values, .back is variadic arguments
+    std::vector<std::string> arguments{};  // argument values
+    std::string va_args{};
+
+    bool eos = false;
+    SString current_stream;
+    int current_index;
   };
 
   struct IfGroup {

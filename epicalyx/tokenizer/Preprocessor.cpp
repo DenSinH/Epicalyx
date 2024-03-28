@@ -555,7 +555,7 @@ void Preprocessor::PreprocessorDirective() {
 
       // only save definitions if current group is enabled
       if (Enabled()) {
-        definitions[name] = Definition(arguments, variadic, value);
+        definitions.emplace(name, Definition(arguments, variadic, value));
       }
     }
     else {
@@ -564,7 +564,7 @@ void Preprocessor::PreprocessorDirective() {
 
       // only save definitions if current group is enabled
       if (Enabled()) {
-        definitions[name] = Definition(std::move(value));
+        definitions.emplace(name, Definition(std::move(value)));
       }
     }
     // newline eaten in FetchLine()
@@ -600,6 +600,89 @@ void Preprocessor::PreprocessorDirective() {
 
 void Preprocessor::ReplaceNewlines(std::string& value) {
   std::replace(value.begin(), value.end(), '\n', ' ');
+}
+
+Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
+  const std::vector<std::string>& args,
+  bool variadic,
+  const std::string& value
+) {
+  value_t result{};
+  auto valstream = SString(value);
+  std::stringstream current_val{};
+  char c;
+
+  // any time we encounter a macro argument, we KNOW that current_val will be non-empty
+  // so we can append a new string to the result
+  while (valstream.Peek(c, 0)) {
+    if (detail::is_valid_ident_start(c)) {
+      auto ident = detail::get_identifier(valstream);
+      if (variadic && ident == "__VA_ARGS__") {
+        // variadic argument, emplace current intermediate text and reset
+        result.emplace_back(current_val.str());
+        current_val = {};
+        result.emplace_back(-1);
+      }
+      else {
+        auto arg_idx = std::find(args.begin(), args.end(), ident);
+        if (arg_idx != args.end()) {
+          // argument id, emplace current intermediate text and reset
+          result.emplace_back(current_val.str());
+          current_val = {};
+          result.emplace_back((i32)(arg_idx - args.begin()));
+        }
+        else {
+          // just append the identifier
+          current_val << ident;
+        }
+      }
+    }
+    else {
+      current_val << valstream.Get();
+    }
+  }
+
+  if (current_val.rdbuf()->in_avail()) {
+      result.emplace_back(current_val.str());
+  }
+  return result;
+}
+
+char Preprocessor::MacroStream::GetNew() {
+  if (eos) {
+    throw cotyl::EndOfFileException();
+  }
+  else if (current_stream.EOS()) {
+    if (++current_index < def.value.size()) {
+      std::visit([&](const auto& seg) {
+          using T = std::decay_t<decltype(seg)>;
+          if constexpr (std::is_same_v<T, i32>) {
+            if (seg == -1) {
+              current_stream = SString(va_args);
+            }
+            else {
+              current_stream = SString(arguments[seg]);
+            }
+          }
+          else if constexpr (std::is_same_v<T, std::string>) {
+            current_stream = SString(seg);
+          }
+      }, def.value[current_index]);
+    }
+    else {
+      eos = true;
+    }
+    return ' ';  // end every stream in whitespace
+  }
+  return current_stream.Get();
+}
+
+bool Preprocessor::MacroStream::IsEOS() {
+  return eos;
+}
+
+void Preprocessor::MacroStream::PrintLoc() const {
+
 }
 
 std::string Preprocessor::GetMacroArgumentValue(bool variadic) {
@@ -648,33 +731,40 @@ void Preprocessor::PushMacro(const std::string& name, const Definition& definiti
   if (definition.arguments.has_value()) {
     const auto& arguments = definition.arguments.value();
     std::vector<std::string> arg_values{};
+    std::string va_args{};
 
     // when parsing macro usage, newlines can be skipped just fine
     SkipBlanks();
     EatNextCharacter('(');
+    SkipBlanks();
     for (int i = 0; i < arguments.count; i++) {
       auto arg_val = GetMacroArgumentValue(false);
       ReplaceNewlines(arg_val);
       arg_values.emplace_back(std::move(arg_val));
 
-      if ((i != (arguments.count - 1)) || arguments.variadic) {
+      if ((i != (arguments.count - 1))) {
         // not last element
         EatNextCharacter(',');
+        SkipBlanks();
       }
     }
     if (arguments.variadic && NextCharacter() != ')') {
-      auto arg_val = GetMacroArgumentValue(true);
-      ReplaceNewlines(arg_val);
-      arg_values.emplace_back(std::move(arg_val));
+      if (arguments.count) {
+        // no , if variadic arguments are first arguments
+        EatNextCharacter(',');
+        SkipBlanks();
+      }
+      va_args = GetMacroArgumentValue(true);
+      ReplaceNewlines(va_args);
     }
-   EatNextCharacter(')');
+    EatNextCharacter(')');
 
     // definition value has already been cleaned on #define
-    macro_stack.emplace_back(name, definition.value, std::move(arg_values));
+    macro_stack.push_back(MacroStream(name, definition, std::move(arg_values), std::move(va_args)));
   }
   else {
     // definition value has already been cleaned on #define
-    macro_stack.emplace_back(name, definition.value);
+    macro_stack.emplace_back(name, definition);
   }
 }
 
