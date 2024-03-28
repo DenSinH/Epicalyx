@@ -279,7 +279,7 @@ i64 Preprocessor::EatConstexpr() {
   std::string line = FetchLine();
   ReplaceNewlines(line);
 
-  expression = line;
+  expression = &line;
 
   // the Tokenizer class does not allocate any memory anyway
   auto tokenizer = Tokenizer(*this);
@@ -610,7 +610,7 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
   const std::string& value
 ) {
   value_t result{};
-  auto valstream = SString(value);
+  auto valstream = SString(&value);
   cotyl::StringStream current_val{};
   char c;
 
@@ -650,6 +650,8 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
   return result;
 }
 
+const std::string Preprocessor::MacroStream::InitialStream = " ";
+
 char Preprocessor::MacroStream::GetNew() {
   if (eos) {
     throw cotyl::EndOfFileException();
@@ -660,14 +662,14 @@ char Preprocessor::MacroStream::GetNew() {
           using T = std::decay_t<decltype(seg)>;
           if constexpr (std::is_same_v<T, i32>) {
             if (seg == -1) {
-              current_stream = SString(va_args);
+              current_stream = SString(&va_args);
             }
             else {
-              current_stream = SString(arguments[seg]);
+              current_stream = SString(&arguments[seg]);
             }
           }
           else if constexpr (std::is_same_v<T, std::string>) {
-            current_stream = SString(seg);
+            current_stream = SString(&seg);
           }
       }, def.value[current_index]);
     }

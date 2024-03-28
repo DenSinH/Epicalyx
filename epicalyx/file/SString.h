@@ -7,17 +7,17 @@ namespace epi {
 
 struct SString final : public cotyl::Stream<char> {
 
-  SString(std::string string) : string(std::move(string)) { };
+  SString(const std::string* string) : string(string) { };
   ~SString() = default;
 
   void PrintLoc() const final;
 
 protected:
-  char GetNew() final { return string[position++]; }
-  bool IsEOS() final { return position == string.length(); }
+  char GetNew() final { return (*string)[position++]; }
+  bool IsEOS() final { return position == string->length(); }
 
 private:
-  std::string string;
+  const std::string* string;
   int position = 0;
 };
 

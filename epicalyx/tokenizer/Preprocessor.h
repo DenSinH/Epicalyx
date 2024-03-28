@@ -62,7 +62,7 @@ private:
         def{def}, 
         arguments{std::move(arguments)},
         va_args{std::move(va_args)},
-        current_stream{" "},
+        current_stream{&InitialStream},
         current_index{-1} {
         
     }
@@ -76,6 +76,8 @@ private:
     bool IsEOS() final;
   
   private:
+    const static std::string InitialStream;  // " "
+
     std::string name;
     const Definition& def; // value
     std::vector<std::string> arguments{};  // argument values
