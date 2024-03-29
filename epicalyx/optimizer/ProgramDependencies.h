@@ -9,9 +9,13 @@ namespace epi {
 
 using namespace calyx;
 
-using program_pos_t = std::pair<block_label_t, int>;
+struct ProgramDependencies final : calyx::Backend {
 
-struct ProgramDependencies : calyx::Backend {
+  static ProgramDependencies GetDependencies(const Program& program) {
+    auto deps = ProgramDependencies();
+    deps.EmitProgram(program);
+    return deps;
+  }
 
   // find common ancestor for 2 blocks such that all paths to these blocks go through that ancestor
   calyx::block_label_t CommonBlockAncestor(calyx::block_label_t first, calyx::block_label_t second) const;
@@ -49,60 +53,58 @@ struct ProgramDependencies : calyx::Backend {
 
   void VisualizeVars();
 
-  void EmitProgram(Program& program) override;
+  void EmitProgram(const Program& program) final;
 
-  void Emit(AllocateLocal& op) override;
-  void Emit(DeallocateLocal& op) override;
-  void Emit(LoadLocalAddr& op) override;
-  void Emit(LoadGlobalAddr& op) override;
-  void Emit(ArgMakeLocal& op) override;
+  void Emit(const AllocateLocal& op) final;
+  void Emit(const DeallocateLocal& op) final;
+  void Emit(const LoadLocalAddr& op) final;
+  void Emit(const LoadGlobalAddr& op) final;
+  void Emit(const ArgMakeLocal& op) final;
 
   template<typename To, typename From>
-  void EmitCast(Cast<To, From>& op);
+  void EmitCast(const Cast<To, From>& op);
   template<typename T>
-  void EmitLoadLocal(LoadLocal<T>& op);
+  void EmitLoadLocal(const LoadLocal<T>& op);
   template<typename T>
-  void EmitStoreLocal(StoreLocal<T>& op);
+  void EmitStoreLocal(const StoreLocal<T>& op);
   template<typename T>
-  void EmitLoadGlobal(LoadGlobal<T>& op);
+  void EmitLoadGlobal(const LoadGlobal<T>& op);
   template<typename T>
-  void EmitStoreGlobal(StoreGlobal<T>& op);
+  void EmitStoreGlobal(const StoreGlobal<T>& op);
   template<typename T>
-  void EmitLoadFromPointer(LoadFromPointer<T>& op);
+  void EmitLoadFromPointer(const LoadFromPointer<T>& op);
   template<typename T>
-  void EmitStoreToPointer(StoreToPointer<T>& op);
+  void EmitStoreToPointer(const StoreToPointer<T>& op);
   template<typename T>
-  void EmitCall(Call<T>& op);
+  void EmitCall(const Call<T>& op);
   template<typename T>
-  void EmitCallLabel(CallLabel<T>& op);
+  void EmitCallLabel(const CallLabel<T>& op);
   template<typename T>
-  void EmitReturn(Return<T>& op);
+  void EmitReturn(const Return<T>& op);
   template<typename T>
-  void EmitImm(Imm<T>& op);
+  void EmitImm(const Imm<T>& op);
   template<typename T>
-  void EmitUnop(Unop<T>& op);
+  void EmitUnop(const Unop<T>& op);
   template<typename T>
-  void EmitBinop(Binop<T>& op);
+  void EmitBinop(const Binop<T>& op);
   template<typename T>
-  void EmitBinopImm(BinopImm<T>& op);
+  void EmitBinopImm(const BinopImm<T>& op);
   template<typename T>
-  void EmitShift(Shift<T>& op);
+  void EmitShift(const Shift<T>& op);
   template<typename T>
-  void EmitShiftImm(ShiftImm<T>& op);
+  void EmitShiftImm(const ShiftImm<T>& op);
   template<typename T>
-  void EmitCompare(Compare<T>& op);
+  void EmitCompare(const Compare<T>& op);
   template<typename T>
-  void EmitCompareImm(CompareImm<T>& op);
+  void EmitCompareImm(const CompareImm<T>& op);
   template<typename T>
-  void EmitBranchCompare(BranchCompare<T>& op);
+  void EmitBranchCompare(const BranchCompare<T>& op);
   template<typename T>
-  void EmitBranchCompareImm(BranchCompareImm<T>& op);
+  void EmitBranchCompareImm(const BranchCompareImm<T>& op);
   template<typename T>
-  void EmitAddToPointer(AddToPointer<T>& op);
+  void EmitAddToPointer(const AddToPointer<T>& op);
 
-#define final override
 #include "calyx/backend/Methods.inl"
-#undef final
 
 };
 

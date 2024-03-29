@@ -20,12 +20,6 @@ T& get_default(cotyl::unordered_map<K, T>& graph, const K& key) {
   return graph[key];
 }
 
-//template<typename K, typename T>
-//void add_default(cotyl::unordered_map<K, std::vector<T>>& graph, const K& key, const T& value) {
-//  get_default(graph, key);
-//  graph.at(key).push_back(value);
-//}
-
 }
 
 
@@ -161,7 +155,7 @@ void ProgramDependencies::VisualizeVars() {
   graph->Join();
 }
 
-void ProgramDependencies::EmitProgram(Program& program) {
+void ProgramDependencies::EmitProgram(const Program& program) {
   for (const auto& [i, block] : program.blocks) {
     detail::get_default(block_graph, i);
     pos.first = i;
@@ -172,68 +166,68 @@ void ProgramDependencies::EmitProgram(Program& program) {
   }
 }
 
-void ProgramDependencies::Emit(AllocateLocal& op) {
+void ProgramDependencies::Emit(const AllocateLocal& op) {
   detail::get_default(local_graph, op.loc_idx).pos_made = pos;
 }
 
-void ProgramDependencies::Emit(DeallocateLocal& op) {
+void ProgramDependencies::Emit(const DeallocateLocal& op) {
   // count this as a write to the local
   detail::get_default(local_graph, op.loc_idx).writes.insert({pos, 0});
 }
 
 template<typename To, typename From>
-void ProgramDependencies::EmitCast(Cast<To, From>& op) {
+void ProgramDependencies::EmitCast(const Cast<To, From>& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
   var_graph.at(op.idx).deps.emplace(op.right_idx);
   detail::get_default(var_graph, op.right_idx).read_for.insert(op.idx);
 }
 
 template<typename T>
-void ProgramDependencies::EmitLoadLocal(LoadLocal<T>& op) {
+void ProgramDependencies::EmitLoadLocal(const LoadLocal<T>& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
   detail::get_default(local_graph, op.loc_idx).reads.insert(pos);
 }
 
-void ProgramDependencies::Emit(LoadLocalAddr& op) {
+void ProgramDependencies::Emit(const LoadLocalAddr& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
   detail::get_default(local_graph, op.loc_idx).reads.insert(pos);
 }
 
 template<typename T>
-void ProgramDependencies::EmitStoreLocal(StoreLocal<T>& op) {
+void ProgramDependencies::EmitStoreLocal(const StoreLocal<T>& op) {
   detail::get_default(var_graph, op.src).other_uses.insert(pos);
   detail::get_default(local_graph, op.loc_idx).writes.insert({pos, op.src});
 }
 
 template<typename T>
-void ProgramDependencies::EmitLoadGlobal(LoadGlobal<T>& op) {
+void ProgramDependencies::EmitLoadGlobal(const LoadGlobal<T>& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
 }
 
-void ProgramDependencies::Emit(LoadGlobalAddr& op) {
+void ProgramDependencies::Emit(const LoadGlobalAddr& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
 }
 
 template<typename T>
-void ProgramDependencies::EmitStoreGlobal(StoreGlobal<T>& op) {
+void ProgramDependencies::EmitStoreGlobal(const StoreGlobal<T>& op) {
   detail::get_default(var_graph, op.src).other_uses.insert(pos);
 }
 
 template<typename T>
-void ProgramDependencies::EmitLoadFromPointer(LoadFromPointer<T>& op) {
+void ProgramDependencies::EmitLoadFromPointer(const LoadFromPointer<T>& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
   var_graph.at(op.idx).deps.emplace(op.ptr_idx);
   detail::get_default(var_graph, op.ptr_idx).read_for.insert(op.idx);
 }
 
 template<typename T>
-void ProgramDependencies::EmitStoreToPointer(StoreToPointer<T>& op) {
+void ProgramDependencies::EmitStoreToPointer(const StoreToPointer<T>& op) {
   detail::get_default(var_graph, op.src).other_uses.insert(pos);
   detail::get_default(var_graph, op.ptr_idx).other_uses.insert(pos);
 }
 
 template<typename T>
-void ProgramDependencies::EmitCall(Call<T>& op) {
+void ProgramDependencies::EmitCall(const Call<T>& op) {
   detail::get_default(var_graph, op.fn_idx).other_uses.insert(pos);
   if constexpr(!std::is_same_v<T, void>) {
     detail::get_default(var_graph, op.idx).pos_made = pos;
@@ -250,7 +244,7 @@ void ProgramDependencies::EmitCall(Call<T>& op) {
 }
 
 template<typename T>
-void ProgramDependencies::EmitCallLabel(CallLabel<T>& op) {
+void ProgramDependencies::EmitCallLabel(const CallLabel<T>& op) {
   if constexpr(!std::is_same_v<T, void>) {
     detail::get_default(var_graph, op.idx).pos_made = pos;
   }
@@ -264,29 +258,29 @@ void ProgramDependencies::EmitCallLabel(CallLabel<T>& op) {
   }
 }
 
-void ProgramDependencies::Emit(ArgMakeLocal& op) {
+void ProgramDependencies::Emit(const ArgMakeLocal& op) {
   detail::get_default(local_graph, op.loc_idx).pos_made = pos;
 }
 
 template<typename T>
-void ProgramDependencies::EmitReturn(Return<T>& op) {
+void ProgramDependencies::EmitReturn(const Return<T>& op) {
   detail::get_default(var_graph, op.idx).other_uses.insert(pos);
 }
 
 template<typename T>
-void ProgramDependencies::EmitImm(Imm<T>& op) {
+void ProgramDependencies::EmitImm(const Imm<T>& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
 }
 
 template<typename T>
-void ProgramDependencies::EmitUnop(Unop<T>& op) {
+void ProgramDependencies::EmitUnop(const Unop<T>& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
   var_graph.at(op.idx).deps.emplace(op.right_idx);
   detail::get_default(var_graph, op.right_idx).read_for.insert(op.idx);
 }
 
 template<typename T>
-void ProgramDependencies::EmitBinop(Binop<T>& op) {
+void ProgramDependencies::EmitBinop(const Binop<T>& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
   detail::get_default(var_graph, op.idx).deps.emplace(op.left_idx);
   detail::get_default(var_graph, op.left_idx).read_for.insert(op.idx);
@@ -295,30 +289,14 @@ void ProgramDependencies::EmitBinop(Binop<T>& op) {
 }
 
 template<typename T>
-void ProgramDependencies::EmitBinopImm(BinopImm<T>& op) {
+void ProgramDependencies::EmitBinopImm(const BinopImm<T>& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
   detail::get_default(var_graph, op.idx).deps.emplace(op.left_idx);
   detail::get_default(var_graph, op.left_idx).read_for.insert(op.idx);
 }
 
 template<typename T>
-void ProgramDependencies::EmitShift(Shift<T>& op) {
-  detail::get_default(var_graph, op.idx).pos_made = pos;
-  detail::get_default(var_graph, op.idx).deps.emplace(op.left_idx);
-  detail::get_default(var_graph, op.left_idx).read_for.insert(op.idx);
-  detail::get_default(var_graph, op.idx).deps.emplace(op.right_idx);
-  detail::get_default(var_graph, op.right_idx).read_for.insert(op.idx);
-}
-
-template<typename T>
-void ProgramDependencies::EmitShiftImm(ShiftImm<T>& op) {
-  detail::get_default(var_graph, op.idx).pos_made = pos;
-  detail::get_default(var_graph, op.idx).deps.emplace(op.left_idx);
-  detail::get_default(var_graph, op.left_idx).read_for.insert(op.idx);
-}
-
-template<typename T>
-void ProgramDependencies::EmitCompare(Compare<T>& op) {
+void ProgramDependencies::EmitShift(const Shift<T>& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
   detail::get_default(var_graph, op.idx).deps.emplace(op.left_idx);
   detail::get_default(var_graph, op.left_idx).read_for.insert(op.idx);
@@ -327,18 +305,34 @@ void ProgramDependencies::EmitCompare(Compare<T>& op) {
 }
 
 template<typename T>
-void ProgramDependencies::EmitCompareImm(CompareImm<T>& op) {
+void ProgramDependencies::EmitShiftImm(const ShiftImm<T>& op) {
+  detail::get_default(var_graph, op.idx).pos_made = pos;
   detail::get_default(var_graph, op.idx).deps.emplace(op.left_idx);
   detail::get_default(var_graph, op.left_idx).read_for.insert(op.idx);
 }
 
-void ProgramDependencies::Emit(UnconditionalBranch& op) {
+template<typename T>
+void ProgramDependencies::EmitCompare(const Compare<T>& op) {
+  detail::get_default(var_graph, op.idx).pos_made = pos;
+  detail::get_default(var_graph, op.idx).deps.emplace(op.left_idx);
+  detail::get_default(var_graph, op.left_idx).read_for.insert(op.idx);
+  detail::get_default(var_graph, op.idx).deps.emplace(op.right_idx);
+  detail::get_default(var_graph, op.right_idx).read_for.insert(op.idx);
+}
+
+template<typename T>
+void ProgramDependencies::EmitCompareImm(const CompareImm<T>& op) {
+  detail::get_default(var_graph, op.idx).deps.emplace(op.left_idx);
+  detail::get_default(var_graph, op.left_idx).read_for.insert(op.idx);
+}
+
+void ProgramDependencies::Emit(const UnconditionalBranch& op) {
   detail::get_default(block_graph, pos.first).to.emplace(op.dest);
   detail::get_default(block_graph, op.dest).from.emplace(pos.first);
 }
 
 template<typename T>
-void ProgramDependencies::EmitBranchCompare(BranchCompare<T>& op) {
+void ProgramDependencies::EmitBranchCompare(const BranchCompare<T>& op) {
   detail::get_default(block_graph, pos.first).to.emplace(op.dest);
   detail::get_default(block_graph, op.dest).from.emplace(pos.first);
   detail::get_default(var_graph, op.left_idx).other_uses.insert(pos);
@@ -346,13 +340,13 @@ void ProgramDependencies::EmitBranchCompare(BranchCompare<T>& op) {
 }
 
 template<typename T>
-void ProgramDependencies::EmitBranchCompareImm(BranchCompareImm<T>& op) {
+void ProgramDependencies::EmitBranchCompareImm(const BranchCompareImm<T>& op) {
   detail::get_default(block_graph, pos.first).to.emplace(op.dest);
   detail::get_default(block_graph, op.dest).from.emplace(pos.first);
   detail::get_default(var_graph, op.left_idx).other_uses.insert(pos);
 }
 
-void ProgramDependencies::Emit(Select& op) {
+void ProgramDependencies::Emit(const Select& op) {
   detail::get_default(var_graph, op.idx).other_uses.insert(pos);
   for (const auto& [value, block] : op.table) {
     detail::get_default(block_graph, pos.first).to.emplace(block);
@@ -365,7 +359,7 @@ void ProgramDependencies::Emit(Select& op) {
 }
 
 template<typename T>
-void ProgramDependencies::EmitAddToPointer(AddToPointer<T>& op) {
+void ProgramDependencies::EmitAddToPointer(const AddToPointer<T>& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
   detail::get_default(var_graph, op.idx).deps.emplace(op.ptr_idx);
   detail::get_default(var_graph, op.ptr_idx).read_for.insert(op.idx);
@@ -373,7 +367,7 @@ void ProgramDependencies::EmitAddToPointer(AddToPointer<T>& op) {
   detail::get_default(var_graph, op.right_idx).read_for.insert(op.idx);
 }
 
-void ProgramDependencies::Emit(AddToPointerImm& op) {
+void ProgramDependencies::Emit(const AddToPointerImm& op) {
   detail::get_default(var_graph, op.idx).pos_made = pos;
   detail::get_default(var_graph, op.idx).deps.emplace(op.ptr_idx);
   detail::get_default(var_graph, op.ptr_idx).read_for.insert(op.idx);

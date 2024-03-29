@@ -28,8 +28,6 @@ add_executable(
         main.cpp
         epicalyx/include/Stream.h
         epicalyx/include/Format.h
-        epicalyx/file/File.cpp
-        epicalyx/file/File.h
         epicalyx/include/Is.h
         epicalyx/include/Scope.h
         epicalyx/include/Log.h
@@ -38,7 +36,8 @@ add_executable(
         epicalyx/include/Cast.h
         epicalyx/include/CustomAssert.h
         epicalyx/include/Containers.h
-        epicalyx/include/Algorithm.h epicalyx/include/Exceptions.h)
+        epicalyx/include/Algorithm.h 
+        epicalyx/include/Exceptions.h)
 
 
 
@@ -52,6 +51,7 @@ add_subdirectory(epicalyx/calyx)
 add_subdirectory(epicalyx/cycle)
 add_subdirectory(epicalyx/ir_emitter)
 add_subdirectory(epicalyx/optimizer)
+add_subdirectory(epicalyx/regalloc)
 
 target_link_libraries(epicalyx File)
 target_link_libraries(epicalyx Tokenizer)
@@ -62,6 +62,7 @@ target_link_libraries(epicalyx Calyx)
 target_link_libraries(epicalyx Cycle)
 target_link_libraries(epicalyx IREmitter)
 target_link_libraries(epicalyx Optimizer)
+target_link_libraries(epicalyx RegAlloc)
 
 # we are not using any boost libraries that need compiling
 # if(${Boost_FOUND})

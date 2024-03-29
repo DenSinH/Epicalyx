@@ -1,6 +1,7 @@
 add_library(Cycle STATIC
         Cycle.h
-        Cycle.cpp)
+        Cycle.cpp
+)
 
 add_subdirectory(frontend)
 

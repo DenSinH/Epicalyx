@@ -1,4 +1,5 @@
 #include "BasicOptimizer.h"
+#include "RemoveUnused.h"
 #include "IRCompare.h"
 #include "Cast.h"
 #include "Is.h"
@@ -32,8 +33,8 @@ bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
   for (const auto& [var_idx, loc] : vars_found) {
     auto& directive = new_program.blocks.at(loc.first)[loc.second];
     if (IsType<T>(directive)) {
-      auto candidate_block = this->var_graph.at(var_idx).pos_made.first;
-      auto ancestor = CommonBlockAncestor(candidate_block, current_new_block_idx);
+      auto candidate_block = deps.var_graph.at(var_idx).pos_made.first;
+      auto ancestor = deps.CommonBlockAncestor(candidate_block, current_new_block_idx);
 
       // todo: shift directives back for earlier ancestor blocks
       if (ancestor == current_new_block_idx || ancestor == candidate_block) {
@@ -59,7 +60,7 @@ bool BasicOptimizer::ResolveBranchIndirection(calyx::Branch& op) {
 
       // update block graph
       // blocks reached from indirect branch are now reached from the current_new_block_idx
-      auto& link_from = block_graph.at(link->dest).from;
+      auto& link_from = deps.block_graph.at(link->dest).from;
       link_from.erase(op.dest);
       link_from.insert(current_new_block_idx);
 
@@ -83,40 +84,40 @@ const T* BasicOptimizer::TryGetVarDirective(var_index_t idx) const {
 
 void BasicOptimizer::LinkBlock(block_label_t next_block) {
   // we need the current block to have no outputs
-  cotyl::Assert(block_graph.at(current_new_block_idx).to.empty());
+  cotyl::Assert(deps.block_graph.at(current_new_block_idx).to.empty());
   // sanity checks that the current block is indeed the only input for the linked block
-  cotyl::Assert(block_graph.at(next_block).from.size() == 1);
+  cotyl::Assert(deps.block_graph.at(next_block).from.size() == 1);
   // the ID should already have been updated from the old_block_idx to the new_block_idx earlier
   // if they differ at all
-  cotyl::Assert(*block_graph.at(next_block).from.begin() == current_new_block_idx);
+  cotyl::Assert(*deps.block_graph.at(next_block).from.begin() == current_new_block_idx);
 
   // change block inputs for jumped blocks
-  for (auto block_idx : block_graph.at(next_block).to) {
-    block_graph.at(block_idx).from.erase(next_block);
-    block_graph.at(block_idx).from.insert(current_new_block_idx);
+  for (auto block_idx : deps.block_graph.at(next_block).to) {
+    deps.block_graph.at(block_idx).from.erase(next_block);
+    deps.block_graph.at(block_idx).from.insert(current_new_block_idx);
 
     // update current block output to determine new upward closure to remove unused blocks right away
-    block_graph.at(current_new_block_idx).to.insert(block_idx);
+    deps.block_graph.at(current_new_block_idx).to.insert(block_idx);
   }
 
   // erase linked block
-  block_graph.erase(next_block);
+  deps.block_graph.erase(next_block);
 
   // update the block graph
-  const auto closure = UpwardClosure({visited.begin(), visited.end()});
+  const auto closure = deps.UpwardClosure({visited.begin(), visited.end()});
   const auto not_in_closure = [&](const block_label_t& block_idx) { return !closure.contains(block_idx); };
 
-  for (auto& [block_idx, deps] : block_graph) {
+  for (auto& [block_idx, deps] : deps.block_graph) {
     cotyl::erase_if(deps.to, not_in_closure);
     cotyl::erase_if(deps.from, not_in_closure);
   }
 
   // make current new_block_idx have empty output again
-  block_graph.at(current_new_block_idx).to = {};
+  deps.block_graph.at(current_new_block_idx).to = {};
   current_old_block_idx = next_block;
 }
 
-void BasicOptimizer::EmitProgram(Program& _program) {
+void BasicOptimizer::EmitProgram(const Program& _program) {
   // find initial dependencies
   new_program.functions    = std::move(_program.functions);
   new_program.globals      = std::move(_program.globals);
@@ -131,21 +132,21 @@ void BasicOptimizer::EmitProgram(Program& _program) {
       cotyl::Assert(locals.empty());
 
       current_old_block_idx = current_new_block_idx = *todo.begin();
-      this->PD::pos.first = current_new_block_idx;  // set this properly to determine the new graph right
+      deps.pos.first = current_new_block_idx;  // set this properly to determine the new graph right
       // clear block dependencies
-      block_graph[current_new_block_idx] = {};
+      deps.block_graph[current_new_block_idx] = {};
       reachable = true;
       todo.erase(todo.begin());
 
       auto inserted = new_program.blocks.emplace(current_new_block_idx, calyx::Program::block_t{}).first;
       current_block = &inserted->second;
 
-      this->PD::pos.second = 0;
+      deps.pos.second = 0;
       while (!visited.contains(current_old_block_idx)) {
         const auto block = current_old_block_idx;
         visited.insert(block);
         for (const auto& directive : _program.blocks.at(block)) {
-          this->PD::pos.second++;
+          deps.pos.second++;
           directive->Emit(*this);
           if (!reachable) break;  // hit return statement/branch
           if (current_old_block_idx != block) break;  // jumped to linked block
@@ -153,20 +154,22 @@ void BasicOptimizer::EmitProgram(Program& _program) {
       }
     }
   }
+  RemoveUnused(new_program);
 }
 
-void BasicOptimizer::Emit(AllocateLocal& op) {
+void BasicOptimizer::Emit(const AllocateLocal& op) {
   EmitCopy(op);
 }
 
-void BasicOptimizer::Emit(DeallocateLocal& op) {
+void BasicOptimizer::Emit(const DeallocateLocal& op) {
   EmitCopy(op);
 }
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Woverloaded-virtual"
 
 template<typename To, typename From>
-void BasicOptimizer::EmitCast(Cast<To, From>& op) {
+void BasicOptimizer::EmitCast(const Cast<To, From>& _op) {
+  auto op = CopyDirective(_op);
   if constexpr(std::is_same_v<To, From>) {
     var_replacement[op.idx] = op.right_idx;
     return;
@@ -199,7 +202,7 @@ void BasicOptimizer::EmitCast(Cast<To, From>& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitLoadLocal(LoadLocal<T>& op) {
+void BasicOptimizer::EmitLoadLocal(const LoadLocal<T>& op) {
   if (locals.contains(op.loc_idx)) {
     // local value stored in IR var
     auto& repl = locals.at(op.loc_idx).replacement;
@@ -211,13 +214,14 @@ void BasicOptimizer::EmitLoadLocal(LoadLocal<T>& op) {
   }
 }
 
-void BasicOptimizer::Emit(LoadLocalAddr& op) {
+void BasicOptimizer::Emit(const LoadLocalAddr& op) {
   var_aliases[op.idx] = op.loc_idx;
   EmitExprCopy(op);
 }
 
 template<typename T>
-void BasicOptimizer::EmitStoreLocal(StoreLocal<T>& op) {
+void BasicOptimizer::EmitStoreLocal(const StoreLocal<T>& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.src);
   if constexpr(!std::is_same_v<T, Struct>) {
     var_index_t aliases = 0;
@@ -237,11 +241,11 @@ void BasicOptimizer::EmitStoreLocal(StoreLocal<T>& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitLoadGlobal(LoadGlobal<T>& op) {
+void BasicOptimizer::EmitLoadGlobal(const LoadGlobal<T>& op) {
   EmitExprCopy(op);
 }
 
-void BasicOptimizer::Emit(LoadGlobalAddr& op) {
+void BasicOptimizer::Emit(const LoadGlobalAddr& op) {
   auto replaced = FindExprResultReplacement(op, [&](auto& op, auto& candidate) {
     return candidate.symbol == op.symbol;
   });
@@ -251,13 +255,15 @@ void BasicOptimizer::Emit(LoadGlobalAddr& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitStoreGlobal(StoreGlobal<T>& op) {
+void BasicOptimizer::EmitStoreGlobal(const StoreGlobal<T>& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.src);
   EmitCopy(op);
 }
 
 template<typename T>
-void BasicOptimizer::EmitLoadFromPointer(LoadFromPointer<T>& op) {
+void BasicOptimizer::EmitLoadFromPointer(const LoadFromPointer<T>& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.ptr_idx);
   if (var_aliases.contains(op.ptr_idx)) {
     // pointer aliases local variable
@@ -278,7 +284,8 @@ void BasicOptimizer::EmitLoadFromPointer(LoadFromPointer<T>& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitStoreToPointer(StoreToPointer<T>& op) {
+void BasicOptimizer::EmitStoreToPointer(const StoreToPointer<T>& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.src);
   TryReplaceVar(op.ptr_idx);
   if constexpr(!std::is_same_v<T, Struct>) {
@@ -305,7 +312,8 @@ void BasicOptimizer::EmitStoreToPointer(StoreToPointer<T>& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitCall(Call<T>& op) {
+void BasicOptimizer::EmitCall(const Call<T>& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.fn_idx);
   for (auto& [var_idx, arg] : op.args) {
     TryReplaceVar(var_idx);
@@ -325,7 +333,8 @@ void BasicOptimizer::EmitCall(Call<T>& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitCallLabel(CallLabel<T>& op) {
+void BasicOptimizer::EmitCallLabel(const CallLabel<T>& _op) {
+  auto op = CopyDirective(_op);
   for (auto& [var_idx, arg] : op.args) {
     TryReplaceVar(var_idx);
   }
@@ -337,12 +346,13 @@ void BasicOptimizer::EmitCallLabel(CallLabel<T>& op) {
   EmitCopy(op);
 }
 
-void BasicOptimizer::Emit(ArgMakeLocal& op) {
+void BasicOptimizer::Emit(const ArgMakeLocal& op) {
   EmitCopy(op);
 }
 
 template<typename T>
-void BasicOptimizer::EmitReturn(Return<T>& op) {
+void BasicOptimizer::EmitReturn(const Return<T>& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.idx);
   // no need to flush locals right before a return
   locals = {};
@@ -351,7 +361,7 @@ void BasicOptimizer::EmitReturn(Return<T>& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitImm(Imm<T>& op) {
+void BasicOptimizer::EmitImm(const Imm<T>& op) {
   auto replaced = FindExprResultReplacement(op, [&](auto& op, auto& candidate) {
     return candidate.value == op.value;
   });
@@ -361,7 +371,8 @@ void BasicOptimizer::EmitImm(Imm<T>& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitUnop(Unop<T>& op) {
+void BasicOptimizer::EmitUnop(const Unop<T>& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.right_idx);
 
   {
@@ -389,7 +400,8 @@ void BasicOptimizer::EmitUnop(Unop<T>& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitBinop(Binop<T>& op) {
+void BasicOptimizer::EmitBinop(const Binop<T>& op_) {
+  auto op = CopyDirective(op_);
   TryReplaceVar(op.left_idx);
   TryReplaceVar(op.right_idx);
 
@@ -458,7 +470,8 @@ void BasicOptimizer::EmitBinop(Binop<T>& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitBinopImm(BinopImm<T>& op) {
+void BasicOptimizer::EmitBinopImm(const BinopImm<T>& op_) {
+  auto op = CopyDirective(op_);
   TryReplaceVar(op.left_idx);
 
   {
@@ -518,7 +531,8 @@ void BasicOptimizer::EmitBinopImm(BinopImm<T>& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitShift(Shift<T>& op) {
+void BasicOptimizer::EmitShift(const Shift<T>& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.left_idx);
   TryReplaceVar(op.right_idx);
 
@@ -535,7 +549,8 @@ void BasicOptimizer::EmitShift(Shift<T>& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitShiftImm(ShiftImm<T>& op) {
+void BasicOptimizer::EmitShiftImm(const ShiftImm<T>& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.left_idx);
 
   if (op.right == 0) {
@@ -560,7 +575,8 @@ void BasicOptimizer::EmitShiftImm(ShiftImm<T>& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitCompare(Compare<T>& op) {
+void BasicOptimizer::EmitCompare(const Compare<T>& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.left_idx);
   TryReplaceVar(op.right_idx);
 
@@ -597,7 +613,8 @@ void BasicOptimizer::EmitCompare(Compare<T>& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitCompareImm(CompareImm<T>& op) {
+void BasicOptimizer::EmitCompareImm(const CompareImm<T>& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.left_idx);
 
   if constexpr(!std::is_same_v<T, Pointer>) {
@@ -621,12 +638,13 @@ void BasicOptimizer::EmitCompareImm(CompareImm<T>& op) {
   EmitExprCopy(op);
 }
 
-void BasicOptimizer::Emit(UnconditionalBranch& op) {
+void BasicOptimizer::Emit(const UnconditionalBranch& _op) {
+  auto op = CopyDirective(_op);
   if (!ResolveBranchIndirection(op)) {
-    const auto& block_deps = this->block_graph.at(current_new_block_idx);
+    const auto& block_deps = this->deps.block_graph.at(current_new_block_idx);
     if (block_deps.to.empty()) {
       // no dependencies so far, we can link this block if the next block only has one input
-      if (!visited.contains(op.dest) && this->block_graph.at(op.dest).from.size() == 1) {
+      if (!visited.contains(op.dest) && this->deps.block_graph.at(op.dest).from.size() == 1) {
         LinkBlock(op.dest);
         return;
       }
@@ -643,7 +661,8 @@ void BasicOptimizer::Emit(UnconditionalBranch& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitBranchCompare(BranchCompare<T>& op) {
+void BasicOptimizer::EmitBranchCompare(const BranchCompare<T>& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.left_idx);
   TryReplaceVar(op.right_idx);
 
@@ -686,7 +705,8 @@ void BasicOptimizer::EmitBranchCompare(BranchCompare<T>& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitBranchCompareImm(BranchCompareImm<T>& op) {
+void BasicOptimizer::EmitBranchCompareImm(const BranchCompareImm<T>& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.left_idx);
 
   if constexpr(!std::is_same_v<T, Pointer>) {
@@ -719,7 +739,8 @@ void BasicOptimizer::EmitBranchCompareImm(BranchCompareImm<T>& op) {
   }
 }
 
-void BasicOptimizer::Emit(Select& op) {
+void BasicOptimizer::Emit(const Select& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.idx);
   FlushCurrentLocals();
 
@@ -743,7 +764,8 @@ void BasicOptimizer::Emit(Select& op) {
 }
 
 template<typename T>
-void BasicOptimizer::EmitAddToPointer(AddToPointer<T>& op) {
+void BasicOptimizer::EmitAddToPointer(const AddToPointer<T>& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.ptr_idx);
   TryReplaceVar(op.right_idx);
 
@@ -769,7 +791,8 @@ void BasicOptimizer::EmitAddToPointer(AddToPointer<T>& op) {
   EmitExprCopy(op);
 }
 
-void BasicOptimizer::Emit(AddToPointerImm& op) {
+void BasicOptimizer::Emit(const AddToPointerImm& _op) {
+  auto op = CopyDirective(_op);
   TryReplaceVar(op.ptr_idx);
   if (op.right == 0) {
     var_replacement[op.idx] = op.ptr_idx;

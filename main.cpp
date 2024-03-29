@@ -4,7 +4,6 @@
 #include "calyx/backend/interpreter/Interpreter.h"
 #include "optimizer/ProgramDependencies.h"
 #include "optimizer/BasicOptimizer.h"
-#include "optimizer/RemoveUnused.h"
 #include "tokenizer/Preprocessor.h"
 #include "tokenizer/Tokenizer.h"
 #include "parser/Parser.h"
@@ -76,10 +75,7 @@ int main() {
   // repeating multiple times will link more blocks
   for (int i = 0; i < 4; i++) {
     try {
-      auto dependencies = epi::ProgramDependencies{};
-      dependencies.EmitProgram(program);
-
-      auto optimizer = epi::BasicOptimizer(program, std::move(dependencies));
+      auto optimizer = epi::BasicOptimizer(program);
       optimizer.EmitProgram(program);
 
       program = std::move(optimizer.new_program);
@@ -90,8 +86,6 @@ int main() {
       std::cout << e.what() << std::endl;
       return 1;
     }
-
-    epi::RemoveUnused(program);
   }
 
   PrintProgram(program);
@@ -156,8 +150,7 @@ int main() {
 
     interpreter.VisualizeProgram(program);
 
-    auto dependencies = epi::ProgramDependencies();
-    dependencies.EmitProgram(program);
+    auto dependencies = epi::ProgramDependencies::GetDependencies(program);
     dependencies.VisualizeVars();
   }
   catch_e {

@@ -12,15 +12,15 @@ namespace epi {
 
 using namespace calyx;
 
-struct BasicOptimizer final : ProgramDependencies {
-  using PD = ProgramDependencies;
+struct BasicOptimizer final : calyx::Backend {
 
-  BasicOptimizer(const Program& program, ProgramDependencies&& deps) :
-      program(program), ProgramDependencies(deps) {
+  BasicOptimizer(const Program& program) :
+      program(program), deps{ProgramDependencies::GetDependencies(program)} {
 
   }
 
   const Program& program;
+  ProgramDependencies deps;
 
   calyx::Program new_program{};
 
@@ -44,7 +44,6 @@ struct BasicOptimizer final : ProgramDependencies {
   // variable found location in new program
   cotyl::unordered_map<calyx::var_index_t, std::pair<calyx::block_label_t, u64>> vars_found{};
 
-
   // current block that is being built
   calyx::Program::block_t* current_block{};
   block_label_t current_old_block_idx;      // block index we are scanning in the old program
@@ -61,12 +60,17 @@ struct BasicOptimizer final : ProgramDependencies {
   template<typename T>
   const T* TryGetVarDirective(var_index_t idx) const;
 
+  template<typename T> 
+  T CopyDirective(const T& directive) {
+    return T{directive};
+  }
+
   template<typename T, typename... Args>
   std::pair<calyx::block_label_t, int> EmitNew(Args... args) {
     cotyl::Assert(reachable);
     const u64 in_block = current_block->size();
     auto directive = std::make_unique<T>(args...);
-    this->PD::Emit(*directive);
+    deps.Emit(*directive);
     current_block->push_back(std::move(directive));
     return std::make_pair(current_new_block_idx, in_block);
   }
@@ -78,13 +82,13 @@ struct BasicOptimizer final : ProgramDependencies {
 
   template<typename T, typename... Args>
   void EmitExpr(calyx::var_index_t idx, const Args&... args) {
-    var_graph[idx] = {};
+    deps.var_graph[idx] = {};
     vars_found.emplace(idx, EmitNew<T>(idx, args...));
   }
 
   template<typename T>
   void EmitExprCopy(const T& expr) {
-    var_graph[expr.idx] = {};
+    deps.var_graph[expr.idx] = {};
     vars_found.emplace(expr.idx, EmitNew<T>(expr));
   }
 
@@ -96,56 +100,56 @@ struct BasicOptimizer final : ProgramDependencies {
 
   void TryReplaceVar(calyx::var_index_t& var_idx) const;
 
-  void EmitProgram(Program& program) final;
+  void EmitProgram(const Program& program) final;
 
-  void Emit(AllocateLocal& op) final;
-  void Emit(DeallocateLocal& op) final;
-  void Emit(LoadLocalAddr& op) final;
-  void Emit(LoadGlobalAddr& op) final;
-  void Emit(ArgMakeLocal& op) final;
+  void Emit(const AllocateLocal& op) final;
+  void Emit(const DeallocateLocal& op) final;
+  void Emit(const LoadLocalAddr& op) final;
+  void Emit(const LoadGlobalAddr& op) final;
+  void Emit(const ArgMakeLocal& op) final;
 
   template<typename To, typename From>
-  void EmitCast(Cast<To, From>& op);
+  void EmitCast(const Cast<To, From>& op);
   template<typename T>
-  void EmitLoadLocal(LoadLocal<T>& op);
+  void EmitLoadLocal(const LoadLocal<T>& op);
   template<typename T>
-  void EmitStoreLocal(StoreLocal<T>& op);
+  void EmitStoreLocal(const StoreLocal<T>& op);
   template<typename T>
-  void EmitLoadGlobal(LoadGlobal<T>& op);
+  void EmitLoadGlobal(const LoadGlobal<T>& op);
   template<typename T>
-  void EmitStoreGlobal(StoreGlobal<T>& op);
+  void EmitStoreGlobal(const StoreGlobal<T>& op);
   template<typename T>
-  void EmitLoadFromPointer(LoadFromPointer<T>& op);
+  void EmitLoadFromPointer(const LoadFromPointer<T>& op);
   template<typename T>
-  void EmitStoreToPointer(StoreToPointer<T>& op);
+  void EmitStoreToPointer(const StoreToPointer<T>& op);
   template<typename T>
-  void EmitCall(Call<T>& op);
+  void EmitCall(const Call<T>& op);
   template<typename T>
-  void EmitCallLabel(CallLabel<T>& op);
+  void EmitCallLabel(const CallLabel<T>& op);
   template<typename T>
-  void EmitReturn(Return<T>& op);
+  void EmitReturn(const Return<T>& op);
   template<typename T>
-  void EmitImm(Imm<T>& op);
+  void EmitImm(const Imm<T>& op);
   template<typename T>
-  void EmitUnop(Unop<T>& op);
+  void EmitUnop(const Unop<T>& op);
   template<typename T>
-  void EmitBinop(Binop<T>& op);
+  void EmitBinop(const Binop<T>& op);
   template<typename T>
-  void EmitBinopImm(BinopImm<T>& op);
+  void EmitBinopImm(const BinopImm<T>& op);
   template<typename T>
-  void EmitShift(Shift<T>& op);
+  void EmitShift(const Shift<T>& op);
   template<typename T>
-  void EmitShiftImm(ShiftImm<T>& op);
+  void EmitShiftImm(const ShiftImm<T>& op);
   template<typename T>
-  void EmitCompare(Compare<T>& op);
+  void EmitCompare(const Compare<T>& op);
   template<typename T>
-  void EmitCompareImm(CompareImm<T>& op);
+  void EmitCompareImm(const CompareImm<T>& op);
   template<typename T>
-  void EmitBranchCompare(BranchCompare<T>& op);
+  void EmitBranchCompare(const BranchCompare<T>& op);
   template<typename T>
-  void EmitBranchCompareImm(BranchCompareImm<T>& op);
+  void EmitBranchCompareImm(const BranchCompareImm<T>& op);
   template<typename T>
-  void EmitAddToPointer(AddToPointer<T>& op);
+  void EmitAddToPointer(const AddToPointer<T>& op);
 
 #include "calyx/backend/Methods.inl"
 

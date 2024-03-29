@@ -2,9 +2,9 @@
 
 #include "calyx/Calyx.h"
 #include "ast/Node.h"
+#include "Containers.h"
 
 #include <vector>
-#include <unordered_map>
 
 namespace epi {
 

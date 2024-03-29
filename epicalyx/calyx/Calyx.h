@@ -7,7 +7,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <unordered_map>
 #include <variant>
 #include <bit>
 
@@ -18,6 +17,7 @@ struct Backend;
 
 using var_index_t = u64;
 using block_label_t = u64;
+using program_pos_t = std::pair<block_label_t, int>;
 
 struct label_offset_t {
   std::string label;

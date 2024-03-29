@@ -96,7 +96,7 @@ void Interpreter::InterpretGlobalInitializer(Program::global_t& dest, block_labe
     locals.Reset();
 }
 
-void Interpreter::EmitProgram(Program& program) {
+void Interpreter::EmitProgram(const Program& program) {
   for (const auto& [symbol, global] : program.globals) {
     auto index = global_data.size();
     globals.emplace(symbol, index);
@@ -119,7 +119,7 @@ void Interpreter::EmitProgram(Program& program) {
   pos.second = 0;
   returned = {};
   while (!returned) {
-    auto& directive = program.blocks[pos.first][pos.second];
+    const auto& directive = program.blocks.at(pos.first).at(pos.second);
     pos.second++;
     directive->Emit(*this);
   }
@@ -137,13 +137,13 @@ void Interpreter::EmitProgram(Program& program) {
   }, returned.value());
 }
 
-void Interpreter::Emit(AllocateLocal& op) {
+void Interpreter::Emit(const AllocateLocal& op) {
 //  cotyl::Assert(!c_vars.contains(op.loc_idx), op.ToString());
   locals.Set(op.loc_idx, std::make_pair(stack.size(), op.size));
   stack.resize(stack.size() + op.size);
 }
 
-void Interpreter::Emit(DeallocateLocal& op) {
+void Interpreter::Emit(const DeallocateLocal& op) {
   u64 value = 0;
   memcpy(&value, &stack[locals.Get(op.loc_idx).first], op.size);
 //  std::cout << 'c' << op.loc_idx << " = " << std::hex << value << " on dealloc" << std::endl;
@@ -151,7 +151,7 @@ void Interpreter::Emit(DeallocateLocal& op) {
 }
 
 template<typename To, typename From>
-void Interpreter::EmitCast(Cast<To, From>& op) {
+void Interpreter::EmitCast(const Cast<To, From>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<To, Pointer>) {
     To value;
@@ -198,7 +198,7 @@ void Interpreter::EmitCast(Cast<To, From>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitLoadLocal(LoadLocal<T>& op) {
+void Interpreter::EmitLoadLocal(const LoadLocal<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<T, Struct>) {
     throw cotyl::UnimplementedException("load struct cvar");
@@ -211,12 +211,12 @@ void Interpreter::EmitLoadLocal(LoadLocal<T>& op) {
   }
 }
 
-void Interpreter::Emit(LoadLocalAddr& op) {
+void Interpreter::Emit(const LoadLocalAddr& op) {
   vars.Set(op.idx, MakePointer(locals.Get(op.loc_idx).first));
 }
 
 template<typename T>
-void Interpreter::EmitStoreLocal(StoreLocal<T>& op) {
+void Interpreter::EmitStoreLocal(const StoreLocal<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<T, Struct>) {
     throw cotyl::UnimplementedException("store struct local");
@@ -229,7 +229,7 @@ void Interpreter::EmitStoreLocal(StoreLocal<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitLoadGlobal(LoadGlobal<T>& op) {
+void Interpreter::EmitLoadGlobal(const LoadGlobal<T>& op) {
   if constexpr(std::is_same_v<T, Struct>) {
     throw cotyl::UnimplementedException("load struct global");
   }
@@ -241,12 +241,12 @@ void Interpreter::EmitLoadGlobal(LoadGlobal<T>& op) {
   }
 }
 
-void Interpreter::Emit(LoadGlobalAddr& op) {
+void Interpreter::Emit(const LoadGlobalAddr& op) {
   vars.Set(op.idx, MakePointer(calyx::label_offset_t{op.symbol, 0}));
 }
 
 template<typename T>
-void Interpreter::EmitStoreGlobal(StoreGlobal<T>& op) {
+void Interpreter::EmitStoreGlobal(const StoreGlobal<T>& op) {
   if constexpr(std::is_same_v<T, Struct>) {
     throw cotyl::UnimplementedException("store struct global");
   }
@@ -258,7 +258,7 @@ void Interpreter::EmitStoreGlobal(StoreGlobal<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitLoadFromPointer(LoadFromPointer<T>& op) {
+void Interpreter::EmitLoadFromPointer(const LoadFromPointer<T>& op) {
   auto pointer = ReadPointer(std::get<Pointer>(vars.Get(op.ptr_idx)).value);
   if constexpr(std::is_same_v<T, Struct>) {
     throw cotyl::UnimplementedException("load struct from pointer");
@@ -280,7 +280,7 @@ void Interpreter::EmitLoadFromPointer(LoadFromPointer<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitStoreToPointer(StoreToPointer<T>& op) {
+void Interpreter::EmitStoreToPointer(const StoreToPointer<T>& op) {
   auto pointer = ReadPointer(std::get<Pointer>(vars.Get(op.ptr_idx)).value);
   if constexpr(std::is_same_v<T, Struct>) {
     throw cotyl::UnimplementedException("store struct to pointer");
@@ -302,7 +302,7 @@ void Interpreter::EmitStoreToPointer(StoreToPointer<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitCall(Call<T>& op) {
+void Interpreter::EmitCall(const Call<T>& op) {
   call_stack.emplace(pos, op.idx, op.args, op.var_args);
   auto pointer = ReadPointer(std::get<Pointer>(vars.Get(op.fn_idx)).value);
   if (std::holds_alternative<i64>(pointer)) {
@@ -320,7 +320,7 @@ void Interpreter::EmitCall(Call<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitCallLabel(CallLabel<T>& op) {
+void Interpreter::EmitCallLabel(const CallLabel<T>& op) {
   call_stack.emplace(pos, op.idx, op.args, op.var_args);
   pos.first = program.functions.at(op.label);
   pos.second = 0;
@@ -328,7 +328,7 @@ void Interpreter::EmitCallLabel(CallLabel<T>& op) {
   vars.NewLayer();
 }
 
-void Interpreter::Emit(ArgMakeLocal& op) {
+void Interpreter::Emit(const ArgMakeLocal& op) {
   auto [_, __, args, ___] = call_stack.top();
 
   const auto stack_loc = stack.size();
@@ -417,7 +417,7 @@ void Interpreter::Emit(ArgMakeLocal& op) {
 }
 
 template<typename T>
-void Interpreter::EmitReturn(Return<T>& op) {
+void Interpreter::EmitReturn(const Return<T>& op) {
   auto top_vars = vars.Top();
   auto top_locals = locals.Top();
   locals.PopLayer();
@@ -441,13 +441,13 @@ void Interpreter::EmitReturn(Return<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitImm(Imm<T>& op) {
+void Interpreter::EmitImm(const Imm<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   vars.Set(op.idx, op.value);
 }
 
 template<typename T>
-void Interpreter::EmitUnop(Unop<T>& op) {
+void Interpreter::EmitUnop(const Unop<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T right = std::get<T>(vars.Get(op.right_idx));
   switch (op.op) {
@@ -464,7 +464,7 @@ void Interpreter::EmitUnop(Unop<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitBinop(Binop<T>& op) {
+void Interpreter::EmitBinop(const Binop<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T left = std::get<T>(vars.Get(op.left_idx));
   T right = std::get<T>(vars.Get(op.right_idx));
@@ -515,7 +515,7 @@ void Interpreter::EmitBinop(Binop<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitBinopImm(BinopImm<T>& op) {
+void Interpreter::EmitBinopImm(const BinopImm<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T left = std::get<T>(vars.Get(op.left_idx));
   T result;
@@ -565,7 +565,7 @@ void Interpreter::EmitBinopImm(BinopImm<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitShift(Shift<T>& op) {
+void Interpreter::EmitShift(const Shift<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T left = std::get<T>(vars.Get(op.left_idx));
   u32 right = std::get<u32>(vars.Get(op.right_idx));
@@ -583,7 +583,7 @@ void Interpreter::EmitShift(Shift<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitShiftImm(ShiftImm<T>& op) {
+void Interpreter::EmitShiftImm(const ShiftImm<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T left = std::get<T>(vars.Get(op.left_idx));
   switch (op.op) {
@@ -600,7 +600,7 @@ void Interpreter::EmitShiftImm(ShiftImm<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitCompare(Compare<T>& op) {
+void Interpreter::EmitCompare(const Compare<T>& op) {
   T left = std::get<T>(vars.Get(op.left_idx));
   T right = std::get<T>(vars.Get(op.right_idx));
   i32 result;
@@ -638,7 +638,7 @@ void Interpreter::EmitCompare(Compare<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitCompareImm(CompareImm<T>& op) {
+void Interpreter::EmitCompareImm(const CompareImm<T>& op) {
   T left = std::get<T>(vars.Get(op.left_idx));
   i32 result;
 
@@ -674,13 +674,13 @@ void Interpreter::EmitCompareImm(CompareImm<T>& op) {
   vars.Set(op.idx, result);
 }
 
-void Interpreter::Emit(UnconditionalBranch& op) {
+void Interpreter::Emit(const UnconditionalBranch& op) {
   pos.first  = op.dest;
   pos.second = 0;
 }
 
 template<typename T>
-void Interpreter::EmitBranchCompare(BranchCompare<T>& op) {
+void Interpreter::EmitBranchCompare(const BranchCompare<T>& op) {
   T left = std::get<T>(vars.Get(op.left_idx));
   T right = std::get<T>(vars.Get(op.right_idx));
   bool branch;
@@ -722,7 +722,7 @@ void Interpreter::EmitBranchCompare(BranchCompare<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitBranchCompareImm(BranchCompareImm<T>& op) {
+void Interpreter::EmitBranchCompareImm(const BranchCompareImm<T>& op) {
   T left = std::get<T>(vars.Get(op.left_idx));
   T right = op.right;
   bool branch;
@@ -763,7 +763,7 @@ void Interpreter::EmitBranchCompareImm(BranchCompareImm<T>& op) {
   }
 }
 
-void Interpreter::Emit(Select& op) {
+void Interpreter::Emit(const Select& op) {
   cotyl::Assert(vars.HasTop(op.idx));
   auto val = std::get<i64>(vars.Get(op.idx));
   cotyl::Assert(op._default || op.table.contains(val), "Jump table does not contain value");
@@ -777,7 +777,7 @@ void Interpreter::Emit(Select& op) {
 }
 
 template<typename T>
-void Interpreter::EmitAddToPointer(AddToPointer<T>& op) {
+void Interpreter::EmitAddToPointer(const AddToPointer<T>& op) {
   calyx::Pointer left = std::get<calyx::Pointer>(vars.Get(op.ptr_idx));
   const auto lptr = ReadPointer(left.value);
   T right = std::get<T>(vars.Get(op.right_idx));
@@ -792,7 +792,7 @@ void Interpreter::EmitAddToPointer(AddToPointer<T>& op) {
   vars.Set(op.idx, result);
 }
 
-void Interpreter::Emit(AddToPointerImm& op) {
+void Interpreter::Emit(const AddToPointerImm& op) {
   calyx::Pointer left = std::get<calyx::Pointer>(vars.Get(op.ptr_idx));
   const auto lptr = ReadPointer(left.value);
   i64 right = op.right;

@@ -4,6 +4,9 @@
     "cmake.debugConfig": {
         "cwd": "${workspaceRoot}"
     },
+    "editor.indentSize": 2,
+    "editor.detectIndentation": false,
+    "editor.insertSpaces": true,
     "files.associations": {
         "xhash": "cpp",
         "xstring": "cpp",
