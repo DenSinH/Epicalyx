@@ -33,7 +33,7 @@ bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
   for (const auto& [var_idx, loc] : vars_found) {
     auto& directive = new_program.blocks.at(loc.first)[loc.second];
     if (IsType<T>(directive)) {
-      auto candidate_block = deps.var_graph.at(var_idx).pos_made.first;
+      auto candidate_block = deps.var_graph.at(var_idx).created.first;
       auto ancestor = deps.CommonBlockAncestor(candidate_block, current_new_block_idx);
 
       // todo: shift directives back for earlier ancestor blocks
@@ -154,7 +154,7 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
       }
     }
   }
-  RemoveUnused(new_program);
+  while (RemoveUnused(new_program));
 }
 
 void BasicOptimizer::Emit(const AllocateLocal& op) {

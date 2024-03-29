@@ -14,8 +14,8 @@ struct RIG {
   static RIG GenerateRIG(const Program& program);
 
   struct GeneralizedVar {
-    bool is_local;
     var_index_t idx;
+    bool is_local = false;
   };
 
   // we again skip 0

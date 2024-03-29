@@ -7,6 +7,6 @@ namespace calyx {
 struct Program;
 }
 
-void RemoveUnused(calyx::Program& program);
+size_t RemoveUnused(calyx::Program& program);
 
 }

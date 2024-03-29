@@ -6,6 +6,7 @@
 #include <boost/container/map.hpp>
 #include <boost/container/flat_set.hpp>
 #include <boost/container/flat_map.hpp>
+#include <boost/container/static_vector.hpp>
 #include <boost/unordered_set.hpp>
 #include <boost/unordered_map.hpp>
 
@@ -38,6 +39,8 @@ template<typename T>
 using flat_set = boost::container::flat_set<T>;
 template<typename K, typename V>
 using flat_map = boost::container::flat_map<K, V>;
+template<typename T, std::size_t N>
+using static_vector = boost::container::static_vector<T, N>;
 
 }
 
@@ -47,6 +50,7 @@ using flat_map = boost::container::flat_map<K, V>;
 #include <map>
 #include <unordered_set>
 #include <unordered_map>
+#include <vector>
 
 namespace epi::cotyl {
 
@@ -66,6 +70,18 @@ using flat_map = std::unordered_map<K, V>;
 }
 
 #endif
+
+namespace epi::cotyl {
+
+template<typename K, typename T>
+T& get_default(unordered_map<K, T>& graph, const K& key) {
+  if (!graph.contains(key)) {
+    graph[key] = {};
+  }
+  return graph[key];
+}
+
+}
 
 
 namespace std {

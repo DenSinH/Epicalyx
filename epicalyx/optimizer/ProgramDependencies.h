@@ -31,20 +31,19 @@ struct ProgramDependencies final : calyx::Backend {
   cotyl::unordered_map<block_label_t, Block> block_graph{};
 
   struct Var {
-    program_pos_t pos_made = {0, -1};
-    cotyl::unordered_set<var_index_t> deps{};
-    cotyl::unordered_set<var_index_t> read_for{};
-    cotyl::unordered_set<program_pos_t> other_uses{};  // call arg/return val/store to pointer etc.
+    program_pos_t created = {0, 0};
+    // variables depend on at most 2 others through a binop
+    cotyl::static_vector<var_index_t, 2> deps{};
+    bool is_call_result = false;
+    std::vector<program_pos_t> reads{};
   };
 
   cotyl::unordered_map<var_index_t, Var> var_graph{};
 
   struct Local {
-    using Write = std::pair<program_pos_t, var_index_t>;
-
-    program_pos_t pos_made = {0, -1};
-    cotyl::unordered_set<Write> writes{};
-    cotyl::unordered_set<program_pos_t> reads{};
+    program_pos_t created = {0, 0};
+    std::vector<program_pos_t> writes{};
+    std::vector<program_pos_t> reads{};
   };
 
   cotyl::unordered_map<var_index_t, Local> local_graph{};

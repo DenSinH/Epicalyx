@@ -164,7 +164,6 @@ struct Branch : Directive {
 
 struct Program {
   using block_t = std::vector<pDirective>;
-  using blocks_t = cotyl::unordered_map<block_label_t, block_t>;
   using global_t = std::variant<i8, u8, i16, u16, i32, u32, i64, u64, float, double, Pointer, label_offset_t>;
 
   Program() {
@@ -173,7 +172,7 @@ struct Program {
 
   // program code
   // block 0 is special
-  blocks_t blocks{};
+  cotyl::unordered_map<block_label_t, block_t> blocks{};
 
   // function symbols -> block ID
   cotyl::unordered_map<std::string, calyx::block_label_t> functions{};
