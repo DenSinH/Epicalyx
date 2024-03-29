@@ -66,7 +66,7 @@ struct BasicOptimizer final : calyx::Backend {
   }
 
   template<typename T>
-  program_pos_t EmitExisting(std::unique_ptr<T>&& directive) {
+  program_pos_t Output(std::unique_ptr<T>&& directive) {
     cotyl::Assert(reachable);
     const u64 in_block = current_block->size();
     deps.Emit(*directive);
@@ -75,31 +75,33 @@ struct BasicOptimizer final : calyx::Backend {
   }
 
   template<typename T, typename... Args>
-  program_pos_t EmitNew(Args... args) {
-    return EmitExisting(std::make_unique<T>(args...));
+  program_pos_t OutputNew(Args... args) {
+    return Output(std::make_unique<T>(args...));
   }
 
   template<typename T>
-  program_pos_t EmitCopy(const T& op) {
-    return EmitNew<T>(op);
+  program_pos_t OutputCopy(const T& op) {
+    return OutputNew<T>(op);
   }
 
   template<typename T, typename... Args>
-  void EmitExpr(calyx::var_index_t idx, const Args&... args) {
+  void OutputExprNew(calyx::var_index_t idx, const Args&... args) {
     deps.var_graph[idx] = {};
-    vars_found.emplace(idx, EmitNew<T>(idx, args...));
+    vars_found.emplace(idx, OutputNew<T>(idx, args...));
   }
 
   template<typename T>
-  void EmitExprExisting(std::unique_ptr<T>&& expr) {
-    deps.var_graph[expr->idx] = {};
-    vars_found.emplace(expr->idx, EmitExisting(std::move(expr)));
+  void OutputExpr(std::unique_ptr<T>&& expr) {
+    // expr will be moved before reading the idx on the return
+    const auto idx = expr->idx;
+    deps.var_graph[idx] = {};
+    vars_found.emplace(idx, Output(std::move(expr)));
   }
 
   template<typename T>
-  void EmitExprCopy(const T& expr) {
+  void OutputExprCopy(const T& expr) {
     deps.var_graph[expr.idx] = {};
-    vars_found.emplace(expr.idx, EmitCopy(expr));
+    vars_found.emplace(expr.idx, OutputCopy(expr));
   }
 
   template<typename T, typename... Args>

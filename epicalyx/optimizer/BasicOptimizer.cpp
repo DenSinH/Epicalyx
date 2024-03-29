@@ -158,11 +158,11 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
 }
 
 void BasicOptimizer::Emit(const AllocateLocal& op) {
-  EmitCopy(op);
+  OutputCopy(op);
 }
 
 void BasicOptimizer::Emit(const DeallocateLocal& op) {
-  EmitCopy(op);
+  OutputCopy(op);
 }
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Woverloaded-virtual"
@@ -196,7 +196,7 @@ void BasicOptimizer::EmitCast(const Cast<To, From>& _op) {
           return;
         }
       }
-      EmitExprExisting(std::move(op));
+      OutputExpr(std::move(op));
     }
   }
 }
@@ -210,13 +210,13 @@ void BasicOptimizer::EmitLoadLocal(const LoadLocal<T>& op) {
     repl->Emit(*this);
   }
   else {
-    EmitExprCopy(op);
+    OutputExprCopy(op);
   }
 }
 
 void BasicOptimizer::Emit(const LoadLocalAddr& op) {
   var_aliases[op.idx] = op.loc_idx;
-  EmitExprCopy(op);
+  OutputExprCopy(op);
 }
 
 template<typename T>
@@ -229,20 +229,21 @@ void BasicOptimizer::EmitStoreLocal(const StoreLocal<T>& _op) {
       // var alias stored to local (i.e. int var; int* al = &var; int* al2 = al;)
       aliases = var_aliases.at(op->src);
     }
-    locals[op->loc_idx] = Local{
+    const auto loc_idx = op->loc_idx;  // op will be moved when assigning
+    locals[loc_idx] = Local{
             .aliases = aliases,
             .replacement = std::make_unique<Cast<T, calyx_upcast_t<T>>>(0, op->src),
             .store = std::move(op)
     };
   }
   else {
-    EmitExisting(std::move(op));
+    Output(std::move(op));
   }
 }
 
 template<typename T>
 void BasicOptimizer::EmitLoadGlobal(const LoadGlobal<T>& op) {
-  EmitExprCopy(op);
+  OutputExprCopy(op);
 }
 
 void BasicOptimizer::Emit(const LoadGlobalAddr& op) {
@@ -250,7 +251,7 @@ void BasicOptimizer::Emit(const LoadGlobalAddr& op) {
     return candidate.symbol == op.symbol;
   });
   if (!replaced) {
-    EmitExprCopy(op);
+    OutputExprCopy(op);
   }
 }
 
@@ -258,7 +259,7 @@ template<typename T>
 void BasicOptimizer::EmitStoreGlobal(const StoreGlobal<T>& _op) {
   auto op = CopyDirective(_op);
   TryReplaceVar(op->src);
-  EmitExisting(std::move(op));
+  Output(std::move(op));
 }
 
 template<typename T>
@@ -280,7 +281,7 @@ void BasicOptimizer::EmitLoadFromPointer(const LoadFromPointer<T>& _op) {
     }
     return;
   }
-  EmitExprExisting(std::move(op));
+  OutputExpr(std::move(op));
 }
 
 template<typename T>
@@ -308,7 +309,7 @@ void BasicOptimizer::EmitStoreToPointer(const StoreToPointer<T>& _op) {
       return;
     }
   }
-  EmitExisting(std::move(op));
+  Output(std::move(op));
 }
 
 template<typename T>
@@ -329,7 +330,7 @@ void BasicOptimizer::EmitCall(const Call<T>& _op) {
   }
 
   vars_found[op->idx] = std::make_pair(current_new_block_idx, current_block->size());
-  EmitExisting(std::move(op));
+  Output(std::move(op));
 }
 
 template<typename T>
@@ -343,11 +344,11 @@ void BasicOptimizer::EmitCallLabel(const CallLabel<T>& _op) {
   }
 
   vars_found[op->idx] = std::make_pair(current_new_block_idx, current_block->size());
-  EmitExisting(std::move(op));
+  Output(std::move(op));
 }
 
 void BasicOptimizer::Emit(const ArgMakeLocal& op) {
-  EmitCopy(op);
+  OutputCopy(op);
 }
 
 template<typename T>
@@ -356,7 +357,7 @@ void BasicOptimizer::EmitReturn(const Return<T>& _op) {
   TryReplaceVar(op->idx);
   // no need to flush locals right before a return
   locals = {};
-  EmitExisting(std::move(op));
+  Output(std::move(op));
   reachable = false;
 }
 
@@ -366,7 +367,7 @@ void BasicOptimizer::EmitImm(const Imm<T>& op) {
     return candidate.value == op.value;
   });
   if (!replaced) {
-    EmitExprCopy(op);
+    OutputExprCopy(op);
   }
 }
 
@@ -396,7 +397,7 @@ void BasicOptimizer::EmitUnop(const Unop<T>& _op) {
     }
   }
 
-  EmitExprExisting(std::move(op));
+  OutputExpr(std::move(op));
 }
 
 template<typename T>
@@ -466,7 +467,7 @@ void BasicOptimizer::EmitBinop(const Binop<T>& op_) {
     }
   }
 
-  EmitExprExisting(std::move(op));
+  OutputExpr(std::move(op));
 }
 
 template<typename T>
@@ -527,7 +528,7 @@ void BasicOptimizer::EmitBinopImm(const BinopImm<T>& op_) {
     }
   }
 
-  EmitExprExisting(std::move(op));
+  OutputExpr(std::move(op));
 }
 
 template<typename T>
@@ -545,7 +546,7 @@ void BasicOptimizer::EmitShift(const Shift<T>& _op) {
     }
   }
 
-  EmitExprExisting(std::move(op));
+  OutputExpr(std::move(op));
 }
 
 template<typename T>
@@ -571,7 +572,7 @@ void BasicOptimizer::EmitShiftImm(const ShiftImm<T>& _op) {
       return;
     }
   }
-  EmitExprExisting(std::move(op));
+  OutputExpr(std::move(op));
 }
 
 template<typename T>
@@ -609,7 +610,7 @@ void BasicOptimizer::EmitCompare(const Compare<T>& _op) {
     }
   }
 
-  EmitExprExisting(std::move(op));
+  OutputExpr(std::move(op));
 }
 
 template<typename T>
@@ -635,7 +636,7 @@ void BasicOptimizer::EmitCompareImm(const CompareImm<T>& _op) {
     }
   }
 
-  EmitExprExisting(std::move(op));
+  OutputExpr(std::move(op));
 }
 
 void BasicOptimizer::Emit(const UnconditionalBranch& _op) {
@@ -655,7 +656,7 @@ void BasicOptimizer::Emit(const UnconditionalBranch& _op) {
     if (!visited.contains(op->dest)) {
       todo.insert(op->dest);
     }
-    EmitExisting(std::move(op));
+    Output(std::move(op));
     reachable = false;
   }
 }
@@ -700,7 +701,7 @@ void BasicOptimizer::EmitBranchCompare(const BranchCompare<T>& _op) {
     if (!visited.contains(op->dest)) {
       todo.insert(op->dest);
     }
-    EmitExisting(std::move(op));
+    Output(std::move(op));
   }
 }
 
@@ -735,7 +736,7 @@ void BasicOptimizer::EmitBranchCompareImm(const BranchCompareImm<T>& _op) {
     if (!visited.contains(op->dest)) {
       todo.insert(op->dest);
     }
-    EmitExisting(std::move(op));
+    Output(std::move(op));
   }
 }
 
@@ -759,7 +760,7 @@ void BasicOptimizer::Emit(const Select& _op) {
     }
   }
 
-  EmitExisting(std::move(op));
+  Output(std::move(op));
   reachable = false;
 }
 
@@ -788,7 +789,7 @@ void BasicOptimizer::EmitAddToPointer(const AddToPointer<T>& _op) {
 //    var_aliases[op->idx] = var_aliases.at(op->ptr_idx);
 //  }
 
-  EmitExprExisting(std::move(op));
+  OutputExpr(std::move(op));
 }
 
 void BasicOptimizer::Emit(const AddToPointerImm& _op) {
@@ -802,7 +803,7 @@ void BasicOptimizer::Emit(const AddToPointerImm& _op) {
   if (var_aliases.contains(op->ptr_idx) && op->right == 0) {
     var_aliases[op->idx] = var_aliases.at(op->ptr_idx);
   }
-  EmitExprExisting(std::move(op));
+  OutputExpr(std::move(op));
 }
 
 #define BACKEND_NAME BasicOptimizer
