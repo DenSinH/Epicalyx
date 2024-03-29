@@ -171,19 +171,19 @@ template<typename To, typename From>
 void BasicOptimizer::EmitCast(const Cast<To, From>& _op) {
   auto op = CopyDirective(_op);
   if constexpr(std::is_same_v<To, From>) {
-    var_replacement[op.idx] = op.right_idx;
+    var_replacement[op->idx] = op->right_idx;
     return;
   }
   else {
-    TryReplaceVar(op.right_idx);
-    auto replaced = FindExprResultReplacement(op, [&](auto& op, auto& candidate) {
+    TryReplaceVar(op->right_idx);
+    auto replaced = FindExprResultReplacement(*op, [](auto& op, auto& candidate) {
       return candidate.right_idx == op.right_idx;
     });
     if (!replaced) {
-      auto* right_directive = TryGetVarDirective<Imm<From>>(op.right_idx);
+      auto* right_directive = TryGetVarDirective<Imm<From>>(op->right_idx);
       if constexpr(std::is_same_v<From, Pointer>) {
         if (right_directive) {
-          EmitRepl<Imm<calyx_upcast_t<To>>>(op.idx, (To)right_directive->value.value);
+          EmitRepl<Imm<calyx_upcast_t<To>>>(op->idx, (To)right_directive->value.value);
           return;
         }
       }
@@ -192,11 +192,11 @@ void BasicOptimizer::EmitCast(const Cast<To, From>& _op) {
       }
       else{
         if (right_directive) {
-          EmitRepl<Imm<calyx_upcast_t<To>>>(op.idx, (To)right_directive->value);
+          EmitRepl<Imm<calyx_upcast_t<To>>>(op->idx, (To)right_directive->value);
           return;
         }
       }
-      EmitExprCopy(op);
+      EmitExprExisting(std::move(op));
     }
   }
 }
@@ -222,21 +222,21 @@ void BasicOptimizer::Emit(const LoadLocalAddr& op) {
 template<typename T>
 void BasicOptimizer::EmitStoreLocal(const StoreLocal<T>& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.src);
+  TryReplaceVar(op->src);
   if constexpr(!std::is_same_v<T, Struct>) {
     var_index_t aliases = 0;
-    if (var_aliases.contains(op.src)) {
+    if (var_aliases.contains(op->src)) {
       // var alias stored to local (i.e. int var; int* al = &var; int* al2 = al;)
-      aliases = var_aliases.at(op.src);
+      aliases = var_aliases.at(op->src);
     }
-    locals[op.loc_idx] = Local{
+    locals[op->loc_idx] = Local{
             .aliases = aliases,
-            .replacement = std::make_unique<Cast<T, calyx_upcast_t<T>>>(0, op.src),
-            .store = std::make_unique<StoreLocal<T>>(op)
+            .replacement = std::make_unique<Cast<T, calyx_upcast_t<T>>>(0, op->src),
+            .store = std::move(op)
     };
   }
   else {
-    EmitCopy(op);
+    EmitExisting(std::move(op));
   }
 }
 
@@ -246,7 +246,7 @@ void BasicOptimizer::EmitLoadGlobal(const LoadGlobal<T>& op) {
 }
 
 void BasicOptimizer::Emit(const LoadGlobalAddr& op) {
-  auto replaced = FindExprResultReplacement(op, [&](auto& op, auto& candidate) {
+  auto replaced = FindExprResultReplacement(op, [](auto& op, auto& candidate) {
     return candidate.symbol == op.symbol;
   });
   if (!replaced) {
@@ -257,93 +257,93 @@ void BasicOptimizer::Emit(const LoadGlobalAddr& op) {
 template<typename T>
 void BasicOptimizer::EmitStoreGlobal(const StoreGlobal<T>& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.src);
-  EmitCopy(op);
+  TryReplaceVar(op->src);
+  EmitExisting(std::move(op));
 }
 
 template<typename T>
 void BasicOptimizer::EmitLoadFromPointer(const LoadFromPointer<T>& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.ptr_idx);
-  if (var_aliases.contains(op.ptr_idx)) {
+  TryReplaceVar(op->ptr_idx);
+  if (var_aliases.contains(op->ptr_idx)) {
     // pointer aliases local variable
-    auto alias = var_aliases.at(op.ptr_idx);
-    if (locals.contains(alias) && op.offset == 0) {
+    auto alias = var_aliases.at(op->ptr_idx);
+    if (locals.contains(alias) && op->offset == 0) {
       // IR var holds local value, emit aliased local replacement
       auto& repl = locals.at(alias).replacement;
-      repl->idx = op.idx;
+      repl->idx = op->idx;
       repl->Emit(*this);
     }
     else {
       // load aliased local directly
-      EmitRepl<LoadLocal<T>>(op.idx, alias, op.offset);
+      EmitRepl<LoadLocal<T>>(op->idx, alias, op->offset);
     }
     return;
   }
-  EmitExprCopy(op);
+  EmitExprExisting(std::move(op));
 }
 
 template<typename T>
 void BasicOptimizer::EmitStoreToPointer(const StoreToPointer<T>& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.src);
-  TryReplaceVar(op.ptr_idx);
+  TryReplaceVar(op->src);
+  TryReplaceVar(op->ptr_idx);
   if constexpr(!std::is_same_v<T, Struct>) {
-    if (var_aliases.contains(op.ptr_idx) && op.offset == 0) {
-      auto alias = var_aliases.at(op.ptr_idx);
+    if (var_aliases.contains(op->ptr_idx) && op->offset == 0) {
+      auto alias = var_aliases.at(op->ptr_idx);
 
       // storing aliased variable to another alias
       // i.e. int* zalias1 = &z; int** zaliasptr; *zaliasptr = zalias1;
       var_index_t aliases = 0;
-      if (var_aliases.contains(op.src)) {
-        aliases = var_aliases.at(op.src);
+      if (var_aliases.contains(op->src)) {
+        aliases = var_aliases.at(op->src);
       }
 
       // replace alias
       locals[alias] = Local{
               .aliases = aliases,
-              .replacement = std::make_unique<Cast<T, calyx_upcast_t<T>>>(0, op.src),
-              .store = std::make_unique<StoreLocal<T>>(alias, op.src)
+              .replacement = std::make_unique<Cast<T, calyx_upcast_t<T>>>(0, op->src),
+              .store = std::make_unique<StoreLocal<T>>(alias, op->src)
       };
       return;
     }
   }
-  EmitCopy(op);
+  EmitExisting(std::move(op));
 }
 
 template<typename T>
 void BasicOptimizer::EmitCall(const Call<T>& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.fn_idx);
-  for (auto& [var_idx, arg] : op.args) {
+  TryReplaceVar(op->fn_idx);
+  for (auto& [var_idx, arg] : op->args) {
     TryReplaceVar(var_idx);
   }
-  for (auto& [var_idx, arg] : op.var_args) {
+  for (auto& [var_idx, arg] : op->var_args) {
     TryReplaceVar(var_idx);
   }
 
-  auto* fn_adglb = TryGetVarDirective<LoadGlobalAddr>(op.fn_idx);
+  auto* fn_adglb = TryGetVarDirective<LoadGlobalAddr>(op->fn_idx);
   if (fn_adglb) {
-    EmitRepl<CallLabel<T>>(op.idx, fn_adglb->symbol, std::move(op.args), std::move(op.var_args));
+    EmitRepl<CallLabel<T>>(op->idx, fn_adglb->symbol, std::move(op->args), std::move(op->var_args));
     return;
   }
 
-  vars_found[op.idx] = std::make_pair(current_new_block_idx, current_block->size());
-  EmitCopy(op);
+  vars_found[op->idx] = std::make_pair(current_new_block_idx, current_block->size());
+  EmitExisting(std::move(op));
 }
 
 template<typename T>
 void BasicOptimizer::EmitCallLabel(const CallLabel<T>& _op) {
   auto op = CopyDirective(_op);
-  for (auto& [var_idx, arg] : op.args) {
+  for (auto& [var_idx, arg] : op->args) {
     TryReplaceVar(var_idx);
   }
-  for (auto& [var_idx, arg] : op.var_args) {
+  for (auto& [var_idx, arg] : op->var_args) {
     TryReplaceVar(var_idx);
   }
 
-  vars_found[op.idx] = std::make_pair(current_new_block_idx, current_block->size());
-  EmitCopy(op);
+  vars_found[op->idx] = std::make_pair(current_new_block_idx, current_block->size());
+  EmitExisting(std::move(op));
 }
 
 void BasicOptimizer::Emit(const ArgMakeLocal& op) {
@@ -353,16 +353,16 @@ void BasicOptimizer::Emit(const ArgMakeLocal& op) {
 template<typename T>
 void BasicOptimizer::EmitReturn(const Return<T>& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.idx);
+  TryReplaceVar(op->idx);
   // no need to flush locals right before a return
   locals = {};
-  EmitCopy(op);
+  EmitExisting(std::move(op));
   reachable = false;
 }
 
 template<typename T>
 void BasicOptimizer::EmitImm(const Imm<T>& op) {
-  auto replaced = FindExprResultReplacement(op, [&](auto& op, auto& candidate) {
+  auto replaced = FindExprResultReplacement(op, [](auto& op, auto& candidate) {
     return candidate.value == op.value;
   });
   if (!replaced) {
@@ -373,56 +373,56 @@ void BasicOptimizer::EmitImm(const Imm<T>& op) {
 template<typename T>
 void BasicOptimizer::EmitUnop(const Unop<T>& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.right_idx);
+  TryReplaceVar(op->right_idx);
 
   {
-    auto* right_unop = TryGetVarDirective<Unop<T>>(op.right_idx);
+    auto* right_unop = TryGetVarDirective<Unop<T>>(op->right_idx);
     if (right_unop) {
-      if (right_unop->op == op.op) {
+      if (right_unop->op == op->op) {
         // ~ and - both cancel themselves out
-        var_replacement[op.idx] = right_unop->right_idx;
+        var_replacement[op->idx] = right_unop->right_idx;
         return;
       }
     }
-    auto* right_imm = TryGetVarDirective<Imm<T>>(op.right_idx);
+    auto* right_imm = TryGetVarDirective<Imm<T>>(op->right_idx);
     if (right_imm) {
       T result;
-      switch (op.op) {
+      switch (op->op) {
         case UnopType::Neg: result = -right_imm->value; break;
         case UnopType::BinNot: if constexpr(calyx::is_calyx_integral_type_v<T>) result = ~right_imm->value; break;
       }
-      EmitRepl<Imm<T>>(op.idx, result);
+      EmitRepl<Imm<T>>(op->idx, result);
       return;
     }
   }
 
-  EmitExprCopy(op);
+  EmitExprExisting(std::move(op));
 }
 
 template<typename T>
 void BasicOptimizer::EmitBinop(const Binop<T>& op_) {
   auto op = CopyDirective(op_);
-  TryReplaceVar(op.left_idx);
-  TryReplaceVar(op.right_idx);
+  TryReplaceVar(op->left_idx);
+  TryReplaceVar(op->right_idx);
 
   // replace right side
   {
-    auto* right_imm = TryGetVarDirective<Imm<T>>(op.right_idx);
+    auto* right_imm = TryGetVarDirective<Imm<T>>(op->right_idx);
     if (right_imm) {
-      EmitRepl<BinopImm<T>>(op.idx, op.left_idx, op.op, right_imm->value);
+      EmitRepl<BinopImm<T>>(op->idx, op->left_idx, op->op, right_imm->value);
       return;
     }
 
     // fold unary expression into binop
-    auto* right_unop = TryGetVarDirective<Unop<T>>(op.right_idx);
+    auto* right_unop = TryGetVarDirective<Unop<T>>(op->right_idx);
     if (right_unop) {
       if (right_unop->op == UnopType::Neg) {
-        if (op.op == BinopType::Add) {
-          EmitRepl<Binop<T>>(op.idx, op.left_idx, BinopType::Sub, right_unop->right_idx);
+        if (op->op == BinopType::Add) {
+          EmitRepl<Binop<T>>(op->idx, op->left_idx, BinopType::Sub, right_unop->right_idx);
           return;
         }
-        else if (op.op == BinopType::Sub) {
-          EmitRepl<Binop<T>>(op.idx, op.left_idx, BinopType::Add, right_unop->right_idx);
+        else if (op->op == BinopType::Sub) {
+          EmitRepl<Binop<T>>(op->idx, op->left_idx, BinopType::Add, right_unop->right_idx);
           return;
         }
       }
@@ -432,19 +432,19 @@ void BasicOptimizer::EmitBinop(const Binop<T>& op_) {
   // replace left side
   // not both sides can be constants, otherwise they would have been folded already
   {
-    auto* left_imm = TryGetVarDirective<Imm<T>>(op.left_idx);
+    auto* left_imm = TryGetVarDirective<Imm<T>>(op->left_idx);
     if (left_imm) {
-      switch (op.op) {
+      switch (op->op) {
         case BinopType::Add:
         case BinopType::BinAnd:
         case BinopType::BinOr:
         case BinopType::BinXor:
         case BinopType::Mul: {
-          EmitRepl<BinopImm<T>>(op.idx, op.right_idx, op.op, left_imm->value);
+          EmitRepl<BinopImm<T>>(op->idx, op->right_idx, op->op, left_imm->value);
           return;
         }
         case BinopType::Sub: {
-          EmitRepl<BinopImm<T>>(op.idx, -left_imm->value, BinopType::Add, op.right_idx);
+          EmitRepl<BinopImm<T>>(op->idx, -left_imm->value, BinopType::Add, op->right_idx);
           return;
         }
         case BinopType::Div:
@@ -455,52 +455,52 @@ void BasicOptimizer::EmitBinop(const Binop<T>& op_) {
     }
 
     // fold unop into binop
-    auto* left_unop = TryGetVarDirective<Unop<T>>(op.left_idx);
+    auto* left_unop = TryGetVarDirective<Unop<T>>(op->left_idx);
     if (left_unop) {
       if (left_unop->op == UnopType::Neg) {
-        if (op.op == BinopType::Add) {
-          EmitRepl<Binop<T>>(op.idx, op.right_idx, BinopType::Sub, left_unop->right_idx);
+        if (op->op == BinopType::Add) {
+          EmitRepl<Binop<T>>(op->idx, op->right_idx, BinopType::Sub, left_unop->right_idx);
           return;
         }
       }
     }
   }
 
-  EmitExprCopy(op);
+  EmitExprExisting(std::move(op));
 }
 
 template<typename T>
 void BasicOptimizer::EmitBinopImm(const BinopImm<T>& op_) {
   auto op = CopyDirective(op_);
-  TryReplaceVar(op.left_idx);
+  TryReplaceVar(op->left_idx);
 
   {
-    auto* left_imm = TryGetVarDirective<Imm<T>>(op.left_idx);
+    auto* left_imm = TryGetVarDirective<Imm<T>>(op->left_idx);
     if (left_imm) {
       T result;
-      switch (op.op) {
-        case BinopType::Add: result = left_imm->value + op.right; break;
-        case BinopType::Sub: result = left_imm->value - op.right; break;
-        case BinopType::Mul: result = left_imm->value * op.right; break;
-        case BinopType::Div: result = left_imm->value / op.right; break;
+      switch (op->op) {
+        case BinopType::Add: result = left_imm->value + op->right; break;
+        case BinopType::Sub: result = left_imm->value - op->right; break;
+        case BinopType::Mul: result = left_imm->value * op->right; break;
+        case BinopType::Div: result = left_imm->value / op->right; break;
         default:
           if constexpr(is_calyx_integral_type_v<T>) {
-            switch (op.op) {
-              case BinopType::Mod: result = left_imm->value % op.right; break;
-              case BinopType::BinAnd: result = left_imm->value & op.right; break;
-              case BinopType::BinOr: result = left_imm->value | op.right; break;
-              case BinopType::BinXor: result = left_imm->value ^ op.right; break;
+            switch (op->op) {
+              case BinopType::Mod:    result = left_imm->value % op->right; break;
+              case BinopType::BinAnd: result = left_imm->value & op->right; break;
+              case BinopType::BinOr:  result = left_imm->value | op->right; break;
+              case BinopType::BinXor: result = left_imm->value ^ op->right; break;
               default: break;
             }
           }
           break;
       }
-      EmitRepl<Imm<T>>(op.idx, result);
+      EmitRepl<Imm<T>>(op->idx, result);
       return;
     }
 
     // result (v2 = (v1 @second b) @first a
-    auto* left_binim = TryGetVarDirective<BinopImm<T>>(op.left_idx);
+    auto* left_binim = TryGetVarDirective<BinopImm<T>>(op->left_idx);
     if (left_binim) {
       using op_pair_t = std::pair<BinopType, BinopType>;
       using result_pair_t = std::pair<BinopType, T(*)(T, T)>;
@@ -519,72 +519,72 @@ void BasicOptimizer::EmitBinopImm(const BinopImm<T>& op_) {
               { {BinXor, BinXor}, {BinXor, [](T a, T b) -> T { if constexpr(calyx::is_calyx_integral_type_v<T>) return a ^ b; return 0; }} },
       };
 
-      if (binim_fold.contains({op.op, left_binim->op})) {
-        const auto [repl_op, repl_fn] = binim_fold.at({op.op, left_binim->op});
-        EmitRepl<BinopImm<T>>(op.idx, left_binim->left_idx, repl_op, repl_fn(op.right, left_binim->right));
+      if (binim_fold.contains({op->op, left_binim->op})) {
+        const auto [repl_op, repl_fn] = binim_fold.at({op->op, left_binim->op});
+        EmitRepl<BinopImm<T>>(op->idx, left_binim->left_idx, repl_op, repl_fn(op->right, left_binim->right));
         return;
       }
     }
   }
 
-  EmitExprCopy(op);
+  EmitExprExisting(std::move(op));
 }
 
 template<typename T>
 void BasicOptimizer::EmitShift(const Shift<T>& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.left_idx);
-  TryReplaceVar(op.right_idx);
+  TryReplaceVar(op->left_idx);
+  TryReplaceVar(op->right_idx);
 
   // replace right side
   {
-    auto* right_imm = TryGetVarDirective<Imm<u32>>(op.right_idx);
+    auto* right_imm = TryGetVarDirective<Imm<u32>>(op->right_idx);
     if (right_imm) {
-      EmitRepl<ShiftImm<T>>(op.idx, op.left_idx, op.op, right_imm->value);
+      EmitRepl<ShiftImm<T>>(op->idx, op->left_idx, op->op, right_imm->value);
       return;
     }
   }
 
-  EmitExprCopy(op);
+  EmitExprExisting(std::move(op));
 }
 
 template<typename T>
 void BasicOptimizer::EmitShiftImm(const ShiftImm<T>& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.left_idx);
+  TryReplaceVar(op->left_idx);
 
-  if (op.right == 0) {
-    var_replacement[op.idx] = op.left_idx;
+  if (op->right == 0) {
+    var_replacement[op->idx] = op->left_idx;
     return;
   }
 
   {
-    auto* left_imm = TryGetVarDirective<Imm<T>>(op.left_idx);
+    auto* left_imm = TryGetVarDirective<Imm<T>>(op->left_idx);
     if (left_imm) {
       T result;
-      switch (op.op) {
-        case ShiftType::Left: result = left_imm->value << op.right; break;
-        case ShiftType::Right: result = left_imm->value >> op.right; break;
+      switch (op->op) {
+        case ShiftType::Left:  result = left_imm->value << op->right; break;
+        case ShiftType::Right: result = left_imm->value >> op->right; break;
       }
 
-      EmitRepl<Imm<T>>(op.idx, result);
+      EmitRepl<Imm<T>>(op->idx, result);
       return;
     }
   }
-  EmitExprCopy(op);
+  EmitExprExisting(std::move(op));
 }
 
 template<typename T>
 void BasicOptimizer::EmitCompare(const Compare<T>& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.left_idx);
-  TryReplaceVar(op.right_idx);
+  TryReplaceVar(op->left_idx);
+  TryReplaceVar(op->right_idx);
 
   // replace right side
   {
-    auto* right_imm = TryGetVarDirective<Imm<T>>(op.right_idx);
+    auto* right_imm = TryGetVarDirective<Imm<T>>(op->right_idx);
     if (right_imm) {
-      EmitRepl<CompareImm<T>>(op.idx, op.left_idx, op.op, right_imm->value);
+      EmitRepl<CompareImm<T>>(op->idx, op->left_idx, op->op, right_imm->value);
       return;
     }
   }
@@ -592,11 +592,11 @@ void BasicOptimizer::EmitCompare(const Compare<T>& _op) {
   // replace left side
   // not both sides can be constants, otherwise they would have been folded already
   {
-    auto* left_imm = TryGetVarDirective<Imm<T>>(op.left_idx);
+    auto* left_imm = TryGetVarDirective<Imm<T>>(op->left_idx);
     if (left_imm) {
-      CmpType flipped = op.op;
+      CmpType flipped = op->op;
 
-      switch (op.op) {
+      switch (op->op) {
         case CmpType::Eq:
         case CmpType::Ne: break;
         case CmpType::Lt: flipped = CmpType::Gt; break;
@@ -604,58 +604,58 @@ void BasicOptimizer::EmitCompare(const Compare<T>& _op) {
         case CmpType::Gt: flipped = CmpType::Lt; break;
         case CmpType::Ge: flipped = CmpType::Le; break;
       }
-      EmitRepl<CompareImm<T>>(op.idx, op.right_idx, flipped, left_imm->value);
+      EmitRepl<CompareImm<T>>(op->idx, op->right_idx, flipped, left_imm->value);
       return;
     }
   }
 
-  EmitExprCopy(op);
+  EmitExprExisting(std::move(op));
 }
 
 template<typename T>
 void BasicOptimizer::EmitCompareImm(const CompareImm<T>& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.left_idx);
+  TryReplaceVar(op->left_idx);
 
   if constexpr(!std::is_same_v<T, Pointer>) {
-    auto* left_imm = TryGetVarDirective<Imm<T>>(op.left_idx);
+    auto* left_imm = TryGetVarDirective<Imm<T>>(op->left_idx);
     if (left_imm) {
       i32 result = 0;
 
-      switch (op.op) {
-        case CmpType::Eq: result = left_imm->value == op.right; break;
-        case CmpType::Ne: result = left_imm->value != op.right; break;
-        case CmpType::Lt: result = left_imm->value <  op.right; break;
-        case CmpType::Le: result = left_imm->value <= op.right; break;
-        case CmpType::Gt: result = left_imm->value >  op.right; break;
-        case CmpType::Ge: result = left_imm->value >= op.right; break;
+      switch (op->op) {
+        case CmpType::Eq: result = left_imm->value == op->right; break;
+        case CmpType::Ne: result = left_imm->value != op->right; break;
+        case CmpType::Lt: result = left_imm->value <  op->right; break;
+        case CmpType::Le: result = left_imm->value <= op->right; break;
+        case CmpType::Gt: result = left_imm->value >  op->right; break;
+        case CmpType::Ge: result = left_imm->value >= op->right; break;
       }
-      EmitRepl<Imm<i32>>(op.idx, result);
+      EmitRepl<Imm<i32>>(op->idx, result);
       return;
     }
   }
 
-  EmitExprCopy(op);
+  EmitExprExisting(std::move(op));
 }
 
 void BasicOptimizer::Emit(const UnconditionalBranch& _op) {
   auto op = CopyDirective(_op);
-  if (!ResolveBranchIndirection(op)) {
+  if (!ResolveBranchIndirection(*op)) {
     const auto& block_deps = this->deps.block_graph.at(current_new_block_idx);
     if (block_deps.to.empty()) {
       // no dependencies so far, we can link this block if the next block only has one input
-      if (!visited.contains(op.dest) && this->deps.block_graph.at(op.dest).from.size() == 1) {
-        LinkBlock(op.dest);
+      if (!visited.contains(op->dest) && this->deps.block_graph.at(op->dest).from.size() == 1) {
+        LinkBlock(op->dest);
         return;
       }
     }
 
     // only flush locals on the unconditional branch non-linked blocks
     FlushCurrentLocals();
-    if (!visited.contains(op.dest)) {
-      todo.insert(op.dest);
+    if (!visited.contains(op->dest)) {
+      todo.insert(op->dest);
     }
-    EmitCopy(op);
+    EmitExisting(std::move(op));
     reachable = false;
   }
 }
@@ -663,14 +663,14 @@ void BasicOptimizer::Emit(const UnconditionalBranch& _op) {
 template<typename T>
 void BasicOptimizer::EmitBranchCompare(const BranchCompare<T>& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.left_idx);
-  TryReplaceVar(op.right_idx);
+  TryReplaceVar(op->left_idx);
+  TryReplaceVar(op->right_idx);
 
   // replace right side
   {
-    auto* right_imm = TryGetVarDirective<Imm<T>>(op.right_idx);
+    auto* right_imm = TryGetVarDirective<Imm<T>>(op->right_idx);
     if (right_imm) {
-      EmitRepl<BranchCompareImm<T>>(op.dest, op.left_idx, op.op, right_imm->value);
+      EmitRepl<BranchCompareImm<T>>(op->dest, op->left_idx, op->op, right_imm->value);
       return;
     }
   }
@@ -678,11 +678,11 @@ void BasicOptimizer::EmitBranchCompare(const BranchCompare<T>& _op) {
   // replace left side
   // not both sides can be constants, otherwise they would have been folded already
   {
-    auto* left_imm = TryGetVarDirective<Imm<T>>(op.left_idx);
+    auto* left_imm = TryGetVarDirective<Imm<T>>(op->left_idx);
     if (left_imm) {
-      CmpType flipped = op.op;
+      CmpType flipped = op->op;
 
-      switch (op.op) {
+      switch (op->op) {
         case CmpType::Eq:
         case CmpType::Ne: break;
         case CmpType::Lt: flipped = CmpType::Gt; break;
@@ -690,68 +690,68 @@ void BasicOptimizer::EmitBranchCompare(const BranchCompare<T>& _op) {
         case CmpType::Gt: flipped = CmpType::Lt; break;
         case CmpType::Ge: flipped = CmpType::Le; break;
       }
-      EmitRepl<BranchCompareImm<T>>(op.dest, op.right_idx, flipped, left_imm->value);
+      EmitRepl<BranchCompareImm<T>>(op->dest, op->right_idx, flipped, left_imm->value);
       return;
     }
   }
 
-  if (!ResolveBranchIndirection(op)) {
+  if (!ResolveBranchIndirection(*op)) {
     FlushCurrentLocals();
-    if (!visited.contains(op.dest)) {
-      todo.insert(op.dest);
+    if (!visited.contains(op->dest)) {
+      todo.insert(op->dest);
     }
-    EmitCopy(op);
+    EmitExisting(std::move(op));
   }
 }
 
 template<typename T>
 void BasicOptimizer::EmitBranchCompareImm(const BranchCompareImm<T>& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.left_idx);
+  TryReplaceVar(op->left_idx);
 
   if constexpr(!std::is_same_v<T, Pointer>) {
-    auto* left_imm = TryGetVarDirective<Imm<T>>(op.left_idx);
+    auto* left_imm = TryGetVarDirective<Imm<T>>(op->left_idx);
     if (left_imm) {
-      CmpType flipped = op.op;
+      CmpType flipped = op->op;
 
       auto emit_unconditional = [&] {
-        EmitRepl<UnconditionalBranch>(op.dest);
+        EmitRepl<UnconditionalBranch>(op->dest);
       };
 
-      switch (op.op) {
-        case CmpType::Eq: if (left_imm->value == op.right) emit_unconditional(); break;
-        case CmpType::Ne: if (left_imm->value != op.right) emit_unconditional(); break;
-        case CmpType::Lt: if (left_imm->value <  op.right) emit_unconditional(); break;
-        case CmpType::Le: if (left_imm->value <= op.right) emit_unconditional(); break;
-        case CmpType::Gt: if (left_imm->value >  op.right) emit_unconditional(); break;
-        case CmpType::Ge: if (left_imm->value >= op.right) emit_unconditional(); break;
+      switch (op->op) {
+        case CmpType::Eq: if (left_imm->value == op->right) emit_unconditional(); break;
+        case CmpType::Ne: if (left_imm->value != op->right) emit_unconditional(); break;
+        case CmpType::Lt: if (left_imm->value <  op->right) emit_unconditional(); break;
+        case CmpType::Le: if (left_imm->value <= op->right) emit_unconditional(); break;
+        case CmpType::Gt: if (left_imm->value >  op->right) emit_unconditional(); break;
+        case CmpType::Ge: if (left_imm->value >= op->right) emit_unconditional(); break;
       }
       return;
     }
   }
 
-  if (!ResolveBranchIndirection(op)) {
+  if (!ResolveBranchIndirection(*op)) {
     FlushCurrentLocals();
-    if (!visited.contains(op.dest)) {
-      todo.insert(op.dest);
+    if (!visited.contains(op->dest)) {
+      todo.insert(op->dest);
     }
-    EmitCopy(op);
+    EmitExisting(std::move(op));
   }
 }
 
 void BasicOptimizer::Emit(const Select& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.idx);
+  TryReplaceVar(op->idx);
   FlushCurrentLocals();
 
-  auto* val_imm = TryGetVarDirective<Imm<i64>>(op.idx);
+  auto* val_imm = TryGetVarDirective<Imm<i64>>(op->idx);
   if (val_imm) {
-    if (op.table.contains(val_imm->value)) {
-      EmitRepl<UnconditionalBranch>(op.table.at(val_imm->value));
+    if (op->table.contains(val_imm->value)) {
+      EmitRepl<UnconditionalBranch>(op->table.at(val_imm->value));
       return;
     }
-    else if (op._default) {
-      EmitRepl<UnconditionalBranch>(op._default);
+    else if (op->_default) {
+      EmitRepl<UnconditionalBranch>(op->_default);
       return;
     }
     else {
@@ -759,50 +759,50 @@ void BasicOptimizer::Emit(const Select& _op) {
     }
   }
 
-  EmitCopy(op);
+  EmitExisting(std::move(op));
   reachable = false;
 }
 
 template<typename T>
 void BasicOptimizer::EmitAddToPointer(const AddToPointer<T>& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.ptr_idx);
-  TryReplaceVar(op.right_idx);
+  TryReplaceVar(op->ptr_idx);
+  TryReplaceVar(op->right_idx);
 
-  auto* right_imm = TryGetVarDirective<Imm<T>>(op.right_idx);
+  auto* right_imm = TryGetVarDirective<Imm<T>>(op->right_idx);
   if (right_imm) {
     if (right_imm->value == 0) {
-      var_replacement[op.idx] = op.ptr_idx;
+      var_replacement[op->idx] = op->ptr_idx;
     }
-    else if (op.op == PtrAddType::Add) {
-      EmitRepl<AddToPointerImm>(op.idx, op.ptr_idx, op.stride, right_imm->value);
+    else if (op->op == PtrAddType::Add) {
+      EmitRepl<AddToPointerImm>(op->idx, op->ptr_idx, op->stride, right_imm->value);
     }
     else {
-      EmitRepl<AddToPointerImm>(op.idx, op.ptr_idx, op.stride, -right_imm->value);
+      EmitRepl<AddToPointerImm>(op->idx, op->ptr_idx, op->stride, -right_imm->value);
     }
     return;
   }
 
   // todo: is this correct behavior?
-//  if (var_aliases.contains(op.ptr_idx)) {
-//    var_aliases[op.idx] = var_aliases.at(op.ptr_idx);
+//  if (var_aliases.contains(op->ptr_idx)) {
+//    var_aliases[op->idx] = var_aliases.at(op->ptr_idx);
 //  }
 
-  EmitExprCopy(op);
+  EmitExprExisting(std::move(op));
 }
 
 void BasicOptimizer::Emit(const AddToPointerImm& _op) {
   auto op = CopyDirective(_op);
-  TryReplaceVar(op.ptr_idx);
-  if (op.right == 0) {
-    var_replacement[op.idx] = op.ptr_idx;
+  TryReplaceVar(op->ptr_idx);
+  if (op->right == 0) {
+    var_replacement[op->idx] = op->ptr_idx;
     return;
   }
 
-  if (var_aliases.contains(op.ptr_idx) && op.right == 0) {
-    var_aliases[op.idx] = var_aliases.at(op.ptr_idx);
+  if (var_aliases.contains(op->ptr_idx) && op->right == 0) {
+    var_aliases[op->idx] = var_aliases.at(op->ptr_idx);
   }
-  EmitExprCopy(op);
+  EmitExprExisting(std::move(op));
 }
 
 #define BACKEND_NAME BasicOptimizer

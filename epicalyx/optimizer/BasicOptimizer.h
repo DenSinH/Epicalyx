@@ -61,22 +61,26 @@ struct BasicOptimizer final : calyx::Backend {
   const T* TryGetVarDirective(var_index_t idx) const;
 
   template<typename T> 
-  T CopyDirective(const T& directive) {
-    return T{directive};
+  std::unique_ptr<T> CopyDirective(const T& directive) {
+    return std::make_unique<T>(directive);
   }
 
-  template<typename T, typename... Args>
-  std::pair<calyx::block_label_t, int> EmitNew(Args... args) {
+  template<typename T>
+  program_pos_t EmitExisting(std::unique_ptr<T>&& directive) {
     cotyl::Assert(reachable);
     const u64 in_block = current_block->size();
-    auto directive = std::make_unique<T>(args...);
     deps.Emit(*directive);
     current_block->push_back(std::move(directive));
     return std::make_pair(current_new_block_idx, in_block);
   }
 
+  template<typename T, typename... Args>
+  program_pos_t EmitNew(Args... args) {
+    return EmitExisting(std::make_unique<T>(args...));
+  }
+
   template<typename T>
-  std::pair<calyx::block_label_t, int> EmitCopy(const T& op) {
+  program_pos_t EmitCopy(const T& op) {
     return EmitNew<T>(op);
   }
 
@@ -87,9 +91,15 @@ struct BasicOptimizer final : calyx::Backend {
   }
 
   template<typename T>
+  void EmitExprExisting(std::unique_ptr<T>&& expr) {
+    deps.var_graph[expr->idx] = {};
+    vars_found.emplace(expr->idx, EmitExisting(std::move(expr)));
+  }
+
+  template<typename T>
   void EmitExprCopy(const T& expr) {
     deps.var_graph[expr.idx] = {};
-    vars_found.emplace(expr.idx, EmitNew<T>(expr));
+    vars_found.emplace(expr.idx, EmitCopy(expr));
   }
 
   template<typename T, typename... Args>
