@@ -13,15 +13,15 @@
 
 namespace epi::cycle {
 
-void Graph::Visualize() {
-  thread = std::thread(&Graph::VisualizeImpl, this);
+void VisualGraph::Visualize() {
+  thread = std::thread(&VisualGraph::VisualizeImpl, this);
 }
 
-void Graph::Join() {
+void VisualGraph::Join() {
   thread.join();
 }
 
-void Graph::InitSDL() {
+void VisualGraph::InitSDL() {
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
     throw cotyl::FormatExcept("Error: %s", SDL_GetError());
   }
@@ -54,7 +54,7 @@ void Graph::InitSDL() {
   SDL_GL_SetSwapInterval(1); // Enable vsync
 }
 
-void Graph::InitImGui() {
+void VisualGraph::InitImGui() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
 
@@ -78,7 +78,7 @@ void Graph::InitImGui() {
   ImGui_ImplOpenGL3_Init(glsl_version);
 }
 
-void Graph::VisualizeImpl() {
+void VisualGraph::VisualizeImpl() {
   auto sort = FindOrder();
   cotyl::unordered_map<u64, ImVec2> positions;
   ImVec2 pos{50, 100};
@@ -154,13 +154,13 @@ void Graph::VisualizeImpl() {
   }
 }
 
-Graph::top_sort_t Graph::FindOrder() {
+VisualGraph::top_sort_t VisualGraph::FindOrder() {
   top_sort_t result{};
   cotyl::unordered_set<u64> todo{};
   result.push_back({});
-  for (const auto &[id, node] : nodes) {
+  for (const auto &[id, node] : graph) {
     // first layer is only nodes that have no inputs
-    if (!edges.contains(id)) {
+    if (node.from.empty()) {
       result.back().push_back(id);
     }
     else {
@@ -177,9 +177,10 @@ Graph::top_sort_t Graph::FindOrder() {
     result.push_back({});
     for (const auto& id : todo) {
       // check if all inputs are done
+      const auto& node = graph.At(id);
       bool allow_add = true;
-      for (const auto& e : edges[id]) {
-        if (todo.contains(e.from)) {
+      for (const auto& from_id : node.from) {
+        if (todo.contains(from_id)) {
           allow_add = false;
           break;
         }
@@ -195,9 +196,10 @@ Graph::top_sort_t Graph::FindOrder() {
       u32 least_inputs = -1;
       u64 least_id = 0;
       for (const auto& id : todo) {
+        const auto& node = graph.At(id);
         u32 inputs = 0;
-        for (const auto& e : edges[id]) {
-          if (todo.contains(e.from)) {
+        for (const auto& from_id : node.from) {
+          if (todo.contains(from_id)) {
             inputs++;
           }
         }
@@ -222,7 +224,7 @@ Graph::top_sort_t Graph::FindOrder() {
   return std::move(result);
 }
 
-void Graph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, cotyl::unordered_map<u64, ImVec2>& positions) {
+void VisualGraph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, cotyl::unordered_map<u64, ImVec2>& positions) {
   ImGui::SetNextWindowSize(ImVec2(width, height));
   ImGui::SetNextWindowPos(ImVec2(0, 0));
   if (ImGui::Begin(
@@ -237,14 +239,15 @@ void Graph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, cotyl::
     ImNodes::Ez::SlotInfo input = {"", 1};
     for (const auto& layer : sort) {
       for (const auto& id : layer) {
-        auto& node = nodes.at(id);
-        std::string title = std::to_string(node.id);
-        if (!node.title.empty()) {
-          title += " : " + node.title;
+        const auto& node = graph.At(id);
+        auto& vnode = nodes.at(id);
+        std::string title = std::to_string(vnode.id);
+        if (!vnode.title.empty()) {
+          title += " : " + vnode.title;
         }
-        if (ImNodes::Ez::BeginNode(&node.id, title.c_str(), &positions.at(id), &node.selected))
-        {
-          if (edges.contains(id)) [[likely]] {
+
+        if (ImNodes::Ez::BeginNode((void*)vnode.id, title.c_str(), &positions.at(id), &vnode.selected)) {
+          if (!node.from.empty()) [[likely]] {
             // blocks only contain one input
             ImNodes::Ez::InputSlots(&input, 1);
           }
@@ -252,13 +255,13 @@ void Graph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, cotyl::
             ImNodes::Ez::InputSlots(nullptr, 0);
           }
 
-          for (const auto& line : node.body) {
+          for (const auto& line : vnode.body) {
             ImGui::Text(line.c_str());
           }
 
-          if (!node.outputs.empty()) [[likely]] {
+          if (!node.to.empty()) [[likely]] {
             std::vector<ImNodes::Ez::SlotInfo> outputs{};
-            for (const auto& output : node.outputs) {
+            for (const auto& output : vnode.output_set) {
               outputs.push_back({output.c_str(), 1});
             }
             ImNodes::Ez::OutputSlots(outputs.data(), outputs.size());
@@ -272,9 +275,10 @@ void Graph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, cotyl::
       }
     }
 
-    for (const auto &[to, to_edges] : edges) {
-      for (const auto& edge : to_edges) {
-        ImNodes::Connection(&nodes.at(to), "", &nodes.at(edge.from), edge.output.c_str());
+    for (const auto& [node_id, node] : graph) {
+      const auto& vnode = nodes.at(node_id);
+      for (const auto& to_id : node.to) {
+        ImNodes::Connection((void*)to_id, "", (void*)node_id, vnode.outputs.at(to_id).c_str());
       }
     }
     ImNodes::EndCanvas();

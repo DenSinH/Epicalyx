@@ -2,6 +2,7 @@
 
 #include "Default.h"
 #include "Containers.h"
+#include "Graph.h"
 
 #include <thread>
 #include <vector>
@@ -18,7 +19,7 @@ struct ImVec2;
 
 namespace epi::cycle {
 
-struct Graph {
+struct VisualGraph {
 
   void Visualize();
   void Join();
@@ -27,14 +28,15 @@ private:
   using top_sort_t = std::vector<std::vector<u64>>;
 
   struct NodeRef {
-    NodeRef(Graph& graph, u64 from) :
+    NodeRef(VisualGraph& graph, u64 from) :
         graph(graph), from(from) {
       if (!graph.nodes.contains(from)) {
-        graph.nodes.emplace(from, Node(from));
+        graph.nodes.emplace_hint(graph.nodes.end(), from, VisualNode(from));
+        graph.graph.AddNode(from, nullptr);
       }
     }
 
-    Graph& graph;
+    VisualGraph& graph;
     u64 from;
 
     NodeRef* operator->() {
@@ -42,12 +44,11 @@ private:
     }
 
     NodeRef n(u64 to, const std::string& output = "") {
-      if (!graph.edges.contains(to)) {
-        graph.edges.emplace(to, std::vector<Edge>{});
-      }
-      graph.edges[to].emplace_back(from, output);
-      graph.nodes.at(from).outputs.emplace(output);
-      return NodeRef(graph, to);
+      auto ref = NodeRef(graph, to);  // instantiates to node if needed
+      graph.graph.AddEdge(from, to);
+      graph.nodes.at(from).outputs.emplace(to, output);
+      graph.nodes.at(from).output_set.emplace(output);
+      return ref;
     }
 
     void title(const std::string& title) {
@@ -55,26 +56,19 @@ private:
     }
   };
 
-  struct Node {
-    Node(u64 id) : id(id) { }
+  struct VisualNode {
+    VisualNode(u64 id) : id(id) { }
 
     u64 id;
     bool selected = false;
     std::string title;
     std::vector<std::string> body{};
-    cotyl::set<std::string> outputs{};
+    cotyl::unordered_map<u64, std::string> outputs{};
+    cotyl::unordered_set<std::string> output_set{};
   };
 
-  struct Edge {
-    Edge(u64 from, const std::string& output) : from(from), output(output) { }
-
-    u64 from;
-    std::string output;
-  };
-
-  cotyl::map<u64, Node> nodes{};
-  cotyl::map<u64, std::vector<Edge>> edges{};  // { to: Edge }
-
+  cotyl::unordered_map<u64, VisualNode> nodes{};
+  Graph<u64, std::nullptr_t> graph{};  // dynamic allocation makes userdata useless
   std::thread thread;
 
   void* window;
@@ -89,10 +83,11 @@ private:
 
 public:
   NodeRef n(u64 from, std::string line = "") {
+    if (!nodes.contains(from)) {
+      nodes.emplace_hint(nodes.end(), from, VisualNode(from));
+      graph.AddNode(from, nullptr);
+    }
     if (!line.empty()) {
-      if (!nodes.contains(from)) {
-        nodes.emplace(from, Node(from));
-      }
       nodes.at(from).body.push_back(line);
     }
     return NodeRef(*this, from);

@@ -8,6 +8,9 @@
 #include "tokenizer/Tokenizer.h"
 #include "parser/Parser.h"
 
+#include "Containers.h"
+#include "cycle/Graph.h"
+
 
 #include "Log.h"
 

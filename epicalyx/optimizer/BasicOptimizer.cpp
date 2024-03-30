@@ -34,7 +34,7 @@ bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
     auto& directive = new_program.blocks.at(loc.first)[loc.second];
     if (IsType<T>(directive)) {
       auto candidate_block = deps.var_graph.at(var_idx).created.first;
-      auto ancestor = deps.CommonBlockAncestor(candidate_block, current_new_block_idx);
+      auto ancestor = deps.block_graph.CommonAncestor(candidate_block, current_new_block_idx);
 
       // todo: shift directives back for earlier ancestor blocks
       if (ancestor == current_new_block_idx || ancestor == candidate_block) {
@@ -60,7 +60,7 @@ bool BasicOptimizer::ResolveBranchIndirection(calyx::Branch& op) {
 
       // update block graph
       // blocks reached from indirect branch are now reached from the current_new_block_idx
-      auto& link_from = deps.block_graph.at(link->dest).from;
+      auto& link_from = deps.block_graph[link->dest].from;
       link_from.erase(op.dest);
       link_from.insert(current_new_block_idx);
 
@@ -84,36 +84,35 @@ const T* BasicOptimizer::TryGetVarDirective(var_index_t idx) const {
 
 void BasicOptimizer::LinkBlock(block_label_t next_block) {
   // we need the current block to have no outputs
-  cotyl::Assert(deps.block_graph.at(current_new_block_idx).to.empty());
+  cotyl::Assert(deps.block_graph.At(current_new_block_idx).to.empty());
   // sanity checks that the current block is indeed the only input for the linked block
-  cotyl::Assert(deps.block_graph.at(next_block).from.size() == 1);
+  cotyl::Assert(deps.block_graph.At(next_block).from.size() == 1);
   // the ID should already have been updated from the old_block_idx to the new_block_idx earlier
   // if they differ at all
-  cotyl::Assert(*deps.block_graph.at(next_block).from.begin() == current_new_block_idx);
+  cotyl::Assert(*deps.block_graph.At(next_block).from.begin() == current_new_block_idx);
 
   // change block inputs for jumped blocks
-  for (auto block_idx : deps.block_graph.at(next_block).to) {
-    deps.block_graph.at(block_idx).from.erase(next_block);
-    deps.block_graph.at(block_idx).from.insert(current_new_block_idx);
-
-    // update current block output to determine new upward closure to remove unused blocks right away
-    deps.block_graph.at(current_new_block_idx).to.insert(block_idx);
+  auto& next_node = deps.block_graph[next_block];
+  while (!next_node.to.empty()) {
+    auto block_idx = *next_node.to.begin();
+    deps.block_graph.RemoveEdge(next_block, block_idx);
+    deps.block_graph.AddEdge(current_new_block_idx, block_idx);
   }
 
   // erase linked block
-  deps.block_graph.erase(next_block);
+  deps.block_graph.Erase(next_block);
 
   // update the block graph
-  const auto closure = deps.UpwardClosure({visited.begin(), visited.end()});
+  const auto closure = deps.block_graph.UpwardClosure({visited.begin(), visited.end()});
   const auto not_in_closure = [&](const block_label_t& block_idx) { return !closure.contains(block_idx); };
 
-  for (auto& [block_idx, deps] : deps.block_graph) {
-    cotyl::erase_if(deps.to, not_in_closure);
-    cotyl::erase_if(deps.from, not_in_closure);
+  for (auto& [block_idx, node] : deps.block_graph) {
+    cotyl::erase_if(node.to, not_in_closure);
+    cotyl::erase_if(node.from, not_in_closure);
   }
 
   // make current new_block_idx have empty output again
-  deps.block_graph.at(current_new_block_idx).to = {};
+  deps.block_graph[current_new_block_idx].to = {};
   current_old_block_idx = next_block;
 }
 
@@ -134,7 +133,7 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
       current_old_block_idx = current_new_block_idx = *todo.begin();
       deps.pos.first = current_new_block_idx;  // set this properly to determine the new graph right
       // clear block dependencies
-      deps.block_graph[current_new_block_idx] = {};
+      deps.block_graph.Clear(current_new_block_idx);
       reachable = true;
       todo.erase(todo.begin());
 
@@ -642,10 +641,10 @@ void BasicOptimizer::EmitCompareImm(const CompareImm<T>& _op) {
 void BasicOptimizer::Emit(const UnconditionalBranch& _op) {
   auto op = CopyDirective(_op);
   if (!ResolveBranchIndirection(*op)) {
-    const auto& block_deps = this->deps.block_graph.at(current_new_block_idx);
+    const auto& block_deps = this->deps.block_graph.At(current_new_block_idx);
     if (block_deps.to.empty()) {
       // no dependencies so far, we can link this block if the next block only has one input
-      if (!visited.contains(op->dest) && this->deps.block_graph.at(op->dest).from.size() == 1) {
+      if (!visited.contains(op->dest) && this->deps.block_graph.At(op->dest).from.size() == 1) {
         LinkBlock(op->dest);
         return;
       }

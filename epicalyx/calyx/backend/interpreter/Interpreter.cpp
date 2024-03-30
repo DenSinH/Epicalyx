@@ -16,7 +16,7 @@ namespace epi::calyx {
 
 
 void Interpreter::VisualizeProgram(const Program& program) {
-  auto graph = std::make_unique<epi::cycle::Graph>();
+  auto graph = std::make_unique<epi::cycle::VisualGraph>();
 
   for (const auto& [i, block] : program.blocks) {
     for (const auto& directive : block) {

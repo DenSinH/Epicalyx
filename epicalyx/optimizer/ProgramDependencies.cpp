@@ -11,109 +11,8 @@
 namespace epi {
 
 
-calyx::block_label_t ProgramDependencies::CommonBlockAncestor(calyx::block_label_t first, calyx::block_label_t second) const {
-  cotyl::set<calyx::block_label_t> ancestors{first, second};
-
-  // we use the fact that in general block1 > block2 then block1 can never be an ancestor of block2
-  // it may happen for loops, but then the loop entry is the minimum block, so we want to go there
-  cotyl::unordered_set<calyx::block_label_t> ancestors_considered{};
-
-  while (ancestors.size() > 1) {
-    auto max_ancestor = *ancestors.rbegin();
-    ancestors.erase(std::prev(ancestors.end()));
-    ancestors_considered.emplace(max_ancestor);
-    if (!block_graph.contains(max_ancestor)) [[unlikely]] {
-      return 0;
-    }
-
-    auto& deps = block_graph.at(max_ancestor);
-    if (deps.from.empty()) [[unlikely]] {
-      return 0;
-    }
-    for (auto dep : deps.from) {
-      if (dep < max_ancestor || !ancestors_considered.contains(dep)) {
-        ancestors.insert(dep);
-      }
-    }
-  }
-
-  // at this point only one ancestor should be left
-  return *ancestors.begin();
-}
-
-std::vector<calyx::block_label_t> ProgramDependencies::OrderedUpwardClosure(calyx::block_label_t base) const {
-  cotyl::unordered_set<calyx::block_label_t> closure_found{base};
-  std::vector<calyx::block_label_t> closure{};
-  closure.push_back(base);
-  cotyl::unordered_set<calyx::block_label_t> search{base};
-
-  while (!search.empty()) {
-    auto current = *search.begin();
-    search.erase(search.begin());
-
-    if (block_graph.contains(current)) {
-      for (const auto& dep : block_graph.at(current).to) {
-        if (!closure_found.contains(dep)) {
-          closure_found.emplace(dep);
-          search.emplace(dep);
-          closure.push_back(dep);
-        }
-      }
-    }
-  }
-
-  return closure;
-}
-
-cotyl::unordered_set<calyx::block_label_t> ProgramDependencies::UpwardClosure(cotyl::unordered_set<calyx::block_label_t>&& base) const {
-  cotyl::unordered_set<calyx::block_label_t> closure = std::move(base);
-  cotyl::unordered_set<calyx::block_label_t> search = {closure.begin(), closure.end()};
-
-  while (!search.empty()) {
-    auto current = *search.begin();
-    search.erase(search.begin());
-
-    if (block_graph.contains(current)) {
-      for (const auto& dep : block_graph.at(current).to) {
-        if (!closure.contains(dep)) {
-          closure.emplace(dep);
-          search.emplace(dep);
-        }
-      }
-    }
-  }
-
-  return closure;
-}
-
-bool ProgramDependencies::IsAncestorOf(calyx::block_label_t base, calyx::block_label_t other) const {
-  cotyl::unordered_set<calyx::block_label_t> closure_found{base};
-  cotyl::unordered_set<calyx::block_label_t> search{base};
-
-  while (!search.empty()) {
-    auto current = *search.begin();
-    search.erase(search.begin());
-
-    if (block_graph.contains(current)) {
-      for (const auto& dep : block_graph.at(current).to) {
-        if (dep == other) {
-          return true;
-        }
-
-        if (!closure_found.contains(dep)) {
-          closure_found.emplace(dep);
-          search.emplace(dep);
-        }
-      }
-    }
-  }
-
-  return false;
-}
-
-
 void ProgramDependencies::VisualizeVars() {
-  auto graph = std::make_unique<epi::cycle::Graph>();
+  auto graph = std::make_unique<epi::cycle::VisualGraph>();
 
   for (const auto& [idx, var] : var_graph) {
     if (!idx) continue;
@@ -140,8 +39,12 @@ void ProgramDependencies::VisualizeVars() {
 }
 
 void ProgramDependencies::EmitProgram(const Program& program) {
+  // initialize block graph nodes
+  for (const auto& [block_idx, block] : program.blocks) {
+    block_graph.AddNode(block_idx, &block);
+  }
+
   for (const auto& [i, block] : program.blocks) {
-    cotyl::get_default(block_graph, i);
     pos.first = i;
     for (int j = 0; j < block.size(); j++) {
       pos.second = j;
@@ -309,34 +212,29 @@ void ProgramDependencies::EmitCompareImm(const CompareImm<T>& op) {
 }
 
 void ProgramDependencies::Emit(const UnconditionalBranch& op) {
-  cotyl::get_default(block_graph, pos.first).to.emplace(op.dest);
-  cotyl::get_default(block_graph, op.dest).from.emplace(pos.first);
+  block_graph.AddEdge(pos.first, op.dest);
 }
 
 template<typename T>
 void ProgramDependencies::EmitBranchCompare(const BranchCompare<T>& op) {
-  cotyl::get_default(block_graph, pos.first).to.emplace(op.dest);
-  cotyl::get_default(block_graph, op.dest).from.emplace(pos.first);
+  block_graph.AddEdge(pos.first, op.dest);
   cotyl::get_default(var_graph, op.left_idx).reads.push_back(pos);
   cotyl::get_default(var_graph, op.right_idx).reads.push_back(pos);
 }
 
 template<typename T>
 void ProgramDependencies::EmitBranchCompareImm(const BranchCompareImm<T>& op) {
-  cotyl::get_default(block_graph, pos.first).to.emplace(op.dest);
-  cotyl::get_default(block_graph, op.dest).from.emplace(pos.first);
+  block_graph.AddEdge(pos.first, op.dest);
   cotyl::get_default(var_graph, op.left_idx).reads.push_back(pos);
 }
 
 void ProgramDependencies::Emit(const Select& op) {
   cotyl::get_default(var_graph, op.idx).reads.push_back(pos);
   for (const auto& [value, block] : op.table) {
-    cotyl::get_default(block_graph, pos.first).to.emplace(block);
-    cotyl::get_default(block_graph, block).from.emplace(pos.first);
+    block_graph.AddEdge(pos.first, block);
   }
   if (op._default) {
-    cotyl::get_default(block_graph, pos.first).to.emplace(op._default);
-    cotyl::get_default(block_graph, op._default).from.emplace(pos.first);
+    block_graph.AddEdge(pos.first, op._default);
   }
 }
 

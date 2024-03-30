@@ -2,6 +2,7 @@
 
 #include "calyx/backend/Backend.h"
 #include "Containers.h"
+#include "cycle/Graph.h"
 
 #include <vector>
 
@@ -17,18 +18,7 @@ struct ProgramDependencies final : calyx::Backend {
     return deps;
   }
 
-  // find common ancestor for 2 blocks such that all paths to these blocks go through that ancestor
-  calyx::block_label_t CommonBlockAncestor(calyx::block_label_t first, calyx::block_label_t second) const;
-  std::vector<calyx::block_label_t> OrderedUpwardClosure(calyx::block_label_t base) const;
-  cotyl::unordered_set<calyx::block_label_t> UpwardClosure(cotyl::unordered_set<calyx::block_label_t>&& base) const;
-  bool IsAncestorOf(calyx::block_label_t base, calyx::block_label_t other) const;
-
-  struct Block {
-    cotyl::unordered_set<block_label_t> to{};
-    cotyl::unordered_set<block_label_t> from{};
-  };
-
-  cotyl::unordered_map<block_label_t, Block> block_graph{};
+  Graph<block_label_t, const Program::block_t> block_graph{};
 
   struct Var {
     program_pos_t created = {0, 0};
