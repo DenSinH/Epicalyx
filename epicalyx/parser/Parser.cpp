@@ -64,12 +64,12 @@ void Parser::Parse() {
       if (!decls.empty()) {
         throw std::runtime_error("Bad parsing: unexpected declaration");
       }
-      declarations.push_back(std::move(function));
+      declarations.emplace_back(std::move(function));
     }
     else {
       for (auto& decl : decls) {
         decl->VerifyAndRecord(*this);
-        declarations.push_back(std::move(decl));
+        declarations.emplace_back(std::move(decl));
       }
     }
   }

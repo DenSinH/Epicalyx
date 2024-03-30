@@ -87,7 +87,7 @@ void VisualGraph::VisualizeImpl() {
     pos.x += 300;
     for (const auto& id : layer) {
       positions.emplace(id, pos);
-      pos.y += (1 + nodes.at(id).body.size()) * 20 + 30;
+      pos.y += (1 + graph.At(id).value.body.size()) * 20 + 30;
     }
   }
 
@@ -169,8 +169,8 @@ void VisualGraph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, c
     ImNodes::Ez::SlotInfo input = {"", 1};
     for (const auto& layer : sort) {
       for (const auto& id : layer) {
-        const auto& node = graph.At(id);
-        auto& vnode = nodes.at(id);
+        auto& node = graph[id];
+        auto& vnode = node.value;
         std::string title = std::to_string(vnode.id);
         if (!vnode.title.empty()) {
           title += " : " + vnode.title;
@@ -206,7 +206,7 @@ void VisualGraph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, c
     }
 
     for (const auto& [node_id, node] : graph) {
-      const auto& vnode = nodes.at(node_id);
+      const auto& vnode = node.value;
       for (const auto& to_id : node.to) {
         ImNodes::Connection((void*)to_id, "", (void*)node_id, vnode.outputs.at(to_id).c_str());
       }

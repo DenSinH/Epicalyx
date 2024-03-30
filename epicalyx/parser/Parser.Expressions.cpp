@@ -307,7 +307,7 @@ i64 ConstParser::EConstexpr() {
 
 void Parser::EExpressionList(std::vector<pExpr>& dest) {
   do {
-    dest.push_back(EExpression());
+    dest.emplace_back(EExpression());
   } while (in_stream.EatIf(TokenType::Comma));
 }
 

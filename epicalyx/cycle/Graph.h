@@ -9,7 +9,7 @@ template<typename I, typename T>
 struct Graph {
 
   struct Node {
-    T* value;
+    T value;
     cotyl::flat_set<I> to{};
     cotyl::flat_set<I> from{};
   };
@@ -41,14 +41,30 @@ public:
     node.from = {};
   }
 
-  void AddNode(I idx, T* value) {
-    nodes.emplace(idx, Node{value});
+  template<typename... Args>
+  Node& EmplaceNode(I idx, Args... args) {
+    return nodes.emplace(idx, Node{T(args...)}).first->second;
   }
 
-  void AddNodeIfNotExists(I idx, T* value) {
-    if (!nodes.contains(idx)) {
-      nodes.emplace_hint(nodes.end(), idx, Node{value});
+  Node& AddNode(I idx, T&& value) {
+    return nodes.emplace(idx, Node{std::move(value)}).first->second;
+  }
+
+  template<typename... Args>
+  Node& EmplaceNodeIfNotExists(I idx, Args... args) {
+    auto node = nodes.find(idx);
+    if (node == nodes.end()) {
+      return nodes.emplace_hint(node, idx, Node{T(args...)})->second;
     }
+    return node->second;
+  }
+
+  Node& AddNodeIfNotExists(I idx, T&& value) {
+    auto node = nodes.find(idx);
+    if (node == nodes.end()) {
+      return nodes.emplace_hint(nodes.end(), idx, Node{std::move(value)})->second;
+    }
+    return node->second;
   }
 
   void AddEdge(I from, I to) {

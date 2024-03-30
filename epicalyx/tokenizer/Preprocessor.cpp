@@ -453,19 +453,19 @@ void Preprocessor::PreprocessorDirective() {
 
   if (pp_token == "if") {
     SkipBlanks(false);
-    if_group_stack.push_back(IfGroup::If(EatConstexpr() != 0));
+    if_group_stack.emplace_back(IfGroup::If(EatConstexpr() != 0));
     // newline eaten in EatConstexpr()
   }
   else if (pp_token == "ifdef") {
     SkipBlanks(false);
     auto identifier = detail::get_identifier(CurrentStream());
-    if_group_stack.push_back(IfGroup::If(definitions.contains(identifier)));
+    if_group_stack.emplace_back(IfGroup::If(definitions.contains(identifier)));
     EatNewline();
   }
   else if (pp_token == "ifndef") {
     SkipBlanks(false);
     auto identifier = detail::get_identifier(CurrentStream());
-    if_group_stack.push_back(IfGroup::If(!definitions.contains(identifier)));
+    if_group_stack.emplace_back(IfGroup::If(!definitions.contains(identifier)));
     EatNewline();
   }
   else if (pp_token == "elif") {
@@ -526,7 +526,7 @@ void Preprocessor::PreprocessorDirective() {
       while (NextCharacter() != ')') {
         if (detail::is_valid_ident_start(NextCharacter())) {
           auto arg = detail::get_identifier(CurrentStream());
-          arguments.push_back(arg);
+          arguments.emplace_back(std::move(arg));
           SkipBlanks(false);
 
           if (NextCharacter() == ',') {
@@ -764,7 +764,7 @@ void Preprocessor::PushMacro(const std::string& name, const Definition& definiti
     EatNextCharacter(')');
 
     // definition value has already been cleaned on #define
-    macro_stack.push_back(MacroStream(name, definition, std::move(arg_values), std::move(va_args)));
+    macro_stack.emplace_back(name, definition, std::move(arg_values), std::move(va_args));
   }
   else {
     // definition value has already been cleaned on #define

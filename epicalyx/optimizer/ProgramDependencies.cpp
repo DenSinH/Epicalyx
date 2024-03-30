@@ -233,8 +233,8 @@ void ProgramDependencies::EmitBranchCompareImm(const BranchCompareImm<T>& op) {
 
 void ProgramDependencies::Emit(const Select& op) {
   cotyl::get_default(var_graph, op.idx).reads.push_back(pos);
-  for (const auto& [value, block] : op.table) {
-    block_graph.AddEdge(pos.first, block);
+  for (const auto& [value, block_idx] : op.table) {
+    block_graph.AddEdge(pos.first, block_idx);
   }
   if (op._default) {
     block_graph.AddEdge(pos.first, op._default);

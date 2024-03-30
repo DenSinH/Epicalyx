@@ -648,12 +648,12 @@ void Parser::DInitDeclaratorList(std::vector<pNode<Declaration>>& dest) {
           throw std::runtime_error("Cannot assign to nameless variable");
         }
         decl->value = EInitializer();
-        dest.push_back(std::move(decl));
+        dest.emplace_back(std::move(decl));
       }
       else {
         // type var, var2, var3
         if (!decl->name.empty()) {
-          dest.push_back(std::move(decl));
+          dest.emplace_back(std::move(decl));
         }
         else {
           // warn: statement has no effect
@@ -712,11 +712,11 @@ pNode<FunctionDefinition> Parser::ExternalDeclaration(std::vector<pNode<Declarat
       if (in_stream.EatIf(TokenType::Assign)) {
         // type var = <expression> or {initializer list}
         decl->value = EInitializer();
-        dest.push_back(std::move(decl));
+        dest.emplace_back(std::move(decl));
       }
       else {
         // type var, var2, var3
-        dest.push_back(std::move(decl));
+        dest.emplace_back(std::move(decl));
       }
     }
     if (in_stream.EatIf(TokenType::SemiColon)) {

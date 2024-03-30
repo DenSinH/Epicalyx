@@ -30,10 +30,7 @@ private:
   struct NodeRef {
     NodeRef(VisualGraph& graph, u64 from) :
         graph(graph), from(from) {
-      if (!graph.nodes.contains(from)) {
-        graph.nodes.emplace_hint(graph.nodes.end(), from, VisualNode(from));
-        graph.graph.AddNode(from, nullptr);
-      }
+      graph.graph.EmplaceNodeIfNotExists(from, from);
     }
 
     VisualGraph& graph;
@@ -46,13 +43,14 @@ private:
     NodeRef n(u64 to, const std::string& output = "") {
       auto ref = NodeRef(graph, to);  // instantiates to node if needed
       graph.graph.AddEdge(from, to);
-      graph.nodes.at(from).outputs.emplace(to, output);
-      graph.nodes.at(from).output_set.emplace(output);
+      auto& vnode = graph.graph[from].value;
+      vnode.outputs.emplace(to, output);
+      vnode.output_set.emplace(output);
       return ref;
     }
 
     void title(const std::string& title) {
-      graph.nodes.at(from).title = title;
+      graph.graph[from].value.title = title;
     }
   };
 
@@ -67,8 +65,7 @@ private:
     cotyl::unordered_set<std::string> output_set{};
   };
 
-  cotyl::unordered_map<u64, VisualNode> nodes{};
-  Graph<u64, std::nullptr_t> graph{};  // dynamic allocation makes userdata useless
+  Graph<u64, VisualNode> graph{};
   std::thread thread;
 
   void* window;
@@ -83,12 +80,9 @@ private:
 
 public:
   NodeRef n(u64 from, std::string line = "") {
-    if (!nodes.contains(from)) {
-      nodes.emplace_hint(nodes.end(), from, VisualNode(from));
-      graph.AddNode(from, nullptr);
-    }
+    auto& node = graph.EmplaceNodeIfNotExists(from, from);
     if (!line.empty()) {
-      nodes.at(from).body.push_back(line);
+      node.value.body.push_back(line);
     }
     return NodeRef(*this, from);
   }
