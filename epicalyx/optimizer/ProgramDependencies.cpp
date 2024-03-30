@@ -23,6 +23,9 @@ void ProgramDependencies::VisualizeVars() {
       )
     };
     if (!var.reads.empty()) {
+      if (var.is_call_result) {
+        text << " (CALL RESULT)";
+      }
       text << ":\n";
       for (const auto& pos : var.reads) {
         text << cotyl::Format("read @[%d].[%d]\n", pos.first, pos.second);

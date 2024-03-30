@@ -79,7 +79,7 @@ void VisualGraph::InitImGui() {
 }
 
 void VisualGraph::VisualizeImpl() {
-  auto sort = FindOrder();
+  auto sort = graph.LayeredTopSort();
   cotyl::unordered_map<u64, ImVec2> positions;
   ImVec2 pos{50, 100};
   for (const auto& layer : sort) {
@@ -152,76 +152,6 @@ void VisualGraph::VisualizeImpl() {
     // frameswap
     SDL_GL_SwapWindow((SDL_Window*)window);
   }
-}
-
-VisualGraph::top_sort_t VisualGraph::FindOrder() {
-  top_sort_t result{};
-  cotyl::unordered_set<u64> todo{};
-  result.push_back({});
-  for (const auto &[id, node] : graph) {
-    // first layer is only nodes that have no inputs
-    if (node.from.empty()) {
-      result.back().push_back(id);
-    }
-    else {
-      todo.insert(id);
-    }
-  }
-
-  if (result.back().empty()) [[unlikely]] {
-    // possible if only loops exist in fist layer
-    result.pop_back();
-  }
-
-  while (!todo.empty()) {
-    result.push_back({});
-    for (const auto& id : todo) {
-      // check if all inputs are done
-      const auto& node = graph.At(id);
-      bool allow_add = true;
-      for (const auto& from_id : node.from) {
-        if (todo.contains(from_id)) {
-          allow_add = false;
-          break;
-        }
-      }
-
-      if (allow_add) {
-        result.back().push_back(id);
-      }
-    }
-
-    // for cycles, pick the node with the least inputs left
-    if (result.back().empty()) {
-      u32 least_inputs = -1;
-      u64 least_id = 0;
-      for (const auto& id : todo) {
-        const auto& node = graph.At(id);
-        u32 inputs = 0;
-        for (const auto& from_id : node.from) {
-          if (todo.contains(from_id)) {
-            inputs++;
-          }
-        }
-
-        if (inputs < least_inputs) {
-          least_inputs = inputs;
-          least_id = id;
-        }
-        else if (inputs == least_inputs) {
-          least_id = std::min(least_id, id);
-        }
-      }
-
-      result.back().push_back(least_id);
-    }
-
-    for (const auto& id : result.back()) {
-      todo.erase(id);
-    }
-  }
-
-  return std::move(result);
 }
 
 void VisualGraph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, cotyl::unordered_map<u64, ImVec2>& positions) {

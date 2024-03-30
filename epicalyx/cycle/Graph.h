@@ -27,7 +27,7 @@ public:
     return nodes.at(idx);
   }
 
-  const Node& At(I idx) {
+  const Node& At(I idx) const {
     return nodes.at(idx);
   }
 
@@ -61,12 +61,154 @@ public:
     nodes.at(to).from.erase(from);
   }
 
+  std::vector<I> TopSort() const;
+  std::vector<std::vector<I>> LayeredTopSort() const;
+
   // find common ancestor for 2 nodes such that all paths to these nodes go through that ancestor
   I CommonAncestor(I first, I second) const;
   std::vector<I> OrderedUpwardClosure(I base) const;
   cotyl::unordered_set<I> UpwardClosure(cotyl::unordered_set<I>&& base) const;
   bool IsAncestorOf(I base, I other) const;
 };
+
+template<typename I, typename T>
+std::vector<I> Graph<I, T>::TopSort() const {
+  std::vector<I> result{};
+  cotyl::unordered_set<I> todo{};
+
+
+  for (const auto &[idx, node] : nodes) {
+    // nodes that have no inputs
+    if (node.from.empty()) {
+      result.push_back(idx);
+    }
+    else {
+      todo.insert(idx);
+    }
+  }
+
+  while (!todo.empty()) {
+    auto order_size = result.size();
+    for (const auto& id : todo) {
+      // check if all inputs are done
+      const auto& node = At(id);
+      bool allow_add = true;
+      for (const auto& from_id : node.from) {
+        if (todo.contains(from_id)) {
+          allow_add = false;
+          break;
+        }
+      }
+
+      if (allow_add) {
+        result.push_back(id);
+      }
+    }
+
+    // for cycles, pick the node with the least inputs left
+    if (order_size == result.size()) {
+      u32 least_inputs = -1;
+      I least_id = 0;
+      for (const auto& id : todo) {
+        const auto& node = At(id);
+        u32 inputs = 0;
+        for (const auto& from_id : node.from) {
+          if (todo.contains(from_id)) {
+            inputs++;
+          }
+        }
+
+        if (inputs < least_inputs) {
+          least_inputs = inputs;
+          least_id = id;
+        }
+        else if (inputs == least_inputs) {
+          least_id = std::min(least_id, id);
+        }
+      }
+
+      result.push_back(least_id);
+    }
+
+    for (auto i = order_size; i < result.size(); i++) {
+      todo.erase(result[i]);
+    }
+  }
+
+  return std::move(result);
+}
+
+template<typename I, typename T>
+std::vector<std::vector<I>> Graph<I, T>::LayeredTopSort() const {
+  std::vector<std::vector<I>> result{};
+  cotyl::unordered_set<I> todo{};
+
+  result.push_back({});
+  for (const auto &[id, node] : nodes) {
+    // first layer is only nodes that have no inputs
+    if (node.from.empty()) {
+      result.back().push_back(id);
+    }
+    else {
+      todo.insert(id);
+    }
+  }
+
+  if (result.back().empty()) [[unlikely]] {
+    // possible if only loops exist in fist layer
+    result.pop_back();
+  }
+
+  while (!todo.empty()) {
+    result.push_back({});
+    for (const auto& id : todo) {
+      // check if all inputs are done
+      const auto& node = At(id);
+      bool allow_add = true;
+      for (const auto& from_id : node.from) {
+        if (todo.contains(from_id)) {
+          allow_add = false;
+          break;
+        }
+      }
+
+      if (allow_add) {
+        result.back().push_back(id);
+      }
+    }
+
+    // for cycles, pick the node with the least inputs left
+    if (result.back().empty()) {
+      u32 least_inputs = -1;
+      u64 least_id = 0;
+      for (const auto& id : todo) {
+        const auto& node = At(id);
+        u32 inputs = 0;
+        for (const auto& from_id : node.from) {
+          if (todo.contains(from_id)) {
+            inputs++;
+          }
+        }
+
+        if (inputs < least_inputs) {
+          least_inputs = inputs;
+          least_id = id;
+        }
+        else if (inputs == least_inputs) {
+          least_id = std::min(least_id, id);
+        }
+      }
+
+      result.back().push_back(least_id);
+    }
+
+    for (const auto& id : result.back()) {
+      todo.erase(id);
+    }
+  }
+
+  return std::move(result);
+}
 
 template<typename I, typename T>
 I Graph<I, T>::CommonAncestor(I first, I second) const {

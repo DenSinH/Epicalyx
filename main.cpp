@@ -8,9 +8,6 @@
 #include "tokenizer/Tokenizer.h"
 #include "parser/Parser.h"
 
-#include "Containers.h"
-#include "cycle/Graph.h"
-
 
 #include "Log.h"
 
@@ -39,7 +36,7 @@ void PrintProgram(const epi::Program& program) {
 
 
 int main() {
-  auto preprocessor = epi::Preprocessor("examples/emitting/loops.c");
+  auto preprocessor = epi::Preprocessor("examples/emitting/preprocessing.c");
 
   // while (!preprocessor.EOS()) {
   //   std::cout << preprocessor.Get();
