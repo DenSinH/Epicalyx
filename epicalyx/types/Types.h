@@ -133,7 +133,7 @@ struct ValueType final : public CType {
     }
   }
 
-  void ForgetConstInfo() final { value = {}; }
+  void ForgetConstInfo() final { value.reset(); }
 
 private:
   // perform BinOp on other in reverse: so this.ValueTypeRBinOp<std::plus> <==> other + this

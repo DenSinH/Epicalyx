@@ -79,11 +79,12 @@ using small_vector = std::vector<T>;
 namespace epi::cotyl {
 
 template<typename K, typename T>
-T& get_default(unordered_map<K, T>& graph, const K& key) {
-  if (!graph.contains(key)) {
-    graph[key] = {};
+T& get_default(unordered_map<K, T>& m, const K& key) {
+  auto it = m.find(key);
+  if (it == m.end()) {
+    it = m.emplace_hint(m.end(), key, T{});
   }
-  return graph[key];
+  return it->second;
 }
 
 template<class C, class Pred>

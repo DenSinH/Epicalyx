@@ -117,7 +117,7 @@ void Interpreter::EmitProgram(const Program& program) {
 
   pos.first = program.functions.at("main");
   pos.second = 0;
-  returned = {};
+  returned.reset();
   while (!returned) {
     const auto& directive = program.blocks.at(pos.first).at(pos.second);
     pos.second++;

@@ -34,6 +34,10 @@ struct StringStream {
         return buffer;
     }
 
+    void clear() {
+      buffer.clear();
+    }
+
 private:
     std::string buffer{};
 };

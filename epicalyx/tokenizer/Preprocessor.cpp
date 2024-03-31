@@ -294,7 +294,7 @@ i64 Preprocessor::EatConstexpr() {
 
     // we expect the bottom string (expression) to be fully parsed
     cotyl::Assert(macro_stack.empty(), "Found unexpanded macros after expression");
-    expression = {};
+    expression.reset();
 
     // we fetched the whole line, so we are always at a new line after this
     is_newline = true;
@@ -622,7 +622,7 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
       if (variadic && ident == "__VA_ARGS__") {
         // variadic argument, emplace current intermediate text and reset
         result.emplace_back(current_val.finalize());
-        current_val = {};
+        current_val.clear();
         result.emplace_back(-1);
       }
       else {
@@ -630,7 +630,7 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
         if (arg_idx != args.end()) {
           // argument id, emplace current intermediate text and reset
           result.emplace_back(current_val.finalize());
-          current_val = {};
+          current_val.clear();
           result.emplace_back((i32)(arg_idx - args.begin()));
         }
         else {

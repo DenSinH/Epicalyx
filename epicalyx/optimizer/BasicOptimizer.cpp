@@ -50,7 +50,7 @@ void BasicOptimizer::FlushCurrentLocals() {
   for (auto& [loc_idx, local] : locals) {
     current_block->emplace_back(std::move(local.store));
   }
-  locals = {};
+  locals.clear();
 }
 
 void BasicOptimizer::TryReplaceVar(calyx::var_index_t& var_idx) const {
@@ -171,7 +171,7 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
   for (const auto& [symbol, entry] : new_program.functions) {
     new_block_graph = {};
     todo = {entry};
-    vars_found = {};
+    vars_found.clear();
 
     while (!todo.empty()) {
       cotyl::Assert(locals.empty());
@@ -225,25 +225,27 @@ void BasicOptimizer::EmitCast(const Cast<To, From>& _op) {
     auto replaced = FindExprResultReplacement(*op, [](auto& op, auto& candidate) {
       return candidate.right_idx == op.right_idx;
     });
-    if (!replaced) {
-      auto* right_directive = TryGetVarDirective<Imm<From>>(op->right_idx);
-      if constexpr(std::is_same_v<From, Pointer>) {
-        if (right_directive) {
-          EmitRepl<Imm<calyx_upcast_t<To>>>(op->idx, (To)right_directive->value.value);
-          return;
-        }
-      }
-      else if constexpr(std::is_same_v<To, Pointer>) {
-        // todo: pointer immediates
-      }
-      else{
-        if (right_directive) {
-          EmitRepl<Imm<calyx_upcast_t<To>>>(op->idx, (To)right_directive->value);
-          return;
-        }
-      }
-      OutputExpr(std::move(op));
+    if (replaced) {
+      return;
     }
+
+    auto* right_directive = TryGetVarDirective<Imm<From>>(op->right_idx);
+    if constexpr(std::is_same_v<From, Pointer>) {
+      if (right_directive) {
+        EmitRepl<Imm<calyx_upcast_t<To>>>(op->idx, (To)right_directive->value.value);
+        return;
+      }
+    }
+    else if constexpr(std::is_same_v<To, Pointer>) {
+      // todo: pointer immediates
+    }
+    else{
+      if (right_directive) {
+        EmitRepl<Imm<calyx_upcast_t<To>>>(op->idx, (To)right_directive->value);
+        return;
+      }
+    }
+    OutputExpr(std::move(op));
   }
 }
 
@@ -402,7 +404,7 @@ void BasicOptimizer::EmitReturn(const Return<T>& _op) {
   auto op = CopyDirective(_op);
   TryReplaceVar(op->idx);
   // no need to flush locals right before a return
-  locals = {};
+  locals.clear();
   Output(std::move(op));
   reachable = false;
 }
