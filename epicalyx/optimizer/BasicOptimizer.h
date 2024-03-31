@@ -20,7 +20,7 @@ struct BasicOptimizer final : calyx::Backend {
   }
 
   const Program& program;
-  const ProgramDependencies old_deps;
+  ProgramDependencies old_deps;
   cotyl::unordered_map<block_label_t, program_pos_t> block_links{};
   Graph<block_label_t, const Program::block_t*> new_block_graph{};
 
@@ -70,7 +70,6 @@ struct BasicOptimizer final : calyx::Backend {
   program_pos_t Output(std::unique_ptr<T>&& directive) {
     cotyl::Assert(reachable);
     const u64 in_block = current_block->size();
-    deps.Emit(*directive);
     current_block->push_back(std::move(directive));
     return std::make_pair(current_new_block_idx, in_block);
   }
@@ -87,7 +86,6 @@ struct BasicOptimizer final : calyx::Backend {
 
   template<typename T, typename... Args>
   void OutputExprNew(calyx::var_index_t idx, const Args&... args) {
-    deps.var_graph[idx] = {};
     vars_found.emplace(idx, OutputNew<T>(idx, args...));
   }
 
@@ -95,13 +93,11 @@ struct BasicOptimizer final : calyx::Backend {
   void OutputExpr(std::unique_ptr<T>&& expr) {
     // expr will be moved before reading the idx on the return
     const auto idx = expr->idx;
-    deps.var_graph[idx] = {};
     vars_found.emplace(idx, Output(std::move(expr)));
   }
 
   template<typename T>
   void OutputExprCopy(const T& expr) {
-    deps.var_graph[expr.idx] = {};
     vars_found.emplace(expr.idx, OutputCopy(expr));
   }
 
@@ -112,6 +108,8 @@ struct BasicOptimizer final : calyx::Backend {
   }
 
   void TryReplaceVar(calyx::var_index_t& var_idx) const;
+  void RemoveUnreachableBlockEdges(block_label_t block);
+  void RemoveUnreachableBlockEdgesRecurse(block_label_t block);
 
   // find common ancestor for 2 nodes such that all paths to these nodes go through that ancestor
   block_label_t CommonBlockAncestor(block_label_t first, block_label_t second) const;

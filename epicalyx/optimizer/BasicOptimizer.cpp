@@ -22,11 +22,11 @@ block_label_t BasicOptimizer::CommonBlockAncestor(block_label_t first, block_lab
     auto max_ancestor = *ancestors.rbegin();
     ancestors.erase(std::prev(ancestors.end()));
     ancestors_considered.emplace(max_ancestor);
-    if (!deps.block_graph.Has(max_ancestor)) [[unlikely]] {
+    if (!old_deps.block_graph.Has(max_ancestor)) [[unlikely]] {
       return 0;
     }
 
-    auto& block = deps.block_graph.At(max_ancestor);
+    auto& block = old_deps.block_graph.At(max_ancestor);
     if (block.from.empty()) [[unlikely]] {
       return 0;
     }
@@ -110,36 +110,56 @@ const T* BasicOptimizer::TryGetVarDirective(var_index_t idx) const {
 
 void BasicOptimizer::LinkBlock(block_label_t next_block) {
   // we need the current block to have no outputs
-  cotyl::Assert(deps.block_graph.At(current_new_block_idx).to.empty());
+  cotyl::Assert(new_block_graph.At(current_new_block_idx).to.empty());
   // sanity checks that the current block is indeed the only input for the linked block
-  cotyl::Assert(deps.block_graph.At(next_block).from.size() == 1);
+  cotyl::Assert(old_deps.block_graph.At(next_block).from.size() == 1);
   // the ID should already have been updated from the old_block_idx to the new_block_idx earlier
   // if they differ at all
-  cotyl::Assert(*deps.block_graph.At(next_block).from.begin() == current_new_block_idx);
+  cotyl::Assert(*old_deps.block_graph.At(next_block).from.begin() == current_old_block_idx);
 
-  // change block inputs for jumped blocks
-  const auto& next_node = deps.block_graph.At(next_block);
-  while (!next_node.to.empty()) {
-    auto block_idx = *next_node.to.begin();
-    deps.block_graph.RemoveEdge(next_block, block_idx);
-    deps.block_graph.AddEdge(current_new_block_idx, block_idx);
-  }
-
-  // erase linked block
-  deps.block_graph.Erase(next_block);
-
-  // update the block graph
-  const auto closure = deps.block_graph.UpwardClosure({visited.begin(), visited.end()});
-  const auto not_in_closure = [&](const block_label_t& block_idx) { return !closure.contains(block_idx); };
-
-  for (auto& [block_idx, node] : deps.block_graph) {
-    cotyl::erase_if(node.to, not_in_closure);
-    cotyl::erase_if(node.from, not_in_closure);
-  }
-
-  // make current new_block_idx have empty output again
-  deps.block_graph[current_new_block_idx].to.clear();
+  block_links.emplace(next_block, program_pos_t{current_new_block_idx, current_block->size()});
   current_old_block_idx = next_block;
+}
+
+void BasicOptimizer::RemoveUnreachableBlockEdgesRecurse(block_label_t block) {
+  auto& node = old_deps.block_graph[block];
+
+  while (!node.to.empty()) {
+    const auto to_idx = *node.to.begin();
+    node.to.erase(node.to.begin());
+
+    const auto& to_from = old_deps.block_graph.At(to_idx).from;
+    if (std::count_if(to_from.begin(), to_from.end(), [to_idx](const auto idx) { return idx != to_idx; }) == 0) {
+      RemoveUnreachableBlockEdgesRecurse(to_idx);
+    }
+  }
+}
+
+void BasicOptimizer::RemoveUnreachableBlockEdges(block_label_t block) {
+  // we want to remove edges from the old block graph if they are unreachable
+  // this improves block linking
+  // we have to make sure NOT to remove any edges that are already added to the 
+  // current new block, as the block that was passed was partially linked,
+  // and conditional branches may have happened in the reachable part, as well
+  // as (usually) some unconditional branch
+  const auto& current_node = new_block_graph.At(current_new_block_idx);
+  const auto& node = old_deps.block_graph.At(block);
+  cotyl::flat_set<block_label_t> to_remove{};
+  for (const auto to_idx : node.to) {
+    if (!current_node.to.contains(to_idx)) {
+      to_remove.emplace(to_idx);
+    }
+  }
+
+  for (const auto to_idx : to_remove) {
+    old_deps.block_graph.RemoveEdge(block, to_idx);
+    const auto& to_from = old_deps.block_graph.At(to_idx).from;
+
+    // don't care for loops when removing unused blocks
+    if (std::count_if(to_from.begin(), to_from.end(), [to_idx](const auto idx) { return idx != to_idx; }) == 0) {
+      RemoveUnreachableBlockEdgesRecurse(to_idx);
+    }
+  }
 }
 
 void BasicOptimizer::EmitProgram(const Program& _program) {
@@ -162,16 +182,22 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
 
       auto inserted = new_program.blocks.emplace(current_new_block_idx, calyx::Program::block_t{}).first;
       current_block = &inserted->second;
+      auto& node = new_block_graph.EmplaceNodeIfNotExists(current_new_block_idx, nullptr);
+      node.value = current_block;
 
-      while (!block_links.contains(current_old_block_idx)) {
-        block_links.emplace(current_old_block_idx, current_new_block_idx);
+      bool block_finished;
+      do {
+        block_finished = true;
+        block_links.emplace(current_old_block_idx, program_pos_t{current_new_block_idx, current_block->size()});
         const auto block = current_old_block_idx;
         for (const auto& directive : _program.blocks.at(block)) {
           directive->Emit(*this);
-          if (!reachable) break;  // hit return statement/branch
-          if (current_old_block_idx != block) break;  // jumped to linked block
+          // hit return statement/branch, block finished
+          if (!reachable) { RemoveUnreachableBlockEdges(block); break; }
+          // jumped to linked block, block NOT finished
+          if (current_old_block_idx != block) { block_finished = false; break; }  
         }
-      }
+      } while (!block_finished);
     }
   }
   while (RemoveUnused(new_program));
@@ -674,6 +700,8 @@ void BasicOptimizer::Emit(const UnconditionalBranch& _op) {
     // only flush locals on the unconditional branch non-linked blocks
     FlushCurrentLocals();
     if (!new_block_graph.Has(op->dest)) {
+      new_block_graph.AddNode(op->dest, nullptr);
+      new_block_graph.AddEdge(current_new_block_idx, op->dest);
       todo.insert(op->dest);
     }
     Output(std::move(op));
@@ -719,6 +747,8 @@ void BasicOptimizer::EmitBranchCompare(const BranchCompare<T>& _op) {
   if (!ResolveBranchIndirection(*op)) {
     FlushCurrentLocals();
     if (!new_block_graph.Has(op->dest)) {
+      new_block_graph.AddNode(op->dest, nullptr);
+      new_block_graph.AddEdge(current_new_block_idx, op->dest);
       todo.insert(op->dest);
     }
     Output(std::move(op));
@@ -754,6 +784,8 @@ void BasicOptimizer::EmitBranchCompareImm(const BranchCompareImm<T>& _op) {
   if (!ResolveBranchIndirection(*op)) {
     FlushCurrentLocals();
     if (!new_block_graph.Has(op->dest)) {
+      new_block_graph.AddNode(op->dest, nullptr);
+      new_block_graph.AddEdge(current_new_block_idx, op->dest);
       todo.insert(op->dest);
     }
     Output(std::move(op));

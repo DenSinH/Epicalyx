@@ -79,7 +79,7 @@ void VisualGraph::InitImGui() {
 }
 
 void VisualGraph::VisualizeImpl() {
-  auto sort = graph.LayeredTopSort();
+  auto sort = graph.LayeredTopSort<false>();
   cotyl::unordered_map<u64, ImVec2> positions;
   ImVec2 pos{50, 100};
   for (const auto& layer : sort) {

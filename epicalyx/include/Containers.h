@@ -86,6 +86,14 @@ T& get_default(unordered_map<K, T>& graph, const K& key) {
   return graph[key];
 }
 
+template<class C, class Pred>
+void erase_if_set(C& set, Pred pred) {
+  for (auto it = set.begin(); it != set.end();) {
+    if (pred(*it)) it = set.erase(it);
+    else ++it;
+  }
+}
+
 }
 
 

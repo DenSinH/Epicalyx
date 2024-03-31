@@ -85,7 +85,9 @@ public:
     nodes.at(to).from.erase(from);
   }
 
+  template<bool Acyclic>
   std::vector<I> TopSort() const;
+  template<bool Acyclic>
   std::vector<std::vector<I>> LayeredTopSort() const;
 
   std::vector<I> OrderedUpwardClosure(I base) const;
@@ -94,6 +96,7 @@ public:
 };
 
 template<typename I, typename T>
+template<bool Acyclic>
 std::vector<I> Graph<I, T>::TopSort() const {
   std::vector<I> result{};
   cotyl::unordered_set<I> todo{};
@@ -157,6 +160,10 @@ std::vector<I> Graph<I, T>::TopSort() const {
         candidates.emplace(to_idx);
       }
     }
+
+    if constexpr (!Acyclic) {
+      cotyl::erase_if_set(candidates, [&](const auto& idx) { return !todo.contains(idx); });
+    }
   }
 
   cotyl::Assert(result.size() == nodes.size(), "Not all nodes added to topological sort!");
@@ -164,6 +171,7 @@ std::vector<I> Graph<I, T>::TopSort() const {
 }
 
 template<typename I, typename T>
+template<bool Acyclic>
 std::vector<std::vector<I>> Graph<I, T>::LayeredTopSort() const {
   std::vector<std::vector<I>> result{};
   cotyl::unordered_set<I> todo{};
@@ -224,6 +232,11 @@ std::vector<std::vector<I>> Graph<I, T>::LayeredTopSort() const {
       for (const auto& to_idx : nodes.at(id).to) {
         candidates.emplace(to_idx);
       }
+    }
+
+    if constexpr (!Acyclic) {
+      // remove any candidates that were done already
+      cotyl::erase_if_set(candidates, [&](const auto& idx) { return !todo.contains(idx); });
     }
   }
 
