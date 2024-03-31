@@ -15,12 +15,14 @@ using namespace calyx;
 struct BasicOptimizer final : calyx::Backend {
 
   BasicOptimizer(const Program& program) :
-      program(program), deps{ProgramDependencies::GetDependencies(program)} {
+      program(program), old_deps{ProgramDependencies::GetDependencies(program)} {
 
   }
 
   const Program& program;
-  ProgramDependencies deps;
+  const ProgramDependencies old_deps;
+  cotyl::unordered_map<block_label_t, program_pos_t> block_links{};
+  Graph<block_label_t, const Program::block_t*> new_block_graph{};
 
   calyx::Program new_program{};
 
@@ -48,7 +50,6 @@ struct BasicOptimizer final : calyx::Backend {
   calyx::Program::block_t* current_block{};
   block_label_t current_old_block_idx;      // block index we are scanning in the old program
   block_label_t current_new_block_idx;      // block index we are building in the new program
-  cotyl::unordered_set<block_label_t> visited{};
   cotyl::unordered_set<block_label_t> todo{};
   bool reachable;
 
@@ -111,6 +112,9 @@ struct BasicOptimizer final : calyx::Backend {
   }
 
   void TryReplaceVar(calyx::var_index_t& var_idx) const;
+
+  // find common ancestor for 2 nodes such that all paths to these nodes go through that ancestor
+  block_label_t CommonBlockAncestor(block_label_t first, block_label_t second) const;
 
   void EmitProgram(const Program& program) final;
 

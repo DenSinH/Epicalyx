@@ -1,6 +1,10 @@
 #pragma once 
 
+#include <numeric>
+#include <algorithm>
+
 #include "Containers.h"
+#include "CustomAssert.h"
 
 
 namespace epi {
@@ -23,6 +27,10 @@ public:
   auto begin() const { return nodes.begin(); }
   auto end() const { return nodes.end(); }
 
+  bool Has(I idx) const {
+    return nodes.contains(idx);
+  }
+
   Node& operator[](I idx) {
     return nodes.at(idx);
   }
@@ -37,8 +45,8 @@ public:
 
   void Clear(I idx) {
     auto& node = nodes.at(idx);
-    node.to = {};
-    node.from = {};
+    node.to.clear();
+    node.from.clear();
   }
 
   template<typename... Args>
@@ -80,8 +88,6 @@ public:
   std::vector<I> TopSort() const;
   std::vector<std::vector<I>> LayeredTopSort() const;
 
-  // find common ancestor for 2 nodes such that all paths to these nodes go through that ancestor
-  I CommonAncestor(I first, I second) const;
   std::vector<I> OrderedUpwardClosure(I base) const;
   cotyl::unordered_set<I> UpwardClosure(cotyl::unordered_set<I>&& base) const;
   bool IsAncestorOf(I base, I other) const;
@@ -91,31 +97,40 @@ template<typename I, typename T>
 std::vector<I> Graph<I, T>::TopSort() const {
   std::vector<I> result{};
   cotyl::unordered_set<I> todo{};
+  cotyl::flat_set<I> candidates{};
 
-
-  for (const auto &[idx, node] : nodes) {
+  for (const auto& [idx, node] : nodes) {
     // nodes that have no inputs
     if (node.from.empty()) {
       result.push_back(idx);
+      for (const auto& to_idx : node.to) {
+        candidates.emplace(to_idx);
+      }
     }
     else {
-      todo.insert(idx);
+      todo.emplace(idx);
     }
   }
 
-  while (!todo.empty()) {
+  // this can happen if there is a loop at the first iteration
+  // just insert some id
+  if (candidates.empty()) {
+    candidates.emplace(*todo.begin());
+  }
+
+  while (!candidates.empty()) {
     auto order_size = result.size();
-    for (const auto& id : todo) {
+    // all candidates MUST be in todo,
+    // as they are selected as the nodes with an input from the previous "layer"
+    // these CANNOT have been added to the result yet, nor any any "non-candidates"
+    // be added to the result in this iteration, as they would have been added before
+    // (some node was preventing them from being added)
+    for (const auto& id : candidates) {
       // check if all inputs are done
       const auto& node = At(id);
-      bool allow_add = true;
-      for (const auto& from_id : node.from) {
-        if (todo.contains(from_id)) {
-          allow_add = false;
-          break;
-        }
-      }
-
+      bool allow_add = std::none_of(
+        node.from.begin(), node.from.end(), [&](const auto& from_id) { return todo.contains(from_id); }
+      );
       if (allow_add) {
         result.push_back(id);
       }
@@ -123,34 +138,28 @@ std::vector<I> Graph<I, T>::TopSort() const {
 
     // for cycles, pick the node with the least inputs left
     if (order_size == result.size()) {
-      u32 least_inputs = -1;
-      I least_id = 0;
-      for (const auto& id : todo) {
+      std::pair<u32, I> least = {-1, I{}};
+      for (const auto& id : candidates) {
         const auto& node = At(id);
-        u32 inputs = 0;
-        for (const auto& from_id : node.from) {
-          if (todo.contains(from_id)) {
-            inputs++;
-          }
-        }
-
-        if (inputs < least_inputs) {
-          least_inputs = inputs;
-          least_id = id;
-        }
-        else if (inputs == least_inputs) {
-          least_id = std::min(least_id, id);
-        }
+        auto inputs = std::count_if(
+          node.from.begin(), node.from.end(), [&](const auto& from_id) { return todo.contains(from_id); }
+        );
+        least = std::min(least, {inputs, id});
       }
 
-      result.push_back(least_id);
+      result.push_back(least.second);
     }
 
+    candidates.clear();
     for (auto i = order_size; i < result.size(); i++) {
       todo.erase(result[i]);
+      for (const auto& to_idx : nodes.at(result[i]).to) {
+        candidates.emplace(to_idx);
+      }
     }
   }
 
+  cotyl::Assert(result.size() == nodes.size(), "Not all nodes added to topological sort!");
   return std::move(result);
 }
 
@@ -158,12 +167,16 @@ template<typename I, typename T>
 std::vector<std::vector<I>> Graph<I, T>::LayeredTopSort() const {
   std::vector<std::vector<I>> result{};
   cotyl::unordered_set<I> todo{};
+  cotyl::flat_set<I> candidates{};
 
   result.push_back({});
-  for (const auto &[id, node] : nodes) {
+  for (const auto& [id, node] : nodes) {
     // first layer is only nodes that have no inputs
     if (node.from.empty()) {
       result.back().push_back(id);
+      for (const auto& to_idx : node.to) {
+        candidates.emplace(to_idx);
+      }
     }
     else {
       todo.insert(id);
@@ -173,20 +186,18 @@ std::vector<std::vector<I>> Graph<I, T>::LayeredTopSort() const {
   if (result.back().empty()) [[unlikely]] {
     // possible if only loops exist in fist layer
     result.pop_back();
+    candidates.emplace(*todo.begin());
   }
 
-  while (!todo.empty()) {
+  while (!candidates.empty()) {
+    // see remark before on candidates always being filled
     result.push_back({});
-    for (const auto& id : todo) {
+    for (const auto& id : candidates) {
       // check if all inputs are done
       const auto& node = At(id);
-      bool allow_add = true;
-      for (const auto& from_id : node.from) {
-        if (todo.contains(from_id)) {
-          allow_add = false;
-          break;
-        }
-      }
+      bool allow_add = std::none_of(
+        node.from.begin(), node.from.end(), [&](const auto& from_id) { return todo.contains(from_id); }
+      );
 
       if (allow_add) {
         result.back().push_back(id);
@@ -195,66 +206,37 @@ std::vector<std::vector<I>> Graph<I, T>::LayeredTopSort() const {
 
     // for cycles, pick the node with the least inputs left
     if (result.back().empty()) {
-      u32 least_inputs = -1;
-      u64 least_id = 0;
-      for (const auto& id : todo) {
+      std::pair<u32, I> least = {-1, I{}};
+      for (const auto& id : candidates) {
         const auto& node = At(id);
-        u32 inputs = 0;
-        for (const auto& from_id : node.from) {
-          if (todo.contains(from_id)) {
-            inputs++;
-          }
-        }
-
-        if (inputs < least_inputs) {
-          least_inputs = inputs;
-          least_id = id;
-        }
-        else if (inputs == least_inputs) {
-          least_id = std::min(least_id, id);
-        }
+        auto inputs = std::count_if(
+          node.from.begin(), node.from.end(), [&](const auto& from_id) { return todo.contains(from_id); }
+        );
+        least = std::min(least, {inputs, id});
       }
 
-      result.back().push_back(least_id);
+      result.back().push_back(least.second);
     }
 
+    candidates.clear();
     for (const auto& id : result.back()) {
       todo.erase(id);
-    }
-  }
-
-  return std::move(result);
-}
-
-template<typename I, typename T>
-I Graph<I, T>::CommonAncestor(I first, I second) const {
-  cotyl::set<I> ancestors{first, second};
-
-  // we use the fact that in general block1 > block2 then block1 can never be an ancestor of block2
-  // it may happen for loops, but then the loop entry is the minimum block, so we want to go there
-  cotyl::unordered_set<I> ancestors_considered{};
-
-  while (ancestors.size() > 1) {
-    auto max_ancestor = *ancestors.rbegin();
-    ancestors.erase(std::prev(ancestors.end()));
-    ancestors_considered.emplace(max_ancestor);
-    if (!nodes.contains(max_ancestor)) [[unlikely]] {
-      return 0;
-    }
-
-    auto& deps = nodes.at(max_ancestor);
-    if (deps.from.empty()) [[unlikely]] {
-      return 0;
-    }
-    for (auto dep : deps.from) {
-      if (dep < max_ancestor || !ancestors_considered.contains(dep)) {
-        ancestors.insert(dep);
+      for (const auto& to_idx : nodes.at(id).to) {
+        candidates.emplace(to_idx);
       }
     }
   }
 
-  // at this point only one ancestor should be left
-  return *ancestors.begin();
+  cotyl::Assert(
+    std::accumulate(
+      result.begin(),
+      result.end(),
+      0,
+      [](auto acc, const auto& layer) { return acc + layer.size(); }
+    ) == nodes.size(), 
+    "Not all nodes added to topological sort!"
+  );
+  return std::move(result);
 }
 
 template<typename I, typename T>
@@ -269,13 +251,11 @@ std::vector<I> Graph<I, T>::OrderedUpwardClosure(I base) const {
     search.erase(search.begin());
 
     auto node = nodes.find(current);
-    if (node != nodes.end()) {
-      for (const auto& idx : node->second.to) {
-        if (!closure_found.contains(idx)) {
-          closure_found.emplace_hint(idx, closure_found.end());
-          search.emplace(idx);
-          closure.push_back(idx);
-        }
+    for (const auto& idx : node->second.to) {
+      if (!closure_found.contains(idx)) {
+        closure_found.emplace_hint(idx, closure_found.end());
+        search.emplace(idx);
+        closure.push_back(idx);
       }
     }
   }
@@ -293,12 +273,10 @@ cotyl::unordered_set<I> Graph<I, T>::UpwardClosure(cotyl::unordered_set<I>&& bas
     search.erase(search.begin());
 
     auto node = nodes.find(current);
-    if (node != nodes.end()) {
-      for (const auto& idx : node->second.to) {
-        if (!closure.contains(idx)) {
-          closure.emplace_hint(closure.end(), idx);
-          search.emplace(idx);
-        }
+    for (const auto& idx : node->second.to) {
+      if (!closure.contains(idx)) {
+        closure.emplace_hint(closure.end(), idx);
+        search.emplace(idx);
       }
     }
   }
@@ -316,16 +294,14 @@ bool Graph<I, T>::IsAncestorOf(I base, I other) const {
     search.erase(search.begin());
 
     auto node = nodes.find(current);
-    if (node != nodes.end()) {
-      for (const auto& idx : node->second.to) {
-        if (idx == other) {
-          return true;
-        }
+    for (const auto& idx : node->second.to) {
+      if (idx == other) {
+        return true;
+      }
 
-        if (!closure_found.contains(idx)) {
-          closure_found.emplace_hint(closure_found.end(), idx);
-          search.emplace(idx);
-        }
+      if (!closure_found.contains(idx)) {
+        closure_found.emplace_hint(closure_found.end(), idx);
+        search.emplace(idx);
       }
     }
   }

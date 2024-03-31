@@ -10,6 +10,37 @@
 
 namespace epi {
 
+// uses that block labels are ordered topologically
+block_label_t BasicOptimizer::CommonBlockAncestor(block_label_t first, block_label_t second) const {
+  cotyl::set<block_label_t> ancestors{first, second};
+
+  // we use the fact that in general block1 > block2 then block1 can never be an ancestor of block2
+  // it may happen for loops, but then the loop entry is the minimum block, so we want to go there
+  cotyl::unordered_set<block_label_t> ancestors_considered{};
+
+  while (ancestors.size() > 1) {
+    auto max_ancestor = *ancestors.rbegin();
+    ancestors.erase(std::prev(ancestors.end()));
+    ancestors_considered.emplace(max_ancestor);
+    if (!deps.block_graph.Has(max_ancestor)) [[unlikely]] {
+      return 0;
+    }
+
+    auto& block = deps.block_graph.At(max_ancestor);
+    if (block.from.empty()) [[unlikely]] {
+      return 0;
+    }
+    for (auto dep : block.from) {
+      if (dep < max_ancestor || !ancestors_considered.contains(dep)) {
+        ancestors.insert(dep);
+      }
+    }
+  }
+
+  // at this point only one ancestor should be left
+  return *ancestors.begin();
+}
+
 void BasicOptimizer::FlushLocal(var_index_t loc_idx, Local&& local) {
   current_block->emplace_back(std::move(local.store));
   locals.erase(loc_idx);
@@ -33,8 +64,9 @@ bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
   for (const auto& [var_idx, loc] : vars_found) {
     auto& directive = new_program.blocks.at(loc.first)[loc.second];
     if (IsType<T>(directive)) {
-      auto candidate_block = deps.var_graph.at(var_idx).created.first;
-      auto ancestor = deps.block_graph.CommonAncestor(candidate_block, current_new_block_idx);
+      auto candidate_block = loc.first;
+      // todo: make generic, call on new_block_graph
+      auto ancestor = CommonBlockAncestor(candidate_block, current_new_block_idx);
 
       // todo: shift directives back for earlier ancestor blocks
       if (ancestor == current_new_block_idx || ancestor == candidate_block) {
@@ -57,12 +89,6 @@ bool BasicOptimizer::ResolveBranchIndirection(calyx::Branch& op) {
     auto& link_directive = program.blocks.at(op.dest)[0];
     if (IsType<UnconditionalBranch>(link_directive)) {
       auto* link = cotyl::unique_ptr_cast<UnconditionalBranch>(link_directive);
-
-      // update block graph
-      // blocks reached from indirect branch are now reached from the current_new_block_idx
-      auto& link_from = deps.block_graph[link->dest].from;
-      link_from.erase(op.dest);
-      link_from.insert(current_new_block_idx);
 
       op.dest = link->dest;
       op.Emit(*this);
@@ -92,7 +118,7 @@ void BasicOptimizer::LinkBlock(block_label_t next_block) {
   cotyl::Assert(*deps.block_graph.At(next_block).from.begin() == current_new_block_idx);
 
   // change block inputs for jumped blocks
-  auto& next_node = deps.block_graph[next_block];
+  const auto& next_node = deps.block_graph.At(next_block);
   while (!next_node.to.empty()) {
     auto block_idx = *next_node.to.begin();
     deps.block_graph.RemoveEdge(next_block, block_idx);
@@ -112,7 +138,7 @@ void BasicOptimizer::LinkBlock(block_label_t next_block) {
   }
 
   // make current new_block_idx have empty output again
-  deps.block_graph[current_new_block_idx].to = {};
+  deps.block_graph[current_new_block_idx].to.clear();
   current_old_block_idx = next_block;
 }
 
@@ -123,7 +149,7 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
   new_program.strings      = std::move(_program.strings);
 
   for (const auto& [symbol, entry] : new_program.functions) {
-    visited = {};
+    new_block_graph = {};
     todo = {entry};
     vars_found = {};
 
@@ -131,21 +157,16 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
       cotyl::Assert(locals.empty());
 
       current_old_block_idx = current_new_block_idx = *todo.begin();
-      deps.pos.first = current_new_block_idx;  // set this properly to determine the new graph right
-      // clear block dependencies
-      deps.block_graph.Clear(current_new_block_idx);
       reachable = true;
       todo.erase(todo.begin());
 
       auto inserted = new_program.blocks.emplace(current_new_block_idx, calyx::Program::block_t{}).first;
       current_block = &inserted->second;
 
-      deps.pos.second = 0;
-      while (!visited.contains(current_old_block_idx)) {
+      while (!block_links.contains(current_old_block_idx)) {
+        block_links.emplace(current_old_block_idx, current_new_block_idx);
         const auto block = current_old_block_idx;
-        visited.insert(block);
         for (const auto& directive : _program.blocks.at(block)) {
-          deps.pos.second++;
           directive->Emit(*this);
           if (!reachable) break;  // hit return statement/branch
           if (current_old_block_idx != block) break;  // jumped to linked block
@@ -641,10 +662,10 @@ void BasicOptimizer::EmitCompareImm(const CompareImm<T>& _op) {
 void BasicOptimizer::Emit(const UnconditionalBranch& _op) {
   auto op = CopyDirective(_op);
   if (!ResolveBranchIndirection(*op)) {
-    const auto& block_deps = this->deps.block_graph.At(current_new_block_idx);
+    const auto& block_deps = new_block_graph.At(current_new_block_idx);
     if (block_deps.to.empty()) {
       // no dependencies so far, we can link this block if the next block only has one input
-      if (!visited.contains(op->dest) && this->deps.block_graph.At(op->dest).from.size() == 1) {
+      if (!new_block_graph.Has(op->dest) && old_deps.block_graph.At(op->dest).from.size() == 1) {
         LinkBlock(op->dest);
         return;
       }
@@ -652,7 +673,7 @@ void BasicOptimizer::Emit(const UnconditionalBranch& _op) {
 
     // only flush locals on the unconditional branch non-linked blocks
     FlushCurrentLocals();
-    if (!visited.contains(op->dest)) {
+    if (!new_block_graph.Has(op->dest)) {
       todo.insert(op->dest);
     }
     Output(std::move(op));
@@ -697,7 +718,7 @@ void BasicOptimizer::EmitBranchCompare(const BranchCompare<T>& _op) {
 
   if (!ResolveBranchIndirection(*op)) {
     FlushCurrentLocals();
-    if (!visited.contains(op->dest)) {
+    if (!new_block_graph.Has(op->dest)) {
       todo.insert(op->dest);
     }
     Output(std::move(op));
@@ -732,7 +753,7 @@ void BasicOptimizer::EmitBranchCompareImm(const BranchCompareImm<T>& _op) {
 
   if (!ResolveBranchIndirection(*op)) {
     FlushCurrentLocals();
-    if (!visited.contains(op->dest)) {
+    if (!new_block_graph.Has(op->dest)) {
       todo.insert(op->dest);
     }
     Output(std::move(op));

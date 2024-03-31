@@ -18,15 +18,14 @@ void ProgramDependencies::VisualizeVars() {
     if (!idx) continue;
     cotyl::StringStream text{
       cotyl::Format(
-        "created [%d].[%d]\n%d reads", 
+        "created [%d].[%d]\n%d reads\n", 
         var.created.first, var.created.second, var.reads.size()
       )
     };
+    if (var.is_call_result) {
+      text << "(CALL RESULT)\n";
+    }
     if (!var.reads.empty()) {
-      if (var.is_call_result) {
-        text << " (CALL RESULT)";
-      }
-      text << ":\n";
       for (const auto& pos : var.reads) {
         text << cotyl::Format("read @[%d].[%d]\n", pos.first, pos.second);
       }
