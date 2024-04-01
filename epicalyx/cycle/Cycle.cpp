@@ -13,8 +13,8 @@
 
 namespace epi::cycle {
 
-void VisualGraph::Visualize() {
-  thread = std::thread(&VisualGraph::VisualizeImpl, this);
+void VisualGraph::Visualize(NodeSort sort) {
+  thread = std::thread(&VisualGraph::VisualizeImpl, this, sort);
 }
 
 void VisualGraph::Join() {
@@ -78,9 +78,11 @@ void VisualGraph::InitImGui() {
   ImGui_ImplOpenGL3_Init(glsl_version);
 }
 
-void VisualGraph::VisualizeImpl() {
-  auto sort = graph.LayeredTopSort<false>();
-  cotyl::unordered_map<u64, ImVec2> positions;
+cotyl::unordered_map<u64, ImVec2> SortPositions(const Graph<u64, VisualGraph::VisualNode>& graph) {
+  auto sort = graph.template LayeredTopSort<false>();
+  cotyl::unordered_map<u64, ImVec2> positions{};
+  positions.reserve(graph.size());
+
   ImVec2 pos{50, 100};
   for (const auto& layer : sort) {
     pos.y = 100;
@@ -88,6 +90,40 @@ void VisualGraph::VisualizeImpl() {
     for (const auto& id : layer) {
       positions.emplace(id, pos);
       pos.y += (1 + graph.At(id).value.body.size()) * 20 + 30;
+    }
+  }
+  return positions;
+}
+
+cotyl::unordered_map<u64, ImVec2> CirclePositions(const Graph<u64, VisualGraph::VisualNode>& graph) {
+  cotyl::unordered_map<u64, ImVec2> positions{};
+  const size_t num_nodes = graph.size();
+  constexpr double radius = 1000;
+  positions.reserve(num_nodes);
+  
+  double theta = 0;
+  for (const auto& [node_id, node] : graph) {
+    ImVec2 pos{
+      (float)(radius * std::cos(theta)),
+      (float)(radius * std::sin(theta))
+    };
+    positions.emplace(node_id, pos);
+    theta += 2 * 3.14159265 / num_nodes;
+  }
+  return positions;
+}
+
+
+void VisualGraph::VisualizeImpl(NodeSort sort) {
+  cotyl::unordered_map<u64, ImVec2> positions;
+  switch (sort) {
+    case NodeSort::Topological: {
+      positions = SortPositions(graph);
+      break;
+    }
+    case NodeSort::Circle: {
+      positions = CirclePositions(graph);
+      break;
     }
   }
 
@@ -142,7 +178,7 @@ void VisualGraph::VisualizeImpl() {
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    Render(*canvas, sort, positions);
+    Render(*canvas, positions);
 
     ImGui::Render();
 
@@ -154,7 +190,7 @@ void VisualGraph::VisualizeImpl() {
   }
 }
 
-void VisualGraph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, cotyl::unordered_map<u64, ImVec2>& positions) {
+void VisualGraph::Render(ImNodes::CanvasState& canvas, cotyl::unordered_map<u64, ImVec2>& positions) {
   ImGui::SetNextWindowSize(ImVec2(width, height));
   ImGui::SetNextWindowPos(ImVec2(0, 0));
   if (ImGui::Begin(
@@ -167,41 +203,35 @@ void VisualGraph::Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, c
     ImNodes::BeginCanvas(&canvas);
 
     ImNodes::Ez::SlotInfo input = {"", 1};
-    for (const auto& layer : sort) {
-      for (const auto& id : layer) {
-        auto& node = graph[id];
-        auto& vnode = node.value;
-        std::string title = std::to_string(vnode.id);
-        if (!vnode.title.empty()) {
-          title += " : " + vnode.title;
+    for (auto& [node_id, node] : graph) {
+      auto& vnode = node.value;
+      const std::string title = vnode.title.empty() ? std::to_string(vnode.id) : vnode.title;
+
+      if (ImNodes::Ez::BeginNode((void*)vnode.id, title.c_str(), &positions.at(node_id), &vnode.selected)) {
+        if (!node.from.empty()) [[likely]] {
+          // blocks only contain one input
+          ImNodes::Ez::InputSlots(&input, 1);
+        }
+        else {
+          ImNodes::Ez::InputSlots(nullptr, 0);
         }
 
-        if (ImNodes::Ez::BeginNode((void*)vnode.id, title.c_str(), &positions.at(id), &vnode.selected)) {
-          if (!node.from.empty()) [[likely]] {
-            // blocks only contain one input
-            ImNodes::Ez::InputSlots(&input, 1);
-          }
-          else {
-            ImNodes::Ez::InputSlots(nullptr, 0);
-          }
-
-          for (const auto& line : vnode.body) {
-            ImGui::Text(line.c_str());
-          }
-
-          if (!node.to.empty()) [[likely]] {
-            std::vector<ImNodes::Ez::SlotInfo> outputs{};
-            for (const auto& output : vnode.output_set) {
-              outputs.push_back({output.c_str(), 1});
-            }
-            ImNodes::Ez::OutputSlots(outputs.data(), outputs.size());
-          }
-          else {
-            ImNodes::Ez::OutputSlots(nullptr, 0);
-          }
-
-          ImNodes::Ez::EndNode();
+        for (const auto& line : vnode.body) {
+          ImGui::Text(line.c_str());
         }
+
+        if (!node.to.empty()) [[likely]] {
+          std::vector<ImNodes::Ez::SlotInfo> outputs{};
+          for (const auto& output : vnode.output_set) {
+            outputs.push_back({output.c_str(), 1});
+          }
+          ImNodes::Ez::OutputSlots(outputs.data(), outputs.size());
+        }
+        else {
+          ImNodes::Ez::OutputSlots(nullptr, 0);
+        }
+
+        ImNodes::Ez::EndNode();
       }
     }
 

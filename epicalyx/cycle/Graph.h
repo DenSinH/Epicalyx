@@ -1,10 +1,11 @@
 #pragma once 
 
-#include <numeric>
-#include <algorithm>
-
+#include "Default.h"
 #include "Containers.h"
 #include "CustomAssert.h"
+
+#include <numeric>
+#include <algorithm>
 
 
 namespace epi {
@@ -22,6 +23,7 @@ private:
   cotyl::unordered_map<I, Node> nodes{};
 
 public:
+  std::size_t size() const { return nodes.size(); }
   auto begin() { return nodes.begin(); }
   auto end() { return nodes.end(); }
   auto begin() const { return nodes.begin(); }
@@ -43,6 +45,10 @@ public:
     nodes.erase(idx);
   }
 
+  void Reserve(size_t n) {
+    nodes.reserve(n);
+  }
+
   void Clear(I idx) {
     auto& node = nodes.at(idx);
     node.to.clear();
@@ -56,6 +62,10 @@ public:
 
   Node& AddNode(I idx, T&& value) {
     return nodes.emplace(idx, Node{std::move(value)}).first->second;
+  }
+
+  Node& AddNode(I idx, const T& value) {
+    return nodes.emplace(idx, Node{value}).first->second;
   }
 
   template<typename... Args>
@@ -78,6 +88,15 @@ public:
   void AddEdge(I from, I to) {
     nodes.at(from).to.emplace(to);
     nodes.at(to).from.emplace(from);
+  }
+
+  void AddDoubleEdge(I n1, I n2) {
+    auto& node1 = nodes.at(n1);
+    auto& node2 = nodes.at(n2);
+    node1.from.emplace(n2);
+    node1.to.emplace(n2);
+    node2.from.emplace(n1);
+    node2.to.emplace(n1);
   }
 
   void RemoveEdge(I from, I to) {
@@ -118,7 +137,7 @@ std::vector<I> Graph<I, T>::TopSort() const {
   if constexpr(!Acyclic) {
     // this can happen if there is a loop at the first iteration
     // just insert some id
-    if (candidates.empty()) {
+    if (candidates.empty() && !todo.empty()) [[unlikely]] {
       candidates.emplace(*todo.begin());
     }
   }
@@ -194,7 +213,7 @@ std::vector<std::vector<I>> Graph<I, T>::LayeredTopSort() const {
   }
 
   if constexpr(!Acyclic) {
-    if (result.back().empty()) [[unlikely]] {
+    if (result.back().empty() && !todo.empty()) [[unlikely]] {
       // possible if only loops exist in fist layer
       result.pop_back();
       candidates.emplace(*todo.begin());
@@ -269,8 +288,7 @@ std::vector<I> Graph<I, T>::OrderedUpwardClosure(I base) const {
 
     auto node = nodes.find(current);
     for (const auto& idx : node->second.to) {
-      if (!closure_found.contains(idx)) {
-        closure_found.emplace_hint(idx, closure_found.end());
+      if (closure_found.emplace(idx).second) {
         search.emplace(idx);
         closure.push_back(idx);
       }
@@ -316,8 +334,7 @@ bool Graph<I, T>::IsAncestorOf(I base, I other) const {
         return true;
       }
 
-      if (!closure_found.contains(idx)) {
-        closure_found.emplace_hint(closure_found.end(), idx);
+      if (closure_found.emplace(idx).second) {
         search.emplace(idx);
       }
     }

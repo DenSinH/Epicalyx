@@ -44,7 +44,8 @@ struct Emitter {
   }
 
   calyx::block_label_t MakeBlock() {
-    calyx::block_label_t id = program.blocks.size();
+    // block 0 is special
+    calyx::block_label_t id = program.blocks.size() + 1;
     program.blocks.emplace(id, calyx::Program::block_t{});
     return id;
   }

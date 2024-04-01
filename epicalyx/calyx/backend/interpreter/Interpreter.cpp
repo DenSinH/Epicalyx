@@ -51,7 +51,7 @@ void Interpreter::VisualizeProgram(const Program& program) {
     graph->n(block).title(symbol + "(*)");
   }
 
-  graph->Visualize();
+  graph->Visualize(cycle::VisualGraph::NodeSort::Topological);
   graph->Join();
 }
 

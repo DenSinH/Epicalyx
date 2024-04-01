@@ -21,8 +21,30 @@ namespace epi::cycle {
 
 struct VisualGraph {
 
-  void Visualize();
+  VisualGraph() : graph{} { }
+  template<typename I, typename T, typename TFunc, typename BFunc>
+  VisualGraph(const Graph<I, T>& graph, TFunc title, BFunc body);
+
+  enum class NodeSort {
+    Topological,
+    Circle
+  };
+
+  void Visualize(NodeSort sort);
   void Join();
+
+  struct VisualNode {
+    VisualNode(u64 id) : id(id) { }
+    VisualNode(u64 id, const std::string& title, std::vector<std::string>&& body) : 
+        id(id), title{title}, body{std::move(body)} { }
+
+    u64 id;
+    bool selected = false;
+    std::string title{};
+    std::vector<std::string> body{};
+    cotyl::unordered_map<u64, std::string> outputs{};
+    cotyl::unordered_set<std::string> output_set{};
+  };
 
 private:
   using top_sort_t = std::vector<std::vector<u64>>;
@@ -54,17 +76,6 @@ private:
     }
   };
 
-  struct VisualNode {
-    VisualNode(u64 id) : id(id) { }
-
-    u64 id;
-    bool selected = false;
-    std::string title;
-    std::vector<std::string> body{};
-    cotyl::unordered_map<u64, std::string> outputs{};
-    cotyl::unordered_set<std::string> output_set{};
-  };
-
   Graph<u64, VisualNode> graph{};
   std::thread thread;
 
@@ -75,8 +86,8 @@ private:
   void InitSDL();
   void InitImGui();
   top_sort_t FindOrder();
-  void VisualizeImpl();
-  void Render(ImNodes::CanvasState& canvas, const top_sort_t& sort, cotyl::unordered_map<u64, ImVec2>& positions);
+  void VisualizeImpl(NodeSort sort);
+  void Render(ImNodes::CanvasState& canvas, cotyl::unordered_map<u64, ImVec2>& positions);
 
 public:
   NodeRef n(u64 from, std::string line = "") {
@@ -87,5 +98,25 @@ public:
     return NodeRef(*this, from);
   }
 };
+
+template<typename I, typename T, typename TFunc, typename BFunc>
+VisualGraph::VisualGraph(const Graph<I, T>& g, TFunc title, BFunc body) {
+  for (const auto& [node_idx, node] : g) {
+    graph.AddNode(node_idx, VisualNode{
+      static_cast<u64>(node_idx),
+      title(node_idx, node.value),
+      body(node_idx, node.value)
+    });
+  }
+
+  for (const auto& [node_idx, node] : g) {
+    for (const auto& to_idx : node.to) {
+      graph.AddEdge(node_idx, to_idx);
+      auto& vnode = graph[node_idx].value;
+      vnode.outputs.emplace(to_idx, "");
+      vnode.output_set.emplace("");
+    }
+  }
+}
 
 }

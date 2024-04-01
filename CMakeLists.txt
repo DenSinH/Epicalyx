@@ -36,6 +36,7 @@ add_executable(
         epicalyx/include/Cast.h
         epicalyx/include/CustomAssert.h
         epicalyx/include/Containers.h
+        epicalyx/include/Hash.h
         epicalyx/include/Algorithm.h 
         epicalyx/include/Exceptions.h)
 

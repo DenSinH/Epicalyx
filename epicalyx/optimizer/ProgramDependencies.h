@@ -26,6 +26,7 @@ struct ProgramDependencies final : calyx::Backend {
     cotyl::static_vector<var_index_t, 2> deps{};
     bool is_call_result = false;
     std::vector<program_pos_t> reads{};
+    program_pos_t program_result = {0, 0};
   };
 
   cotyl::unordered_map<var_index_t, Var> var_graph{};

@@ -36,12 +36,13 @@ void ProgramDependencies::VisualizeVars() {
     }
   }
 
-  graph->Visualize();
+  graph->Visualize(cycle::VisualGraph::NodeSort::Topological);
   graph->Join();
 }
 
 void ProgramDependencies::EmitProgram(const Program& program) {
   // initialize block graph nodes
+  block_graph.Reserve(program.blocks.size());
   for (const auto& [block_idx, block] : program.blocks) {
     block_graph.AddNode(block_idx, &block);
   }
@@ -152,6 +153,7 @@ void ProgramDependencies::Emit(const ArgMakeLocal& op) {
 template<typename T>
 void ProgramDependencies::EmitReturn(const Return<T>& op) {
   cotyl::get_default(var_graph, op.idx).reads.push_back(pos);
+  var_graph.at(op.idx).program_result = pos;
 }
 
 template<typename T>

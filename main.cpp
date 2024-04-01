@@ -7,6 +7,7 @@
 #include "tokenizer/Preprocessor.h"
 #include "tokenizer/Tokenizer.h"
 #include "parser/Parser.h"
+#include "regalloc/RIG.h"
 
 
 #include "Log.h"
@@ -36,7 +37,7 @@ void PrintProgram(const epi::Program& program) {
 
 
 int main() {
-  auto preprocessor = epi::Preprocessor("examples/emitting/preprocessing.c");
+  auto preprocessor = epi::Preprocessor("examples/emitting/loops.c");
 
   // while (!preprocessor.EOS()) {
   //   std::cout << preprocessor.Get();
@@ -159,6 +160,9 @@ int main() {
     std::cout << e.what() << std::endl;
     return 1;
   }
+
+  auto rig = epi::RIG::GenerateRIG(program);
+  rig.Visualize();
 
   return 0;
 }
