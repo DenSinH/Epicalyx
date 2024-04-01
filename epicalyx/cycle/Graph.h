@@ -115,10 +115,12 @@ std::vector<I> Graph<I, T>::TopSort() const {
     }
   }
 
-  // this can happen if there is a loop at the first iteration
-  // just insert some id
-  if (candidates.empty()) {
-    candidates.emplace(*todo.begin());
+  if constexpr(!Acyclic) {
+    // this can happen if there is a loop at the first iteration
+    // just insert some id
+    if (candidates.empty()) {
+      candidates.emplace(*todo.begin());
+    }
   }
 
   while (!candidates.empty()) {
@@ -191,10 +193,12 @@ std::vector<std::vector<I>> Graph<I, T>::LayeredTopSort() const {
     }
   }
 
-  if (result.back().empty()) [[unlikely]] {
-    // possible if only loops exist in fist layer
-    result.pop_back();
-    candidates.emplace(*todo.begin());
+  if constexpr(!Acyclic) {
+    if (result.back().empty()) [[unlikely]] {
+      // possible if only loops exist in fist layer
+      result.pop_back();
+      candidates.emplace(*todo.begin());
+    }
   }
 
   while (!candidates.empty()) {
