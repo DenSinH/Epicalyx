@@ -41,7 +41,6 @@ RIG RIG::GenerateRIG(const Program& program) {
 
   // add definitions and uses and RIG nodes
   for (const auto& [var_idx, var] : deps.var_graph) {
-    if (!var_idx) continue;
     const auto gvar = GeneralizedVar::Var(var_idx);
     liveliness.at(var.created.first).def.emplace(gvar);
     liveliness.at(var.created.first).single[var.created.second].def = gvar;

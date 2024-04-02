@@ -122,8 +122,8 @@ struct Token {
   }
 };
 
-struct tIdentifier final : public Token {
-  explicit tIdentifier(std::string  name) :
+struct IdentifierToken final : public Token {
+  explicit IdentifierToken(std::string  name) :
     Token(TokenType::Identifier),
     name(std::move(name)) {
 
@@ -144,8 +144,8 @@ struct tIdentifier final : public Token {
 
 
 template<typename T>
-struct tNumericConstant final : public Token {
-  explicit tNumericConstant(T value) :
+struct NumericalConstantToken final : public Token {
+  explicit NumericalConstantToken(T value) :
       Token(TokenType::NumericConstant),
       value(value) {
 
@@ -165,8 +165,8 @@ struct tNumericConstant final : public Token {
 };
 
 
-struct tStringConstant : public Token {
-  explicit tStringConstant(const std::string value) :
+struct StringConstantToken : public Token {
+  explicit StringConstantToken(const std::string value) :
       Token(TokenType::StringConstant),
       value(value) {
 

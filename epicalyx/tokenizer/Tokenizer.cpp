@@ -30,11 +30,11 @@ pToken Tokenizer::GetNew() {
       if (in_stream.IsAfter(1, '\"')) {
         // prefixed string literal
         in_stream.Skip();
-        return Make<tStringConstant>(ReadString('\"'));
+        return Make<StringConstantToken>(ReadString('\"'));
       }
       else if (in_stream.IsAfter(1, '8') && in_stream.IsAfter(2, '\"')) {
         in_stream.Skip(2);
-        return Make<tStringConstant>(ReadString('\"'));
+        return Make<StringConstantToken>(ReadString('\"'));
       }
       else if (in_stream.IsAfter(1, '\'')) {
         // prefixed char literal
@@ -47,9 +47,9 @@ pToken Tokenizer::GetNew() {
         }
 
         if (is_unsigned) {
-          return Make<tNumericConstant<u32>>(value);
+          return Make<NumericalConstantToken<u32>>(value);
         }
-        return Make<tNumericConstant<i32>>(value);
+        return Make<NumericalConstantToken<i32>>(value);
       }
     }
 
@@ -59,7 +59,7 @@ pToken Tokenizer::GetNew() {
       return Make<Token>(Keywords.at(identifier));
     }
     else {
-      return Make<tIdentifier>(identifier);
+      return Make<IdentifierToken>(identifier);
     }
   }
   else if (std::isdigit(c) || (c == '.' && in_stream.PredicateAfter(1, std::isdigit))) {
@@ -68,7 +68,7 @@ pToken Tokenizer::GetNew() {
   }
   else if (c == '"') {
     // string literal
-    return Make<tStringConstant>(ReadString('\"'));
+    return Make<StringConstantToken>(ReadString('\"'));
   }
   else if (c == '\'') {
     // char literal
@@ -78,7 +78,7 @@ pToken Tokenizer::GetNew() {
       value <<= 8;
       value |= (u8)k;
     }
-    return Make<tNumericConstant<i32>>(value);
+    return Make<NumericalConstantToken<i32>>(value);
   }
   else {
     // punctuator
@@ -303,10 +303,10 @@ pToken Tokenizer::ReadNumericalConstant() {
   if (is_float) {
     double val = std::stod(value.finalize());
     if (is_long || (val != (float)val)) {
-      return Make<tNumericConstant<double>>(val);
+      return Make<NumericalConstantToken<double>>(val);
     }
     else {
-      return Make<tNumericConstant<float>>(val);
+      return Make<NumericalConstantToken<float>>(val);
     }
   }
   if (is_unsigned) {
@@ -327,10 +327,10 @@ pToken Tokenizer::ReadNumericalConstant() {
       val = std::stoull(value.finalize());
     }
     if (is_long == 2 || val > UINT32_MAX) {
-      return Make<tNumericConstant<u64>>(val);
+      return Make<NumericalConstantToken<u64>>(val);
     }
     else {
-      return Make<tNumericConstant<u32>>(val);
+      return Make<NumericalConstantToken<u32>>(val);
     }
   }
   else {
@@ -352,10 +352,10 @@ pToken Tokenizer::ReadNumericalConstant() {
     }
 
     if (is_long == 2 || val > INT32_MAX || val < INT32_MIN) {
-      return Make<tNumericConstant<i64>>(val);
+      return Make<NumericalConstantToken<i64>>(val);
     }
     else {
-      return Make<tNumericConstant<i32>>(val);
+      return Make<NumericalConstantToken<i32>>(val);
     }
   }
 }
