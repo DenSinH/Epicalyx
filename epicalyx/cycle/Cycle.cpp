@@ -26,40 +26,49 @@ void VisualGraph::Visualize(const std::string& filename) {
 
   if (square_nodes) agattr(g, AGNODE, (char*)"shape", (char*)"rectangle");
   else agattr(g, AGNODE, (char*)"shape", (char*)"circle");
-  agattr(g, AGNODE, (char*)"fontname", (char*)"Courier-Bold");
+  agattr(g, AGNODE, (char*)"fontname", (char*)"Courier New");
   agattr(g, AGNODE, (char*)"fontsize", (char*)"10");
+  agattr(g, AGEDGE, (char*)"fontname", (char*)"Courier New");
+  agattr(g, AGEDGE, (char*)"fontsize", (char*)"10");
 
   for (auto& [_, node] : graph) {
     auto& vnode = node.value;
     auto* n = vnode.agnode = agnode(g, const_cast<char*>(std::to_string(vnode.id).c_str()), 1);
     cotyl::StringStream label{};
+    label << "<b>";
     if (!vnode.title.empty()) {
       label << vnode.title;
     }
     else {
       label << std::to_string(vnode.id);
     }
+    label << "</b>";
 
     if (!vnode.body.empty()) {
-      label << "\\l";
       for (const auto& line : vnode.body) {
-        label << "\\l" << line;
+        label << "<br align=\"left\"/>";
+        
+        for (const auto& c : line) {
+          switch (c) {
+            case '<': label << "&lt;"; break;
+            case '>': label << "&gt;"; break;
+            default: label << c; break;
+          }
+        }
       }
-      label << "\\l";
+      label << "<br align=\"left\"/>";
     }
-    
-    agset(n, (char*)"label", const_cast<char*>(label.finalize().c_str()));
+    agset(n, (char*)"label", const_cast<char*>(agstrdup_html(g, label.finalize().c_str())));
   }
 
   for (auto& [_, node] : graph) {
     for (const auto& to_idx : node.to) {
       auto& to_node = graph[to_idx];
+      Agedge_t* e = agedge(g, (Agnode_t*)node.value.agnode, (Agnode_t*)to_node.value.agnode, nullptr, true);
       if (node.value.outputs.contains(to_idx)) {
         const auto& label = node.value.outputs.at(to_idx);
-        agedge(g, (Agnode_t*)node.value.agnode, (Agnode_t*)to_node.value.agnode, const_cast<char*>(label.c_str()), true);
-      }
-      else {
-        agedge(g, (Agnode_t*)node.value.agnode, (Agnode_t*)to_node.value.agnode, nullptr, true);
+        agsafeset(e, (char*)"label", const_cast<char*>(label.c_str()), "");
+        // agsafeset(e, (char*)"labeldistance", "2.0", "");
       }
     }
   }

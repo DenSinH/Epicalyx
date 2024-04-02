@@ -69,7 +69,8 @@ bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
       auto ancestor = CommonBlockAncestor(candidate_block, current_new_block_idx);
 
       // todo: shift directives back for earlier ancestor blocks
-      if (ancestor == current_new_block_idx || ancestor == candidate_block) {
+      // todo: improve this
+      if (ancestor == current_new_block_idx && ancestor == candidate_block) {
         const auto* candidate = cotyl::unique_ptr_cast<const T>(directive);
         if (predicate(*candidate, op)) {
           var_replacement[op.idx] = candidate->idx;
@@ -156,7 +157,7 @@ void BasicOptimizer::RemoveUnreachableBlockEdges(block_label_t block) {
     const auto& to_from = old_deps.block_graph.At(to_idx).from;
 
     // don't care for loops when removing unused blocks
-    if (std::count_if(to_from.begin(), to_from.end(), [to_idx](const auto idx) { return idx != to_idx; }) == 0) {
+    if (std::none_of(to_from.begin(), to_from.end(), [to_idx](const auto idx) { return idx != to_idx; })) {
       RemoveUnreachableBlockEdgesRecurse(to_idx);
     }
   }
@@ -183,6 +184,7 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
       auto inserted = new_program.blocks.emplace(current_new_block_idx, calyx::Program::block_t{}).first;
       current_block = &inserted->second;
       auto& node = new_block_graph.EmplaceNodeIfNotExists(current_new_block_idx, nullptr);
+      if (node.value) continue;  // we have already emitted this block
       node.value = current_block;
 
       bool block_finished;
@@ -811,6 +813,22 @@ void BasicOptimizer::Emit(const Select& _op) {
     }
     else {
       throw std::runtime_error("Invalid switch selection with constant expression");
+    }
+  }
+  else {
+    for (const auto& [val, block_idx] : op->table) {
+      if (!new_block_graph.Has(block_idx)) {
+        new_block_graph.AddNode(block_idx, nullptr);
+        new_block_graph.AddEdge(current_new_block_idx, block_idx);
+        todo.insert(block_idx);
+      }
+    }
+    if (op->_default) {
+      if (!new_block_graph.Has(op->_default)) {
+        new_block_graph.AddNode(op->_default, nullptr);
+        new_block_graph.AddEdge(current_new_block_idx, op->_default);
+        todo.insert(op->_default);
+      }
     }
   }
 

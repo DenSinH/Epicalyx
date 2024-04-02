@@ -153,7 +153,7 @@ std::string BranchCompareImm<T>::ToString() const {
 }
 
 std::string Select::ToString() const {
-  return cotyl::FormatStr("select v%s", idx);
+  return cotyl::FormatStr("selct v%s", idx);
 }
 
 template<typename T>

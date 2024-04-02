@@ -1,5 +1,4 @@
-int main() {
-  int x = 0;
+int test(int x) {
   int y = 0;
   switch (x) {
     case 0:
@@ -14,4 +13,8 @@ int main() {
       break;
   }
   return y;
+}
+
+int main() {
+  return test(12);
 }
