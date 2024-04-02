@@ -6,11 +6,11 @@
 
 namespace epi {
 
-pNode<Stat> Parser::SStatement() {
+pNode<StatNode> Parser::SStatement() {
   switch (in_stream.ForcePeek()->type) {
     case TokenType::SemiColon: {
       in_stream.Skip();
-      return std::make_unique<Empty>();
+      return std::make_unique<EmptyNode>();
     }
     case TokenType::Case: {
       in_stream.Skip();
@@ -20,7 +20,7 @@ pNode<Stat> Parser::SStatement() {
       // validation
       case_scope.Add(expr);
 
-      auto case_stat = std::make_unique<Case>(expr, SStatement());
+      auto case_stat = std::make_unique<CaseNode>(expr, SStatement());
 
       auto reduced = case_stat->SReduce(*this);
       if (reduced) return reduced;
@@ -28,7 +28,7 @@ pNode<Stat> Parser::SStatement() {
     }
     case TokenType::Default: {
       in_stream.EatSequence(TokenType::Default, TokenType::Colon);
-      auto def_stat = std::make_unique<Default>(SStatement());
+      auto def_stat = std::make_unique<DefaultNode>(SStatement());
 
       auto reduced = def_stat->SReduce(*this);
       if (reduced) return reduced;
@@ -47,7 +47,7 @@ pNode<Stat> Parser::SStatement() {
 
       auto stat = case_scope << [&]{ return SStatement(); };
 
-      auto switch_stat = std::make_unique<Switch>(std::move(expr), std::move(stat));
+      auto switch_stat = std::make_unique<SwitchNode>(std::move(expr), std::move(stat));
 
       auto reduced = switch_stat->SReduce(*this);
       if (reduced) return reduced;
@@ -67,11 +67,11 @@ pNode<Stat> Parser::SStatement() {
 
       auto stat = SStatement();
       if (!in_stream.IsAfter(0, TokenType::Else)) {
-        return std::make_unique<If>(std::move(cond), std::move(stat));
+        return std::make_unique<IfNode>(std::move(cond), std::move(stat));
       }
       in_stream.Skip();
 
-      auto if_stat = std::make_unique<If>(std::move(cond), std::move(stat), SStatement());
+      auto if_stat = std::make_unique<IfNode>(std::move(cond), std::move(stat), SStatement());
 
       auto reduced = if_stat->SReduce(*this);
       if (reduced) return reduced;
@@ -91,7 +91,7 @@ pNode<Stat> Parser::SStatement() {
       loop_scope.push_back(Loop::While);
       auto stat = SStatement();
       loop_scope.pop_back();
-      auto while_stat = std::make_unique<While>(std::move(cond), std::move(stat));
+      auto while_stat = std::make_unique<WhileNode>(std::move(cond), std::move(stat));
 
       auto reduced = while_stat->SReduce(*this);
       if (reduced) return reduced;
@@ -114,7 +114,7 @@ pNode<Stat> Parser::SStatement() {
       }
 
       in_stream.EatSequence(TokenType::RParen, TokenType::SemiColon);
-      auto dowhile_stat = std::make_unique<DoWhile>(std::move(stat), std::move(cond));
+      auto dowhile_stat = std::make_unique<DoWhileNode>(std::move(stat), std::move(cond));
 
       auto reduced = dowhile_stat->SReduce(*this);
       if (reduced) return reduced;
@@ -126,7 +126,7 @@ pNode<Stat> Parser::SStatement() {
 
       // new scope for for loop declarations
       PushScope();
-      std::vector<pNode<Declaration>> decl_list;
+      std::vector<pNode<DeclarationNode>> decl_list;
       if (IsDeclarationSpecifier()) {
         DInitDeclaratorList(decl_list);
       }
@@ -151,7 +151,7 @@ pNode<Stat> Parser::SStatement() {
       auto stat = SStatement();
       loop_scope.pop_back();
 
-      auto for_stat = std::make_unique<For>(
+      auto for_stat = std::make_unique<ForNode>(
           std::move(decl_list),
           std::move(init),
           std::move(cond),
@@ -176,7 +176,7 @@ pNode<Stat> Parser::SStatement() {
         unresolved_labels.insert(label);
       }
 
-      return std::make_unique<Goto>(std::move(label));
+      return std::make_unique<GotoNode>(std::move(label));
     }
     case TokenType::Continue: {
       in_stream.Skip();
@@ -184,20 +184,20 @@ pNode<Stat> Parser::SStatement() {
         throw std::runtime_error("Cannot continue from here");
       }
 
-      return std::make_unique<Continue>();
+      return std::make_unique<ContinueNode>();
     }
     case TokenType::Break: {
       in_stream.Skip();
       if (loop_scope.empty() && (case_scope.Depth() == 1)) {
         throw std::runtime_error("Cannot break from here");
       }
-      return std::make_unique<Break>();
+      return std::make_unique<BreakNode>();
     }
     case TokenType::Return: {
       in_stream.Skip();
       if (in_stream.IsAfter(0, TokenType::SemiColon)) {
         in_stream.Skip();
-        return std::make_unique<Return>();
+        return std::make_unique<ReturnNode>();
       }
       auto expr = EExpression();
       in_stream.Eat(TokenType::SemiColon);
@@ -205,7 +205,7 @@ pNode<Stat> Parser::SStatement() {
       // check function return type
       function_return->Cast(*expr->GetType());
 
-      auto ret_stat = std::make_unique<Return>(std::move(expr));
+      auto ret_stat = std::make_unique<ReturnNode>(std::move(expr));
       auto reduced = ret_stat->SReduce(*this);
       if (reduced) return reduced;
       return ret_stat;
@@ -226,7 +226,7 @@ pNode<Stat> Parser::SStatement() {
           throw cotyl::FormatExceptStr("Duplicate label: %s", name);
         }
         labels.insert(name);
-        return std::make_unique<Label>(std::move(name), SStatement());
+        return std::make_unique<LabelNode>(std::move(name), SStatement());
       }
     } [[fallthrough]];
     default: {
@@ -239,7 +239,7 @@ pNode<Stat> Parser::SStatement() {
       if (exprlist.size() == 1) {
         return std::move(exprlist[0]);
       }
-      auto compound = std::make_unique<Compound>();
+      auto compound = std::make_unique<CompoundNode>();
       for (auto& expr : exprlist) {
         expr->SemanticAnalysis(*this);  // validates expression
         compound->AddNode(std::move(expr));
@@ -249,15 +249,15 @@ pNode<Stat> Parser::SStatement() {
   }
 }
 
-pNode<Compound> Parser::SCompound() {
-  auto compound =  std::make_unique<Compound>();
+pNode<CompoundNode> Parser::SCompound() {
+  auto compound =  std::make_unique<CompoundNode>();
   PushScope();
   while (!in_stream.IsAfter(0, TokenType::RBrace)) {
     if (in_stream.IsAfter(0, TokenType::StaticAssert)) {
       DStaticAssert();
     }
     else if (IsDeclarationSpecifier()) {
-      std::vector<pNode<Declaration>> decl_list;
+      std::vector<pNode<DeclarationNode>> decl_list;
       DInitDeclaratorList(decl_list);
       in_stream.Eat(TokenType::SemiColon);
       for (auto& decl : decl_list) {

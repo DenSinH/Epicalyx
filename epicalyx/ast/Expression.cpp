@@ -9,7 +9,7 @@ namespace epi::ast {
 template<typename T>
 void ConstTypeVisitor::VisitValueType(const ValueType<T>& type) {
   if (type.HasValue()) {
-    reduced = std::make_unique<NumericalConstant<T>>(type.Get());
+    reduced = std::make_unique<NumericalConstantNode<T>>(type.Get());
   }
 }
 
@@ -24,7 +24,7 @@ void ConstTypeVisitor::Visit(const ValueType<u64>& type) { VisitValueType(type);
 void ConstTypeVisitor::Visit(const ValueType<float>& type) { VisitValueType(type); }
 void ConstTypeVisitor::Visit(const ValueType<double>& type) { VisitValueType(type); }
 
-std::string FunctionCall::ToString() const {
+std::string FunctionCallNode::ToString() const {
   cotyl::StringStream result{};
   result << left->ToString() << '(';
   for (int i = 0; i < args.size(); i++) {
@@ -37,25 +37,25 @@ std::string FunctionCall::ToString() const {
   return result.finalize();
 }
 
-std::string MemberAccess::ToString() const {
+std::string MemberAccessNode::ToString() const {
   if (direct) {
     return cotyl::FormatStr("(%s).%s", left, member);
   }
   return cotyl::FormatStr("(%s)->%s", left, member);
 }
 
-pType<const CType> Identifier::SemanticAnalysisImpl(const ConstParser& parser) const {
+pType<const CType> IdentifierNode::SemanticAnalysisImpl(const ConstParser& parser) const {
   return parser.ResolveIdentifierType(name);
 }
 
 template<typename T>
-pType<const CType> NumericalConstant<T>::SemanticAnalysisImpl(const ConstParser&) const {
+pType<const CType> NumericalConstantNode<T>::SemanticAnalysisImpl(const ConstParser&) const {
   return MakeType<ValueType<T>>(
           value, CType::LValueNess::None, CType::Qualifier::Const
   );
 }
 
-pType<const CType> StringConstant::SemanticAnalysisImpl(const ConstParser&) const {
+pType<const CType> StringConstantNode::SemanticAnalysisImpl(const ConstParser&) const {
   return MakeType<PointerType>(
           MakeType<ValueType<i8>>(CType::LValueNess::Assignable, CType::Qualifier::Const),
           CType::LValueNess::None,
@@ -63,11 +63,11 @@ pType<const CType> StringConstant::SemanticAnalysisImpl(const ConstParser&) cons
   );
 }
 
-pType<const CType> ArrayAccess::SemanticAnalysisImpl(const ConstParser& parser) const {
+pType<const CType> ArrayAccessNode::SemanticAnalysisImpl(const ConstParser& parser) const {
   return left->SemanticAnalysis(parser)->ArrayAccess(*right->SemanticAnalysis(parser));
 }
 
-pType<const CType> FunctionCall::SemanticAnalysisImpl(const ConstParser& parser) const {
+pType<const CType> FunctionCallNode::SemanticAnalysisImpl(const ConstParser& parser) const {
   std::vector<pType<const CType>> call_args{};
   for (const auto& arg : args) {
     call_args.push_back(arg->SemanticAnalysis(parser));
@@ -75,29 +75,29 @@ pType<const CType> FunctionCall::SemanticAnalysisImpl(const ConstParser& parser)
   return left->SemanticAnalysis(parser)->FunctionCall(call_args);
 }
 
-pType<const CType> MemberAccess::SemanticAnalysisImpl(const ConstParser& parser) const {
+pType<const CType> MemberAccessNode::SemanticAnalysisImpl(const ConstParser& parser) const {
   if (direct) {
     return left->SemanticAnalysis(parser)->MemberAccess(member);
   }
   return left->SemanticAnalysis(parser)->Deref()->MemberAccess(member);
 }
 
-pType<const CType> TypeInitializer::SemanticAnalysisImpl(const ConstParser& parser) const {
+pType<const CType> TypeInitializerNode::SemanticAnalysisImpl(const ConstParser& parser) const {
   auto visitor = ValidInitializerListVisitor(parser, *list);
   type->Visit(visitor);
   return type;
 }
 
-pType<const CType> PostFix::SemanticAnalysisImpl(const ConstParser& parser) const {
+pType<const CType> PostFixNode::SemanticAnalysisImpl(const ConstParser& parser) const {
   switch (op) {
     case TokenType::Incr: return left->SemanticAnalysis(parser)->Incr();
     case TokenType::Decr: return left->SemanticAnalysis(parser)->Decr();
     default:
-      throw cotyl::FormatExceptStr("Bad AST (postfix: %s)", Token(op));
+      throw cotyl::FormatExceptStr("Bad AST (PostFixNode: %s)", Token(op));
   }
 }
 
-pType<const CType> Unary::SemanticAnalysisImpl(const ConstParser& parser) const {
+pType<const CType> UnopNode::SemanticAnalysisImpl(const ConstParser& parser) const {
   switch (op) {
     case TokenType::Incr: return left->SemanticAnalysis(parser)->Incr();
     case TokenType::Decr: return left->SemanticAnalysis(parser)->Decr();
@@ -108,15 +108,15 @@ pType<const CType> Unary::SemanticAnalysisImpl(const ConstParser& parser) const 
     case TokenType::Tilde: return left->SemanticAnalysis(parser)->BinNot();
     case TokenType::Exclamation: return left->SemanticAnalysis(parser)->LogNot();
     default:
-      throw cotyl::FormatExceptStr("Bad AST (unary: %s)", Token(op));
+      throw cotyl::FormatExceptStr("Bad AST (UnopNode: %s)", Token(op));
   }
 }
 
-pType<const CType> Cast::SemanticAnalysisImpl(const ConstParser& parser) const {
+pType<const CType> CastNode::SemanticAnalysisImpl(const ConstParser& parser) const {
   return type->Cast(*expr->SemanticAnalysis(parser));
 }
 
-pType<const CType> Binop::SemanticAnalysisImpl(const ConstParser& parser) const {
+pType<const CType> BinopNode::SemanticAnalysisImpl(const ConstParser& parser) const {
   switch (op) {
     case TokenType::Asterisk: return left->SemanticAnalysis(parser)->Mul(*right->SemanticAnalysis(parser));
     case TokenType::Div: return left->SemanticAnalysis(parser)->Div(*right->SemanticAnalysis(parser));
@@ -137,11 +137,11 @@ pType<const CType> Binop::SemanticAnalysisImpl(const ConstParser& parser) const 
     case TokenType::LogicalAnd: return left->SemanticAnalysis(parser)->LogAnd(*right->SemanticAnalysis(parser));
     case TokenType::LogicalOr: return left->SemanticAnalysis(parser)->LogOr(*right->SemanticAnalysis(parser));
     default:
-      throw cotyl::FormatExceptStr("Bad AST (binop: %s)", Token(op));
+      throw cotyl::FormatExceptStr("Bad AST (BinopNode: %s)", Token(op));
   }
 }
 
-pType<const CType> Ternary::SemanticAnalysisImpl(const ConstParser& parser) const {
+pType<const CType> TernaryNode::SemanticAnalysisImpl(const ConstParser& parser) const {
   auto cond_t = cond->SemanticAnalysis(parser);
   auto true_t = _true->SemanticAnalysis(parser);
   auto false_t = _false->SemanticAnalysis(parser);
@@ -157,7 +157,7 @@ pType<const CType> Ternary::SemanticAnalysisImpl(const ConstParser& parser) cons
   return true_t->CommonType(*false_t);
 }
 
-pType<const CType> Assignment::SemanticAnalysisImpl(const ConstParser& parser) const {
+pType<const CType> AssignmentNode::SemanticAnalysisImpl(const ConstParser& parser) const {
   auto left_t = left->SemanticAnalysis(parser);
   if (!left_t->IsAssignable()) {
     throw std::runtime_error("Cannot assign to expression");
@@ -186,14 +186,14 @@ pType<const CType> Assignment::SemanticAnalysisImpl(const ConstParser& parser) c
   }
 }
 
-pExpr MemberAccess::EReduce(const Parser& parser) {
+pExpr MemberAccessNode::EReduce(const Parser& parser) {
   auto n_left = left->EReduce(parser);
   if (n_left) left = std::move(n_left);
   // todo: constant struct lookup
   return nullptr;
 }
 
-pExpr ArrayAccess::EReduce(const Parser& parser) {
+pExpr ArrayAccessNode::EReduce(const Parser& parser) {
   auto n_left = left->EReduce(parser);
   if (n_left) left = std::move(n_left);
   auto n_right = right->EReduce(parser);
@@ -202,7 +202,7 @@ pExpr ArrayAccess::EReduce(const Parser& parser) {
   return nullptr;
 }
 
-pExpr FunctionCall::EReduce(const Parser& parser) {
+pExpr FunctionCallNode::EReduce(const Parser& parser) {
   auto n_left = left->EReduce(parser);
   if (n_left) left = std::move(n_left);
 
@@ -214,19 +214,19 @@ pExpr FunctionCall::EReduce(const Parser& parser) {
   return nullptr;
 }
 
-pExpr TypeInitializer::EReduce(const Parser& parser) {
+pExpr TypeInitializerNode::EReduce(const Parser& parser) {
   return ReduceInitializerListVisitor(parser, *list).Reduce(*type);
 }
 
-pExpr Binop::EReduce(const Parser& parser) {
+pExpr BinopNode::EReduce(const Parser& parser) {
   auto n_left = left->EReduce(parser);
   if (n_left) left = std::move(n_left);
   auto n_right = right->EReduce(parser);
   if (n_right) right = std::move(n_right);
-  return Expr::EReduce(parser);
+  return ExprNode::EReduce(parser);
 }
 
-pExpr Ternary::EReduce(const Parser& parser) {
+pExpr TernaryNode::EReduce(const Parser& parser) {
   auto n_cond = cond->EReduce(parser);
   if (n_cond) cond = std::move(n_cond);
   auto n_true = _true->EReduce(parser);
@@ -234,27 +234,27 @@ pExpr Ternary::EReduce(const Parser& parser) {
   auto n_false = _false->EReduce(parser);
   if (n_false) _false = std::move(n_false);
 
-  return Expr::EReduce(parser);
+  return ExprNode::EReduce(parser);
 }
 
-pExpr Assignment::EReduce(const Parser& parser) {
+pExpr AssignmentNode::EReduce(const Parser& parser) {
   auto n_left = left->EReduce(parser);
   if (n_left) left = std::move(n_left);
   auto n_right = right->EReduce(parser);
   if (n_right) right = std::move(n_right);
-  // assignment may never be replaced
+  // AssignmentNode may never be replaced
   return nullptr;
 }
 
-template struct NumericalConstant<i8>;
-template struct NumericalConstant<u8>;
-template struct NumericalConstant<i16>;
-template struct NumericalConstant<u16>;
-template struct NumericalConstant<i32>;
-template struct NumericalConstant<u32>;
-template struct NumericalConstant<i64>;
-template struct NumericalConstant<u64>;
-template struct NumericalConstant<float>;
-template struct NumericalConstant<double>;
+template struct NumericalConstantNode<i8>;
+template struct NumericalConstantNode<u8>;
+template struct NumericalConstantNode<i16>;
+template struct NumericalConstantNode<u16>;
+template struct NumericalConstantNode<i32>;
+template struct NumericalConstantNode<u32>;
+template struct NumericalConstantNode<i64>;
+template struct NumericalConstantNode<u64>;
+template struct NumericalConstantNode<float>;
+template struct NumericalConstantNode<double>;
 
 }

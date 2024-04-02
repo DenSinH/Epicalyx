@@ -14,46 +14,46 @@ struct Parser;
 
 namespace epi::ast {
 
-struct Declaration;
-struct FunctionDefinition;
+struct DeclarationNode;
+struct FunctionDefinitionNode;
 
-struct Identifier;
-template<typename T> struct NumericalConstant;
-struct StringConstant;
-struct ArrayAccess;
-struct FunctionCall;
-struct MemberAccess;
-struct TypeInitializer;
-struct PostFix;
-struct Unary;
-struct Cast;
-struct Binop;
-struct Ternary;
-struct Assignment;
+struct IdentifierNode;
+template<typename T> struct NumericalConstantNode;
+struct StringConstantNode;
+struct ArrayAccessNode;
+struct FunctionCallNode;
+struct MemberAccessNode;
+struct TypeInitializerNode;
+struct PostFixNode;
+struct UnopNode;
+struct CastNode;
+struct BinopNode;
+struct TernaryNode;
+struct AssignmentNode;
 
-struct Empty;
-struct If;
-struct While;
-struct DoWhile;
-struct For;
-struct Label;
-struct Switch;
-struct Case;
-struct Default;
-struct Goto;
-struct Return;
-struct Break;
-struct Continue;
-struct Compound;
+struct EmptyNode;
+struct IfNode;
+struct WhileNode;
+struct DoWhileNode;
+struct ForNode;
+struct LabelNode;
+struct SwitchNode;
+struct CaseNode;
+struct DefaultNode;
+struct GotoNode;
+struct ReturnNode;
+struct BreakNode;
+struct ContinueNode;
+struct CompoundNode;
 
 struct Node;
-struct Decl;
-struct Stat;
-struct Expr;
+struct DeclNode;
+struct StatNode;
+struct ExprNode;
 
 template<typename T = Node>
 using pNode = std::unique_ptr<T>;
-using pExpr = pNode<Expr>;
+using pExpr = pNode<ExprNode>;
 
 struct NodeVisitor;
 
@@ -62,29 +62,29 @@ struct Node {
 
   virtual std::string ToString() const = 0;
   virtual pNode<> Reduce(const Parser& parser) = 0;
-  virtual bool IsDeclaration() const { return false; }
+  virtual bool IsDeclarationNode() const { return false; }
   virtual bool IsStatement() const { return false; }
 
   virtual void Visit(NodeVisitor& visitor) = 0;
 };
 
-struct Decl : public Node {
+struct DeclNode : public Node {
 
-  bool IsDeclaration() const final { return true; }
+  bool IsDeclarationNode() const final { return true; }
   virtual void VerifyAndRecord(Parser& parser) = 0;
 
   pNode<> Reduce(const Parser& parser) override { return nullptr; };
 };
 
-struct Stat : public Node {
+struct StatNode : public Node {
 
   bool IsStatement() const final { return true; }
 
   pNode<> Reduce(const Parser& parser) override { return SReduce(parser); }
-  virtual pNode<Stat> SReduce(const Parser& parser) { return nullptr; }
+  virtual pNode<StatNode> SReduce(const Parser& parser) { return nullptr; }
 };
 
-struct Expr : public Stat {
+struct ExprNode : public StatNode {
   pType<const CType> type = nullptr;
 
   const pType<const CType>& GetType() const {
@@ -106,7 +106,7 @@ public:
 
   pNode<> Reduce(const Parser& parser) override { return EReduce(parser); }
   virtual pExpr EReduce(const Parser& parser);
-  pNode<Stat> SReduce(const Parser& parser) final { return EReduce(parser); }
+  pNode<StatNode> SReduce(const Parser& parser) final { return EReduce(parser); }
 };
 
 }

@@ -274,6 +274,7 @@ struct Shift : Expr {
 
   var_index_t left_idx;
   ShiftType op;
+  // right type is ALWAYS u32
   var_index_t right_idx;
 
   std::string ToString() const final;
@@ -681,6 +682,7 @@ struct Select : Directive {
 
   }
 
+  // var is ALWAYS i64
   var_index_t idx;
   cotyl::unordered_map<i64, block_label_t> table{};
   block_label_t _default = 0;

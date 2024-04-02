@@ -53,7 +53,7 @@ void ValidInitializerListVisitor::VisitScalar(const CType& type) {
   if (!std::holds_alternative<pExpr>(list.list[0].second)) {
     throw std::runtime_error("Expected expression, got initializer list");
   }
-  // try to cast
+  // try to CastNode
   type.Cast(*std::get<pExpr>(list.list[0].second)->GetType());
 }
 
@@ -68,18 +68,18 @@ void ValidInitializerListVisitor::Visit(const ArrayType& type) {
 void ReduceInitializerListVisitor::VisitScalar(const CType& type) {
   // list has already been verified
   if (list.list.empty()) {
-    reduced = std::make_unique<Cast>(type.Clone(), std::make_unique<NumericalConstant<i32>>(0));
+    reduced = std::make_unique<CastNode>(type.Clone(), std::make_unique<NumericalConstantNode<i32>>(0));
   }
   else {
     auto expr = std::move(std::get<pExpr>(list.list[0].second));
     auto n_expr = expr->EReduce(parser);
     if (n_expr) {
-      reduced = std::make_unique<Cast>(type.Clone(), std::move(n_expr));
+      reduced = std::make_unique<CastNode>(type.Clone(), std::move(n_expr));
       auto n_reduced = reduced->EReduce(parser);
       if (n_reduced) reduced = std::move(n_reduced);
     }
     else {
-      reduced = std::make_unique<Cast>(type.Clone(), std::move(expr));
+      reduced = std::make_unique<CastNode>(type.Clone(), std::move(expr));
       auto n_reduced = reduced->EReduce(parser);
       if (n_reduced) reduced = std::move(n_reduced);
     }

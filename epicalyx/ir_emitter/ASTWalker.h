@@ -49,7 +49,7 @@ struct ASTWalker : public ast::NodeVisitor {
   calyx::var_index_t current;
   Emitter& emitter;
 
-  const ast::FunctionDefinition* function = nullptr;
+  const ast::FunctionDefinitionNode* function = nullptr;
 
   template<template<typename T> class Op, typename... Args>
   void EmitIntegralExpr(calyx::Var::Type type, Args... args);
@@ -72,49 +72,49 @@ struct ASTWalker : public ast::NodeVisitor {
   BinopCastResult BinopCastHelper(calyx::var_index_t left, calyx::var_index_t right);
   void BinopHelper(calyx::var_index_t left, calyx::BinopType op, calyx::var_index_t right);
 
-  void Visit(ast::Declaration& decl) final;
-  void Visit(ast::FunctionDefinition& decl) final;
-  void Visit(ast::Identifier& decl) final;
+  void Visit(ast::DeclarationNode& decl) final;
+  void Visit(ast::FunctionDefinitionNode& decl) final;
+  void Visit(ast::IdentifierNode& decl) final;
 
-  void Visit(ast::NumericalConstant<i8>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstant<u8>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstant<i16>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstant<u16>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstant<i32>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstant<u32>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstant<i64>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstant<u64>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstant<float>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstant<double>& expr) final { ConstVisitImpl(expr); }
+  void Visit(ast::NumericalConstantNode<i8>& expr) final { ConstVisitImpl(expr); }
+  void Visit(ast::NumericalConstantNode<u8>& expr) final { ConstVisitImpl(expr); }
+  void Visit(ast::NumericalConstantNode<i16>& expr) final { ConstVisitImpl(expr); }
+  void Visit(ast::NumericalConstantNode<u16>& expr) final { ConstVisitImpl(expr); }
+  void Visit(ast::NumericalConstantNode<i32>& expr) final { ConstVisitImpl(expr); }
+  void Visit(ast::NumericalConstantNode<u32>& expr) final { ConstVisitImpl(expr); }
+  void Visit(ast::NumericalConstantNode<i64>& expr) final { ConstVisitImpl(expr); }
+  void Visit(ast::NumericalConstantNode<u64>& expr) final { ConstVisitImpl(expr); }
+  void Visit(ast::NumericalConstantNode<float>& expr) final { ConstVisitImpl(expr); }
+  void Visit(ast::NumericalConstantNode<double>& expr) final { ConstVisitImpl(expr); }
   template<typename T>
-  void ConstVisitImpl(ast::NumericalConstant<T>& expr);
+  void ConstVisitImpl(ast::NumericalConstantNode<T>& expr);
 
-  void Visit(ast::StringConstant& expr) final;
-  void Visit(ast::ArrayAccess& expr) final;
-  void Visit(ast::FunctionCall& expr) final;
-  void Visit(ast::MemberAccess& expr) final;
-  void Visit(ast::TypeInitializer& expr) final;
-  void Visit(ast::PostFix& expr) final;
-  void Visit(ast::Unary& expr) final;
-  void Visit(ast::Cast& expr) final;
-  void Visit(ast::Binop& expr) final;
-  void Visit(ast::Ternary& expr) final;
-  void Visit(ast::Assignment& expr) final;
+  void Visit(ast::StringConstantNode& expr) final;
+  void Visit(ast::ArrayAccessNode& expr) final;
+  void Visit(ast::FunctionCallNode& expr) final;
+  void Visit(ast::MemberAccessNode& expr) final;
+  void Visit(ast::TypeInitializerNode& expr) final;
+  void Visit(ast::PostFixNode& expr) final;
+  void Visit(ast::UnopNode& expr) final;
+  void Visit(ast::CastNode& expr) final;
+  void Visit(ast::BinopNode& expr) final;
+  void Visit(ast::TernaryNode& expr) final;
+  void Visit(ast::AssignmentNode& expr) final;
 
-  void Visit(ast::Empty& stat) final;
-  void Visit(ast::If& stat) final;
-  void Visit(ast::While& stat) final;
-  void Visit(ast::DoWhile& stat) final;
-  void Visit(ast::For& stat) final;
-  void Visit(ast::Label& stat) final;
-  void Visit(ast::Switch& stat) final;
-  void Visit(ast::Case& stat) final;
-  void Visit(ast::Default& stat) final;
-  void Visit(ast::Goto& stat) final;
-  void Visit(ast::Return& stat) final;
-  void Visit(ast::Break& stat) final;
-  void Visit(ast::Continue& stat) final;
-  void Visit(ast::Compound& stat) final;
+  void Visit(ast::EmptyNode& stat) final;
+  void Visit(ast::IfNode& stat) final;
+  void Visit(ast::WhileNode& stat) final;
+  void Visit(ast::DoWhileNode& stat) final;
+  void Visit(ast::ForNode& stat) final;
+  void Visit(ast::LabelNode& stat) final;
+  void Visit(ast::SwitchNode& stat) final;
+  void Visit(ast::CaseNode& stat) final;
+  void Visit(ast::DefaultNode& stat) final;
+  void Visit(ast::GotoNode& stat) final;
+  void Visit(ast::ReturnNode& stat) final;
+  void Visit(ast::BreakNode& stat) final;
+  void Visit(ast::ContinueNode& stat) final;
+  void Visit(ast::CompoundNode& stat) final;
 };
 
 }

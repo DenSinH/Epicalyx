@@ -12,7 +12,7 @@
 
 namespace epi::ast {
 
-struct Compound;
+struct CompoundNode;
 
 enum class StorageClass {
   None,
@@ -24,9 +24,9 @@ enum class StorageClass {
   Auto,
 };
 
-struct Declaration final : public Decl {
+struct DeclarationNode final : public DeclNode {
 
-  Declaration(pType<> type, std::string name, StorageClass storage = StorageClass::Auto, std::optional<Initializer> value = {}) :
+  DeclarationNode(pType<> type, std::string name, StorageClass storage = StorageClass::Auto, std::optional<Initializer> value = {}) :
       name(std::move(name)),
       type(std::move(type)),
       storage(storage),
@@ -45,13 +45,13 @@ struct Declaration final : public Decl {
   void DReduce(const Parser &parser);
 };
 
-struct FunctionDefinition final : public Decl {
+struct FunctionDefinitionNode final : public DeclNode {
 
-  FunctionDefinition(pType<const FunctionType> signature, std::string symbol, pNode<Compound>&& body) ;
+  FunctionDefinitionNode(pType<const FunctionType> signature, std::string symbol, pNode<CompoundNode>&& body) ;
 
   pType<const FunctionType> signature;
   const std::string symbol;
-  pNode<Compound> body;
+  pNode<CompoundNode> body;
 
   std::string ToString() const final;
   void VerifyAndRecord(Parser& parser) final;

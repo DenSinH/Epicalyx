@@ -8,6 +8,7 @@
 #include "tokenizer/Tokenizer.h"
 #include "parser/Parser.h"
 #include "regalloc/RIG.h"
+#include "regalloc/regspaces/Example.h"
 
 
 #include "Log.h"
@@ -37,7 +38,7 @@ void PrintProgram(const epi::Program& program) {
 
 
 int main() {
-  auto preprocessor = epi::Preprocessor("examples/emitting/loops.c");
+  auto preprocessor = epi::Preprocessor("examples/emitting/functions.c");
 
   // while (!preprocessor.EOS()) {
   //   std::cout << preprocessor.Get();
@@ -163,6 +164,18 @@ int main() {
 
   auto rig = epi::RIG::GenerateRIG(program);
   rig.Visualize("output/rig.pdf");
+
+  auto regspace = epi::RegisterSpace::GetRegSpace<epi::ExampleRegSpace>(program);
+  for (const auto& [gvar, regtype] : regspace->register_type_map) {
+    if (gvar.is_local) std::cout << 'c';
+    else std::cout << 'v';
+    std::cout << gvar.idx << ' ';
+    switch (regtype) {
+      case epi::ExampleRegSpace::RegType::GPR: std::cout << "GPR"; break;
+      case epi::ExampleRegSpace::RegType::FPR: std::cout << "FPR"; break;
+    }
+    std::cout << std::endl;
+  }
 
   return 0;
 }

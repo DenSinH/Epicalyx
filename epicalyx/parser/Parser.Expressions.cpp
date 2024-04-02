@@ -43,7 +43,7 @@ pExpr Parser::EPrimary() {
       std::string name = cotyl::unique_ptr_cast<tIdentifier>(current)->name;
       if (enum_values.Has(name)) {
         // replace enum values with constants immediately
-        return std::make_unique<NumericalConstant<enum_type>>(enum_values.Get(name));
+        return std::make_unique<NumericalConstantNode<enum_type>>(enum_values.Get(name));
       }
     } [[fallthrough]];
     case TokenClass::StringConstant:
@@ -77,12 +77,12 @@ pExpr Parser::EPostfix() {
         // todo: is EExpression, but the commas make no sense
         auto right = EExpression();
         in_stream.Eat(TokenType::RBracket);
-        node = std::make_unique<ArrayAccess>(std::move(node), std::move(right));
+        node = std::make_unique<ArrayAccessNode>(std::move(node), std::move(right));
         break;
       }
       case TokenType::LParen: {
         // function call
-        auto func = std::make_unique<FunctionCall>(std::move(node));
+        auto func = std::make_unique<FunctionCallNode>(std::move(node));
         in_stream.Skip();
         while (in_stream.Peek(current) && current->type != TokenType::RParen) {
           func->AddArg(EAssignment());
@@ -95,26 +95,26 @@ pExpr Parser::EPostfix() {
         // indirect member access
         in_stream.Skip();
         auto member = in_stream.Eat(TokenType::Identifier);
-        node = std::make_unique<MemberAccess>(std::move(node), false, cotyl::unique_ptr_cast<tIdentifier>(member)->name);
+        node = std::make_unique<MemberAccessNode>(std::move(node), false, cotyl::unique_ptr_cast<tIdentifier>(member)->name);
         break;
       }
       case TokenType::Dot: {
         // direct member access
         in_stream.Skip();
         auto member = in_stream.Eat(TokenType::Identifier);
-        node = std::make_unique<MemberAccess>(std::move(node), true, cotyl::unique_ptr_cast<tIdentifier>(member)->name);
+        node = std::make_unique<MemberAccessNode>(std::move(node), true, cotyl::unique_ptr_cast<tIdentifier>(member)->name);
         break;
       }
       case TokenType::Incr: {
         // expr++
         in_stream.Skip();
-        node = std::make_unique<PostFix>(TokenType::Incr, std::move(node));
+        node = std::make_unique<PostFixNode>(TokenType::Incr, std::move(node));
         break;
       }
       case TokenType::Decr: {
         // expr--
         in_stream.Skip();
-        node = std::make_unique<PostFix>(TokenType::Decr, std::move(node));
+        node = std::make_unique<PostFixNode>(TokenType::Decr, std::move(node));
         break;
       }
       default:
@@ -138,7 +138,7 @@ pExpr Parser::EUnary() {
     {
       in_stream.Skip();
       auto right = ECast();
-      return std::make_unique<Unary>(type, std::move(right));
+      return std::make_unique<UnopNode>(type, std::move(right));
     }
     case TokenType::Sizeof: {
       // sizeof(expr) / sizeof(type-name)
@@ -147,16 +147,16 @@ pExpr Parser::EUnary() {
         in_stream.Eat(TokenType::LParen);
         auto type_name = ETypeName();
         in_stream.Eat(TokenType::RParen);
-        return std::make_unique<NumericalConstant<u64>>(type_name->Sizeof());
+        return std::make_unique<NumericalConstantNode<u64>>(type_name->Sizeof());
       }
-      return std::make_unique<NumericalConstant<u64>>(EExpression()->SemanticAnalysis(*this)->Sizeof());
+      return std::make_unique<NumericalConstantNode<u64>>(EExpression()->SemanticAnalysis(*this)->Sizeof());
     }
     case TokenType::Alignof: {
       // _Alignof(type-name)
       in_stream.EatSequence(TokenType::Alignof, TokenType::LParen);
       auto type_name = ETypeName();
       in_stream.Eat(TokenType::RParen);
-      return std::make_unique<NumericalConstant<u64>>(type_name->Alignof());
+      return std::make_unique<NumericalConstantNode<u64>>(type_name->Alignof());
     }
     default: {
       return EPostfix();
@@ -171,7 +171,7 @@ pType<const CType> Parser::ETypeName() {
     throw std::runtime_error("Storage class not allowed here");
   }
 
-  pNode<Declaration> decl = DDeclarator(ctype.first, StorageClass::None);
+  auto decl = DDeclarator(ctype.first, StorageClass::None);
   if (!decl->name.empty()) {
     throw std::runtime_error("Name not allowed in type name");
   }
@@ -196,11 +196,11 @@ pExpr Parser::ECast() {
         // type initializer
         pNode<InitializerList> list = EInitializerList();
         in_stream.Eat(TokenType::RBrace);
-        return std::make_unique<TypeInitializer>(type_name, std::move(list));
+        return std::make_unique<TypeInitializerNode>(type_name, std::move(list));
       }
       else {
         // regular cast expression
-        return std::make_unique<Cast>(type_name, ECast());
+        return std::make_unique<CastNode>(type_name, ECast());
       }
     }
   }
@@ -213,7 +213,7 @@ pExpr ConstParser::EBinopImpl() {
   const Token* current;
   while (in_stream.Peek(current) && cotyl::Is(current->type).AnyOf<types...>()) {
     auto type = in_stream.Get()->type;
-    node = std::make_unique<Binop>(std::move(node), type, (this->*SubNode)());
+    node = std::make_unique<BinopNode>(std::move(node), type, (this->*SubNode)());
   }
   return node;
 }
@@ -247,12 +247,12 @@ pExpr ConstParser::ETernary() {
     auto common_t = true_t->CommonType(*false_t);
 
     if (!true_t->EqualType(*common_t)) {
-      _true = std::make_unique<Cast>(common_t, std::move(_true));
+      _true = std::make_unique<CastNode>(common_t, std::move(_true));
     }
     if (!false_t->EqualType(*common_t)) {
-      _false = std::make_unique<Cast>(common_t, std::move(_false));
+      _false = std::make_unique<CastNode>(common_t, std::move(_false));
     }
-    return std::make_unique<Ternary>(std::move(left), std::move(_true), std::move(_false));
+    return std::make_unique<TernaryNode>(std::move(left), std::move(_true), std::move(_false));
   }
   return left;
 }
@@ -283,7 +283,7 @@ pExpr Parser::EAssignment() {
       case TokenType::IXor: {
         in_stream.Skip();
         auto right = EAssignment();
-        return std::make_unique<Assignment>(std::move(left), type, std::move(right));
+        return std::make_unique<AssignmentNode>(std::move(left), type, std::move(right));
       }
       default:
         break;

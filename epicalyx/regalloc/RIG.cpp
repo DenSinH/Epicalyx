@@ -1,22 +1,10 @@
 #include "RIG.h"
-#include "Hash.h"
 #include "Format.h"
 #include "optimizer/ProgramDependencies.h"
 #include "cycle/Cycle.h"
 
 #include <ranges>
 
-
-namespace std {
-
-template<>
-struct hash<epi::RIG::GeneralizedVar> {
-  size_t operator()(const epi::RIG::GeneralizedVar& var) const {
-    return var.NodeUID();
-  }
-};
-
-}
 
 namespace epi {
 
@@ -33,11 +21,12 @@ RIG RIG::GenerateRIG(const Program& program) {
   struct Liveliness {
     Liveliness(size_t block_len) : single{block_len} { }
 
-    // vector since we will never encounter duplicates anyway
     cotyl::unordered_set<GeneralizedVar> def{};
     cotyl::unordered_set<GeneralizedVar> in{};
     cotyl::unordered_set<GeneralizedVar> out{};
-    cotyl::unordered_set<GeneralizedVar> use{};
+    // no need to track "use" on a block level,
+    // as we insert all uses into the "in" set right away,
+    // and will never reset "in".
 
     // definitions and uses at an instruction level
     std::vector<InstrLiveliness> single{};
@@ -53,14 +42,13 @@ RIG RIG::GenerateRIG(const Program& program) {
   // add definitions and uses and RIG nodes
   for (const auto& [var_idx, var] : deps.var_graph) {
     if (!var_idx) continue;
-    const GeneralizedVar gvar = {var_idx};
+    const auto gvar = GeneralizedVar::Var(var_idx);
     liveliness.at(var.created.first).def.emplace(gvar);
     liveliness.at(var.created.first).single[var.created.second].def = gvar;
     rig.graph.AddNode(gvar.NodeUID(), gvar);
 
     // insert uses
     for (const auto& pos : var.reads) {
-      liveliness.at(pos.first).use.emplace(gvar);
       liveliness.at(pos.first).single[pos.second].use.emplace_back(gvar);
       // first iteration, add to "in" if in "use" and not in "def"
       if (pos.first != var.created.first) {
@@ -76,13 +64,12 @@ RIG RIG::GenerateRIG(const Program& program) {
   // same for locals
   for (const auto& [loc_idx, loc] : deps.local_graph) {
     if (!loc_idx) continue;
-    const GeneralizedVar gvar = {loc_idx, true};
+    const auto gvar = GeneralizedVar::Local(loc_idx);
     liveliness.at(loc.created.first).def.emplace(gvar);
     liveliness.at(loc.created.first).single[loc.created.second].def = gvar;
     rig.graph.AddNode(gvar.NodeUID(), std::move(gvar));
 
     for (const auto& pos : loc.reads) {
-      liveliness.at(pos.first).use.emplace(gvar);
       liveliness.at(pos.first).single[pos.second].use.emplace_back(gvar);
       if (pos.first != loc.created.first) {
         liveliness.at(pos.first).in.emplace(gvar);

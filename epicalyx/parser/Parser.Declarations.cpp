@@ -152,7 +152,7 @@ pType<> Parser::DStruct() {
       auto ctype = DSpecifier();
 
       do {
-        pNode<Declaration> decl = DDeclarator(ctype.first, ctype.second);
+        auto decl = DDeclarator(ctype.first, ctype.second);
         size_t size = 0;
         if (decl->storage != StorageClass::None) {
           throw std::runtime_error("Invalid storage class specifier in struct definition");
@@ -607,7 +607,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
   }
 }
 
-pNode<Declaration> Parser::DDeclarator(pType<> ctype, StorageClass storage) {
+pNode<DeclarationNode> Parser::DDeclarator(pType<> ctype, StorageClass storage) {
   std::string name;
   std::stack<pType<PointerType>> direct{};
 
@@ -625,14 +625,14 @@ pNode<Declaration> Parser::DDeclarator(pType<> ctype, StorageClass storage) {
     p->contained = ctype;
     ctype = std::move(ptr);
   }
-  return std::make_unique<Declaration>(ctype, name, storage);
+  return std::make_unique<DeclarationNode>(ctype, name, storage);
 }
 
-void Parser::DInitDeclaratorList(std::vector<pNode<Declaration>>& dest) {
+void Parser::DInitDeclaratorList(std::vector<pNode<DeclarationNode>>& dest) {
   auto ctype = DSpecifier();
 
   do {
-    pNode<Declaration> decl = DDeclarator(ctype.first, ctype.second);
+    auto decl = DDeclarator(ctype.first, ctype.second);
     if (decl->storage == StorageClass::Typedef) {
       // store typedef names
       if (decl->name.empty()) {
@@ -663,13 +663,13 @@ void Parser::DInitDeclaratorList(std::vector<pNode<Declaration>>& dest) {
   } while (in_stream.EatIf(TokenType::Comma));
 }
 
-pNode<FunctionDefinition> Parser::ExternalDeclaration(std::vector<pNode<Declaration>>& dest) {
+pNode<FunctionDefinitionNode> Parser::ExternalDeclaration(std::vector<pNode<DeclarationNode>>& dest) {
   if (in_stream.IsAfter(0, TokenType::StaticAssert)) {
     DStaticAssert();
     return nullptr;
   }
   auto ctype = DSpecifier();
-  pNode<Declaration> decl = DDeclarator(ctype.first, ctype.second);
+  pNode<DeclarationNode> decl = DDeclarator(ctype.first, ctype.second);
 
   // signature { body }
   if (in_stream.EatIf(TokenType::LBrace)) {
@@ -696,7 +696,7 @@ pNode<FunctionDefinition> Parser::ExternalDeclaration(std::vector<pNode<Declarat
     function_return = nullptr;
     variables.PopLayer();
     in_stream.Eat(TokenType::RBrace);
-    return std::make_unique<FunctionDefinition>(signature, symbol, std::move(body));
+    return std::make_unique<FunctionDefinitionNode>(signature, symbol, std::move(body));
   }
 
   // normal declaration

@@ -11,10 +11,10 @@ namespace epi {
 
 namespace ast {
 
-struct Declaration;
+struct DeclarationNode;
 enum class StorageClass;
-struct Compound;
-struct FunctionDefinition;
+struct CompoundNode;
+struct FunctionDefinitionNode;
 
 }
 
@@ -43,14 +43,14 @@ struct Parser final : public ConstParser {
   pType<> DEnum();
   pType<> DStruct();
   std::string DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest);
-  pNode<Declaration> DDeclarator(pType<> ctype, StorageClass storage);
-  void DInitDeclaratorList(std::vector<pNode<Declaration>>& dest);
+  pNode<DeclarationNode> DDeclarator(pType<> ctype, StorageClass storage);
+  void DInitDeclaratorList(std::vector<pNode<DeclarationNode>>& dest);
   bool IsDeclarationSpecifier(int after = 0);
 
-  pNode<Stat> SStatement();
-  pNode<Compound> SCompound();
+  pNode<StatNode> SStatement();
+  pNode<CompoundNode> SCompound();
 
-  pNode<FunctionDefinition> ExternalDeclaration(std::vector<pNode<Declaration>>& dest);
+  pNode<FunctionDefinitionNode> ExternalDeclaration(std::vector<pNode<DeclarationNode>>& dest);
 
   void PushScope();
   void PopScope();
@@ -77,7 +77,7 @@ struct Parser final : public ConstParser {
   cotyl::MapScope<std::string, pType<const CType>> variables{};
 
   // external results
-  std::vector<pNode<Decl>> declarations{};
+  std::vector<pNode<DeclNode>> declarations{};
 };
 
 }

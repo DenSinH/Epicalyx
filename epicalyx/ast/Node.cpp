@@ -6,15 +6,15 @@
 
 namespace epi::ast {
 
-pExpr Expr::EReduce(const Parser& parser) {
+pExpr ExprNode::EReduce(const Parser& parser) {
   return ConstTypeVisitor(parser).GetConstNode(*SemanticAnalysis(parser));
 }
 
 
-//pNode<Stat> Stat::Analyze(Parser& parser) {
+//pNode<StatNode> Stat::Analyze(Parser& parser) {
 //  auto impl = AnalyzeImpl(parser);
 //  if (parser.unreachable) {
-//    return std::make_unique<Empty>();
+//    return std::make_unique<EmptyNode>();
 //  }
 //
 //  return impl;

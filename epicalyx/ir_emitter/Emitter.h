@@ -55,7 +55,7 @@ struct Emitter {
     current_block = id;
   }
 
-  void MakeProgram(std::vector<ast::pNode<ast::Decl>>& ast);
+  void MakeProgram(std::vector<ast::pNode<ast::DeclNode>>& ast);
 
   // 0 are special IDs
   calyx::var_index_t ir_counter = 1;  // ir vars

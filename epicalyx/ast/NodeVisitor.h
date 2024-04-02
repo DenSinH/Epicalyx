@@ -6,46 +6,46 @@
 namespace epi::ast {
 
 struct NodeVisitor {
-  virtual void Visit(Declaration& decl) = 0;
-  virtual void Visit(FunctionDefinition& decl) = 0;
-  virtual void Visit(Identifier& decl) = 0;
+  virtual void Visit(DeclarationNode& decl) = 0;
+  virtual void Visit(FunctionDefinitionNode& decl) = 0;
+  virtual void Visit(IdentifierNode& decl) = 0;
 
-  virtual void Visit(NumericalConstant<i8>& expr) = 0;
-  virtual void Visit(NumericalConstant<u8>& expr) = 0;
-  virtual void Visit(NumericalConstant<i16>& expr) = 0;
-  virtual void Visit(NumericalConstant<u16>& expr) = 0;
-  virtual void Visit(NumericalConstant<i32>& expr) = 0;
-  virtual void Visit(NumericalConstant<u32>& expr) = 0;
-  virtual void Visit(NumericalConstant<i64>& expr) = 0;
-  virtual void Visit(NumericalConstant<u64>& expr) = 0;
-  virtual void Visit(NumericalConstant<float>& expr) = 0;
-  virtual void Visit(NumericalConstant<double>& expr) = 0;
-  virtual void Visit(StringConstant& expr) = 0;
-  virtual void Visit(ArrayAccess& expr) = 0;
-  virtual void Visit(FunctionCall& expr) = 0;
-  virtual void Visit(MemberAccess& expr) = 0;
-  virtual void Visit(TypeInitializer& expr) = 0;
-  virtual void Visit(PostFix& expr) = 0;
-  virtual void Visit(Unary& expr) = 0;
-  virtual void Visit(Cast& expr) = 0;
-  virtual void Visit(Binop& expr) = 0;
-  virtual void Visit(Ternary& expr) = 0;
-  virtual void Visit(Assignment& expr) = 0;
+  virtual void Visit(NumericalConstantNode<i8>& expr) = 0;
+  virtual void Visit(NumericalConstantNode<u8>& expr) = 0;
+  virtual void Visit(NumericalConstantNode<i16>& expr) = 0;
+  virtual void Visit(NumericalConstantNode<u16>& expr) = 0;
+  virtual void Visit(NumericalConstantNode<i32>& expr) = 0;
+  virtual void Visit(NumericalConstantNode<u32>& expr) = 0;
+  virtual void Visit(NumericalConstantNode<i64>& expr) = 0;
+  virtual void Visit(NumericalConstantNode<u64>& expr) = 0;
+  virtual void Visit(NumericalConstantNode<float>& expr) = 0;
+  virtual void Visit(NumericalConstantNode<double>& expr) = 0;
+  virtual void Visit(StringConstantNode& expr) = 0;
+  virtual void Visit(ArrayAccessNode& expr) = 0;
+  virtual void Visit(FunctionCallNode& expr) = 0;
+  virtual void Visit(MemberAccessNode& expr) = 0;
+  virtual void Visit(TypeInitializerNode& expr) = 0;
+  virtual void Visit(PostFixNode& expr) = 0;
+  virtual void Visit(UnopNode& expr) = 0;
+  virtual void Visit(CastNode& expr) = 0;
+  virtual void Visit(BinopNode& expr) = 0;
+  virtual void Visit(TernaryNode& expr) = 0;
+  virtual void Visit(AssignmentNode& expr) = 0;
 
-  virtual void Visit(Empty& stat) = 0;
-  virtual void Visit(If& stat) = 0;
-  virtual void Visit(While& stat) = 0;
-  virtual void Visit(DoWhile& stat) = 0;
-  virtual void Visit(For& stat) = 0;
-  virtual void Visit(Label& stat) = 0;
-  virtual void Visit(Switch& stat) = 0;
-  virtual void Visit(Case& stat) = 0;
-  virtual void Visit(Default& stat) = 0;
-  virtual void Visit(Goto& stat) = 0;
-  virtual void Visit(Return& stat) = 0;
-  virtual void Visit(Break& stat) = 0;
-  virtual void Visit(Continue& stat) = 0;
-  virtual void Visit(Compound& stat) = 0;
+  virtual void Visit(EmptyNode& stat) = 0;
+  virtual void Visit(IfNode& stat) = 0;
+  virtual void Visit(WhileNode& stat) = 0;
+  virtual void Visit(DoWhileNode& stat) = 0;
+  virtual void Visit(ForNode& stat) = 0;
+  virtual void Visit(LabelNode& stat) = 0;
+  virtual void Visit(SwitchNode& stat) = 0;
+  virtual void Visit(CaseNode& stat) = 0;
+  virtual void Visit(DefaultNode& stat) = 0;
+  virtual void Visit(GotoNode& stat) = 0;
+  virtual void Visit(ReturnNode& stat) = 0;
+  virtual void Visit(BreakNode& stat) = 0;
+  virtual void Visit(ContinueNode& stat) = 0;
+  virtual void Visit(CompoundNode& stat) = 0;
 };
 
 }

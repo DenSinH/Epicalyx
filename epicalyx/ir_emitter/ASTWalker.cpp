@@ -18,7 +18,7 @@
 
 namespace epi {
 
-void ASTWalker::Visit(epi::ast::Declaration& decl) {
+void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
   if (locals.Depth() == 1) {
     // global symbols
     local_types.Set(decl.name, decl.type);
@@ -64,7 +64,7 @@ void ASTWalker::Visit(epi::ast::Declaration& decl) {
         state.pop();
         // current now holds the expression id that we want to assign with
         state.push({State::Assign, {.var = current}});
-        Identifier(decl.name).Visit(*this);
+        IdentifierNode(decl.name).Visit(*this);
         state.pop();
       }
       else {
@@ -75,7 +75,7 @@ void ASTWalker::Visit(epi::ast::Declaration& decl) {
   }
 }
 
-void ASTWalker::Visit(FunctionDefinition& decl) {
+void ASTWalker::Visit(FunctionDefinitionNode& decl) {
   local_types.Set(decl.symbol, decl.signature);
 
   auto block = emitter.MakeBlock();
@@ -118,7 +118,7 @@ void ASTWalker::Visit(FunctionDefinition& decl) {
   local_types.NewLayer();
 }
 
-void ASTWalker::Visit(Identifier& decl) {
+void ASTWalker::Visit(IdentifierNode& decl) {
   // after the AST, the only identifiers left are C locals
   if (state.top().first == State::Empty) {
     // statement has no effect
@@ -214,7 +214,7 @@ void ASTWalker::Visit(Identifier& decl) {
 }
 
 template<typename T>
-void ASTWalker::ConstVisitImpl(NumericalConstant<T>& expr) {
+void ASTWalker::ConstVisitImpl(NumericalConstantNode<T>& expr) {
   if (state.top().first == State::Empty) {
     // statement has no effect
     return;
@@ -233,23 +233,23 @@ void ASTWalker::ConstVisitImpl(NumericalConstant<T>& expr) {
   }
 }
 
-template void ASTWalker::ConstVisitImpl(NumericalConstant<i8>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstant<u8>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstant<i16>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstant<u16>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstant<i32>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstant<u32>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstant<i64>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstant<u64>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstant<float>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstant<double>&);
+template void ASTWalker::ConstVisitImpl(NumericalConstantNode<i8>&);
+template void ASTWalker::ConstVisitImpl(NumericalConstantNode<u8>&);
+template void ASTWalker::ConstVisitImpl(NumericalConstantNode<i16>&);
+template void ASTWalker::ConstVisitImpl(NumericalConstantNode<u16>&);
+template void ASTWalker::ConstVisitImpl(NumericalConstantNode<i32>&);
+template void ASTWalker::ConstVisitImpl(NumericalConstantNode<u32>&);
+template void ASTWalker::ConstVisitImpl(NumericalConstantNode<i64>&);
+template void ASTWalker::ConstVisitImpl(NumericalConstantNode<u64>&);
+template void ASTWalker::ConstVisitImpl(NumericalConstantNode<float>&);
+template void ASTWalker::ConstVisitImpl(NumericalConstantNode<double>&);
 
-void ASTWalker::Visit(StringConstant& expr) {
+void ASTWalker::Visit(StringConstantNode& expr) {
   // load from rodata
   throw cotyl::UnimplementedException("string constant");
 }
 
-void ASTWalker::Visit(ArrayAccess& expr) {
+void ASTWalker::Visit(ArrayAccessNode& expr) {
   if (state.top().first == State::Empty) {
     // increments/decrements might happen
     expr.left->Visit(*this);
@@ -322,7 +322,7 @@ void ASTWalker::Visit(ArrayAccess& expr) {
   }
 }
 
-void ASTWalker::Visit(FunctionCall& expr) {
+void ASTWalker::Visit(FunctionCallNode& expr) {
   state.push({State::Read, {}});
   expr.left->Visit(*this);
   state.pop();
@@ -370,15 +370,15 @@ void ASTWalker::Visit(FunctionCall& expr) {
   }
 }
 
-void ASTWalker::Visit(MemberAccess& expr) {
+void ASTWalker::Visit(MemberAccessNode& expr) {
   throw cotyl::UnimplementedException("member access");
 }
 
-void ASTWalker::Visit(TypeInitializer& expr) {
+void ASTWalker::Visit(TypeInitializerNode& expr) {
   throw cotyl::UnimplementedException("type initializer");
 }
 
-void ASTWalker::Visit(PostFix& expr) {
+void ASTWalker::Visit(PostFixNode& expr) {
   cotyl::Assert(state.top().first == State::Empty || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   
   bool conditional_branch = state.top().first == State::ConditionalBranch;
@@ -450,7 +450,7 @@ void ASTWalker::Visit(PostFix& expr) {
   }
 }
 
-void ASTWalker::Visit(Unary& expr) {
+void ASTWalker::Visit(UnopNode& expr) {
   const bool conditional_branch = state.top().first == State::ConditionalBranch;
 
   switch (expr.op) {
@@ -634,7 +634,7 @@ void ASTWalker::Visit(Unary& expr) {
   }
 }
 
-void ASTWalker::Visit(Cast& expr) {
+void ASTWalker::Visit(CastNode& expr) {
   if (state.top().first == State::Empty) {
     expr.expr->Visit(*this);
     return;
@@ -650,7 +650,7 @@ void ASTWalker::Visit(Cast& expr) {
   }
 }
 
-void ASTWalker::Visit(Binop& expr) {
+void ASTWalker::Visit(BinopNode& expr) {
   if (state.top().first == State::Empty) {
     // increments / decrements might happen on either side
     expr.left->Visit(*this);
@@ -892,7 +892,7 @@ void ASTWalker::Visit(Binop& expr) {
   }
 }
 
-void ASTWalker::Visit(Ternary& expr) {
+void ASTWalker::Visit(TernaryNode& expr) {
   cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   
   if (state.top().first == State::Read) {
@@ -975,7 +975,7 @@ void ASTWalker::Visit(Ternary& expr) {
   }
 }
 
-void ASTWalker::Visit(Assignment& expr) {
+void ASTWalker::Visit(AssignmentNode& expr) {
   cotyl::Assert(state.top().first == State::Empty || state.top().first == State::Read);
   
   state.push({State::Read, {}});
@@ -1087,11 +1087,11 @@ void ASTWalker::Visit(Assignment& expr) {
   // todo: conditional branch
 }
 
-void ASTWalker::Visit(Empty& stat) {
+void ASTWalker::Visit(EmptyNode& stat) {
 
 }
 
-void ASTWalker::Visit(If& stat) {
+void ASTWalker::Visit(IfNode& stat) {
   auto true_block = emitter.MakeBlock();
   auto false_block = emitter.MakeBlock();
   calyx::block_label_t post_block;
@@ -1124,7 +1124,7 @@ void ASTWalker::Visit(If& stat) {
   cotyl::Assert(emitter.program.blocks[post_block].empty());
 }
 
-void ASTWalker::Visit(While& stat) {
+void ASTWalker::Visit(WhileNode& stat) {
   // loop entry is lowest index
   auto cond_block = emitter.MakeBlock();
   emitter.Emit<calyx::UnconditionalBranch>(cond_block);
@@ -1155,7 +1155,7 @@ void ASTWalker::Visit(While& stat) {
   emitter.SelectBlock(post_block);
 }
 
-void ASTWalker::Visit(DoWhile& stat) {
+void ASTWalker::Visit(DoWhileNode& stat) {
   // loop entry is lowest index
   auto loop_block = emitter.MakeBlock();
   auto cond_block = emitter.MakeBlock();
@@ -1187,7 +1187,7 @@ void ASTWalker::Visit(DoWhile& stat) {
   emitter.SelectBlock(post_block);
 }
 
-void ASTWalker::Visit(For& stat) {
+void ASTWalker::Visit(ForNode& stat) {
   
   auto init_block = emitter.MakeBlock();
 
@@ -1250,7 +1250,7 @@ void ASTWalker::Visit(For& stat) {
   emitter.SelectBlock(post_block);
 }
 
-void ASTWalker::Visit(Label& stat) {
+void ASTWalker::Visit(LabelNode& stat) {
   if (!local_labels.contains(stat.name)) {
     auto block = emitter.MakeBlock();
     local_labels.emplace(stat.name, block);
@@ -1265,7 +1265,7 @@ void ASTWalker::Visit(Label& stat) {
   stat.stat->Visit(*this);
 }
 
-void ASTWalker::Visit(Switch& stat) {
+void ASTWalker::Visit(SwitchNode& stat) {
   state.push({State::Read, {}});
   stat.expr->Visit(*this);
   state.pop();
@@ -1306,7 +1306,7 @@ void ASTWalker::Visit(Switch& stat) {
   emitter.SelectBlock(post_block);
 }
 
-void ASTWalker::Visit(Case& stat) {
+void ASTWalker::Visit(CaseNode& stat) {
   cotyl::Assert(!select_stack.empty(), "Invalid case statement");
   auto* select = select_stack.top();
   cotyl::Assert(!select->table.contains(stat.expr), "Duplicate case statement");
@@ -1321,7 +1321,7 @@ void ASTWalker::Visit(Case& stat) {
   stat.stat->Visit(*this);
 }
 
-void ASTWalker::Visit(Default& stat) {
+void ASTWalker::Visit(DefaultNode& stat) {
   cotyl::Assert(!select_stack.empty(), "Invalid default statement");
   auto* select = select_stack.top();
   cotyl::Assert(select->_default == 0, "Duplicate default statement");
@@ -1336,7 +1336,7 @@ void ASTWalker::Visit(Default& stat) {
   stat.stat->Visit(*this);
 }
 
-void ASTWalker::Visit(Goto& stat) {
+void ASTWalker::Visit(GotoNode& stat) {
   if (!local_labels.contains(stat.label)) {
     auto block = emitter.MakeBlock();
     local_labels.emplace(stat.label, block);
@@ -1347,7 +1347,7 @@ void ASTWalker::Visit(Goto& stat) {
   }
 }
 
-void ASTWalker::Visit(Return& stat) {
+void ASTWalker::Visit(ReturnNode& stat) {
   if (stat.expr) {
     state.push({State::Read, {}});
     stat.expr->Visit(*this);
@@ -1360,17 +1360,17 @@ void ASTWalker::Visit(Return& stat) {
   }
 }
 
-void ASTWalker::Visit(Break& stat) {
+void ASTWalker::Visit(BreakNode& stat) {
   cotyl::Assert(!break_stack.empty());
   emitter.Emit<calyx::UnconditionalBranch>(break_stack.top());
 }
 
-void ASTWalker::Visit(Continue& stat) {
+void ASTWalker::Visit(ContinueNode& stat) {
   cotyl::Assert(!continue_stack.empty());
   emitter.Emit<calyx::UnconditionalBranch>(continue_stack.top());
 }
 
-void ASTWalker::Visit(Compound& stat) {
+void ASTWalker::Visit(CompoundNode& stat) {
   locals.NewLayer();
   local_types.NewLayer();
   for (const auto& node : stat.stats) {

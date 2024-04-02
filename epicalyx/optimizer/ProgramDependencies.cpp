@@ -15,11 +15,10 @@ void ProgramDependencies::VisualizeVars(const std::string& filename) {
   auto graph = std::make_unique<epi::cycle::VisualGraph>();
 
   for (const auto& [idx, var] : var_graph) {
-    if (!idx) continue;
     graph->n(idx, cotyl::Format(
         "created [%d].[%d]", var.created.first, var.created.second
       )
-    );
+    )->title(cotyl::Format("v%d", idx));
     graph->n(idx, cotyl::Format("%d reads", var.reads.size()));
     if (var.is_call_result) {
       graph->n(idx, "(CALL RESULT)");
@@ -31,7 +30,7 @@ void ProgramDependencies::VisualizeVars(const std::string& filename) {
     }
     
     for (const auto& dep : var.deps) {
-      graph->n(idx)->n(dep);
+      graph->n(dep)->n(idx);
     }
   }
 

@@ -51,10 +51,10 @@ struct ConstTypeVisitor : public TypeVisitor {
  * PRIMARY EXPRESSION
  * */
 
-struct Identifier final : public Expr {
-  ~Identifier() final = default;
+struct IdentifierNode final : public ExprNode {
+  ~IdentifierNode() final = default;
 
-  Identifier(std::string name) :
+  IdentifierNode(std::string name) :
       name(std::move(name)) {
 
   }
@@ -71,10 +71,10 @@ protected:
 
 
 template<typename T>
-struct NumericalConstant final : public Expr {
-  ~NumericalConstant() final = default;
+struct NumericalConstantNode final : public ExprNode {
+  ~NumericalConstantNode() final = default;
 
-  NumericalConstant(T value) :
+  NumericalConstantNode(T value) :
       value(value) {
 
   }
@@ -90,10 +90,10 @@ protected:
 };
 
 
-struct StringConstant final : public Expr {
-  ~StringConstant() final = default;
+struct StringConstantNode final : public ExprNode {
+  ~StringConstantNode() final = default;
 
-  StringConstant(std::string value) :
+  StringConstantNode(std::string value) :
       value(std::move(value)) {
 
   }
@@ -111,10 +111,10 @@ protected:
 /*
  * POSTFIX EXPRESSION
  * */
-struct ArrayAccess final : public Expr {
-  ~ArrayAccess() final = default;
+struct ArrayAccessNode final : public ExprNode {
+  ~ArrayAccessNode() final = default;
 
-  ArrayAccess(pExpr&& left, pExpr&& right) :
+  ArrayAccessNode(pExpr&& left, pExpr&& right) :
       left(std::move(left)),
       right(std::move(right)) {
 
@@ -131,10 +131,10 @@ protected:
 };
 
 
-struct FunctionCall final : public Expr {
-  ~FunctionCall() final = default;
+struct FunctionCallNode final : public ExprNode {
+  ~FunctionCallNode() final = default;
 
-  FunctionCall(pExpr&& left) :
+  FunctionCallNode(pExpr&& left) :
       left(std::move(left)) {
 
   }
@@ -155,10 +155,10 @@ protected:
 };
 
 
-struct MemberAccess final : public Expr {
-  ~MemberAccess() final = default;
+struct MemberAccessNode final : public ExprNode {
+  ~MemberAccessNode() final = default;
 
-  MemberAccess(pExpr&& left, bool direct, std::string member) :
+  MemberAccessNode(pExpr&& left, bool direct, std::string member) :
       left(std::move(left)),
       direct(direct),
       member(std::move(member)) {
@@ -178,9 +178,9 @@ protected:
 };
 
 
-struct TypeInitializer : public Expr {
+struct TypeInitializerNode : public ExprNode {
 
-  TypeInitializer(pType<const CType> type, pNode<InitializerList>&& list) :
+  TypeInitializerNode(pType<const CType> type, pNode<InitializerList>&& list) :
       type(std::move(type)),
       list(std::move(list)) {
 
@@ -198,10 +198,10 @@ protected:
 };
 
 
-struct PostFix final : public Expr {
-  ~PostFix() final = default;
+struct PostFixNode final : public ExprNode {
+  ~PostFixNode() final = default;
 
-  PostFix(const TokenType op, pExpr&& left) :
+  PostFixNode(const TokenType op, pExpr&& left) :
       op(op),
       left(std::move(left)) {
 
@@ -212,17 +212,17 @@ struct PostFix final : public Expr {
 
   std::string ToString() const final { return cotyl::FormatStr("(%s)%s", left, Token(op)); }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  // EReduce is just the constant node from the postfix operation (will always be nullptr)
+  // EReduce is just the constant node from the PostFixNode operation (will always be nullptr)
 
 protected:
   pType<const CType> SemanticAnalysisImpl(const ConstParser& parser) const final;
 };
 
 
-struct Unary final : public Expr {
-  ~Unary() final = default;
+struct UnopNode final : public ExprNode {
+  ~UnopNode() final = default;
 
-  Unary(TokenType op, pExpr&& left) :
+  UnopNode(TokenType op, pExpr&& left) :
       op(op),
       left(std::move(left)) {
 
@@ -240,10 +240,10 @@ protected:
 };
 
 
-struct Cast final : public Expr {
-  ~Cast() final = default;
+struct CastNode final : public ExprNode {
+  ~CastNode() final = default;
 
-  Cast(pType<const CType> type, pExpr&& expr) :
+  CastNode(pType<const CType> type, pExpr&& expr) :
       type(std::move(type)),
       expr(std::move(expr)) {
 
@@ -261,10 +261,10 @@ protected:
 };
 
 
-struct Binop final : public Expr {
-  ~Binop() final = default;
+struct BinopNode final : public ExprNode {
+  ~BinopNode() final = default;
 
-  Binop(pExpr&& left, const TokenType op, pExpr&& right) :
+  BinopNode(pExpr&& left, const TokenType op, pExpr&& right) :
       left(std::move(left)),
       op(op),
       right(std::move(right)) {
@@ -286,10 +286,10 @@ protected:
 };
 
 
-struct Ternary final : public Expr {
-  ~Ternary() final = default;
+struct TernaryNode final : public ExprNode {
+  ~TernaryNode() final = default;
 
-  Ternary(pExpr&& cond, pExpr&& _true, pExpr&& _false) :
+  TernaryNode(pExpr&& cond, pExpr&& _true, pExpr&& _false) :
       cond(std::move(cond)),
       _true(std::move(_true)),
       _false(std::move(_false)) {
@@ -311,10 +311,10 @@ protected:
 };
 
 
-struct Assignment final : public Expr {
-  ~Assignment() final = default;
+struct AssignmentNode final : public ExprNode {
+  ~AssignmentNode() final = default;
 
-  Assignment(pExpr&& left, const TokenType op, pExpr&& right) :
+  AssignmentNode(pExpr&& left, const TokenType op, pExpr&& right) :
       left(std::move(left)),
       op(op),
       right(std::move(right)) {

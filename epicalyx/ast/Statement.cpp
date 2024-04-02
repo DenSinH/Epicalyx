@@ -10,11 +10,11 @@
 
 namespace epi::ast {
 
-For::For(std::vector<pNode<Declaration>>&& decls,
+ForNode::ForNode(std::vector<pNode<DeclarationNode>>&& decls,
          std::vector<pExpr>&& inits,
          pExpr&& cond,
          std::vector<pExpr>&& updates,
-         pNode<Stat>&& stat) :
+         pNode<StatNode>&& stat) :
       decls(std::move(decls)),
       inits(std::move(inits)),
       cond(std::move(cond)),
@@ -23,29 +23,29 @@ For::For(std::vector<pNode<Declaration>>&& decls,
 
 }
 
-std::string If::ToString() const {
+std::string IfNode::ToString() const {
   if (_else) {
     return cotyl::FormatStr("if (%s) %s\nelse %s", cond, stat, _else);
   }
   return cotyl::FormatStr("if (%s) %s", cond, stat);
 }
 
-std::string While::ToString() const {
+std::string WhileNode::ToString() const {
   return cotyl::FormatStr("while (%s) %s", cond, stat);
 }
 
-std::string DoWhile::ToString() const {
+std::string DoWhileNode::ToString() const {
   return cotyl::FormatStr("do %s while (%s);", stat, cond);
 }
 
-std::string Return::ToString() const {
+std::string ReturnNode::ToString() const {
   if (expr) {
     return cotyl::FormatStr("return %s;", expr);
   }
   return "return;";
 }
 
-std::string For::ToString() const {
+std::string ForNode::ToString() const {
   cotyl::StringStream result{};
   result << "for (";
   result << cotyl::Join(", ", decls);
@@ -59,17 +59,17 @@ std::string For::ToString() const {
   return result.finalize();
 }
 
-std::string Switch::ToString() const {
+std::string SwitchNode::ToString() const {
   return cotyl::FormatStr("switch (%s) %s", expr, stat);
 }
 
-std::string Compound::ToString() const {
+std::string CompoundNode::ToString() const {
   cotyl::StringStream repr{};
   repr << '{';
   for (const auto& stat : stats) {
     repr << '\n';
     repr << stat->ToString();
-    if (stat->IsDeclaration()) {
+    if (stat->IsDeclarationNode()) {
       repr << ';';
     }
   }
@@ -77,7 +77,7 @@ std::string Compound::ToString() const {
   return result + "\n}";
 }
 
-pNode<Stat> If::SReduce(const Parser& parser) {
+pNode<StatNode> IfNode::SReduce(const Parser& parser) {
   auto n_cond = cond->EReduce(parser);
   if (n_cond) cond = std::move(cond);
   auto n_stat = stat->SReduce(parser);
@@ -96,13 +96,13 @@ pNode<Stat> If::SReduce(const Parser& parser) {
       return std::move(_else);
     }
     else {
-      return std::make_unique<Empty>();
+      return std::make_unique<EmptyNode>();
     }
   }
   return nullptr;
 }
 
-pNode<Stat> While::SReduce(const Parser& parser) {
+pNode<StatNode> WhileNode::SReduce(const Parser& parser) {
   auto n_cond = cond->EReduce(parser);
   if (n_cond) cond = std::move(n_cond);
   auto n_stat = stat->SReduce(parser);
@@ -110,13 +110,13 @@ pNode<Stat> While::SReduce(const Parser& parser) {
 
   if (cond->IsConstexpr()) {
     if (!cond->GetType()->GetBoolValue()) {
-      return std::make_unique<Empty>();
+      return std::make_unique<EmptyNode>();
     }
   }
   return nullptr;
 }
 
-pNode<Stat> DoWhile::SReduce(const Parser& parser) {
+pNode<StatNode> DoWhileNode::SReduce(const Parser& parser) {
   auto n_cond = cond->EReduce(parser);
   if (n_cond) cond = std::move(n_cond);
   auto n_stat = stat->SReduce(parser);
@@ -124,13 +124,13 @@ pNode<Stat> DoWhile::SReduce(const Parser& parser) {
 
   if (cond->IsConstexpr()) {
     if (!cond->GetType()->GetBoolValue()) {
-      return std::make_unique<Empty>();
+      return std::make_unique<EmptyNode>();
     }
   }
   return nullptr;
 }
 
-pNode<Stat> For::SReduce(const Parser& parser) {
+pNode<StatNode> ForNode::SReduce(const Parser& parser) {
   for (auto& decl : decls) {
     decl->DReduce(parser);
   }
@@ -151,13 +151,13 @@ pNode<Stat> For::SReduce(const Parser& parser) {
 
   if (cond->IsConstexpr()) {
     if (!cond->GetType()->GetBoolValue()) {
-      return std::make_unique<Empty>();
+      return std::make_unique<EmptyNode>();
     }
   }
   return nullptr;
 }
 
-pNode<Stat> Switch::SReduce(const Parser& parser) {
+pNode<StatNode> SwitchNode::SReduce(const Parser& parser) {
   auto n_expr = expr->EReduce(parser);
   if (n_expr) expr = std::move(n_expr);
   auto n_stat = stat->SReduce(parser);
@@ -165,38 +165,38 @@ pNode<Stat> Switch::SReduce(const Parser& parser) {
   return nullptr;
 }
 
-pNode<Stat> Label::SReduce(const Parser& parser) {
+pNode<StatNode> LabelNode::SReduce(const Parser& parser) {
   auto n_stat = stat->SReduce(parser);
   if (n_stat) stat = std::move(n_stat);
   return nullptr;
 }
 
-pNode<Stat> Case::SReduce(const Parser& parser) {
+pNode<StatNode> CaseNode::SReduce(const Parser& parser) {
   auto n_stat = stat->SReduce(parser);
   if (n_stat) stat = std::move(n_stat);
   return nullptr;
 }
 
-pNode<Stat> Default::SReduce(const Parser& parser) {
+pNode<StatNode> DefaultNode::SReduce(const Parser& parser) {
   auto n_stat = stat->SReduce(parser);
   if (n_stat) stat = std::move(n_stat);
   return nullptr;
 }
 
-pNode<Stat> Return::SReduce(const Parser& parser) {
+pNode<StatNode> ReturnNode::SReduce(const Parser& parser) {
   auto n_expr = expr->EReduce(parser);
   if (n_expr) expr = std::move(n_expr);
   return nullptr;
 }
 
-pNode<Stat> Compound::SReduce(const Parser& parser) {
+pNode<StatNode> CompoundNode::SReduce(const Parser& parser) {
   // reduced when added
   for (auto& node : stats) {
     if (node->IsStatement()) {
-      auto n_stat = cotyl::unique_ptr_cast<Stat>(node)->SReduce(parser);
+      auto n_stat = cotyl::unique_ptr_cast<StatNode>(node)->SReduce(parser);
       if (n_stat) node = std::move(n_stat);
     }
-    // don't do anything for declarations
+    // don't do anything for DeclarationNodes
   }
   return nullptr;
 }

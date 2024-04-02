@@ -52,7 +52,7 @@ void Parser::PopScope() {
 
 void Parser::Parse() {
   while (!in_stream.EOS()) {
-    std::vector<pNode<Declaration>> decls;
+    std::vector<pNode<DeclarationNode>> decls;
     auto function = ExternalDeclaration(decls);
 
     if (variables.Depth() != 1) [[unlikely]] {

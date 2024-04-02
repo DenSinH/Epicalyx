@@ -10,12 +10,12 @@ pExpr ConstTokenVisitor::Visit(const Token& tok) {
 }
 
 pExpr ConstTokenVisitor::Visit(const tIdentifier& tok) {
-  return std::make_unique<Identifier>(tok.name);
+  return std::make_unique<IdentifierNode>(tok.name);
 }
 
 template<typename T>
 pExpr ConstTokenVisitor::Visit(const tNumericConstant<T>& tok) {
-  return std::make_unique<NumericalConstant<T>>(tok.value);
+  return std::make_unique<NumericalConstantNode<T>>(tok.value);
 }
 
 template pExpr ConstTokenVisitor::Visit(const tNumericConstant<i32>&);
@@ -26,7 +26,7 @@ template pExpr ConstTokenVisitor::Visit(const tNumericConstant<float>&);
 template pExpr ConstTokenVisitor::Visit(const tNumericConstant<double>&);
 
 pExpr ConstTokenVisitor::Visit(const tStringConstant& tok) {
-  return std::make_unique<StringConstant>(tok.value);
+  return std::make_unique<StringConstantNode>(tok.value);
 }
 
 }

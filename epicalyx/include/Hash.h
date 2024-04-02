@@ -3,7 +3,7 @@
 #include <functional>
 #include <type_traits>
 #include <utility>
-#include <boost/functional/hash_fwd.hpp>
+#include <boost/container_hash/hash.hpp>
 
 #include <type_traits>
 #include <utility>

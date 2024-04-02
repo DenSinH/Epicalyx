@@ -1,8 +1,14 @@
 add_library(RegAlloc STATIC
+        GeneralizedVar.h
         Allocator.h
         Allocator.cpp
         RIG.h
-        RIG.cpp)
+        RIG.cpp
+        RegisterSpace.h
+        RegisterSpace.cpp
+        regspaces/Example.h
+        regspaces/Example.cpp
+)
 
 set_target_properties(RegAlloc PROPERTIES LINKER_LANGUAGE CXX)
 

@@ -16,7 +16,7 @@ struct Backend {
   virtual void Emit(const LoadLocalAddr& op) = 0;
   virtual void Emit(const LoadGlobalAddr& op) = 0;
   virtual void Emit(const ArgMakeLocal& op) = 0;
-
+  
   virtual void Emit(const Binop<i32>& op) = 0;
   virtual void Emit(const Binop<u32>& op) = 0;
   virtual void Emit(const Binop<i64>& op) = 0;

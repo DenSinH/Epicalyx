@@ -7,14 +7,14 @@
 
 namespace epi::ast {
 
-FunctionDefinition::FunctionDefinition(pType<const FunctionType> signature, std::string symbol, pNode<Compound>&& body) :
+FunctionDefinitionNode::FunctionDefinitionNode(pType<const FunctionType> signature, std::string symbol, pNode<CompoundNode>&& body) :
     signature(std::move(signature)),
     symbol(std::move(symbol)),
     body(std::move(body)) {
 
 }
 
-std::string Declaration::ToString() const {
+std::string DeclarationNode::ToString() const {
   if (value.has_value()) {
     if (std::holds_alternative<pExpr>(value.value()))
       return cotyl::FormatStr("%s %s = %s", type, name, std::get<pExpr>(value.value()));
@@ -27,11 +27,11 @@ std::string Declaration::ToString() const {
   return type->ToString();
 }
 
-std::string FunctionDefinition::ToString() const {
+std::string FunctionDefinitionNode::ToString() const {
   return cotyl::FormatStr("%s %s %s", signature, symbol, body);
 }
 
-void Declaration::VerifyAndRecord(Parser& parser) {
+void DeclarationNode::VerifyAndRecord(Parser& parser) {
   if (!name.empty()) {
     // todo: check enum/struct/typdef
     if (parser.variables.HasTop(name)) {
@@ -57,7 +57,7 @@ void Declaration::VerifyAndRecord(Parser& parser) {
   }
 }
 
-void FunctionDefinition::VerifyAndRecord(Parser& parser) {
+void FunctionDefinitionNode::VerifyAndRecord(Parser& parser) {
   if (parser.variables.Has(symbol)) {
     if (!parser.variables.Get(symbol)->EqualType(*signature)) {
       throw cotyl::FormatExceptStr("Redefinition of function: %s", symbol);
@@ -68,7 +68,7 @@ void FunctionDefinition::VerifyAndRecord(Parser& parser) {
   }
 }
 
-void Declaration::DReduce(const Parser &parser) {
+void DeclarationNode::DReduce(const Parser &parser) {
   if (value.has_value()) {
     auto& init = value.value();
     if (std::holds_alternative<pExpr>(init)) {

@@ -411,7 +411,7 @@ void Interpreter::Emit(const ArgMakeLocal& op) {
       break;
     }
     case Argument::Type::Struct: {
-    throw cotyl::UnimplementedException("struct argument");
+      throw cotyl::UnimplementedException("struct argument");
     }
   }
 }
