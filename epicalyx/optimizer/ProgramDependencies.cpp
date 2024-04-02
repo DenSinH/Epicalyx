@@ -11,33 +11,31 @@
 namespace epi {
 
 
-void ProgramDependencies::VisualizeVars() {
+void ProgramDependencies::VisualizeVars(const std::string& filename) {
   auto graph = std::make_unique<epi::cycle::VisualGraph>();
 
   for (const auto& [idx, var] : var_graph) {
     if (!idx) continue;
-    cotyl::StringStream text{
-      cotyl::Format(
-        "created [%d].[%d]\n%d reads\n", 
-        var.created.first, var.created.second, var.reads.size()
+    graph->n(idx, cotyl::Format(
+        "created [%d].[%d]", var.created.first, var.created.second
       )
-    };
+    );
+    graph->n(idx, cotyl::Format("%d reads", var.reads.size()));
     if (var.is_call_result) {
-      text << "(CALL RESULT)\n";
+      graph->n(idx, "(CALL RESULT)");
     }
     if (!var.reads.empty()) {
       for (const auto& pos : var.reads) {
-        text << cotyl::Format("read @[%d].[%d]\n", pos.first, pos.second);
+        graph->n(idx, cotyl::Format("read @[%d].[%d]", pos.first, pos.second));
       }
     }
-    graph->n(idx, text.finalize());
+    
     for (const auto& dep : var.deps) {
       graph->n(idx)->n(dep);
     }
   }
 
-  graph->Visualize(cycle::VisualGraph::NodeSort::Topological);
-  graph->Join();
+  graph->Visualize(filename);
 }
 
 void ProgramDependencies::EmitProgram(const Program& program) {

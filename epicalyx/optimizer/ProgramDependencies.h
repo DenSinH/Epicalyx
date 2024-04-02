@@ -41,7 +41,7 @@ struct ProgramDependencies final : calyx::Backend {
 
   program_pos_t pos;
 
-  void VisualizeVars();
+  void VisualizeVars(const std::string& filename);
 
   void EmitProgram(const Program& program) final;
 

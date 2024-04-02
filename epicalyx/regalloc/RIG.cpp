@@ -1,5 +1,6 @@
 #include "RIG.h"
 #include "Hash.h"
+#include "Format.h"
 #include "optimizer/ProgramDependencies.h"
 #include "cycle/Cycle.h"
 
@@ -189,15 +190,23 @@ RIG RIG::GenerateRIG(const Program& program) {
   return std::move(rig);
 }
 
-void RIG::Visualize() const {
+void RIG::Visualize(const std::string& filename) const {
   auto vgraph = cycle::VisualGraph(
     graph,
-    [](auto idx, auto gvar) -> std::string { return std::to_string(idx); },
+    [](auto idx, auto gvar) -> std::string {
+      if (gvar.is_local) {
+        return cotyl::Format("c%d", gvar.idx);
+      }
+      return cotyl::Format("v%d", gvar.idx);
+    },
     [](auto idx, auto gvar) -> std::vector<std::string> { return {}; }
   );
 
-  vgraph.Visualize(cycle::VisualGraph::NodeSort::Circle);
-  vgraph.Join();
+  vgraph.square_nodes = false;
+  vgraph.acyclic = true;
+  vgraph.directed = false;
+  vgraph.allow_multi_edge = false;
+  vgraph.Visualize(filename);
 }
 
 }

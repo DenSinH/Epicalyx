@@ -149,10 +149,10 @@ int main() {
       }, program.globals.at(glob));
     }
 
-    interpreter.VisualizeProgram(program);
+    interpreter.VisualizeProgram(program, "output/program.pdf");
 
     auto dependencies = epi::ProgramDependencies::GetDependencies(program);
-    dependencies.VisualizeVars();
+    dependencies.VisualizeVars("output/vars.pdf");
   }
   catch_e {
     Log::ConsoleColor<Log::Color::Red>();
@@ -162,7 +162,7 @@ int main() {
   }
 
   auto rig = epi::RIG::GenerateRIG(program);
-  rig.Visualize();
+  rig.Visualize("output/rig.pdf");
 
   return 0;
 }

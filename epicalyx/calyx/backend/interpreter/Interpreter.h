@@ -51,7 +51,7 @@ struct Interpreter : Backend {
   std::optional<std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> returned = {};
 
   void EmitProgram(const Program& program) final;
-  void VisualizeProgram(const Program& program);
+  void VisualizeProgram(const Program& program, const std::string& filename);
 
   void Emit(const AllocateLocal& op) final;
   void Emit(const DeallocateLocal& op) final;

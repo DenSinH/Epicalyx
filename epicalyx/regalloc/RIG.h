@@ -4,6 +4,8 @@
 #include "calyx/Calyx.h"
 #include "Containers.h"
 
+#include <string>
+
 // Register Interference Graph
 
 namespace epi {
@@ -13,7 +15,7 @@ using namespace calyx;
 struct RIG {
 
   static RIG GenerateRIG(const Program& program);
-  void Visualize() const;
+  void Visualize(const std::string& filename) const;
 
   struct GeneralizedVar {
     var_index_t idx;

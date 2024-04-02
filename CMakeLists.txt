@@ -6,12 +6,14 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # set( CMAKE_VERBOSE_MAKEFILE on )
 
-find_package(Boost 1.75.0 REQUIRED)
+find_package(Boost 1.75.0)
 
 if(${Boost_FOUND})
     message(STATUS "Found Boost at ${Boost_INCLUDE_DIR}")
     include_directories(epicalyx ${Boost_INCLUDE_DIR})
     add_compile_options(-DUSE_BOOST)
+else()
+  message(STATUS "Boost not found, using stl. Please set BOOST_ROOT (or BOOSTROOT) environment variables.")
 endif()
 
 include_directories(epicalyx epicalyx/include)

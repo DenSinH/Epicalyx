@@ -4,18 +4,8 @@
 #include "Containers.h"
 #include "Graph.h"
 
-#include <thread>
 #include <vector>
 
-#define WINDOW_WIDTH 1280
-#define WINDOW_HEIGHT 720
-
-
-namespace ImNodes {
-struct CanvasState;
-}
-
-struct ImVec2;
 
 namespace epi::cycle {
 
@@ -25,13 +15,14 @@ struct VisualGraph {
   template<typename I, typename T, typename TFunc, typename BFunc>
   VisualGraph(const Graph<I, T>& graph, TFunc title, BFunc body);
 
-  enum class NodeSort {
-    Topological,
-    Circle
-  };
+  bool directed = true;
+  bool acyclic = false;
+  bool allow_multi_edge = false;
+  bool square_nodes = true;
 
-  void Visualize(NodeSort sort);
-  void Join();
+  void Visualize(const std::string& filename);
+
+private:
 
   struct VisualNode {
     VisualNode(u64 id) : id(id) { }
@@ -39,15 +30,12 @@ struct VisualGraph {
         id(id), title{title}, body{std::move(body)} { }
 
     u64 id;
+    void* agnode = nullptr;
     bool selected = false;
     std::string title{};
     std::vector<std::string> body{};
     cotyl::unordered_map<u64, std::string> outputs{};
-    cotyl::unordered_set<std::string> output_set{};
   };
-
-private:
-  using top_sort_t = std::vector<std::vector<u64>>;
 
   struct NodeRef {
     NodeRef(VisualGraph& graph, u64 from) :
@@ -66,8 +54,9 @@ private:
       auto ref = NodeRef(graph, to);  // instantiates to node if needed
       graph.graph.AddEdge(from, to);
       auto& vnode = graph.graph[from].value;
-      vnode.outputs.emplace(to, output);
-      vnode.output_set.emplace(output);
+      if (!output.empty()) {
+        vnode.outputs.emplace(to, output);
+      }
       return ref;
     }
 
@@ -77,17 +66,6 @@ private:
   };
 
   Graph<u64, VisualNode> graph{};
-  std::thread thread;
-
-  void* window;
-  int width = WINDOW_WIDTH, height = WINDOW_HEIGHT;
-  void* gl_context;
-
-  void InitSDL();
-  void InitImGui();
-  top_sort_t FindOrder();
-  void VisualizeImpl(NodeSort sort);
-  void Render(ImNodes::CanvasState& canvas, cotyl::unordered_map<u64, ImVec2>& positions);
 
 public:
   NodeRef n(u64 from, std::string line = "") {
@@ -113,8 +91,6 @@ VisualGraph::VisualGraph(const Graph<I, T>& g, TFunc title, BFunc body) {
     for (const auto& to_idx : node.to) {
       graph.AddEdge(node_idx, to_idx);
       auto& vnode = graph[node_idx].value;
-      vnode.outputs.emplace(to_idx, "");
-      vnode.output_set.emplace("");
     }
   }
 }

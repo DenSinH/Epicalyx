@@ -15,10 +15,11 @@
 namespace epi::calyx {
 
 
-void Interpreter::VisualizeProgram(const Program& program) {
+void Interpreter::VisualizeProgram(const Program& program, const std::string& filename) {
   auto graph = std::make_unique<epi::cycle::VisualGraph>();
 
   for (const auto& [i, block] : program.blocks) {
+    graph->n(i).title(cotyl::Format("L%d", i));
     for (const auto& directive : block) {
       switch (directive->cls) {
         case Directive::Class::Expression:
@@ -51,8 +52,7 @@ void Interpreter::VisualizeProgram(const Program& program) {
     graph->n(block).title(symbol + "(*)");
   }
 
-  graph->Visualize(cycle::VisualGraph::NodeSort::Topological);
-  graph->Join();
+  graph->Visualize(filename);
 }
 
 void Interpreter::InterpretGlobalInitializer(Program::global_t& dest, block_label_t entry) {
