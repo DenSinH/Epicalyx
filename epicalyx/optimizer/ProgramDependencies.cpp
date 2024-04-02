@@ -79,6 +79,7 @@ void ProgramDependencies::EmitLoadLocal(const LoadLocal<T>& op) {
 void ProgramDependencies::Emit(const LoadLocalAddr& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;
   cotyl::get_default(local_graph, op.loc_idx).reads.push_back(pos);
+  local_graph[op.loc_idx].needs_address = true;
 }
 
 template<typename T>

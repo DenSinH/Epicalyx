@@ -35,6 +35,7 @@ struct ProgramDependencies final : calyx::Backend {
     program_pos_t created = {0, 0};
     std::vector<program_pos_t> writes{};
     std::vector<program_pos_t> reads{};
+    bool needs_address = false;
   };
 
   cotyl::unordered_map<var_index_t, Local> local_graph{};
