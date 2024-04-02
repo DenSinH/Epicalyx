@@ -150,8 +150,10 @@ void ProgramDependencies::Emit(const ArgMakeLocal& op) {
 
 template<typename T>
 void ProgramDependencies::EmitReturn(const Return<T>& op) {
-  cotyl::get_default(var_graph, op.idx).reads.push_back(pos);
-  var_graph.at(op.idx).program_result = pos;
+  if constexpr(!std::is_same_v<T, void>) {
+    cotyl::get_default(var_graph, op.idx).reads.push_back(pos);
+    var_graph.at(op.idx).program_result = pos;
+  }
 }
 
 template<typename T>
