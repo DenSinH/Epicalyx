@@ -276,7 +276,7 @@ void ASTWalker::Visit(ArrayAccessNode& expr) {
 
   auto ptr_var = emitter.vars[ptr_idx];
   EmitPointerIntegralExpr<calyx::AddToPointer>(
-          emitter.vars[offs_idx].type, ptr_var.stride, ptr_idx, calyx::PtrAddType::Add, ptr_var.stride, offs_idx
+          emitter.vars[offs_idx].type, ptr_var.stride, ptr_idx, ptr_var.stride, offs_idx
   );
   ptr_idx = current;
 
@@ -686,11 +686,11 @@ void ASTWalker::Visit(BinopNode& expr) {
     case TokenType::Plus: {
       if (emitter.vars[left].type == calyx::Var::Type::Pointer) {
         auto var = emitter.vars[left];
-        EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, calyx::PtrAddType::Add, var.stride, right);
+        EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, var.stride, right);
       }
       else if (emitter.vars[right].type == calyx::Var::Type::Pointer) {
         auto var = emitter.vars[right];
-        EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[left].type, var.stride, right, calyx::PtrAddType::Add, var.stride, left);
+        EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[left].type, var.stride, right, var.stride, left);
       }
       else {
         BinopHelper(left, calyx::BinopType::Add, right);
@@ -704,7 +704,8 @@ void ASTWalker::Visit(BinopNode& expr) {
           throw cotyl::UnimplementedException("pointer diff");
         }
         else {
-          EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, calyx::PtrAddType::Sub, var.stride, right);
+          EmitIntegralExpr<calyx::Unop>(emitter.vars[right].type, calyx::UnopType::Neg, right);
+          EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, var.stride, current);
         }
       }
       else if (emitter.vars[right].type == calyx::Var::Type::Pointer) {
@@ -1062,11 +1063,13 @@ void ASTWalker::Visit(AssignmentNode& expr) {
     auto var = emitter.vars[left];
     switch (op) {
       case calyx::BinopType::Add:
-        EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, calyx::PtrAddType::Add, var.stride, right);
+        EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, var.stride, right);
         break;
-      case calyx::BinopType::Sub:
-        EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, calyx::PtrAddType::Sub, var.stride, right);
+      case calyx::BinopType::Sub: {
+        EmitIntegralExpr<calyx::Unop>(emitter.vars[right].type, calyx::UnopType::Neg, right);
+        EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, var.stride, current);
         break;
+      }
       default:
         throw std::runtime_error("Bad pointer binop in pointer assignment");
     }

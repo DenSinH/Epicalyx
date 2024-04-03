@@ -847,11 +847,8 @@ void BasicOptimizer::EmitAddToPointer(const AddToPointer<T>& _op) {
     if (right_imm->value == 0) {
       var_replacement[op->idx] = op->ptr_idx;
     }
-    else if (op->op == PtrAddType::Add) {
-      EmitRepl<AddToPointerImm>(op->idx, op->ptr_idx, op->stride, right_imm->value);
-    }
     else {
-      EmitRepl<AddToPointerImm>(op->idx, op->ptr_idx, op->stride, -right_imm->value);
+      EmitRepl<AddToPointerImm>(op->idx, op->ptr_idx, op->stride, right_imm->value);
     }
     return;
   }

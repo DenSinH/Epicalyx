@@ -153,6 +153,8 @@ void Interpreter::Emit(const DeallocateLocal& op) {
 template<typename To, typename From>
 void Interpreter::EmitCast(const Cast<To, From>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+  using result_t = calyx_op_type(op)::result_t;
+  using src_t = calyx_op_type(op)::src_t;
   if constexpr(std::is_same_v<To, Pointer>) {
     To value;
     From from = std::get<From>(vars.Get(op.right_idx));
@@ -165,8 +167,8 @@ void Interpreter::EmitCast(const Cast<To, From>& op) {
   }
   else if constexpr(std::is_same_v<From, Pointer>) {
     // we know that To is not a pointer type
-    To value;
-    From from = std::get<From>(vars.Get(op.right_idx));
+    result_t value;
+    src_t from = std::get<src_t>(vars.Get(op.right_idx));
 
     // assume we don't get label offsets here, otherwise we read garbage anyway
     auto pval = ReadPointer(from.value);
@@ -176,24 +178,28 @@ void Interpreter::EmitCast(const Cast<To, From>& op) {
     vars.Set(op.idx, value);
   }
   else {
-    To value;
-    From from = std::get<From>(vars.Get(op.right_idx));
-    if constexpr(std::is_floating_point_v<From>) {
-      if constexpr(std::is_floating_point_v<To>) {
-        value = (To)from;
+    result_t value;
+    auto from = std::get<src_t>(vars.Get(op.right_idx));
+    if constexpr(std::is_floating_point_v<src_t>) {
+      if constexpr(std::is_floating_point_v<result_t>) {
+        value = (result_t)from;
       }
       else {
         // out of bounds is UB anyway...
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wimplicit-const-int-float-conversion"
-        value = std::clamp<From>(from, std::numeric_limits<To>::min(), std::numeric_limits<To>::max());
+        value = std::clamp<src_t>(
+          from,
+          std::numeric_limits<result_t>::min(),
+          std::numeric_limits<result_t>::max()
+        );
 #pragma clang diagnostic pop
       }
     }
     else {
       value = from;
     }
-    vars.Set(op.idx, (calyx::calyx_upcast_t<To>)value);
+    vars.Set(op.idx, (result_t)value);
   }
 }
 
@@ -204,10 +210,11 @@ void Interpreter::EmitLoadLocal(const LoadLocal<T>& op) {
     throw cotyl::UnimplementedException("load struct cvar");
   }
   else {
-    // works the same for pointers
+    // works the same for pointers  
+    using result_t = calyx_op_type(op)::result_t;
     T value;
     memcpy(&value, &stack[locals.Get(op.loc_idx).first], sizeof(T));
-    vars.Set(op.idx, (calyx_upcast_t<T>)value);
+    vars.Set(op.idx, (result_t)value);
   }
 }
 
@@ -223,7 +230,8 @@ void Interpreter::EmitStoreLocal(const StoreLocal<T>& op) {
   }
   else {
     // works the same for pointers
-    T value = (T)std::get<calyx_upcast_t<T>>(vars.Get(op.src));
+    using src_t = calyx_op_type(op)::src_t;
+    T value = (T)std::get<src_t>(vars.Get(op.src));
     memcpy(&stack[locals.Get(op.loc_idx).first], &value, sizeof(T));
   }
 }
@@ -234,10 +242,11 @@ void Interpreter::EmitLoadGlobal(const LoadGlobal<T>& op) {
     throw cotyl::UnimplementedException("load struct global");
   }
   else {
+    using result_t = calyx_op_type(op)::result_t;
     cotyl::Assert(global_data[globals.at(op.symbol)].size() == sizeof(T));
     T value;
     std::memcpy(&value, global_data[globals.at(op.symbol)].data(), sizeof(T));
-    vars.Set(op.idx, (calyx_upcast_t<T>)value);
+    vars.Set(op.idx, (result_t)value);
   }
 }
 
@@ -251,8 +260,9 @@ void Interpreter::EmitStoreGlobal(const StoreGlobal<T>& op) {
     throw cotyl::UnimplementedException("store struct global");
   }
   else {
+    using src_t = calyx_op_type(op)::src_t;
     cotyl::Assert(global_data[globals.at(op.symbol)].size() == sizeof(T));
-    T value = (T)std::get<calyx_upcast_t<T>>(vars.Get(op.src));
+    T value = (T)std::get<src_t>(vars.Get(op.src));
     std::memcpy(global_data[globals.at(op.symbol)].data(), &value, sizeof(T));
   }
 }
@@ -275,7 +285,8 @@ void Interpreter::EmitLoadFromPointer(const LoadFromPointer<T>& op) {
       cotyl::Assert(global_data[globals[pval.label]].size() - op.offset - pval.offset >= sizeof(T));
       memcpy(&value, global_data[globals[pval.label]].data() + op.offset + pval.offset, sizeof(T));
     }
-    vars.Set(op.idx, (calyx_upcast_t<T>)value);
+    using result_t = calyx_op_type(op)::result_t;
+    vars.Set(op.idx, (result_t)value);
   }
 }
 
@@ -286,7 +297,8 @@ void Interpreter::EmitStoreToPointer(const StoreToPointer<T>& op) {
     throw cotyl::UnimplementedException("store struct to pointer");
   }
   else {
-    T value = std::get<calyx_upcast_t<T>>(vars.Get(op.src));
+    using src_t = calyx_op_type(op)::src_t;
+    T value = std::get<src_t>(vars.Get(op.src));
 
     if (std::holds_alternative<i64>(pointer)) {
       const auto pval = std::get<i64>(pointer);
@@ -568,7 +580,7 @@ template<typename T>
 void Interpreter::EmitShift(const Shift<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T left = std::get<T>(vars.Get(op.left_idx));
-  u32 right = std::get<u32>(vars.Get(op.right_idx));
+  auto right = std::get<calyx_op_type(op)::shift_t>(vars.Get(op.right_idx));
   switch (op.op) {
     case calyx::ShiftType::Left: {
       left <<= right;
@@ -603,7 +615,7 @@ template<typename T>
 void Interpreter::EmitCompare(const Compare<T>& op) {
   T left = std::get<T>(vars.Get(op.left_idx));
   T right = std::get<T>(vars.Get(op.right_idx));
-  i32 result;
+  calyx_op_type(op)::result_t result;
 
   if constexpr(std::is_same_v<T, calyx::Pointer>) {
     auto lptr = ReadPointer(left.value);
@@ -640,7 +652,7 @@ void Interpreter::EmitCompare(const Compare<T>& op) {
 template<typename T>
 void Interpreter::EmitCompareImm(const CompareImm<T>& op) {
   T left = std::get<T>(vars.Get(op.left_idx));
-  i32 result;
+  calyx_op_type(op)::result_t result;
 
   if constexpr(std::is_same_v<T, calyx::Pointer>) {
     auto lptr = ReadPointer(left.value);
@@ -765,7 +777,7 @@ void Interpreter::EmitBranchCompareImm(const BranchCompareImm<T>& op) {
 
 void Interpreter::Emit(const Select& op) {
   cotyl::Assert(vars.HasTop(op.idx));
-  auto val = std::get<i64>(vars.Get(op.idx));
+  auto val = std::get<calyx_op_type(op)::src_t>(vars.Get(op.idx));
   cotyl::Assert(op._default || op.table.contains(val), "Jump table does not contain value");
   if (op.table.contains(val)) {
     pos.first  = op.table.at(val);
@@ -780,7 +792,7 @@ template<typename T>
 void Interpreter::EmitAddToPointer(const AddToPointer<T>& op) {
   calyx::Pointer left = std::get<calyx::Pointer>(vars.Get(op.ptr_idx));
   const auto lptr = ReadPointer(left.value);
-  T right = std::get<T>(vars.Get(op.right_idx));
+  auto right = std::get<calyx_op_type(op)::offset_t>(vars.Get(op.right_idx));
   calyx::Pointer result;
   if (std::holds_alternative<i64>(lptr)) {
     result = MakePointer(std::get<i64>(lptr) + (i64)op.stride * (i64)right);
@@ -795,7 +807,7 @@ void Interpreter::EmitAddToPointer(const AddToPointer<T>& op) {
 void Interpreter::Emit(const AddToPointerImm& op) {
   calyx::Pointer left = std::get<calyx::Pointer>(vars.Get(op.ptr_idx));
   const auto lptr = ReadPointer(left.value);
-  i64 right = op.right;
+  calyx_op_type(op)::offset_t right = op.right;
   calyx::Pointer result;
   if (std::holds_alternative<i64>(lptr)) {
     result = MakePointer(std::get<i64>(lptr) + (i64)op.stride * (i64)right);

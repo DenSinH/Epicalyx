@@ -36,6 +36,8 @@ static_assert(sizeof(Pointer) == sizeof(i64));
 struct Struct;
 
 template<typename T>
+constexpr bool is_calyx_small_type_v = epi::cotyl::is_in_v<T, i8, u8, i16, u16>;
+template<typename T>
 constexpr bool is_calyx_integral_type_v = epi::cotyl::is_in_v<T, i32, u32, i64, u64>;
 template<typename T>
 constexpr bool is_calyx_arithmetic_type_v = is_calyx_integral_type_v<T> || epi::cotyl::is_in_v<T, float, double>;
@@ -52,18 +54,7 @@ template<> struct calyx_upcast<u16> { using type = i32; };
 template<typename T>
 using calyx_upcast_t = typename calyx_upcast<T>::type;
 
-template<typename T>
-struct calyx_imm_type {
-  using type = T;
-};
-
-template<>
-struct calyx_imm_type<Pointer> {
-  using type = u64;
-};
-
-template<typename T>
-using calyx_imm_type_t = typename calyx_imm_type<T>::type;
+#define calyx_op_type(op) typename std::decay_t<decltype(op)>
 
 struct Argument {
   enum class Type {
@@ -191,11 +182,6 @@ enum class BinopType {
   BinXor,
 };
 
-enum class PtrAddType {
-  Add,
-  Sub,
-};
-
 enum class ShiftType {
   Left,
   Right,
@@ -212,9 +198,13 @@ enum class CmpType {
 };
 
 template<typename To, typename From>
-requires (!std::is_same_v<To, Struct> && is_calyx_arithmetic_ptr_type_v<From>)
+requires (
+  is_calyx_arithmetic_ptr_type_v<From> && 
+  (is_calyx_arithmetic_ptr_type_v<To> || is_calyx_small_type_v<To>)
+)
 struct Cast : Expr {
   using result_t = calyx_upcast_t<To>;
+  using src_t = From;
   Cast(var_index_t idx, var_index_t right_idx) :
       Expr(GetTID(), idx), right_idx(right_idx) {
 
@@ -231,6 +221,7 @@ template<typename T>
 requires (is_calyx_arithmetic_type_v<T>)
 struct Binop : Expr {
   using result_t = T;
+  using src_t = T;
   Binop(var_index_t idx, var_index_t left, BinopType op, var_index_t right) :
       Expr(GetTID(), idx), left_idx(left), op(op), right_idx(right) {
 
@@ -249,6 +240,7 @@ template<typename T>
 requires (is_calyx_arithmetic_type_v<T>)
 struct BinopImm : Expr {
   using result_t = T;
+  using src_t = T;
   BinopImm(var_index_t idx, var_index_t left, BinopType op, T right) :
       Expr(GetTID(), idx), left_idx(left), op(op), right(right) {
 
@@ -267,6 +259,9 @@ template<typename T>
 requires (is_calyx_integral_type_v<T>)
 struct Shift : Expr {
   using result_t = T;
+  using src_t = T;
+  // shift type changed when value is negative anyway
+  using shift_t = u32;
   Shift(var_index_t idx, var_index_t left, ShiftType op, var_index_t right) :
       Expr(GetTID(), idx), left_idx(left), op(op), right_idx(right) {
 
@@ -286,6 +281,7 @@ template<typename T>
 requires (is_calyx_integral_type_v<T>)
 struct ShiftImm : Expr {
   using result_t = T;
+  using src_t = T;
   ShiftImm(var_index_t idx, var_index_t left, ShiftType op, T right) :
       Expr(GetTID(), idx), left_idx(left), op(op), right(right) {
 
@@ -304,6 +300,7 @@ template<typename T>
 requires (is_calyx_type_v<T>)
 struct Compare : Expr {
   using result_t = i32;
+  using src_t = T;
   Compare(var_index_t idx, var_index_t left, CmpType op, var_index_t right) :
           Expr(GetTID(), idx), left_idx(left), op(op), right_idx(right) {
 
@@ -322,6 +319,7 @@ template<typename T>
 requires (is_calyx_type_v<T>)
 struct CompareImm : Expr {
   using result_t = i32;
+  using src_t = T;
   CompareImm(var_index_t idx, var_index_t left, CmpType op, T right) :
           Expr(GetTID(), idx), left_idx(left), op(op), right(right) {
 
@@ -350,6 +348,7 @@ struct UnconditionalBranch : Branch {
 template<typename T>
 requires (is_calyx_type_v<T>)
 struct BranchCompare : Branch {
+  using src_t = T;
 
   BranchCompare(block_label_t dest, var_index_t left, CmpType op, var_index_t right) :
           Branch(Class::ConditionalBranch, GetTID(), dest), left_idx(left), op(op), right_idx(right) {
@@ -368,6 +367,7 @@ struct BranchCompare : Branch {
 template<typename T>
 requires (is_calyx_type_v<T>)
 struct BranchCompareImm : Branch {
+  using src_t = T;
 
   BranchCompareImm(block_label_t dest, var_index_t left, CmpType op, T right) :
           Branch(Class::ConditionalBranch, GetTID(), dest), left_idx(left), op(op), right(right) {
@@ -387,13 +387,14 @@ template<typename T>
 requires (is_calyx_integral_type_v<T>)
 struct AddToPointer : Expr {
   using result_t = Pointer;
-  AddToPointer(var_index_t idx, var_index_t ptr, PtrAddType op, u64 stride, var_index_t right) :
-      Expr(GetTID(), idx), ptr_idx(ptr), op(op), stride(stride), right_idx(right) {
+  using offset_t = T;
+
+  AddToPointer(var_index_t idx, var_index_t ptr, u64 stride, var_index_t right) :
+      Expr(GetTID(), idx), ptr_idx(ptr), stride(stride), right_idx(right) {
 
   }
 
   var_index_t ptr_idx;
-  PtrAddType op;
   u64 stride;
   var_index_t right_idx;
 
@@ -404,6 +405,8 @@ struct AddToPointer : Expr {
 
 struct AddToPointerImm : Expr {
   using result_t = Pointer;
+  using offset_t = i64;
+  
   AddToPointerImm(var_index_t idx, var_index_t ptr, u64 stride, i64 right) :
       Expr(GetTID(), idx), ptr_idx(ptr), stride(stride), right(right) {
 
@@ -411,7 +414,7 @@ struct AddToPointerImm : Expr {
 
   var_index_t ptr_idx;
   u64 stride;
-  i64 right;
+  offset_t right;
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;
@@ -438,6 +441,7 @@ template<typename T>
 requires (is_calyx_arithmetic_type_v<T>)
 struct Unop : Expr {
   using result_t = T;
+  using src_t = T;
   Unop(var_index_t idx, UnopType op, var_index_t right) :
       Expr(GetTID(), idx), op(op), right_idx(right) {
 
@@ -483,6 +487,7 @@ struct LoadLocalAddr : Expr {
 
 template<typename T>
 struct StoreLocal : Directive {
+  using src_t = calyx_upcast_t<T>;
 
   StoreLocal(var_index_t loc_idx, var_index_t src, i32 offset = 0) :
       Directive(Class::Store, GetTID()), loc_idx(loc_idx), src(src), offset(offset) {
@@ -530,6 +535,7 @@ struct LoadGlobalAddr : Expr {
 
 template<typename T>
 struct StoreGlobal : Directive {
+  using src_t = calyx_upcast_t<T>;
 
   StoreGlobal(std::string symbol, var_index_t src, i32 offset = 0) :
       Directive(Class::Store, GetTID()), symbol(std::move(symbol)), src(src), offset(offset) {
@@ -578,6 +584,7 @@ struct DeallocateLocal : Directive {
 template<typename T>
 struct LoadFromPointer : Expr {
   using result_t = calyx_upcast_t<T>;
+  
   LoadFromPointer(var_index_t idx, var_index_t ptr_idx, i32 offset = 0) :
       Expr(GetTID(), idx), ptr_idx(ptr_idx), offset(offset) {
 
@@ -593,6 +600,7 @@ struct LoadFromPointer : Expr {
 
 template<typename T>
 struct StoreToPointer : Directive {
+  using src_t = calyx_upcast_t<T>;
 
   StoreToPointer(var_index_t ptr_idx, var_index_t src, i32 offset = 0) :
       Directive(Class::Store, GetTID()), ptr_idx(ptr_idx), src(src), offset(offset) {
@@ -611,6 +619,7 @@ struct StoreToPointer : Directive {
 template<typename T>
 requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
 struct Return : Directive {
+  using src_t = T;
 
   Return(var_index_t idx) :
     Directive(Class::Return, GetTID()), idx(idx) {
@@ -625,7 +634,9 @@ struct Return : Directive {
 };
 
 template<typename T>
+requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
 struct Call : Directive {
+  using result_t = T;
 
   Call(var_index_t idx, var_index_t fn_idx, arg_list_t args, arg_list_t var_args) :
       Directive(Class::Call, GetTID()), idx(idx), fn_idx(fn_idx), args(std::move(args)), var_args(std::move(var_args)) {
@@ -643,7 +654,9 @@ struct Call : Directive {
 };
 
 template<typename T>
+requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
 struct CallLabel : Directive {
+  using result_t = T;
 
   CallLabel(var_index_t idx, std::string label, arg_list_t args, arg_list_t var_args) :
     Directive(Class::Call, GetTID()), idx(idx), label(std::move(label)), args(std::move(args)), var_args(std::move(var_args)) {
@@ -676,6 +689,7 @@ struct ArgMakeLocal : Directive {
 };
 
 struct Select : Directive {
+  using src_t = i64;
 
   Select(var_index_t idx) :
       Directive(Class::Select, GetTID()), idx(idx) {

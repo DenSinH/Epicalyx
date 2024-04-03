@@ -30,7 +30,10 @@ template<> const std::string type_string<Pointer>::value = "pointer";
 }
 
 template<typename To, typename From>
-requires (!std::is_same_v<To, Struct> && is_calyx_arithmetic_ptr_type_v<From>)
+requires (
+  is_calyx_arithmetic_ptr_type_v<From> && 
+  (is_calyx_arithmetic_ptr_type_v<To> || is_calyx_small_type_v<To>)
+)
 std::string Cast<To, From>::ToString() const {
   return cotyl::FormatStr(
       "cast  v%s <%s> <- <%s>v%s", this->idx, detail::type_string<To>::value, detail::type_string<From>::value, right_idx
@@ -159,12 +162,7 @@ std::string Select::ToString() const {
 template<typename T>
 requires (is_calyx_integral_type_v<T>)
 std::string AddToPointer<T>::ToString() const {
-  if (op == PtrAddType::Add) {
-    return cotyl::FormatStr("ptrad v%s = v%s + %s * v%s", this->idx, ptr_idx, stride, right_idx);
-  }
-  else {
-    return cotyl::FormatStr("ptrsb v%s = v%s - %s * v%s", this->idx, ptr_idx, stride, right_idx);
-  }
+  return cotyl::FormatStr("ptrad v%s = v%s + %s * v%s", this->idx, ptr_idx, stride, right_idx);
 }
 
 std::string AddToPointerImm::ToString() const {
@@ -257,6 +255,7 @@ std::string make_args_list(const arg_list_t& args) {
 }
 
 template<typename T>
+requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
 std::string Call<T>::ToString() const {
 
   if constexpr(std::is_same_v<T, void>) {
@@ -280,6 +279,7 @@ std::string Call<T>::ToString() const {
 }
 
 template<typename T>
+requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
 std::string CallLabel<T>::ToString() const {
 
   if constexpr(std::is_same_v<T, void>) {
@@ -307,7 +307,10 @@ std::string ArgMakeLocal::ToString() const {
 }
 
 template<typename To, typename From>
-requires (!std::is_same_v<To, Struct> && is_calyx_arithmetic_ptr_type_v<From>)
+requires (
+  is_calyx_arithmetic_ptr_type_v<From> && 
+  (is_calyx_arithmetic_ptr_type_v<To> || is_calyx_small_type_v<To>)
+)
 void Cast<To, From>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
@@ -433,11 +436,13 @@ void StoreToPointer<T>::Emit(Backend& backend) {
 }
 
 template<typename T>
+requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
 void Call<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
+requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
 void CallLabel<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }

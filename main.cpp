@@ -38,7 +38,7 @@ void PrintProgram(const epi::Program& program) {
 
 
 int main() {
-  auto preprocessor = epi::Preprocessor("examples/emitting/fpr_gpr_interference.c");
+  auto preprocessor = epi::Preprocessor("examples/emitting/pointers.c");
 
   // while (!preprocessor.EOS()) {
   //   std::cout << preprocessor.Get();
