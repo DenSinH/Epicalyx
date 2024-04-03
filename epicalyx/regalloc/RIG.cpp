@@ -1,4 +1,5 @@
 #include "RIG.h"
+#include "RegisterSpace.h"
 #include "Format.h"
 #include "optimizer/ProgramDependencies.h"
 #include "cycle/Cycle.h"
@@ -44,7 +45,7 @@ RIG RIG::GenerateRIG(const Program& program) {
     const auto gvar = GeneralizedVar::Var(var_idx);
     liveliness.at(var.created.first).def.emplace(gvar);
     liveliness.at(var.created.first).single[var.created.second].def = gvar;
-    rig.graph.AddNode(gvar.NodeUID(), gvar);
+    rig.graph.AddNodeIfNotExists(gvar.NodeUID(), gvar);
 
     // insert uses
     for (const auto& pos : var.reads) {
@@ -66,7 +67,7 @@ RIG RIG::GenerateRIG(const Program& program) {
     const auto gvar = GeneralizedVar::Local(loc_idx);
     liveliness.at(loc.created.first).def.emplace(gvar);
     liveliness.at(loc.created.first).single[loc.created.second].def = gvar;
-    rig.graph.AddNode(gvar.NodeUID(), std::move(gvar));
+    rig.graph.AddNodeIfNotExists(gvar.NodeUID(), std::move(gvar));
 
     for (const auto& pos : loc.reads) {
       liveliness.at(pos.first).single[pos.second].use.emplace_back(gvar);
@@ -81,7 +82,7 @@ RIG RIG::GenerateRIG(const Program& program) {
   }
   
   // program graph may not be acyclic
-  const auto sort = deps.block_graph.TopSort<false>();
+  const auto sort = TopSort(deps.block_graph, false);
   /* Algorithm:
    * This is an adapted version, since most sources seem to assume that 
    * "use" and "def" are ALWAYS disjoint, which is not the case for me.
@@ -161,7 +162,7 @@ RIG RIG::GenerateRIG(const Program& program) {
 
         // add edge to any out variable
         for (const auto& out_idx : l.out) {
-          rig.graph.AddDoubleEdge(gvar.NodeUID(), out_idx.NodeUID());
+          rig.graph.AddEdge(gvar.NodeUID(), out_idx.NodeUID());
         }
       }
 
@@ -174,6 +175,10 @@ RIG RIG::GenerateRIG(const Program& program) {
   }
 
   return std::move(rig);
+}
+
+void RIG::Reduce(const RegisterSpace& regspace) {
+  
 }
 
 void RIG::Visualize(const std::string& filename) const {
@@ -189,7 +194,7 @@ void RIG::Visualize(const std::string& filename) const {
   );
 
   vgraph.square_nodes = false;
-  vgraph.acyclic = true;
+  vgraph.acyclic = false;
   vgraph.directed = false;
   vgraph.allow_multi_edge = false;
   vgraph.Visualize(filename);

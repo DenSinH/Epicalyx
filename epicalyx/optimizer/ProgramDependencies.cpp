@@ -41,7 +41,7 @@ void ProgramDependencies::EmitProgram(const Program& program) {
   // initialize block graph nodes
   block_graph.Reserve(program.blocks.size());
   for (const auto& [block_idx, block] : program.blocks) {
-    block_graph.AddNode(block_idx, &block);
+    block_graph.AddNodeIfNotExists(block_idx, &block);
   }
 
   for (const auto& [i, block] : program.blocks) {

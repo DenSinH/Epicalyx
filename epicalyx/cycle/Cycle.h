@@ -12,8 +12,8 @@ namespace epi::cycle {
 struct VisualGraph {
 
   VisualGraph() : graph{} { }
-  template<typename I, typename T, typename TFunc, typename BFunc>
-  VisualGraph(const Graph<I, T>& graph, TFunc title, BFunc body);
+  template<typename I, typename T, bool Directed, typename TFunc, typename BFunc>
+  VisualGraph(const Graph<I, T, Directed>& graph, TFunc title, BFunc body);
 
   bool directed = true;
   bool acyclic = false;
@@ -65,7 +65,7 @@ private:
     }
   };
 
-  Graph<u64, VisualNode> graph{};
+  Graph<u64, VisualNode, true> graph{};
 
 public:
   NodeRef n(u64 from, std::string line = "") {
@@ -77,10 +77,12 @@ public:
   }
 };
 
-template<typename I, typename T, typename TFunc, typename BFunc>
-VisualGraph::VisualGraph(const Graph<I, T>& g, TFunc title, BFunc body) {
+template<typename I, typename T, bool Directed, typename TFunc, typename BFunc>
+VisualGraph::VisualGraph(const Graph<I, T, Directed>& g, TFunc title, BFunc body) {
+  directed = Directed;
+  
   for (const auto& [node_idx, node] : g) {
-    graph.AddNode(node_idx, VisualNode{
+    graph.AddOrAssignNode(node_idx, VisualNode{
       static_cast<u64>(node_idx),
       title(node_idx, node.value),
       body(node_idx, node.value)

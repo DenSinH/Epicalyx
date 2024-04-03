@@ -18,7 +18,7 @@ struct ProgramDependencies final : calyx::Backend {
     return deps;
   }
 
-  Graph<block_label_t, const Program::block_t*> block_graph{};
+  Graph<block_label_t, const Program::block_t*, true> block_graph{};
 
   struct Var {
     program_pos_t created = {0, 0};

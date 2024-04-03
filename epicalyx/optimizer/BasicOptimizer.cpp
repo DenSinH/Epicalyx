@@ -704,7 +704,7 @@ void BasicOptimizer::Emit(const UnconditionalBranch& _op) {
     // only flush locals on the unconditional branch non-linked blocks
     FlushCurrentLocals();
     if (!new_block_graph.Has(op->dest)) {
-      new_block_graph.AddNode(op->dest, nullptr);
+      new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
       new_block_graph.AddEdge(current_new_block_idx, op->dest);
       todo.insert(op->dest);
     }
@@ -751,7 +751,7 @@ void BasicOptimizer::EmitBranchCompare(const BranchCompare<T>& _op) {
   if (!ResolveBranchIndirection(*op)) {
     FlushCurrentLocals();
     if (!new_block_graph.Has(op->dest)) {
-      new_block_graph.AddNode(op->dest, nullptr);
+      new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
       new_block_graph.AddEdge(current_new_block_idx, op->dest);
       todo.insert(op->dest);
     }
@@ -788,7 +788,7 @@ void BasicOptimizer::EmitBranchCompareImm(const BranchCompareImm<T>& _op) {
   if (!ResolveBranchIndirection(*op)) {
     FlushCurrentLocals();
     if (!new_block_graph.Has(op->dest)) {
-      new_block_graph.AddNode(op->dest, nullptr);
+      new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
       new_block_graph.AddEdge(current_new_block_idx, op->dest);
       todo.insert(op->dest);
     }
@@ -818,14 +818,14 @@ void BasicOptimizer::Emit(const Select& _op) {
   else {
     for (const auto& [val, block_idx] : op->table) {
       if (!new_block_graph.Has(block_idx)) {
-        new_block_graph.AddNode(block_idx, nullptr);
+        new_block_graph.AddNodeIfNotExists(block_idx, nullptr);
         new_block_graph.AddEdge(current_new_block_idx, block_idx);
         todo.insert(block_idx);
       }
     }
     if (op->_default) {
       if (!new_block_graph.Has(op->_default)) {
-        new_block_graph.AddNode(op->_default, nullptr);
+        new_block_graph.AddNodeIfNotExists(op->_default, nullptr);
         new_block_graph.AddEdge(current_new_block_idx, op->_default);
         todo.insert(op->_default);
       }

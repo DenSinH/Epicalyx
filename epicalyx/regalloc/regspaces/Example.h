@@ -14,9 +14,9 @@ struct ExampleRegSpace final : RegisterSpace {
   
   cotyl::unordered_map<GeneralizedVar, RegType> register_type_map{};
 
-  register_type_t RegisterType(const GeneralizedVar& gvar) final;
-  std::size_t RegisterTypePopulation(const register_type_t& type) final;
-  std::optional<register_t> ForcedRegister(const GeneralizedVar& gvar) final;
+  register_type_t RegisterType(const GeneralizedVar& gvar) const final;
+  std::size_t RegisterTypePopulation(const register_type_t& type) const final;
+  std::optional<register_t> ForcedRegister(const GeneralizedVar& gvar) const final;
 
   template<typename T>
   void OutputGVar(const GeneralizedVar& gvar);

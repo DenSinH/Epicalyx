@@ -46,9 +46,9 @@ struct RegisterSpace : Backend {
 
   void EmitProgram(const Program& program) final;
 
-  virtual register_type_t RegisterType(const GeneralizedVar& gvar) = 0;
-  virtual std::size_t RegisterTypePopulation(const register_type_t& type) = 0;
-  virtual std::optional<register_t> ForcedRegister(const GeneralizedVar& gvar) = 0;
+  virtual register_type_t RegisterType(const GeneralizedVar& gvar) const = 0;
+  virtual std::size_t RegisterTypePopulation(const register_type_t& type) const = 0;
+  virtual std::optional<register_t> ForcedRegister(const GeneralizedVar& gvar) const = 0;
 };
 
 }

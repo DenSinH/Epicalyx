@@ -11,14 +11,15 @@
 namespace epi {
 
 using namespace calyx;
+struct RegisterSpace;
 
 struct RIG {
 
   static RIG GenerateRIG(const Program& program);
+  void Reduce(const RegisterSpace& regspace);
   void Visualize(const std::string& filename) const;
 
-  // we again skip 0
-  Graph<i64, GeneralizedVar> graph{};
+  Graph<i64, GeneralizedVar, false> graph{};
 };
 
 }

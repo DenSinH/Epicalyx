@@ -7,11 +7,11 @@
 
 namespace epi {
 
-register_type_t ExampleRegSpace::RegisterType(const GeneralizedVar& gvar) {
-  return static_cast<register_type_t>(register_type_map[gvar]);
+register_type_t ExampleRegSpace::RegisterType(const GeneralizedVar& gvar) const {
+  return static_cast<register_type_t>(register_type_map.at(gvar));
 }
 
-std::size_t ExampleRegSpace::RegisterTypePopulation(const register_type_t& type) {
+std::size_t ExampleRegSpace::RegisterTypePopulation(const register_type_t& type) const {
   switch (static_cast<RegType>(type)) {
     case RegType::GPR: return 16;
     case RegType::FPR: return 16;
@@ -19,7 +19,7 @@ std::size_t ExampleRegSpace::RegisterTypePopulation(const register_type_t& type)
   }
 }
 
-std::optional<register_t> ExampleRegSpace::ForcedRegister(const GeneralizedVar& gvar) {
+std::optional<register_t> ExampleRegSpace::ForcedRegister(const GeneralizedVar& gvar) const {
   return {};
 }
 

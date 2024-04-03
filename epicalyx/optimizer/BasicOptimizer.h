@@ -22,7 +22,7 @@ struct BasicOptimizer final : calyx::Backend {
   const Program& program;
   ProgramDependencies old_deps;
   cotyl::unordered_map<block_label_t, program_pos_t> block_links{};
-  Graph<block_label_t, const Program::block_t*> new_block_graph{};
+  Graph<block_label_t, const Program::block_t*, true> new_block_graph{};
 
   calyx::Program new_program{};
 

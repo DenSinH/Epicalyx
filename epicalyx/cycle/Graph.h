@@ -10,17 +10,29 @@
 
 namespace epi {
 
-template<typename I, typename T>
+template<typename I, typename T, bool Directed>
 struct Graph {
+  // dummy because nested struct template specialization
+  // has to happen AFTER main struct specialization...
+  template<bool D, typename dummy = void> struct Node;
 
-  struct Node {
+  template<typename dummy>
+  struct Node<true, dummy> {
     T value;
-    cotyl::flat_set<I> to{};
-    cotyl::flat_set<I> from{};
+    cotyl::unordered_set<I> to{};
+    cotyl::unordered_set<I> from{};
   };
 
+  template<typename dummy>
+  struct Node<false, dummy> {
+    T value;
+    cotyl::unordered_set<I> to{};
+  };
+
+  using node_t = Node<Directed>;
+
 private:
-  cotyl::unordered_map<I, Node> nodes{};
+  cotyl::unordered_map<I, node_t> nodes{};
 
 public:
   std::size_t size() const { return nodes.size(); }
@@ -33,11 +45,11 @@ public:
     return nodes.contains(idx);
   }
 
-  Node& operator[](I idx) {
+  node_t& operator[](I idx) {
     return nodes.at(idx);
   }
 
-  const Node& At(I idx) const {
+  const node_t& At(I idx) const {
     return nodes.at(idx);
   }
 
@@ -49,79 +61,76 @@ public:
     nodes.reserve(n);
   }
 
-  void Clear(I idx) {
+  void ClearNode(I idx) {
     auto& node = nodes.at(idx);
     node.to.clear();
-    node.from.clear();
+    if constexpr(Directed) {
+      node.from.clear();
+    }
+  }
+
+  void Clear() {
+    nodes.clear();
   }
 
   template<typename... Args>
-  Node& EmplaceNode(I idx, Args... args) {
-    return nodes.emplace(idx, Node{T(args...)}).first->second;
+  node_t& AddOrAssignNode(I idx, Args... args) {
+    return nodes.insert_or_assign(idx, node_t{T(args...)}).first->second;
   }
 
-  Node& AddNode(I idx, T&& value) {
-    return nodes.emplace(idx, Node{std::move(value)}).first->second;
+  node_t& AddOrAssignNode(I idx, T&& value) {
+    return nodes.insert_or_assign(idx, node_t{std::move(value)}).first->second;
   }
 
-  Node& AddNode(I idx, const T& value) {
-    return nodes.emplace(idx, Node{value}).first->second;
+  node_t& AddOrAssignNode(I idx, const T& value) {
+    return nodes.insert_or_assign(idx, node_t{value}).first->second;
   }
 
   template<typename... Args>
-  Node& EmplaceNodeIfNotExists(I idx, Args... args) {
-    auto node = nodes.find(idx);
-    if (node == nodes.end()) {
-      return nodes.emplace_hint(node, idx, Node{T(args...)})->second;
-    }
-    return node->second;
+  node_t& EmplaceNodeIfNotExists(I idx, Args... args) {
+    return nodes.emplace(idx, node_t{T(args...)}).first->second;
   }
 
-  Node& AddNodeIfNotExists(I idx, T&& value) {
-    auto node = nodes.find(idx);
-    if (node == nodes.end()) {
-      return nodes.emplace_hint(nodes.end(), idx, Node{std::move(value)})->second;
-    }
-    return node->second;
+  node_t& AddNodeIfNotExists(I idx, T&& value) {
+    return nodes.emplace(idx, node_t{std::move(value)}).first->second;
+  }
+
+  node_t& AddNodeIfNotExists(I idx, const T& value) {
+    return nodes.emplace(idx, node_t{value}).first->second;
   }
 
   void AddEdge(I from, I to) {
     nodes.at(from).to.emplace(to);
-    nodes.at(to).from.emplace(from);
-  }
-
-  void AddDoubleEdge(I n1, I n2) {
-    auto& node1 = nodes.at(n1);
-    auto& node2 = nodes.at(n2);
-    node1.from.emplace(n2);
-    node1.to.emplace(n2);
-    node2.from.emplace(n1);
-    node2.to.emplace(n1);
+    if constexpr(Directed) {
+      nodes.at(to).from.emplace(from);
+    }
+    else {
+      nodes.at(to).to.emplace(from);
+    }
   }
 
   void RemoveEdge(I from, I to) {
     nodes.at(from).to.erase(to);
-    nodes.at(to).from.erase(from);
+    if constexpr(Directed) {
+      nodes.at(to).from.erase(from);
+    }
+    else {
+      nodes.at(to).to.emplace(from);
+    }
   }
 
-  template<bool Acyclic>
-  std::vector<I> TopSort() const;
-  template<bool Acyclic>
-  std::vector<std::vector<I>> LayeredTopSort() const;
-
-  std::vector<I> OrderedUpwardClosure(I base) const;
-  cotyl::unordered_set<I> UpwardClosure(cotyl::unordered_set<I>&& base) const;
-  bool IsAncestorOf(I base, I other) const;
+  cotyl::unordered_set<I> UpwardCluster(cotyl::unordered_set<I>&& base) const;
+  bool ExistsPath(I base, I other) const;
 };
 
+// topsort only makes sense for directed graphs
 template<typename I, typename T>
-template<bool Acyclic>
-std::vector<I> Graph<I, T>::TopSort() const {
+std::vector<I> TopSort(const Graph<I, T, true>& graph, bool acyclic) {
   std::vector<I> result{};
   cotyl::unordered_set<I> todo{};
   cotyl::flat_set<I> candidates{};
 
-  for (const auto& [idx, node] : nodes) {
+  for (const auto& [idx, node] : graph) {
     // nodes that have no inputs
     if (node.from.empty()) {
       result.push_back(idx);
@@ -134,7 +143,7 @@ std::vector<I> Graph<I, T>::TopSort() const {
     }
   }
 
-  if constexpr(!Acyclic) {
+  if (!acyclic) {
     // this can happen if there is a loop at the first iteration
     // just insert some id
     if (candidates.empty() && !todo.empty()) [[unlikely]] {
@@ -151,7 +160,7 @@ std::vector<I> Graph<I, T>::TopSort() const {
     // (some node was preventing them from being added)
     for (const auto& id : candidates) {
       // check if all inputs are done
-      const auto& node = At(id);
+      const auto& node = graph.At(id);
       bool allow_add = std::none_of(
         node.from.begin(), node.from.end(), [&](const auto& from_id) { return todo.contains(from_id); }
       );
@@ -164,7 +173,7 @@ std::vector<I> Graph<I, T>::TopSort() const {
     if (order_size == result.size()) {
       std::pair<u32, I> least = {-1, I{}};
       for (const auto& id : candidates) {
-        const auto& node = At(id);
+        const auto& node = graph.At(id);
         auto inputs = std::count_if(
           node.from.begin(), node.from.end(), [&](const auto& from_id) { return todo.contains(from_id); }
         );
@@ -177,29 +186,28 @@ std::vector<I> Graph<I, T>::TopSort() const {
     candidates.clear();
     for (auto i = order_size; i < result.size(); i++) {
       todo.erase(result[i]);
-      for (const auto& to_idx : nodes.at(result[i]).to) {
+      for (const auto& to_idx : graph.At(result[i]).to) {
         candidates.emplace(to_idx);
       }
     }
 
-    if constexpr (!Acyclic) {
+    if (!acyclic) {
       cotyl::erase_if_set(candidates, [&](const auto& idx) { return !todo.contains(idx); });
     }
   }
 
-  cotyl::Assert(result.size() == nodes.size(), "Not all nodes added to topological sort!");
+  cotyl::Assert(result.size() == graph.size(), "Not all nodes added to topological sort!");
   return std::move(result);
 }
 
 template<typename I, typename T>
-template<bool Acyclic>
-std::vector<std::vector<I>> Graph<I, T>::LayeredTopSort() const {
+std::vector<std::vector<I>> LayeredTopSort(const Graph<I, T, true>& graph, bool acyclic) {
   std::vector<std::vector<I>> result{};
   cotyl::unordered_set<I> todo{};
   cotyl::flat_set<I> candidates{};
 
   result.push_back({});
-  for (const auto& [id, node] : nodes) {
+  for (const auto& [id, node] : graph) {
     // first layer is only nodes that have no inputs
     if (node.from.empty()) {
       result.back().push_back(id);
@@ -212,7 +220,7 @@ std::vector<std::vector<I>> Graph<I, T>::LayeredTopSort() const {
     }
   }
 
-  if constexpr(!Acyclic) {
+  if (!acyclic) {
     if (result.back().empty() && !todo.empty()) [[unlikely]] {
       // possible if only loops exist in fist layer
       result.pop_back();
@@ -225,7 +233,7 @@ std::vector<std::vector<I>> Graph<I, T>::LayeredTopSort() const {
     result.push_back({});
     for (const auto& id : candidates) {
       // check if all inputs are done
-      const auto& node = At(id);
+      const auto& node = graph.At(id);
       bool allow_add = std::none_of(
         node.from.begin(), node.from.end(), [&](const auto& from_id) { return todo.contains(from_id); }
       );
@@ -239,7 +247,7 @@ std::vector<std::vector<I>> Graph<I, T>::LayeredTopSort() const {
     if (result.back().empty()) {
       std::pair<u32, I> least = {-1, I{}};
       for (const auto& id : candidates) {
-        const auto& node = At(id);
+        const auto& node = graph.At(id);
         auto inputs = std::count_if(
           node.from.begin(), node.from.end(), [&](const auto& from_id) { return todo.contains(from_id); }
         );
@@ -252,12 +260,12 @@ std::vector<std::vector<I>> Graph<I, T>::LayeredTopSort() const {
     candidates.clear();
     for (const auto& id : result.back()) {
       todo.erase(id);
-      for (const auto& to_idx : nodes.at(id).to) {
+      for (const auto& to_idx : graph.At(id).to) {
         candidates.emplace(to_idx);
       }
     }
 
-    if constexpr (!Acyclic) {
+    if (!acyclic) {
       // remove any candidates that were done already
       cotyl::erase_if_set(candidates, [&](const auto& idx) { return !todo.contains(idx); });
     }
@@ -269,14 +277,15 @@ std::vector<std::vector<I>> Graph<I, T>::LayeredTopSort() const {
       result.end(),
       0,
       [](auto acc, const auto& layer) { return acc + layer.size(); }
-    ) == nodes.size(), 
+    ) == graph.size(), 
     "Not all nodes added to topological sort!"
   );
   return std::move(result);
 }
 
+// "ordered" upward closure only makes sense for directed graphs
 template<typename I, typename T>
-std::vector<I> Graph<I, T>::OrderedUpwardClosure(I base) const {
+std::vector<I> OrderedUpwardClosure(const Graph<I, T, true>& graph, I base) {
   cotyl::unordered_set<I> closure_found{base};
   std::vector<I> closure{};
   closure.push_back(base);
@@ -286,8 +295,8 @@ std::vector<I> Graph<I, T>::OrderedUpwardClosure(I base) const {
     auto current = *search.begin();
     search.erase(search.begin());
 
-    auto node = nodes.find(current);
-    for (const auto& idx : node->second.to) {
+    const auto& node = graph.At(current);
+    for (const auto& idx : node.to) {
       if (closure_found.emplace(idx).second) {
         search.emplace(idx);
         closure.push_back(idx);
@@ -298,8 +307,8 @@ std::vector<I> Graph<I, T>::OrderedUpwardClosure(I base) const {
   return closure;
 }
 
-template<typename I, typename T>
-cotyl::unordered_set<I> Graph<I, T>::UpwardClosure(cotyl::unordered_set<I>&& base) const {
+template<typename I, typename T, bool Directed>
+cotyl::unordered_set<I> Graph<I, T, Directed>::UpwardCluster(cotyl::unordered_set<I>&& base) const {
   cotyl::unordered_set<I> closure = std::move(base);
   cotyl::unordered_set<I> search = {closure.begin(), closure.end()};
 
@@ -307,8 +316,8 @@ cotyl::unordered_set<I> Graph<I, T>::UpwardClosure(cotyl::unordered_set<I>&& bas
     auto current = *search.begin();
     search.erase(search.begin());
 
-    auto node = nodes.find(current);
-    for (const auto& idx : node->second.to) {
+    const auto& node = nodes.at(current);
+    for (const auto& idx : node.to) {
       if (!closure.contains(idx)) {
         closure.emplace_hint(closure.end(), idx);
         search.emplace(idx);
@@ -319,8 +328,9 @@ cotyl::unordered_set<I> Graph<I, T>::UpwardClosure(cotyl::unordered_set<I>&& bas
   return closure;
 }
 
-template<typename I, typename T>
-bool Graph<I, T>::IsAncestorOf(I base, I other) const {
+template<typename I, typename T, bool Directed>
+bool Graph<I, T, Directed>::ExistsPath(I base, I other) const {
+  if (base == other) return true;
   cotyl::unordered_set<I> closure_found{base};
   cotyl::unordered_set<I> search{base};
 
@@ -328,8 +338,8 @@ bool Graph<I, T>::IsAncestorOf(I base, I other) const {
     auto current = *search.begin();
     search.erase(search.begin());
 
-    auto node = nodes.find(current);
-    for (const auto& idx : node->second.to) {
+    const auto& node = nodes.at(current);
+    for (const auto& idx : node.to) {
       if (idx == other) {
         return true;
       }
