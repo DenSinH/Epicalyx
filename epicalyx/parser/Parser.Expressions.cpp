@@ -84,8 +84,11 @@ pExpr Parser::EPostfix() {
         // function call
         auto func = std::make_unique<FunctionCallNode>(std::move(node));
         in_stream.Skip();
-        while (in_stream.Peek(current) && current->type != TokenType::RParen) {
+        while (!in_stream.IsAfter(0, TokenType::RParen)) {
           func->AddArg(EAssignment());
+          if (!in_stream.IsAfter(0, TokenType::RParen)) {
+            in_stream.Eat(TokenType::Comma);
+          }
         }
         in_stream.Eat(TokenType::RParen);
         node = std::move(func);

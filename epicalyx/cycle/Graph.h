@@ -115,7 +115,7 @@ public:
       nodes.at(to).from.erase(from);
     }
     else {
-      nodes.at(to).to.emplace(from);
+      nodes.at(to).to.erase(from);
     }
   }
 

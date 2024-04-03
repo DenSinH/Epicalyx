@@ -38,7 +38,7 @@ void PrintProgram(const epi::Program& program) {
 
 
 int main() {
-  auto preprocessor = epi::Preprocessor("examples/emitting/loops.c");
+  auto preprocessor = epi::Preprocessor("examples/emitting/fpr_gpr_interference.c");
 
   // while (!preprocessor.EOS()) {
   //   std::cout << preprocessor.Get();
@@ -163,7 +163,6 @@ int main() {
   }
 
   auto rig = epi::RIG::GenerateRIG(program);
-  rig.Visualize("output/rig.pdf");
 
   auto regspace = epi::RegisterSpace::GetRegSpace<epi::ExampleRegSpace>(program);
   for (const auto& [gvar, regtype] : regspace->register_type_map) {
@@ -176,6 +175,9 @@ int main() {
     }
     std::cout << std::endl;
   }
+
+  rig.Reduce(*regspace);
+  rig.Visualize("output/rig.pdf");
 
   return 0;
 }

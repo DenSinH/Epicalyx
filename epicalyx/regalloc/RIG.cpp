@@ -178,7 +178,18 @@ RIG RIG::GenerateRIG(const Program& program) {
 }
 
 void RIG::Reduce(const RegisterSpace& regspace) {
-  
+  for (const auto& [nid, node] : graph) {
+    cotyl::flat_set<i64> to_remove{};
+    const auto node_reg_type = regspace.RegisterType(node.value);
+    for (const auto& to_idx : node.to) {
+      if (node_reg_type != regspace.RegisterType(graph.At(to_idx).value)) {
+        to_remove.emplace(to_idx);
+      }
+    }
+    for (const auto& to_idx : to_remove) {
+      graph.RemoveEdge(nid, to_idx);
+    }
+  }
 }
 
 void RIG::Visualize(const std::string& filename) const {
