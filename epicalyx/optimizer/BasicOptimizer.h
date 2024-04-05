@@ -36,10 +36,11 @@ struct BasicOptimizer final : calyx::Backend {
   };
 
   // local replacements (loads/stores/alias loads/alias stores)
-  cotyl::unordered_map<var_index_t, Local> locals{};
+  cotyl::unordered_map<var_index_t, Local> local_writes{};
+  cotyl::unordered_map<var_index_t, var_index_t> local_reads{};
 
   void FlushLocal(var_index_t loc_idx, Local&& local);
-  void FlushCurrentLocals();
+  void FlushCurrentLocalWrites();
 
   // variable found location in new program
   cotyl::unordered_map<calyx::var_index_t, std::pair<calyx::block_label_t, u64>> vars_found{};
