@@ -498,6 +498,9 @@ void BasicOptimizer::EmitStoreToPointer(const StoreToPointer<T>& _op) {
       return;
     }
   }
+
+  // need to flush local writes on pointer write
+  FlushCurrentLocalWrites();
   Output(std::move(op));
 }
 
