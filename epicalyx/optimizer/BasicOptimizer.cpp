@@ -825,6 +825,33 @@ void BasicOptimizer::EmitCompareImm(const CompareImm<T>& _op) {
       EmitRepl<Imm<i32>>(op->idx, result);
       return;
     }
+
+    // replace comparisons with added constants
+    // i.e., change (left + 1) > 0 with left > -1
+    auto* left_binim = TryGetVarDirective<BinopImm<T>>(op->left_idx);
+    if (left_binim) {
+      switch (left_binim->op) {
+        case BinopType::Add:
+          op->left_idx = left_binim->left_idx;
+          op->right -= left_binim->right;
+          break;
+        case BinopType::Sub:
+          op->left_idx = left_binim->left_idx;
+          op->right += left_binim->right;
+          break;
+        case BinopType::BinXor: {
+          if constexpr(std::is_integral_v<T>) {
+            if (op->op == CmpType::Eq || op->op == CmpType::Ne) {
+              op->left_idx = left_binim->left_idx;
+              op->right ^= left_binim->right;
+            }
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    }
   }
 
   OutputExpr(std::move(op));
@@ -875,6 +902,8 @@ void BasicOptimizer::EmitBranchCompare(const BranchCompare<T>& _op) {
     if (left_imm) {
       CmpType flipped = op->op;
 
+      // note: flipped, not converse, we are simply chainging
+      // left < right with right > left for example
       switch (op->op) {
         case CmpType::Eq:
         case CmpType::Ne: break;
@@ -906,8 +935,6 @@ void BasicOptimizer::EmitBranchCompareImm(const BranchCompareImm<T>& _op) {
   if constexpr(!std::is_same_v<T, Pointer>) {
     auto* left_imm = TryGetVarDirective<Imm<T>>(op->left_idx);
     if (left_imm) {
-      CmpType flipped = op->op;
-
       auto emit_unconditional = [&] {
         EmitRepl<UnconditionalBranch>(op->dest);
       };
@@ -921,6 +948,33 @@ void BasicOptimizer::EmitBranchCompareImm(const BranchCompareImm<T>& _op) {
         case CmpType::Ge: if (left_imm->value >= op->right) emit_unconditional(); break;
       }
       return;
+    }
+
+    // replace comparisons with added constants
+    // i.e., change (left + 1) > 0 with left > -1
+    auto* left_binim = TryGetVarDirective<BinopImm<T>>(op->left_idx);
+    if (left_binim) {
+      switch (left_binim->op) {
+        case BinopType::Add:
+          op->left_idx = left_binim->left_idx;
+          op->right -= left_binim->right;
+          break;
+        case BinopType::Sub:
+          op->left_idx = left_binim->left_idx;
+          op->right += left_binim->right;
+          break;
+        case BinopType::BinXor: {
+          if constexpr(std::is_integral_v<T>) {
+            if (op->op == CmpType::Eq || op->op == CmpType::Ne) {
+              op->left_idx = left_binim->left_idx;
+              op->right ^= left_binim->right;
+            }
+          }
+          break;
+        }
+        default:
+          break;
+      }
     }
   }
 

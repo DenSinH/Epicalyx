@@ -38,7 +38,7 @@ void PrintProgram(const epi::Program& program) {
 
 
 int main() {
-  auto preprocessor = epi::Preprocessor("examples/emitting/switch.c");
+  auto preprocessor = epi::Preprocessor("examples/emitting/branches.c");
 
   // while (!preprocessor.EOS()) {
   //   std::cout << preprocessor.Get();

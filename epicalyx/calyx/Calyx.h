@@ -297,7 +297,7 @@ struct ShiftImm : Expr {
 };
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_ptr_type_v<T>)
 struct Compare : Expr {
   using result_t = i32;
   using src_t = T;
@@ -316,7 +316,7 @@ struct Compare : Expr {
 };
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_ptr_type_v<T>)
 struct CompareImm : Expr {
   using result_t = i32;
   using src_t = T;
@@ -346,7 +346,7 @@ struct UnconditionalBranch : Branch {
 };
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_ptr_type_v<T>)
 struct BranchCompare : Branch {
   using src_t = T;
 
@@ -365,7 +365,7 @@ struct BranchCompare : Branch {
 };
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_ptr_type_v<T>)
 struct BranchCompareImm : Branch {
   using src_t = T;
 

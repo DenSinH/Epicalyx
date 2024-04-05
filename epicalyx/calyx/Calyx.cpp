@@ -112,7 +112,7 @@ static std::string to_string(const Pointer& ptr) {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_ptr_type_v<T>)
 std::string Compare<T>::ToString() const {
   return cotyl::FormatStr(
           "cmp   v%s = v%s %s<%s> v%s",
@@ -122,7 +122,7 @@ std::string Compare<T>::ToString() const {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_ptr_type_v<T>)
 std::string CompareImm<T>::ToString() const {
     return cotyl::FormatStr(
             "cmpim v%s = v%s %s<%s> %s",
@@ -136,7 +136,7 @@ std::string UnconditionalBranch::ToString() const {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_ptr_type_v<T>)
 std::string BranchCompare<T>::ToString() const {
   return cotyl::FormatStr(
           "brnch L%s : v%s %s<%s> v%s",
@@ -146,7 +146,7 @@ std::string BranchCompare<T>::ToString() const {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_ptr_type_v<T>)
 std::string BranchCompareImm<T>::ToString() const {
   return cotyl::FormatStr(
           "brnch L%s : v%s %s<%s> imm(%s)",
@@ -340,13 +340,13 @@ void ShiftImm<T>::Emit(Backend& backend) {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_ptr_type_v<T>)
 void Compare<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_ptr_type_v<T>)
 void CompareImm<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
@@ -356,13 +356,13 @@ void UnconditionalBranch::Emit(Backend& backend) {
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_ptr_type_v<T>)
 void BranchCompare<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
-requires (is_calyx_type_v<T>)
+requires (is_calyx_arithmetic_ptr_type_v<T>)
 void BranchCompareImm<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }

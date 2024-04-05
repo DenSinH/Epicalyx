@@ -1,7 +1,5 @@
 
-int main() {
-  int x = 0;
-  int y = 1;
+int test(int x, int y) {
   if (x++) {
     return 1;
   }
@@ -15,4 +13,8 @@ int main() {
     return 3;
   }
   return 0;
+}
+
+int main() {
+  return test(0, 1);
 }
