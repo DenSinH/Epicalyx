@@ -35,8 +35,6 @@ struct BasicOptimizer final : calyx::Backend {
     pDirective store;                           // store to flush local with
   };
 
-  // var local aliases
-  cotyl::unordered_map<var_index_t, var_index_t> var_aliases{};
   // local replacements (loads/stores/alias loads/alias stores)
   cotyl::unordered_map<var_index_t, Local> locals{};
 
@@ -48,18 +46,10 @@ struct BasicOptimizer final : calyx::Backend {
 
   // current block that is being built
   calyx::Program::block_t* current_block{};
-  block_label_t current_old_block_idx;      // block index we are scanning in the old program
+  program_pos_t current_old_pos;            // position we are scanning in the old program
   block_label_t current_new_block_idx;      // block index we are building in the new program
   cotyl::unordered_set<block_label_t> todo{};
   bool reachable;
-
-  template<typename T, class F>
-  bool FindExprResultReplacement(T& op, F predicate);
-  bool ResolveBranchIndirection(calyx::Branch& op);
-  void LinkBlock(block_label_t next_block);
-
-  template<typename T>
-  const T* TryGetVarDirective(var_index_t idx) const;
 
   template<typename T> 
   std::unique_ptr<T> CopyDirective(const T& directive) {
@@ -107,7 +97,39 @@ struct BasicOptimizer final : calyx::Backend {
     Emit(repl);
   }
 
+  // find a suitable replacement for some expression result
+  // based on a predicate
+  template<typename T, class F>
+  bool FindExprResultReplacement(T& op, F predicate);
+
+  // resolve branch indirections to single-branch blocks
+  void ResolveBranchIndirection(block_label_t& dest);
+
+  // link two blocks by "jumping" to that block and
+  // emitting from there
+  void LinkBlock(block_label_t next_block);
+
+  // check whether predicate BadPred occurs before a GoodPred happens
+  // on all forward paths (including loops) ...
+  template<class BadPred, class GoodPred>
+  bool NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, program_pos_t pos) const;
+
+  // ... used for example to check whether we even need to flush a local,
+  // or whether the value is overwritten anyway, before a write happens
+  bool ShouldFlushLocal(var_index_t loc_idx, const Local& local);
+
+  // try to get the expression directive a var was created with
+  // return nullptr if it was not of this type
+  template<typename T>
+  const T* TryGetVarDirective(var_index_t idx) const;
+
+  // try to replace a variable with a same-valued variable
+  // tracked in the var_replacement map
   void TryReplaceVar(calyx::var_index_t& var_idx) const;
+
+  // remove any unreachable block edges from the old_deps.block_graph
+  // this is the ONLY function that affects the old dependencies.
+  // Doing this improves block linking, speeding up optimization
   void RemoveUnreachableBlockEdges(block_label_t block);
   void RemoveUnreachableBlockEdgesRecurse(block_label_t block);
 

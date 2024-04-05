@@ -3,6 +3,8 @@ int test(int x) {
   switch (x) {
     case 0:
       y = 1;
+    case 1:
+      y = 2;
     case 2:
       y += 1;
       break;

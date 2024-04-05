@@ -34,7 +34,7 @@ private:
     bool selected = false;
     std::string title{};
     std::vector<std::string> body{};
-    cotyl::unordered_map<u64, std::string> outputs{};
+    cotyl::unordered_map<u64, cotyl::unordered_set<std::string>> outputs{};
   };
 
   struct NodeRef {
@@ -54,9 +54,7 @@ private:
       auto ref = NodeRef(graph, to);  // instantiates to node if needed
       graph.graph.AddEdge(from, to);
       auto& vnode = graph.graph[from].value;
-      if (!output.empty()) {
-        vnode.outputs.emplace(to, output);
-      }
+      vnode.outputs[to].emplace(output);
       return ref;
     }
 
@@ -93,6 +91,7 @@ VisualGraph::VisualGraph(const Graph<I, T, Directed>& g, TFunc title, BFunc body
     for (const auto& to_idx : node.to) {
       graph.AddEdge(node_idx, to_idx);
       auto& vnode = graph[node_idx].value;
+      vnode.outputs[to_idx].emplace("");
     }
   }
 }

@@ -19,4 +19,4 @@ target_include_directories(Cycle PUBLIC
         ${GRAPHVIZ_INCLUDE_DIR}/../
 )
 
-target_link_libraries(Cycle PUBLIC "C:/Data/Graphviz/lib/cgraph.lib" "C:/Data/Graphviz/lib/gvc.lib")
+target_link_libraries(Cycle PUBLIC ${GRAPHVIZ_CGRAPH_LIBRARY} ${GRAPHVIZ_GVC_LIBRARY})

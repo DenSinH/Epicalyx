@@ -41,14 +41,145 @@ block_label_t BasicOptimizer::CommonBlockAncestor(block_label_t first, block_lab
   return *ancestors.begin();
 }
 
+template<class BadPred, class GoodPred>
+bool BasicOptimizer::NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, program_pos_t pos) const {
+  cotyl::unordered_set<block_label_t> todo{};
+  cotyl::unordered_set<block_label_t> done{};
+
+  const auto register_branch = [&](const block_label_t& block_idx) {
+    if (!done.contains(block_idx)) {
+      todo.emplace(block_idx);
+    }
+  };
+
+  while (true) {
+    bool _reachable = true;
+
+    // use new program block if already made
+    // EXCEPT for the current block, as it is still being built,
+    // meaning branches may be missing
+    const auto& block = program.blocks.at(pos.first);
+
+    while (_reachable && pos.second < block.size()) {
+      const auto& op = block[pos.second];
+      switch (op->cls) {
+        case Directive::Class::UnconditionalBranch:
+          _reachable = false;
+        case Directive::Class::ConditionalBranch: 
+          register_branch(cotyl::unique_ptr_cast<Branch>(op)->dest);
+          break;
+        case Directive::Class::Select: {
+          auto* select = cotyl::unique_ptr_cast<Select>(op);
+          for (auto [val, block] : select->table) {
+            register_branch(block);
+          }
+          if (select->_default) {
+            register_branch(select->_default);
+          }
+          _reachable = false;
+          break;
+        }
+        case Directive::Class::Return:
+          _reachable = false;
+          break;
+        default:
+          break;
+      }
+
+      if (bad(op, pos)) return false;
+      if (good(op, pos)) break;
+      pos.second++;
+    }
+
+    if (todo.empty()) break;
+
+    pos.first = *todo.begin();
+    pos.second = 0;
+
+    // add to done here, and not before, since we may 
+    // have started halfway through the first block
+    done.emplace(pos.first);
+    todo.erase(todo.begin());
+  }
+  
+  return true;
+}
+
+bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const Local& local) {
+  const auto& old_local = old_deps.local_graph.at(loc_idx);
+  cotyl::unordered_set<program_pos_t> reads  = {old_local.reads.begin(), old_local.reads.end()};
+  cotyl::unordered_set<program_pos_t> writes = {old_local.writes.begin(), old_local.writes.end()};
+  
+  static const cotyl::unordered_set<size_t> alias_blocking_tids = {
+    Call<i32>::GetTID(),
+    Call<u32>::GetTID(),
+    Call<i64>::GetTID(),
+    Call<u64>::GetTID(),
+    Call<float>::GetTID(),
+    Call<double>::GetTID(),
+    Call<Pointer>::GetTID(),
+    Call<Struct>::GetTID(),
+    Call<void>::GetTID(),
+    CallLabel<i32>::GetTID(),
+    CallLabel<u32>::GetTID(),
+    CallLabel<i64>::GetTID(),
+    CallLabel<u64>::GetTID(),
+    CallLabel<float>::GetTID(),
+    CallLabel<double>::GetTID(),
+    CallLabel<Pointer>::GetTID(),
+    CallLabel<Struct>::GetTID(),
+    CallLabel<void>::GetTID(),
+    LoadFromPointer<i8>::GetTID(),
+    LoadFromPointer<u8>::GetTID(),
+    LoadFromPointer<i16>::GetTID(),
+    LoadFromPointer<u16>::GetTID(),
+    LoadFromPointer<i32>::GetTID(),
+    LoadFromPointer<u32>::GetTID(),
+    LoadFromPointer<i64>::GetTID(),
+    LoadFromPointer<u64>::GetTID(),
+    LoadFromPointer<float>::GetTID(),
+    LoadFromPointer<double>::GetTID(),
+    LoadFromPointer<Struct>::GetTID(),
+    LoadFromPointer<Pointer>::GetTID(),
+  };
+
+  // local does not need to be flushed if no "bad" operation (load) happens
+  // before a "good" operation (store)
+  return !NoBadBeforeGoodAllPaths(
+    [&](const pDirective& op, const program_pos_t& pos) -> bool {
+      // we need to flush the local if it is read before it is stored again
+      // or if any aliased variable exists, and one of the following happens:
+      // - a pointer read (potentially reading the local's (aliased) value)
+      // - a function call (potentially passing the local's address, potentially
+      //                    reading the local's value)
+      if (reads.contains(pos)) return true;
+      if (!old_local.aliased_by.empty()) {
+        if (alias_blocking_tids.contains(op->type_id)) {
+          return true;
+        }
+      }
+
+      // operation is OK, does not affect local
+      return false;
+    },
+    [&](const pDirective& op, const program_pos_t& pos) -> bool {
+      // write: stop searching path
+      return writes.contains(pos);
+    },
+    current_old_pos
+  );
+}
+
 void BasicOptimizer::FlushLocal(var_index_t loc_idx, Local&& local) {
-  current_block->emplace_back(std::move(local.store));
+  if (ShouldFlushLocal(loc_idx, local)) Output(std::move(local.store));
   locals.erase(loc_idx);
 }
 
 void BasicOptimizer::FlushCurrentLocals() {
   for (auto& [loc_idx, local] : locals) {
-    current_block->emplace_back(std::move(local.store));
+    if (ShouldFlushLocal(loc_idx, local)) {
+      Output(std::move(local.store));
+    }
   }
   locals.clear();
 }
@@ -83,20 +214,24 @@ bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
 }
 
 
-bool BasicOptimizer::ResolveBranchIndirection(calyx::Branch& op) {
-  if (program.blocks.at(op.dest).size() == 1) {
+void BasicOptimizer::ResolveBranchIndirection(block_label_t& dest) {
+  cotyl::unordered_set<block_label_t> found{dest};
+
+  while (program.blocks.at(dest).size() == 1) {
     // single branch block
     // recursion resolves single branch chains
-    auto& link_directive = program.blocks.at(op.dest)[0];
-    if (IsType<UnconditionalBranch>(link_directive)) {
-      auto* link = cotyl::unique_ptr_cast<UnconditionalBranch>(link_directive);
-
-      op.dest = link->dest;
-      op.Emit(*this);
-      return true;
+    auto& link_directive = program.blocks.at(dest)[0];
+    if (!IsType<UnconditionalBranch>(link_directive)) {
+      break;
     }
+    auto* link = cotyl::unique_ptr_cast<UnconditionalBranch>(link_directive);
+
+    dest = link->dest;
+    
+    // tight infinite loop of single branch blocks
+    if (found.contains(dest)) break;
+    found.emplace(dest);
   }
-  return false;
 }
 
 template<typename T>
@@ -116,10 +251,10 @@ void BasicOptimizer::LinkBlock(block_label_t next_block) {
   cotyl::Assert(old_deps.block_graph.At(next_block).from.size() == 1);
   // the ID should already have been updated from the old_block_idx to the new_block_idx earlier
   // if they differ at all
-  cotyl::Assert(*old_deps.block_graph.At(next_block).from.begin() == current_old_block_idx);
+  cotyl::Assert(*old_deps.block_graph.At(next_block).from.begin() == current_old_pos.first);
 
   block_links.emplace(next_block, program_pos_t{current_new_block_idx, current_block->size()});
-  current_old_block_idx = next_block;
+  current_old_pos.first = next_block;
 }
 
 void BasicOptimizer::RemoveUnreachableBlockEdgesRecurse(block_label_t block) {
@@ -177,7 +312,7 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
     while (!todo.empty()) {
       cotyl::Assert(locals.empty());
 
-      current_old_block_idx = current_new_block_idx = *todo.begin();
+      current_old_pos.first = current_new_block_idx = *todo.begin();
       reachable = true;
       todo.erase(todo.begin());
 
@@ -190,14 +325,16 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
       bool block_finished;
       do {
         block_finished = true;
-        block_links.emplace(current_old_block_idx, program_pos_t{current_new_block_idx, current_block->size()});
-        const auto block = current_old_block_idx;
+        block_links.emplace(current_old_pos.first, program_pos_t{current_new_block_idx, current_block->size()});
+        const auto block = current_old_pos.first;
+        current_old_pos.second = 0;
         for (const auto& directive : _program.blocks.at(block)) {
           directive->Emit(*this);
           // hit return statement/branch, block finished
           if (!reachable) { RemoveUnreachableBlockEdges(block); break; }
           // jumped to linked block, block NOT finished
-          if (current_old_block_idx != block) { block_finished = false; break; }  
+          if (current_old_pos.first != block) { block_finished = false; break; }
+          current_old_pos.second++;  
         }
       } while (!block_finished);
     }
@@ -265,7 +402,6 @@ void BasicOptimizer::EmitLoadLocal(const LoadLocal<T>& op) {
 }
 
 void BasicOptimizer::Emit(const LoadLocalAddr& op) {
-  var_aliases[op.idx] = op.loc_idx;
   OutputExprCopy(op);
 }
 
@@ -275,10 +411,11 @@ void BasicOptimizer::EmitStoreLocal(const StoreLocal<T>& _op) {
   TryReplaceVar(op->src);
   if constexpr(!std::is_same_v<T, Struct>) {
     var_index_t aliases = 0;
-    if (var_aliases.contains(op->src)) {
+    if (old_deps.var_graph.at(op->src).aliases) {
       // var alias stored to local (i.e. int var; int* al = &var; int* al2 = al;)
-      aliases = var_aliases.at(op->src);
+      aliases = old_deps.var_graph.at(op->src).aliases;
     }
+
     const auto loc_idx = op->loc_idx;  // op will be moved when assigning
     locals[loc_idx] = Local{
             .aliases = aliases,
@@ -316,9 +453,9 @@ template<typename T>
 void BasicOptimizer::EmitLoadFromPointer(const LoadFromPointer<T>& _op) {
   auto op = CopyDirective(_op);
   TryReplaceVar(op->ptr_idx);
-  if (var_aliases.contains(op->ptr_idx)) {
+  if (old_deps.var_graph.at(op->ptr_idx).aliases) {
     // pointer aliases local variable
-    auto alias = var_aliases.at(op->ptr_idx);
+    auto alias = old_deps.var_graph.at(op->ptr_idx).aliases;
     if (locals.contains(alias) && op->offset == 0) {
       // IR var holds local value, emit aliased local replacement
       auto& repl = locals.at(alias).replacement;
@@ -340,14 +477,14 @@ void BasicOptimizer::EmitStoreToPointer(const StoreToPointer<T>& _op) {
   TryReplaceVar(op->src);
   TryReplaceVar(op->ptr_idx);
   if constexpr(!std::is_same_v<T, Struct>) {
-    if (var_aliases.contains(op->ptr_idx) && op->offset == 0) {
-      auto alias = var_aliases.at(op->ptr_idx);
+    if (old_deps.var_graph.at(op->ptr_idx).aliases && op->offset == 0) {
+      auto alias = old_deps.var_graph.at(op->ptr_idx).aliases;
 
       // storing aliased variable to another alias
       // i.e. int* zalias1 = &z; int** zaliasptr; *zaliasptr = zalias1;
       var_index_t aliases = 0;
-      if (var_aliases.contains(op->src)) {
-        aliases = var_aliases.at(op->src);
+      if (old_deps.var_graph.at(op->src).aliases) {
+        aliases = old_deps.var_graph.at(op->src).aliases;
       }
 
       // replace alias
@@ -380,6 +517,8 @@ void BasicOptimizer::EmitCall(const Call<T>& _op) {
   }
 
   vars_found[op->idx] = std::make_pair(current_new_block_idx, current_block->size());
+  // need to flush locals on call, in case a pointer read/store happens
+  FlushCurrentLocals();
   Output(std::move(op));
 }
 
@@ -394,6 +533,8 @@ void BasicOptimizer::EmitCallLabel(const CallLabel<T>& _op) {
   }
 
   vars_found[op->idx] = std::make_pair(current_new_block_idx, current_block->size());
+  // need to flush locals on call, in case a pointer read/store happens
+  FlushCurrentLocals();
   Output(std::move(op));
 }
 
@@ -691,26 +832,25 @@ void BasicOptimizer::EmitCompareImm(const CompareImm<T>& _op) {
 
 void BasicOptimizer::Emit(const UnconditionalBranch& _op) {
   auto op = CopyDirective(_op);
-  if (!ResolveBranchIndirection(*op)) {
-    const auto& block_deps = new_block_graph.At(current_new_block_idx);
-    if (block_deps.to.empty()) {
-      // no dependencies so far, we can link this block if the next block only has one input
-      if (!new_block_graph.Has(op->dest) && old_deps.block_graph.At(op->dest).from.size() == 1) {
-        LinkBlock(op->dest);
-        return;
-      }
+  ResolveBranchIndirection(op->dest);
+  const auto& block_deps = new_block_graph.At(current_new_block_idx);
+  if (block_deps.to.empty()) {
+    // no dependencies so far, we can link this block if the next block only has one input
+    if (!new_block_graph.Has(op->dest) && old_deps.block_graph.At(op->dest).from.size() == 1) {
+      LinkBlock(op->dest);
+      return;
     }
-
-    // only flush locals on the unconditional branch non-linked blocks
-    FlushCurrentLocals();
-    if (!new_block_graph.Has(op->dest)) {
-      new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
-      new_block_graph.AddEdge(current_new_block_idx, op->dest);
-      todo.insert(op->dest);
-    }
-    Output(std::move(op));
-    reachable = false;
   }
+
+  // only flush locals on the unconditional branch non-linked blocks
+  FlushCurrentLocals();
+  if (!new_block_graph.Has(op->dest)) {
+    new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
+    new_block_graph.AddEdge(current_new_block_idx, op->dest);
+    todo.insert(op->dest);
+  }
+  Output(std::move(op));
+  reachable = false;
 }
 
 template<typename T>
@@ -748,15 +888,14 @@ void BasicOptimizer::EmitBranchCompare(const BranchCompare<T>& _op) {
     }
   }
 
-  if (!ResolveBranchIndirection(*op)) {
-    FlushCurrentLocals();
-    if (!new_block_graph.Has(op->dest)) {
-      new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
-      new_block_graph.AddEdge(current_new_block_idx, op->dest);
-      todo.insert(op->dest);
-    }
-    Output(std::move(op));
+  ResolveBranchIndirection(op->dest);
+  FlushCurrentLocals();
+  if (!new_block_graph.Has(op->dest)) {
+    new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
+    new_block_graph.AddEdge(current_new_block_idx, op->dest);
+    todo.insert(op->dest);
   }
+  Output(std::move(op));
 }
 
 template<typename T>
@@ -785,21 +924,19 @@ void BasicOptimizer::EmitBranchCompareImm(const BranchCompareImm<T>& _op) {
     }
   }
 
-  if (!ResolveBranchIndirection(*op)) {
-    FlushCurrentLocals();
-    if (!new_block_graph.Has(op->dest)) {
-      new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
-      new_block_graph.AddEdge(current_new_block_idx, op->dest);
-      todo.insert(op->dest);
-    }
-    Output(std::move(op));
+  ResolveBranchIndirection(op->dest);
+  FlushCurrentLocals();
+  if (!new_block_graph.Has(op->dest)) {
+    new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
+    new_block_graph.AddEdge(current_new_block_idx, op->dest);
+    todo.insert(op->dest);
   }
+  Output(std::move(op));
 }
 
 void BasicOptimizer::Emit(const Select& _op) {
   auto op = CopyDirective(_op);
   TryReplaceVar(op->idx);
-  FlushCurrentLocals();
 
   auto* val_imm = TryGetVarDirective<Imm<i64>>(op->idx);
   if (val_imm) {
@@ -815,20 +952,22 @@ void BasicOptimizer::Emit(const Select& _op) {
       throw std::runtime_error("Invalid switch selection with constant expression");
     }
   }
-  else {
-    for (const auto& [val, block_idx] : op->table) {
-      if (!new_block_graph.Has(block_idx)) {
-        new_block_graph.AddNodeIfNotExists(block_idx, nullptr);
-        new_block_graph.AddEdge(current_new_block_idx, block_idx);
-        todo.insert(block_idx);
-      }
+
+  FlushCurrentLocals();
+  for (auto& [val, block_idx] : op->table) {
+    ResolveBranchIndirection(block_idx);
+    if (!new_block_graph.Has(block_idx)) {
+      new_block_graph.AddNodeIfNotExists(block_idx, nullptr);
+      new_block_graph.AddEdge(current_new_block_idx, block_idx);
+      todo.insert(block_idx);
     }
-    if (op->_default) {
-      if (!new_block_graph.Has(op->_default)) {
-        new_block_graph.AddNodeIfNotExists(op->_default, nullptr);
-        new_block_graph.AddEdge(current_new_block_idx, op->_default);
-        todo.insert(op->_default);
-      }
+  }
+  if (op->_default) {
+    ResolveBranchIndirection(op->_default);
+    if (!new_block_graph.Has(op->_default)) {
+      new_block_graph.AddNodeIfNotExists(op->_default, nullptr);
+      new_block_graph.AddEdge(current_new_block_idx, op->_default);
+      todo.insert(op->_default);
     }
   }
 
@@ -853,11 +992,6 @@ void BasicOptimizer::EmitAddToPointer(const AddToPointer<T>& _op) {
     return;
   }
 
-  // todo: is this correct behavior?
-//  if (var_aliases.contains(op->ptr_idx)) {
-//    var_aliases[op->idx] = var_aliases.at(op->ptr_idx);
-//  }
-
   OutputExpr(std::move(op));
 }
 
@@ -869,8 +1003,8 @@ void BasicOptimizer::Emit(const AddToPointerImm& _op) {
     return;
   }
 
-  if (var_aliases.contains(op->ptr_idx) && op->right == 0) {
-    var_aliases[op->idx] = var_aliases.at(op->ptr_idx);
+  if (old_deps.var_graph[op->ptr_idx].aliases && op->right == 0) {
+    old_deps.var_graph[op->idx].aliases = old_deps.var_graph[op->ptr_idx].aliases;
   }
   OutputExpr(std::move(op));
 }

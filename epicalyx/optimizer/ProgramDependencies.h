@@ -5,6 +5,8 @@
 #include "cycle/Graph.h"
 
 #include <vector>
+#include <optional>
+
 
 namespace epi {
 
@@ -27,6 +29,10 @@ struct ProgramDependencies final : calyx::Backend {
     bool is_call_result = false;
     std::vector<program_pos_t> reads{};
     program_pos_t program_result = {0, 0};
+
+    // local aliases (i.e. v12 = &c1)
+    // 0 means no alias
+    var_index_t aliases = 0;
   };
 
   cotyl::unordered_map<var_index_t, Var> var_graph{};
@@ -36,6 +42,8 @@ struct ProgramDependencies final : calyx::Backend {
     std::vector<program_pos_t> writes{};
     std::vector<program_pos_t> reads{};
     bool needs_address = false;
+
+    std::vector<var_index_t> aliased_by{};
   };
 
   cotyl::unordered_map<var_index_t, Local> local_graph{};

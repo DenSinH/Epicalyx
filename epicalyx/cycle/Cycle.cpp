@@ -64,9 +64,9 @@ void VisualGraph::Visualize(const std::string& filename) {
   for (auto& [_, node] : graph) {
     for (const auto& to_idx : node.to) {
       auto& to_node = graph[to_idx];
-      Agedge_t* e = agedge(g, (Agnode_t*)node.value.agnode, (Agnode_t*)to_node.value.agnode, nullptr, true);
-      if (node.value.outputs.contains(to_idx)) {
-        const auto& label = node.value.outputs.at(to_idx);
+      Agedge_t* e;
+      for (const auto& label : node.value.outputs.at(to_idx)) {
+        e = agedge(g, (Agnode_t*)node.value.agnode, (Agnode_t*)to_node.value.agnode, const_cast<char*>(label.c_str()), true);
         agsafeset(e, (char*)"label", const_cast<char*>(label.c_str()), "");
         // agsafeset(e, (char*)"labeldistance", "2.0", "");
       }
