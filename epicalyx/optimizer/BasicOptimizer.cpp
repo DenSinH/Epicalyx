@@ -171,19 +171,41 @@ bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const Local& local) {
 }
 
 void BasicOptimizer::FlushLocal(var_index_t loc_idx, Local&& local) {
-  if (local_writes.contains(loc_idx)) {
-    if (ShouldFlushLocal(loc_idx, local)) Output(std::move(local.store));
-    local_writes.erase(loc_idx);
+  if (locals.contains(loc_idx)) {
+    if (local.store && ShouldFlushLocal(loc_idx, local)) Output(std::move(local.store));
+    locals.erase(loc_idx);
   }
 }
 
-void BasicOptimizer::FlushCurrentLocalWrites() {
-  for (auto& [loc_idx, local] : local_writes) {
-    if (ShouldFlushLocal(loc_idx, local)) {
+void BasicOptimizer::FlushCurrentLocals() {
+  for (auto& [loc_idx, local] : locals) {
+    if (local.store && ShouldFlushLocal(loc_idx, local)) {
       Output(std::move(local.store));
     }
   }
-  local_writes.clear();
+  locals.clear();
+}
+
+void BasicOptimizer::FlushAliasedLocals() {
+  std::vector<var_index_t> removed{};
+  for (auto& [loc_idx, local] : locals) {
+    if (old_deps.local_graph.at(loc_idx).aliased_by.empty()) {
+      continue;
+    }
+
+    // no need to check ShouldFlushLocal,
+    // this is a forced local flush
+    // ShouldFlushLocal will return true anyway,
+    // since this will be used on pointer writes / calls
+    removed.emplace_back(loc_idx);
+    if (local.store) {
+      Output(std::move(local.store));
+    }
+  }
+
+  for (const auto& loc_idx : removed) {
+    locals.erase(loc_idx);
+  }
 }
 
 void BasicOptimizer::TryReplaceVar(calyx::var_index_t& var_idx) const {
@@ -312,7 +334,7 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
     vars_found.clear();
 
     while (!todo.empty()) {
-      cotyl::Assert(local_writes.empty());
+      cotyl::Assert(locals.empty());
 
       current_old_pos.first = current_new_block_idx = *todo.begin();
       reachable = true;
@@ -373,7 +395,7 @@ void BasicOptimizer::EmitCast(const Cast<To, From>& _op) {
     auto* right_directive = TryGetVarDirective<Imm<From>>(op->right_idx);
     if constexpr(std::is_same_v<From, Pointer>) {
       if (right_directive) {
-        EmitRepl<Imm<calyx_upcast_t<To>>>(op->idx, (To)right_directive->value.value);
+        EmitRepl<Imm<calyx_op_type(*op)::result_t>>(op->idx, (To)right_directive->value.value);
         return;
       }
     }
@@ -382,7 +404,7 @@ void BasicOptimizer::EmitCast(const Cast<To, From>& _op) {
     }
     else{
       if (right_directive) {
-        EmitRepl<Imm<calyx_upcast_t<To>>>(op->idx, (To)right_directive->value);
+        EmitRepl<Imm<calyx_op_type(*op)::result_t>>(op->idx, (To)right_directive->value);
         return;
       }
     }
@@ -392,13 +414,22 @@ void BasicOptimizer::EmitCast(const Cast<To, From>& _op) {
 
 template<typename T>
 void BasicOptimizer::EmitLoadLocal(const LoadLocal<T>& op) {
-  if (local_writes.contains(op.loc_idx)) {
+  if (locals.contains(op.loc_idx)) {
     // local value stored in IR var
-    auto& repl = local_writes.at(op.loc_idx).replacement;
+    auto& repl = locals.at(op.loc_idx).replacement;
     repl->idx = op.idx;
     repl->Emit(*this);
   }
   else {
+    // we can store this value to the locals, though without
+    // a "store" directive
+    if constexpr(!std::is_same_v<T, Struct>) {
+      locals.emplace(op.loc_idx, Local{
+          .aliases = 0,
+          .replacement = std::make_unique<Cast<T, calyx_op_type(op)::result_t>>(0, op.idx),
+          .store = nullptr
+      });
+    }
     OutputExprCopy(op);
   }
 }
@@ -418,10 +449,11 @@ void BasicOptimizer::EmitStoreLocal(const StoreLocal<T>& _op) {
       aliases = old_deps.var_graph.at(op->src).aliases;
     }
 
+    // overwrite current local state
     const auto loc_idx = op->loc_idx;  // op will be moved when assigning
-    local_writes[loc_idx] = Local{
+    locals[loc_idx] = Local{
             .aliases = aliases,
-            .replacement = std::make_unique<Cast<T, calyx_upcast_t<T>>>(0, op->src),
+            .replacement = std::make_unique<Cast<T, calyx_op_type(*op)::src_t>>(0, op->src),
             .store = std::move(op)
     };
   }
@@ -458,9 +490,9 @@ void BasicOptimizer::EmitLoadFromPointer(const LoadFromPointer<T>& _op) {
   if (old_deps.var_graph.at(op->ptr_idx).aliases) {
     // pointer aliases local variable
     auto alias = old_deps.var_graph.at(op->ptr_idx).aliases;
-    if (local_writes.contains(alias) && op->offset == 0) {
+    if (locals.contains(alias) && op->offset == 0) {
       // IR var holds local value, emit aliased local replacement
-      auto& repl = local_writes.at(alias).replacement;
+      auto& repl = locals.at(alias).replacement;
       repl->idx = op->idx;
       repl->Emit(*this);
     }
@@ -490,9 +522,9 @@ void BasicOptimizer::EmitStoreToPointer(const StoreToPointer<T>& _op) {
       }
 
       // replace alias
-      local_writes[alias] = Local{
+      locals[alias] = Local{
               .aliases = aliases,
-              .replacement = std::make_unique<Cast<T, calyx_upcast_t<T>>>(0, op->src),
+              .replacement = std::make_unique<Cast<T, calyx_op_type(*op)::src_t>>(0, op->src),
               .store = std::make_unique<StoreLocal<T>>(alias, op->src)
       };
       return;
@@ -500,7 +532,7 @@ void BasicOptimizer::EmitStoreToPointer(const StoreToPointer<T>& _op) {
   }
 
   // need to flush local writes on pointer write
-  FlushCurrentLocalWrites();
+  FlushAliasedLocals();
   Output(std::move(op));
 }
 
@@ -522,8 +554,8 @@ void BasicOptimizer::EmitCall(const Call<T>& _op) {
   }
 
   vars_found[op->idx] = std::make_pair(current_new_block_idx, current_block->size());
-  // need to flush local_writes on call, in case a pointer read/store happens
-  FlushCurrentLocalWrites();
+  // need to flush locals on call, in case a pointer read/store happens
+  FlushAliasedLocals();
   Output(std::move(op));
 }
 
@@ -538,8 +570,8 @@ void BasicOptimizer::EmitCallLabel(const CallLabel<T>& _op) {
   }
 
   vars_found[op->idx] = std::make_pair(current_new_block_idx, current_block->size());
-  // need to flush local_writes on call, in case a pointer read/store happens
-  FlushCurrentLocalWrites();
+  // need to flush locals on call, in case a pointer read/store happens
+  FlushAliasedLocals();
   Output(std::move(op));
 }
 
@@ -551,8 +583,8 @@ template<typename T>
 void BasicOptimizer::EmitReturn(const Return<T>& _op) {
   auto op = CopyDirective(_op);
   TryReplaceVar(op->idx);
-  // no need to flush local_writes right before a return
-  local_writes.clear();
+  // no need to flush locals right before a return
+  locals.clear();
   Output(std::move(op));
   reachable = false;
 }
@@ -874,8 +906,8 @@ void BasicOptimizer::Emit(const UnconditionalBranch& _op) {
     }
   }
 
-  // only flush local_writes on the unconditional branch non-linked blocks
-  FlushCurrentLocalWrites();
+  // only flush locals on the unconditional branch non-linked blocks
+  FlushCurrentLocals();
   if (!new_block_graph.Has(op->dest)) {
     new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
     new_block_graph.AddEdge(current_new_block_idx, op->dest);
@@ -923,7 +955,7 @@ void BasicOptimizer::EmitBranchCompare(const BranchCompare<T>& _op) {
   }
 
   ResolveBranchIndirection(op->dest);
-  FlushCurrentLocalWrites();
+  FlushCurrentLocals();
   if (!new_block_graph.Has(op->dest)) {
     new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
     new_block_graph.AddEdge(current_new_block_idx, op->dest);
@@ -984,7 +1016,7 @@ void BasicOptimizer::EmitBranchCompareImm(const BranchCompareImm<T>& _op) {
   }
 
   ResolveBranchIndirection(op->dest);
-  FlushCurrentLocalWrites();
+  FlushCurrentLocals();
   if (!new_block_graph.Has(op->dest)) {
     new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
     new_block_graph.AddEdge(current_new_block_idx, op->dest);
@@ -1012,7 +1044,7 @@ void BasicOptimizer::Emit(const Select& _op) {
     }
   }
 
-  FlushCurrentLocalWrites();
+  FlushCurrentLocals();
   for (auto& [val, block_idx] : op->table) {
     ResolveBranchIndirection(block_idx);
     if (!new_block_graph.Has(block_idx)) {
