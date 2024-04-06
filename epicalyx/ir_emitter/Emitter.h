@@ -31,7 +31,7 @@ struct Emitter {
     auto directive = std::make_unique<T>(args...);
     T* ref = directive.get();
     switch (ref->cls) {
-      case calyx::Directive::Class::UnconditionalBranch:
+      case calyx::Directive::Class::Branch:
       case calyx::Directive::Class::Return:
       case calyx::Directive::Class::Select:
         reachable = false;

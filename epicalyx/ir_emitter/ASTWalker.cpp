@@ -135,9 +135,9 @@ void ASTWalker::Visit(IdentifierNode& decl) {
 
     // emit branch
     // branch to false block if 0, otherwise go to true block
-    auto block = state.top().second.false_block;
-    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, block, current, calyx::CmpType::Eq, 0);
-    emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
+    auto fblock = state.top().second.false_block;
+    auto tblock = state.top().second.true_block;
+    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, tblock, fblock, current, calyx::CmpType::Ne, 0);
     return;
   }
 
@@ -290,9 +290,9 @@ void ASTWalker::Visit(ArrayAccessNode& expr) {
     }
 
     if (state.top().first == State::ConditionalBranch) {
-      auto false_block = state.top().second.false_block;
-      EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, false_block, current, calyx::CmpType::Eq, 0);
-      emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
+      auto tblock = state.top().second.true_block;
+      auto fblock = state.top().second.false_block;
+      EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, tblock, fblock, current, calyx::CmpType::Ne, 0);
     }
   }
   else {
@@ -363,9 +363,9 @@ void ASTWalker::Visit(FunctionCallNode& expr) {
     signature->contained->Visit(visitor);
 
     if (state.top().first == State::ConditionalBranch) {
-      auto false_block = state.top().second.false_block;
-      EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, false_block, current, calyx::CmpType::Eq, 0);
-      emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
+      auto tblock = state.top().second.true_block;
+      auto fblock = state.top().second.false_block;
+      EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, tblock, fblock, current, calyx::CmpType::Ne, 0);
     }
   }
 }
@@ -444,9 +444,9 @@ void ASTWalker::Visit(PostFixNode& expr) {
   }
 
   if (conditional_branch) {
-    auto false_block = state.top().second.false_block;
-    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, false_block, current, calyx::CmpType::Eq, 0);
-    emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
+    auto tblock = state.top().second.true_block;
+    auto fblock = state.top().second.false_block;
+    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, tblock, fblock, current, calyx::CmpType::Ne, 0);
   }
 }
 
@@ -499,10 +499,10 @@ void ASTWalker::Visit(UnopNode& expr) {
       state.pop();
 
       if (conditional_branch) {
-        auto false_block = state.top().second.false_block;
+        auto tblock = state.top().second.true_block;
+        auto fblock = state.top().second.false_block;
         // branch to false if current != 0 (if current == 0, then !current is true)
-        EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, false_block, current, calyx::CmpType::Ne, 0);
-        emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
+        EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, fblock, tblock, current, calyx::CmpType::Ne, 0);
       }
       else {
         EmitCompare<calyx::CompareImm>(emitter.vars[current].type, current, calyx::CmpType::Eq, 0);
@@ -628,9 +628,9 @@ void ASTWalker::Visit(UnopNode& expr) {
   }
 
   if (conditional_branch) {
-    auto false_block = state.top().second.false_block;
-    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, false_block, current, calyx::CmpType::Eq, 0);
-    emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
+    auto tblock = state.top().second.true_block;
+    auto fblock = state.top().second.false_block;
+    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, tblock, fblock, current, calyx::CmpType::Ne, 0);
   }
 }
 
@@ -724,40 +724,33 @@ void ASTWalker::Visit(BinopNode& expr) {
     case TokenType::NotEqual: {
       auto casted = BinopCastHelper(left, right);
       calyx::CmpType cmp_type;
-      calyx::CmpType inverse;
       switch (expr.op) {
         case TokenType::Less:
           cmp_type = calyx::CmpType::Lt;
-          inverse = calyx::CmpType::Ge;
           break;
         case TokenType::LessEqual:
           cmp_type = calyx::CmpType::Le;
-          inverse = calyx::CmpType::Gt;
           break;
         case TokenType::GreaterEqual:
           cmp_type = calyx::CmpType::Ge;
-          inverse = calyx::CmpType::Lt;
           break;
         case TokenType::Greater:
           cmp_type = calyx::CmpType::Gt;
-          inverse = calyx::CmpType::Le;
           break;
         case TokenType::Equal:
           cmp_type = calyx::CmpType::Eq;
-          inverse = calyx::CmpType::Ne;
           break;
         case TokenType::NotEqual:
           cmp_type = calyx::CmpType::Ne;
-          inverse = calyx::CmpType::Eq;
           break;
         default:
           throw std::runtime_error("Unreachable");
       }
 
       if (conditional_branch) {
-        auto false_block = state.top().second.false_block;
-        EmitBranch<calyx::BranchCompare>(casted.var.type, false_block, casted.left, inverse, casted.right);
-        emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
+        auto tblock = state.top().second.true_block;
+        auto fblock = state.top().second.false_block;
+        EmitBranch<calyx::BranchCompare>(casted.var.type, tblock, fblock, casted.left, cmp_type, casted.right);
       }
       else {
         EmitCompare<calyx::Compare>(casted.var.type, casted.left, cmp_type, casted.right);
@@ -887,9 +880,9 @@ void ASTWalker::Visit(BinopNode& expr) {
 
   if (conditional_branch) {
     auto type = emitter.vars[current].type;
-    auto false_block = state.top().second.false_block;
-    EmitBranch<calyx::BranchCompareImm>(type, false_block, current, calyx::CmpType::Eq, 0);
-    emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
+    auto tblock = state.top().second.true_block;
+    auto fblock = state.top().second.false_block;
+    EmitBranch<calyx::BranchCompareImm>(type, tblock, fblock, current, calyx::CmpType::Ne, 0);
   }
 }
 

@@ -63,18 +63,12 @@ bool BasicOptimizer::NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, program
     while (_reachable && pos.second < block.size()) {
       const auto& op = block[pos.second];
       switch (op->cls) {
-        case Directive::Class::UnconditionalBranch:
-          _reachable = false;
-        case Directive::Class::ConditionalBranch: 
-          register_branch(cotyl::unique_ptr_cast<Branch>(op)->dest);
-          break;
+        case Directive::Class::Branch:
         case Directive::Class::Select: {
-          auto* select = cotyl::unique_ptr_cast<Select>(op);
-          for (auto [val, block] : select->table) {
-            register_branch(block);
-          }
-          if (select->_default) {
-            register_branch(select->_default);
+          auto* branch = cotyl::unique_ptr_cast<Branch>(op);
+          const auto destinations = branch->Destinations();
+          for (const auto& block_idx : destinations) {
+            register_branch(block_idx);
           }
           _reachable = false;
           break;
@@ -942,7 +936,7 @@ void BasicOptimizer::EmitBranchCompare(const BranchCompare<T>& _op) {
   {
     auto* right_imm = TryGetVarDirective<Imm<T>>(op->right_idx);
     if (right_imm) {
-      EmitRepl<BranchCompareImm<T>>(op->dest, op->left_idx, op->op, right_imm->value);
+      EmitRepl<BranchCompareImm<T>>(op->tdest, op->fdest, op->left_idx, op->op, right_imm->value);
       return;
     }
   }
@@ -964,19 +958,26 @@ void BasicOptimizer::EmitBranchCompare(const BranchCompare<T>& _op) {
         case CmpType::Gt: flipped = CmpType::Lt; break;
         case CmpType::Ge: flipped = CmpType::Le; break;
       }
-      EmitRepl<BranchCompareImm<T>>(op->dest, op->right_idx, flipped, left_imm->value);
+      EmitRepl<BranchCompareImm<T>>(op->tdest, op->fdest, op->right_idx, flipped, left_imm->value);
       return;
     }
   }
 
-  ResolveBranchIndirection(op->dest);
+  ResolveBranchIndirection(op->tdest);
+  ResolveBranchIndirection(op->fdest);
   FlushCurrentLocals();
-  if (!new_block_graph.Has(op->dest)) {
-    new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
-    new_block_graph.AddEdge(current_new_block_idx, op->dest);
-    todo.insert(op->dest);
+  if (!new_block_graph.Has(op->tdest)) {
+    new_block_graph.AddNodeIfNotExists(op->tdest, nullptr);
+    new_block_graph.AddEdge(current_new_block_idx, op->tdest);
+    todo.insert(op->tdest);
+  }
+  if (!new_block_graph.Has(op->fdest)) {
+    new_block_graph.AddNodeIfNotExists(op->fdest, nullptr);
+    new_block_graph.AddEdge(current_new_block_idx, op->fdest);
+    todo.insert(op->fdest);
   }
   Output(std::move(op));
+  reachable = false;
 }
 
 template<typename T>
@@ -987,17 +988,18 @@ void BasicOptimizer::EmitBranchCompareImm(const BranchCompareImm<T>& _op) {
   if constexpr(!std::is_same_v<T, Pointer>) {
     auto* left_imm = TryGetVarDirective<Imm<T>>(op->left_idx);
     if (left_imm) {
-      auto emit_unconditional = [&] {
-        EmitRepl<UnconditionalBranch>(op->dest);
+      auto emit_unconditional = [&](bool cmp) {
+        if (cmp) EmitRepl<UnconditionalBranch>(op->tdest);
+        else     EmitRepl<UnconditionalBranch>(op->fdest);
       };
 
       switch (op->op) {
-        case CmpType::Eq: if (left_imm->value == op->right) emit_unconditional(); break;
-        case CmpType::Ne: if (left_imm->value != op->right) emit_unconditional(); break;
-        case CmpType::Lt: if (left_imm->value <  op->right) emit_unconditional(); break;
-        case CmpType::Le: if (left_imm->value <= op->right) emit_unconditional(); break;
-        case CmpType::Gt: if (left_imm->value >  op->right) emit_unconditional(); break;
-        case CmpType::Ge: if (left_imm->value >= op->right) emit_unconditional(); break;
+        case CmpType::Eq: emit_unconditional(left_imm->value == op->right); break;
+        case CmpType::Ne: emit_unconditional(left_imm->value != op->right); break;
+        case CmpType::Lt: emit_unconditional(left_imm->value <  op->right); break;
+        case CmpType::Le: emit_unconditional(left_imm->value <= op->right); break;
+        case CmpType::Gt: emit_unconditional(left_imm->value >  op->right); break;
+        case CmpType::Ge: emit_unconditional(left_imm->value >= op->right); break;
       }
       return;
     }
@@ -1030,12 +1032,18 @@ void BasicOptimizer::EmitBranchCompareImm(const BranchCompareImm<T>& _op) {
     }
   }
 
-  ResolveBranchIndirection(op->dest);
+  ResolveBranchIndirection(op->tdest);
+  ResolveBranchIndirection(op->fdest);
   FlushCurrentLocals();
-  if (!new_block_graph.Has(op->dest)) {
-    new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
-    new_block_graph.AddEdge(current_new_block_idx, op->dest);
-    todo.insert(op->dest);
+  if (!new_block_graph.Has(op->tdest)) {
+    new_block_graph.AddNodeIfNotExists(op->tdest, nullptr);
+    new_block_graph.AddEdge(current_new_block_idx, op->tdest);
+    todo.insert(op->tdest);
+  }
+  if (!new_block_graph.Has(op->fdest)) {
+    new_block_graph.AddNodeIfNotExists(op->fdest, nullptr);
+    new_block_graph.AddEdge(current_new_block_idx, op->fdest);
+    todo.insert(op->fdest);
   }
   Output(std::move(op));
 }

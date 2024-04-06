@@ -223,14 +223,16 @@ void ProgramDependencies::Emit(const UnconditionalBranch& op) {
 
 template<typename T>
 void ProgramDependencies::EmitBranchCompare(const BranchCompare<T>& op) {
-  block_graph.AddEdge(pos.first, op.dest);
+  block_graph.AddEdge(pos.first, op.tdest);
+  block_graph.AddEdge(pos.first, op.fdest);
   cotyl::get_default(var_graph, op.left_idx).reads.push_back(pos);
   cotyl::get_default(var_graph, op.right_idx).reads.push_back(pos);
 }
 
 template<typename T>
 void ProgramDependencies::EmitBranchCompareImm(const BranchCompareImm<T>& op) {
-  block_graph.AddEdge(pos.first, op.dest);
+  block_graph.AddEdge(pos.first, op.tdest);
+  block_graph.AddEdge(pos.first, op.fdest);
   cotyl::get_default(var_graph, op.left_idx).reads.push_back(pos);
 }
 

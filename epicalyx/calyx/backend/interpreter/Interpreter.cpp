@@ -29,10 +29,15 @@ void Interpreter::VisualizeProgram(const Program& program, const std::string& fi
         case Directive::Class::Call:  // todo
           graph->n(i, directive->ToString());
           break;
-        case Directive::Class::ConditionalBranch:
-        case Directive::Class::UnconditionalBranch:
-          graph->n(i, directive->ToString())->n(cotyl::unique_ptr_cast<Branch>(directive)->dest);
+        case Directive::Class::Branch: {
+          auto* branch = cotyl::unique_ptr_cast<Branch>(directive);
+          const auto destinations = branch->Destinations();
+          auto node = graph->n(i, directive->ToString());
+          for (const auto& dest : destinations) {
+            node->n(dest);
+          }
           break;
+        }
         case Directive::Class::Select: {
           auto node = graph->n(i, directive->ToString());
           auto* select = cotyl::unique_ptr_cast<Select>(directive);
@@ -727,10 +732,8 @@ void Interpreter::EmitBranchCompare(const BranchCompare<T>& op) {
     }
   }
 
-  if (branch) {
-    pos.first = op.dest;
-    pos.second = 0;
-  }
+  pos.first = branch ? op.tdest : op.fdest;
+  pos.second = 0;
 }
 
 template<typename T>
@@ -769,10 +772,8 @@ void Interpreter::EmitBranchCompareImm(const BranchCompareImm<T>& op) {
     }
   }
 
-  if (branch) {
-    pos.first = op.dest;
-    pos.second = 0;
-  }
+  pos.first = branch ? op.tdest : op.fdest;
+  pos.second = 0;
 }
 
 void Interpreter::Emit(const Select& op) {

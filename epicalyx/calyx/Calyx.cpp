@@ -152,9 +152,9 @@ template<typename T>
 requires (is_calyx_arithmetic_ptr_type_v<T>)
 std::string BranchCompare<T>::ToString() const {
   return cotyl::FormatStr(
-          "brnch L%s : v%s %s<%s> v%s",
-          this->dest, left_idx, cmp_string(op),
-          detail::type_string<T>::value, right_idx
+          "brnch (v%s %s<%s> v%s) ? L%s : L%s",
+          left_idx, cmp_string(op), detail::type_string<T>::value, right_idx,
+          tdest, fdest
   );
 }
 
@@ -162,9 +162,9 @@ template<typename T>
 requires (is_calyx_arithmetic_ptr_type_v<T>)
 std::string BranchCompareImm<T>::ToString() const {
   return cotyl::FormatStr(
-          "brnch L%s : v%s %s<%s> imm(%s)",
-          this->dest, left_idx, cmp_string(op),
-          detail::type_string<T>::value, right
+          "brnch (v%s %s<%s> imm(%s)) ? L%s : L%s",
+          left_idx, cmp_string(op), detail::type_string<T>::value, right,
+          tdest, fdest
   );
 }
 

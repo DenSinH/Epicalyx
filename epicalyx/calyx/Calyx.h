@@ -108,11 +108,10 @@ struct Directive {
     Expression,  // includes loads
     Store,
     Stack,
-    ConditionalBranch,
-    UnconditionalBranch,
+    Branch,
+    Select,
     Call,
     Return,
-    Select,
   };
 
   Directive(Class cls, size_t type_id) :
@@ -144,13 +143,12 @@ struct Expr : Directive {
 
 struct Branch : Directive {
 
-  Branch(Class cls, size_t type_id, block_label_t dest) :
-      Directive(cls, type_id),
-      dest(dest) {
+  Branch(Class cls, size_t type_id) :
+      Directive(cls, type_id) {
 
   }
 
-  block_label_t dest;
+  virtual std::vector<block_label_t> Destinations() const = 0;
 };
 
 struct Program {
@@ -161,7 +159,7 @@ struct Program {
   // block 0 is special
   cotyl::unordered_map<block_label_t, block_t> blocks{};
 
-  // function symbols -> block ID
+  // function symbols -> entrypoint block ID
   cotyl::unordered_map<std::string, calyx::block_label_t> functions{};
 
   // string constants
@@ -338,10 +336,15 @@ struct CompareImm : Expr {
 
 struct UnconditionalBranch : Branch {
   UnconditionalBranch(block_label_t dest) :
-      Branch(Class::UnconditionalBranch, GetTID(), dest) {
+      Branch(Class::Branch, GetTID()),
+      dest{dest} {
 
   }
 
+  block_label_t dest;
+  std::vector<block_label_t> Destinations() const final {
+    return {dest};
+  }
   std::string ToString() const final;
   void Emit(Backend& backend) final;
   static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
@@ -352,15 +355,23 @@ requires (is_calyx_arithmetic_ptr_type_v<T>)
 struct BranchCompare : Branch {
   using src_t = T;
 
-  BranchCompare(block_label_t dest, var_index_t left, CmpType op, var_index_t right) :
-          Branch(Class::ConditionalBranch, GetTID(), dest), left_idx(left), op(op), right_idx(right) {
+  BranchCompare(block_label_t tdest, block_label_t fdest, var_index_t left, CmpType op, var_index_t right) :
+          Branch(Class::Branch, GetTID()), 
+          tdest(tdest), fdest(fdest),
+          left_idx(left), op(op), right_idx(right) {
 
   }
+
+  block_label_t tdest;
+  block_label_t fdest;
 
   var_index_t left_idx;
   CmpType op;
   var_index_t right_idx;
 
+  std::vector<block_label_t> Destinations() const final {
+    return {tdest, fdest};
+  }
   std::string ToString() const final;
   void Emit(Backend& backend) final;
   static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
@@ -371,15 +382,23 @@ requires (is_calyx_arithmetic_ptr_type_v<T>)
 struct BranchCompareImm : Branch {
   using src_t = T;
 
-  BranchCompareImm(block_label_t dest, var_index_t left, CmpType op, T right) :
-          Branch(Class::ConditionalBranch, GetTID(), dest), left_idx(left), op(op), right(right) {
+  BranchCompareImm(block_label_t tdest, block_label_t fdest, var_index_t left, CmpType op, T right) :
+          Branch(Class::Branch, GetTID()),
+          tdest(tdest), fdest(fdest),
+          left_idx(left), op(op), right(right) {
 
   }
 
+  block_label_t tdest;
+  block_label_t fdest;
+  
   var_index_t left_idx;
   CmpType op;
   T right;
 
+  std::vector<block_label_t> Destinations() const final {
+    return {tdest, fdest};
+  }
   std::string ToString() const final;
   void Emit(Backend& backend) final;
   static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
@@ -690,11 +709,11 @@ struct ArgMakeLocal : Directive {
   static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
-struct Select : Directive {
+struct Select : Branch {
   using src_t = i64;
 
   Select(var_index_t idx) :
-      Directive(Class::Select, GetTID()), idx(idx) {
+      Branch(Class::Select, GetTID()), idx(idx) {
 
   }
 
@@ -702,7 +721,16 @@ struct Select : Directive {
   var_index_t idx;
   cotyl::unordered_map<i64, block_label_t> table{};
   block_label_t _default = 0;
-
+  
+  std::vector<block_label_t> Destinations() const final {
+    std::vector<block_label_t> result{};
+    result.reserve(table.size() + 1);
+    for (const auto& [val, block_idx] : table) {
+      result.emplace_back(block_idx);
+    }
+    if (_default) result.emplace_back(_default);
+    return std::move(result);
+  }
   std::string ToString() const final;
   void Emit(Backend& backend) final;
   static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
