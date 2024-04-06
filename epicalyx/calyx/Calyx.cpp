@@ -3,6 +3,7 @@
 #include "backend/Backend.h"
 
 #include "Format.h"
+#include "Hash.h"
 
 
 namespace epi::calyx {
@@ -27,6 +28,18 @@ template<> const std::string type_string<double>::value = "double";
 template<> const std::string type_string<Struct>::value = "struct";
 template<> const std::string type_string<Pointer>::value = "pointer";
 
+}
+
+size_t Program::Hash() const {
+  cotyl::map<block_label_t, const block_t&> sorted{blocks.begin(), blocks.end()};
+  size_t seed = blocks.size();
+  for (const auto& [block_idx, block] : sorted) {
+    calyx::hash_combine(seed, block_idx);
+    for (const auto& directive : block) {
+      calyx::hash_combine(seed, directive->type_id);
+    }
+  }
+  return seed;
 }
 
 template<typename To, typename From>

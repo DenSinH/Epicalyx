@@ -32,6 +32,26 @@ std::size_t hash_value(const T& arg) {
     return std::hash<T>{}(arg);
 }
 
+namespace calyx {
+
+template <class T>
+inline void hash_combine(std::size_t& seed, T const& v) {
+  boost::hash_combine<T>(seed, v);
+}
+
+}
+
+}
+
+#else
+
+namespace epi::calyx {
+
+// template <class T>
+// inline void hash_combine(std::size_t& seed, T const& v) {
+
+// }
+
 }
 
 #endif

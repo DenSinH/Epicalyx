@@ -169,6 +169,8 @@ struct Program {
 
   // global variable sizes
   cotyl::unordered_map<std::string, global_t> globals{};
+
+  size_t Hash() const;
 };
 
 enum class BinopType {

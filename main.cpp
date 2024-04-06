@@ -75,12 +75,17 @@ int main() {
   PrintProgram(program);
 
   // repeating multiple times will link more blocks
-  for (int i = 0; i < 4; i++) {
+  auto prog_hash = program.Hash();
+  while (true) {
+    std::cout << "Optimizing program hash " << prog_hash << "..." << std::endl;
     try {
       auto optimizer = epi::BasicOptimizer(program);
       optimizer.EmitProgram(program);
 
       program = std::move(optimizer.new_program);
+      auto new_hash = program.Hash();
+      if (prog_hash == new_hash) break;
+      prog_hash = new_hash;
     }
     catch_e {
       Log::ConsoleColor<Log::Color::Red>();
