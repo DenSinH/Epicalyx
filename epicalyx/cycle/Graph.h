@@ -127,6 +127,7 @@ public:
 template<typename I, typename T>
 std::vector<I> TopSort(const Graph<I, T, true>& graph, bool acyclic) {
   std::vector<I> result{};
+  result.reserve(graph.size());
   cotyl::unordered_set<I> todo{};
   cotyl::flat_set<I> candidates{};
 

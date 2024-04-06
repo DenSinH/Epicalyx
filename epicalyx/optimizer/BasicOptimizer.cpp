@@ -328,6 +328,15 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
   new_program.globals      = std::move(_program.globals);
   new_program.strings      = std::move(_program.strings);
 
+  cotyl::unordered_map<block_label_t, u32> top_sort_positions{};
+  {
+    auto top_sort = TopSort(old_deps.block_graph, false);
+    top_sort_positions.reserve(top_sort.size());
+    for (u32 i = 0; i < top_sort.size(); i++) {
+      top_sort_positions[top_sort[i]] = i;
+    }
+  }
+
   for (const auto& [symbol, entry] : new_program.functions) {
     new_block_graph = {};
     todo = {entry};
@@ -336,9 +345,15 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
     while (!todo.empty()) {
       cotyl::Assert(locals.empty());
 
-      current_old_pos.first = current_new_block_idx = *todo.begin();
-      reachable = true;
-      todo.erase(todo.begin());
+      // emit in topological order
+      {
+        auto it = std::ranges::min_element(todo, [&](const block_label_t& a, const block_label_t& b) {
+            return top_sort_positions.at(a) < top_sort_positions.at(b);
+        });
+        current_old_pos.first = current_new_block_idx = *it;
+        reachable = true;
+        todo.erase(it);
+      }
 
       auto inserted = new_program.blocks.emplace(current_new_block_idx, calyx::Program::block_t{}).first;
       current_block = &inserted->second;
