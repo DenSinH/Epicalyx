@@ -20,7 +20,7 @@ struct ProgramDependencies final : calyx::Backend {
     return deps;
   }
 
-  Graph<block_label_t, const Program::block_t*, true> block_graph{};
+  Graph<block_label_t, const block_t*, true> block_graph{};
 
   struct Var {
     program_pos_t created = {0, 0};
@@ -37,7 +37,7 @@ struct ProgramDependencies final : calyx::Backend {
 
   cotyl::unordered_map<var_index_t, Var> var_graph{};
 
-  struct Local {
+  struct LocalData {
     program_pos_t created = {0, 0};
     std::vector<program_pos_t> writes{};
     std::vector<program_pos_t> reads{};
@@ -46,7 +46,7 @@ struct ProgramDependencies final : calyx::Backend {
     std::vector<var_index_t> aliased_by{};
   };
 
-  cotyl::unordered_map<var_index_t, Local> local_graph{};
+  cotyl::unordered_map<var_index_t, LocalData> local_graph{};
 
   program_pos_t pos;
 
@@ -54,8 +54,6 @@ struct ProgramDependencies final : calyx::Backend {
 
   void EmitProgram(const Program& program) final;
 
-  void Emit(const AllocateLocal& op) final;
-  void Emit(const DeallocateLocal& op) final;
   void Emit(const LoadLocalAddr& op) final;
   void Emit(const LoadGlobalAddr& op) final;
   void Emit(const ArgMakeLocal& op) final;

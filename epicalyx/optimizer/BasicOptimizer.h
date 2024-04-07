@@ -22,7 +22,7 @@ struct BasicOptimizer final : calyx::Backend {
   const Program& program;
   ProgramDependencies old_deps;
   cotyl::unordered_map<block_label_t, program_pos_t> block_links{};
-  Graph<block_label_t, const Program::block_t*, true> new_block_graph{};
+  Graph<block_label_t, const block_t*, true> new_block_graph{};
 
   calyx::Program new_program{};
 
@@ -46,7 +46,7 @@ struct BasicOptimizer final : calyx::Backend {
   cotyl::unordered_map<calyx::var_index_t, std::pair<calyx::block_label_t, u64>> vars_found{};
 
   // current block that is being built
-  calyx::Program::block_t* current_block{};
+  calyx::block_t* current_block{};
   program_pos_t current_old_pos;            // position we are scanning in the old program
   block_label_t current_new_block_idx;      // block index we are building in the new program
   cotyl::unordered_set<block_label_t> todo{};
@@ -139,8 +139,6 @@ struct BasicOptimizer final : calyx::Backend {
 
   void EmitProgram(const Program& program) final;
 
-  void Emit(const AllocateLocal& op) final;
-  void Emit(const DeallocateLocal& op) final;
   void Emit(const LoadLocalAddr& op) final;
   void Emit(const LoadGlobalAddr& op) final;
   void Emit(const ArgMakeLocal& op) final;

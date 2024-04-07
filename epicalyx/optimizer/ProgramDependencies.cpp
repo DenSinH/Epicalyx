@@ -53,15 +53,6 @@ void ProgramDependencies::EmitProgram(const Program& program) {
   }
 }
 
-void ProgramDependencies::Emit(const AllocateLocal& op) {
-  cotyl::get_default(local_graph, op.loc_idx).created = pos;
-}
-
-void ProgramDependencies::Emit(const DeallocateLocal& op) {
-  // count this as a write to the local
-  cotyl::get_default(local_graph, op.loc_idx).writes.push_back(pos);
-}
-
 template<typename To, typename From>
 void ProgramDependencies::EmitCast(const Cast<To, From>& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;

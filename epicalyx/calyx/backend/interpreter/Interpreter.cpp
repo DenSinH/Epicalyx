@@ -60,7 +60,7 @@ void Interpreter::VisualizeProgram(const Program& program, const std::string& fi
   graph->Visualize(filename);
 }
 
-void Interpreter::InterpretGlobalInitializer(Program::global_t& dest, block_label_t entry) {
+void Interpreter::InterpretGlobalInitializer(global_t& dest, block_label_t entry) {
     pos.first = entry;
     pos.second = 0;
     call_stack.emplace(std::make_pair(0, 0), -1, arg_list_t{}, arg_list_t{});
@@ -350,84 +350,84 @@ void Interpreter::Emit(const ArgMakeLocal& op) {
 
   const auto stack_loc = stack.size();
   switch (op.arg.type) {
-    case Argument::Type::I8: {
+    case Local::Type::I8: {
       i32 value = std::get<i32>(vars.Get(args[op.arg.arg_idx].first));
       locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
-    case Argument::Type::U8: {
+    case Local::Type::U8: {
       u32 value = std::get<u32>(vars.Get(args[op.arg.arg_idx].first));
       locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
-    case Argument::Type::I16: {
+    case Local::Type::I16: {
       i32 value = std::get<i32>(vars.Get(args[op.arg.arg_idx].first));
       locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
-    case Argument::Type::U16: {
+    case Local::Type::U16: {
       u32 value = std::get<u32>(vars.Get(args[op.arg.arg_idx].first));
       locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
-    case Argument::Type::I32: {
+    case Local::Type::I32: {
       i32 value = std::get<i32>(vars.Get(args[op.arg.arg_idx].first));
       locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
-    case Argument::Type::U32: {
+    case Local::Type::U32: {
       u32 value = std::get<u32>(vars.Get(args[op.arg.arg_idx].first));
       locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
-    case Argument::Type::I64: {
+    case Local::Type::I64: {
       i64 value = std::get<i64>(vars.Get(args[op.arg.arg_idx].first));
       locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
-    case Argument::Type::U64: {
+    case Local::Type::U64: {
       u64 value = std::get<u64>(vars.Get(args[op.arg.arg_idx].first));
       locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
-    case Argument::Type::Float: {
+    case Local::Type::Float: {
       float value = std::get<float>(vars.Get(args[op.arg.arg_idx].first));
       locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
-    case Argument::Type::Double: {
+    case Local::Type::Double: {
       double value = std::get<double>(vars.Get(args[op.arg.arg_idx].first));
       locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
-    case Argument::Type::Pointer: {
+    case Local::Type::Pointer: {
       Pointer value = std::get<Pointer>(vars.Get(args[op.arg.arg_idx].first));
       locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
       stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
-    case Argument::Type::Struct: {
+    case Local::Type::Struct: {
       throw cotyl::UnimplementedException("struct argument");
     }
   }

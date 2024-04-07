@@ -18,14 +18,20 @@
 
 namespace epi {
 
+
+calyx::Local::Type ASTWalker::GetCalyxType(const pType<const CType>& type) {
+  throw cotyl::UnimplementedException("Calyx type from ctype");
+}
+
+
 void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
   if (locals.Depth() == 1) {
     // global symbols
-    local_types.Set(decl.name, decl.type);
+    symbol_types.emplace(decl.name, decl.type);
 
     auto global_init_visitor = detail::GlobalInitializerVisitor();
     decl.type->Visit(global_init_visitor);
-    calyx::Program::global_t& global = emitter.program.globals[decl.name] = global_init_visitor.result;
+    calyx::global_t& global = emitter.program.globals[decl.name] = global_init_visitor.result;
 
     if (decl.value.has_value()) {
       if (std::holds_alternative<pExpr>(decl.value.value())) {
@@ -51,11 +57,7 @@ void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
     }
   }
   else {
-    auto c_idx = emitter.c_counter++;
-    u64 size = decl.type->Sizeof();
-    locals.Set(decl.name, Local{c_idx, size});
-    local_types.Set(decl.name, decl.type);
-    emitter.Emit<calyx::AllocateLocal>(c_idx, size);
+    auto c_idx = AddLocal(decl.name, decl.type);
 
     if (decl.value.has_value()) {
       if (std::holds_alternative<pExpr>(decl.value.value())) {
@@ -76,21 +78,14 @@ void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
 }
 
 void ASTWalker::Visit(FunctionDefinitionNode& decl) {
-  local_types.Set(decl.symbol, decl.signature);
-
-  auto block = emitter.MakeBlock();
-  emitter.SelectBlock(block);
-  emitter.program.functions.emplace(decl.symbol, block);
+  NewFunction(decl.symbol, decl.signature);
 
   // same as normal compound statement besides arguments
   locals.NewLayer();
-  local_types.NewLayer();
   for (int i = 0; i < decl.signature->arg_types.size(); i++) {
     // turn arguments into locals
     auto& arg = decl.signature->arg_types[i];
-    auto c_idx = emitter.c_counter++;
-    locals.Set(arg.name, Local{c_idx, arg.type->Sizeof()});
-    local_types.Set(arg.name, arg.type);
+    auto c_idx = AddLocal(arg.name, arg.type);
     auto visitor = detail::ArgumentTypeVisitor(i, false);
     arg.type->Visit(visitor);
 
@@ -99,23 +94,17 @@ void ASTWalker::Visit(FunctionDefinitionNode& decl) {
 
   // locals layer
   locals.NewLayer();
-  local_types.NewLayer();
 
   function = &decl;
   for (const auto& node : decl.body->stats) {
     node->Visit(*this);
   }
-  for (auto [_, var] : locals.Top()) {
-    emitter.Emit<calyx::DeallocateLocal>(var.idx, var.size);
-  }
   emitter.Emit<calyx::Return<void>>(0);
   // locals layer
   locals.PopLayer();
-  local_types.NewLayer();
 
   // arguments layer
   locals.PopLayer();
-  local_types.NewLayer();
 }
 
 void ASTWalker::Visit(IdentifierNode& decl) {
@@ -141,14 +130,14 @@ void ASTWalker::Visit(IdentifierNode& decl) {
     return;
   }
 
-  auto type = local_types.Get(decl.name);
+  auto type = GetSymbolType(decl.name);
   if (locals.Has(decl.name)) {
     // local variable
-    auto cvar = locals.Get(decl.name);
+    const auto& cvar = *locals.Get(decl.name).loc;
     switch (state.top().first) {
       case State::Read: {
         if (type->IsArray()) {
-          current = emitter.EmitExpr<calyx::LoadLocalAddr>({calyx::Var::Type::Pointer, type->Deref()->Sizeof() }, cvar.idx);
+          current = emitter.EmitExpr<calyx::LoadLocalAddr>({Emitter::Var::Type::Pointer, type->Deref()->Sizeof() }, cvar.idx);
         }
         else {
           auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalEmitter>(*this, {cvar.idx});
@@ -180,7 +169,7 @@ void ASTWalker::Visit(IdentifierNode& decl) {
     switch (state.top().first) {
       case State::Read: {
         if (type->IsArray()) {
-          current = emitter.EmitExpr<calyx::LoadGlobalAddr>({calyx::Var::Type::Pointer, type->Deref()->Sizeof() }, decl.name);
+          current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, type->Deref()->Sizeof() }, decl.name);
         }
         else if (type->IsFunction()) {
           auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {decl.name});
@@ -390,11 +379,11 @@ void ASTWalker::Visit(PostFixNode& expr) {
       state.pop();
       auto read = current;
       auto type = emitter.vars[current].type;
-      if (type == calyx::Var::Type::Pointer) {
+      if (type == Emitter::Var::Type::Pointer) {
         auto var = emitter.vars[read];
         current = emitter.EmitExpr<calyx::AddToPointerImm>(var, read, var.stride, 1);
       }
-      else if (type == calyx::Var::Type::Struct) {
+      else if (type == Emitter::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for post-increment: struct");
       }
       else {
@@ -417,11 +406,11 @@ void ASTWalker::Visit(PostFixNode& expr) {
       state.pop();
       auto read = current;
       auto type = emitter.vars[current].type;
-      if (type == calyx::Var::Type::Pointer) {
+      if (type == Emitter::Var::Type::Pointer) {
         auto var = emitter.vars[read];
         current = emitter.EmitExpr<calyx::AddToPointerImm>(var, read, var.stride, -1);
       }
-      else if (type == calyx::Var::Type::Struct) {
+      else if (type == Emitter::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for post-decrement: struct");
       }
       else {
@@ -518,11 +507,11 @@ void ASTWalker::Visit(UnopNode& expr) {
 
       auto type = emitter.vars[current].type;
       calyx::var_index_t stored;
-      if (type == calyx::Var::Type::Pointer) {
+      if (type == Emitter::Var::Type::Pointer) {
         auto var = emitter.vars[current];
         current = emitter.EmitExpr<calyx::AddToPointerImm>(var, current, var.stride, 1);
       }
-      else if (type == calyx::Var::Type::Struct) {
+      else if (type == Emitter::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for pre-increment: struct");
       }
       else {
@@ -550,11 +539,11 @@ void ASTWalker::Visit(UnopNode& expr) {
       calyx::var_index_t stored;
 
       // subtract 1
-      if (type == calyx::Var::Type::Pointer) {
+      if (type == Emitter::Var::Type::Pointer) {
         auto var = emitter.vars[current];
         current = emitter.EmitExpr<calyx::AddToPointerImm>(var, current, var.stride, -1);
       }
-      else if (type == calyx::Var::Type::Struct) {
+      else if (type == Emitter::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for pre-decrement: struct");
       }
       else {
@@ -684,11 +673,11 @@ void ASTWalker::Visit(BinopNode& expr) {
     case TokenType::BinOr: BinopHelper(left, calyx::BinopType::BinOr, right); break;
     case TokenType::BinXor: BinopHelper(left, calyx::BinopType::BinXor, right); break;
     case TokenType::Plus: {
-      if (emitter.vars[left].type == calyx::Var::Type::Pointer) {
+      if (emitter.vars[left].type == Emitter::Var::Type::Pointer) {
         auto var = emitter.vars[left];
         EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, var.stride, right);
       }
-      else if (emitter.vars[right].type == calyx::Var::Type::Pointer) {
+      else if (emitter.vars[right].type == Emitter::Var::Type::Pointer) {
         auto var = emitter.vars[right];
         EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[left].type, var.stride, right, var.stride, left);
       }
@@ -698,9 +687,9 @@ void ASTWalker::Visit(BinopNode& expr) {
       break;
     }
     case TokenType::Minus: {
-      if (emitter.vars[left].type == calyx::Var::Type::Pointer) {
+      if (emitter.vars[left].type == Emitter::Var::Type::Pointer) {
         auto var = emitter.vars[left];
-        if (emitter.vars[right].type == calyx::Var::Type::Pointer) {
+        if (emitter.vars[right].type == Emitter::Var::Type::Pointer) {
           throw cotyl::UnimplementedException("pointer diff");
         }
         else {
@@ -708,7 +697,7 @@ void ASTWalker::Visit(BinopNode& expr) {
           EmitPointerIntegralExpr<calyx::AddToPointer>(emitter.vars[right].type, var.stride, left, var.stride, current);
         }
       }
-      else if (emitter.vars[right].type == calyx::Var::Type::Pointer) {
+      else if (emitter.vars[right].type == Emitter::Var::Type::Pointer) {
         throw std::runtime_error("Invalid right hand side operator for -: pointer");
       }
       else {
@@ -760,22 +749,22 @@ void ASTWalker::Visit(BinopNode& expr) {
     }
     case TokenType::LShift:
     case TokenType::RShift: {
-      cotyl::Assert(!cotyl::Is(emitter.vars[left].type).AnyOf<calyx::Var::Type::Float, calyx::Var::Type::Double, calyx::Var::Type::Pointer, calyx::Var::Type::Struct>());
-      cotyl::Assert(!cotyl::Is(emitter.vars[right].type).AnyOf<calyx::Var::Type::Float, calyx::Var::Type::Double, calyx::Var::Type::Pointer, calyx::Var::Type::Struct>());
+      cotyl::Assert(!cotyl::Is(emitter.vars[left].type).AnyOf<Emitter::Var::Type::Float, Emitter::Var::Type::Double, Emitter::Var::Type::Pointer, Emitter::Var::Type::Struct>());
+      cotyl::Assert(!cotyl::Is(emitter.vars[right].type).AnyOf<Emitter::Var::Type::Float, Emitter::Var::Type::Double, Emitter::Var::Type::Pointer, Emitter::Var::Type::Struct>());
       switch (emitter.vars[right].type) {
-        case calyx::Var::Type::I32: {
-          right = emitter.EmitExpr<calyx::Cast<u32, i32>>({ calyx::Var::Type::U32 }, right);
+        case Emitter::Var::Type::I32: {
+          right = emitter.EmitExpr<calyx::Cast<u32, i32>>({ Emitter::Var::Type::U32 }, right);
           break;
         }
-        case calyx::Var::Type::I64: {
-          right = emitter.EmitExpr<calyx::Cast<u32, i64>>({ calyx::Var::Type::U32 }, right);
+        case Emitter::Var::Type::I64: {
+          right = emitter.EmitExpr<calyx::Cast<u32, i64>>({ Emitter::Var::Type::U32 }, right);
           break;
         }
-        case calyx::Var::Type::U64: {
-          right = emitter.EmitExpr<calyx::Cast<u32, u64>>({ calyx::Var::Type::U32 }, right);
+        case Emitter::Var::Type::U64: {
+          right = emitter.EmitExpr<calyx::Cast<u32, u64>>({ Emitter::Var::Type::U32 }, right);
           break;
         }
-        case calyx::Var::Type::U32: break;
+        case Emitter::Var::Type::U32: break;
         default: {
           throw std::runtime_error("Bad operand type for shift amount");
         }
@@ -792,12 +781,9 @@ void ASTWalker::Visit(BinopNode& expr) {
     case TokenType::LogicalOr: {
       if (state.top().first == State::Read) {
         // we create a "fake local" in order to do this
-        auto c_idx = emitter.c_counter++;
-        std::string name = "$logop" + std::to_string(c_idx);
-        locals.Set(name, Local{c_idx, sizeof(i32)});
-        local_types.Set(name, CType::MakeBool());
-        emitter.Emit<calyx::AllocateLocal>(c_idx, sizeof(i32));
-
+        std::string name = "$logop" + std::to_string(emitter.c_counter);
+        auto c_idx = AddLocal(name, CType::MakeBool());
+        
         // now basically add an if statement
         auto rhs_block = emitter.MakeBlock();
         auto true_block = emitter.MakeBlock();
@@ -825,7 +811,7 @@ void ASTWalker::Visit(BinopNode& expr) {
         {
           emitter.SelectBlock(true_block);
           // store result to temp cvar
-          auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ calyx::Var::Type::I32 }, 1);
+          auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, 1);
           emitter.Emit<calyx::StoreLocal<i32>>(c_idx, imm);
           current = imm;
           emitter.Emit<calyx::UnconditionalBranch>(post_block);
@@ -834,7 +820,7 @@ void ASTWalker::Visit(BinopNode& expr) {
         {
           emitter.SelectBlock(false_block);
           // store result to temp cvar
-          auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ calyx::Var::Type::I32 }, 0);
+          auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, 0);
           emitter.Emit<calyx::StoreLocal<i32>>(c_idx, imm);
           current = imm;
           emitter.Emit<calyx::UnconditionalBranch>(post_block);
@@ -842,9 +828,9 @@ void ASTWalker::Visit(BinopNode& expr) {
 
         {
           emitter.SelectBlock(post_block);
-          cotyl::Assert(emitter.program.blocks[post_block].empty());
+          cotyl::Assert(emitter.current_function->blocks.at(post_block).empty());
           // load result from temp cvar
-          current = emitter.EmitExpr<calyx::LoadLocal<i32>>({ calyx::Var::Type::I32 }, c_idx);
+          current = emitter.EmitExpr<calyx::LoadLocal<i32>>({ Emitter::Var::Type::I32 }, c_idx);
         }
       }
       else if (state.top().first == State::ConditionalBranch) {
@@ -891,13 +877,9 @@ void ASTWalker::Visit(TernaryNode& expr) {
   
   if (state.top().first == State::Read) {
     // we create a "fake local" in order to do this
-    auto c_idx = emitter.c_counter++;
-    std::string name = "$tern" + std::to_string(c_idx);
-    const auto& type = expr.GetType();
-    u64 size = type->Sizeof();
-    locals.Set(name, Local{c_idx, size});
-    local_types.Set(name, type);
-    emitter.Emit<calyx::AllocateLocal>(c_idx, size);
+    std::string name = "$tern" + std::to_string(emitter.c_counter);
+    auto type = expr.GetType();
+    auto c_idx = AddLocal(name, type);
 
     // now basically add an if statement
     auto true_block = emitter.MakeBlock();
@@ -938,7 +920,7 @@ void ASTWalker::Visit(TernaryNode& expr) {
 
     {
       emitter.SelectBlock(post_block);
-      cotyl::Assert(emitter.program.blocks[post_block].empty());
+      cotyl::Assert(emitter.current_function->blocks.at(post_block).empty());
       // load result from temp cvar
       auto load_visitor = detail::EmitterTypeVisitor<detail::LoadLocalEmitter>(
               *this, { c_idx }
@@ -993,22 +975,22 @@ void ASTWalker::Visit(AssignmentNode& expr) {
       state.pop();
 
       auto left = current;
-      cotyl::Assert(!cotyl::Is(emitter.vars[left].type).AnyOf<calyx::Var::Type::Float, calyx::Var::Type::Double, calyx::Var::Type::Pointer, calyx::Var::Type::Struct>());
-      cotyl::Assert(!cotyl::Is(emitter.vars[right].type).AnyOf<calyx::Var::Type::Float, calyx::Var::Type::Double>());
+      cotyl::Assert(!cotyl::Is(emitter.vars[left].type).AnyOf<Emitter::Var::Type::Float, Emitter::Var::Type::Double, Emitter::Var::Type::Pointer, Emitter::Var::Type::Struct>());
+      cotyl::Assert(!cotyl::Is(emitter.vars[right].type).AnyOf<Emitter::Var::Type::Float, Emitter::Var::Type::Double>());
       switch (emitter.vars[right].type) {
-        case calyx::Var::Type::I32: {
-          right = emitter.EmitExpr<calyx::Cast<u32, i32>>({ calyx::Var::Type::U32 }, right);
+        case Emitter::Var::Type::I32: {
+          right = emitter.EmitExpr<calyx::Cast<u32, i32>>({ Emitter::Var::Type::U32 }, right);
           break;
         }
-        case calyx::Var::Type::I64: {
-          right = emitter.EmitExpr<calyx::Cast<u32, i64>>({ calyx::Var::Type::U32 }, right);
+        case Emitter::Var::Type::I64: {
+          right = emitter.EmitExpr<calyx::Cast<u32, i64>>({ Emitter::Var::Type::U32 }, right);
           break;
         }
-        case calyx::Var::Type::U64: {
-          right = emitter.EmitExpr<calyx::Cast<u32, u64>>({ calyx::Var::Type::U32 }, right);
+        case Emitter::Var::Type::U64: {
+          right = emitter.EmitExpr<calyx::Cast<u32, u64>>({ Emitter::Var::Type::U32 }, right);
           break;
         }
-        case calyx::Var::Type::U32: break;
+        case Emitter::Var::Type::U32: break;
         default: {
           throw std::runtime_error("Bad operand type for shift amount");
         }
@@ -1052,7 +1034,7 @@ void ASTWalker::Visit(AssignmentNode& expr) {
   auto left = current;
 
   // emit binop
-  if (emitter.vars[left].type == calyx::Var::Type::Pointer) {
+  if (emitter.vars[left].type == Emitter::Var::Type::Pointer) {
     auto var = emitter.vars[left];
     switch (op) {
       case calyx::BinopType::Add:
@@ -1117,7 +1099,7 @@ void ASTWalker::Visit(IfNode& stat) {
 
   // create post block here to improve optimization ancestry finding
   emitter.SelectBlock(post_block);
-  cotyl::Assert(emitter.program.blocks[post_block].empty());
+  cotyl::Assert(emitter.current_function->blocks.at(post_block).empty());
 }
 
 void ASTWalker::Visit(WhileNode& stat) {
@@ -1189,7 +1171,6 @@ void ASTWalker::Visit(ForNode& stat) {
 
   // new scope for declarations in for loop
   locals.NewLayer();
-  local_types.NewLayer();
 
   // always go to initialization
   emitter.Emit<calyx::UnconditionalBranch>(init_block);
@@ -1235,12 +1216,7 @@ void ASTWalker::Visit(ForNode& stat) {
   emitter.Emit<calyx::UnconditionalBranch>(cond_block);
 
   // pop locals layer
-  // todo: dealloc?
-//  for (auto var = locals.Top().rbegin(); var != locals.Top().rend(); var++) {
-//    emitter.Emit<calyx::DeallocateCVar>(var->second.idx, var->second.size);
-//  }
   locals.PopLayer();
-  local_types.PopLayer();
 
   // go to block after loop
   emitter.SelectBlock(post_block);
@@ -1268,19 +1244,19 @@ void ASTWalker::Visit(SwitchNode& stat) {
 
   auto right = current;
   switch (emitter.vars[right].type) {
-    case calyx::Var::Type::I32: {
-      right = emitter.EmitExpr<calyx::Cast<i64, i32>>({ calyx::Var::Type::U32 }, right);
+    case Emitter::Var::Type::I32: {
+      right = emitter.EmitExpr<calyx::Cast<i64, i32>>({ Emitter::Var::Type::U32 }, right);
       break;
     }
-    case calyx::Var::Type::U32: {
-      right = emitter.EmitExpr<calyx::Cast<i64, u32>>({ calyx::Var::Type::U32 }, right);
+    case Emitter::Var::Type::U32: {
+      right = emitter.EmitExpr<calyx::Cast<i64, u32>>({ Emitter::Var::Type::U32 }, right);
       break;
     }
-    case calyx::Var::Type::U64: {
-      right = emitter.EmitExpr<calyx::Cast<i64, u64>>({ calyx::Var::Type::U32 }, right);
+    case Emitter::Var::Type::U64: {
+      right = emitter.EmitExpr<calyx::Cast<i64, u64>>({ Emitter::Var::Type::U32 }, right);
       break;
     }
-    case calyx::Var::Type::I64: break;
+    case Emitter::Var::Type::I64: break;
     default: {
       throw std::runtime_error("Bad operand type for switch statement");
     }
@@ -1368,15 +1344,10 @@ void ASTWalker::Visit(ContinueNode& stat) {
 
 void ASTWalker::Visit(CompoundNode& stat) {
   locals.NewLayer();
-  local_types.NewLayer();
   for (const auto& node : stat.stats) {
     node->Visit(*this);
   }
-  for (auto [_, var] : locals.Top()) {
-    emitter.Emit<calyx::DeallocateLocal>(var.idx, var.size);
-  }
   locals.PopLayer();
-  local_types.PopLayer();
 }
 
 }

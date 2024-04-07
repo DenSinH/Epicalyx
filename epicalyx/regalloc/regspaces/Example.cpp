@@ -124,18 +124,18 @@ void ExampleRegSpace::EmitCallLabel(const CallLabel<T>& op) {
 
 void ExampleRegSpace::Emit(const ArgMakeLocal& op) {
   switch (op.arg.type) {
-    case Argument::Type::I8: OutputLocal<i8>(op.loc_idx); break;
-    case Argument::Type::U8: OutputLocal<u8>(op.loc_idx); break;
-    case Argument::Type::I16: OutputLocal<u16>(op.loc_idx); break;
-    case Argument::Type::U16: OutputLocal<i16>(op.loc_idx); break;
-    case Argument::Type::I32: OutputLocal<i32>(op.loc_idx); break;
-    case Argument::Type::U32: OutputLocal<u32>(op.loc_idx); break;
-    case Argument::Type::I64: OutputLocal<i64>(op.loc_idx); break;
-    case Argument::Type::U64: OutputLocal<u64>(op.loc_idx); break;
-    case Argument::Type::Float: OutputLocal<float>(op.loc_idx); break;
-    case Argument::Type::Double: OutputLocal<double>(op.loc_idx); break;
-    case Argument::Type::Pointer: OutputLocal<calyx::Pointer>(op.loc_idx); break;
-    case Argument::Type::Struct: OutputLocal<calyx::Struct>(op.loc_idx); break;
+    case Local::Type::I8: OutputLocal<i8>(op.loc_idx); break;
+    case Local::Type::U8: OutputLocal<u8>(op.loc_idx); break;
+    case Local::Type::I16: OutputLocal<u16>(op.loc_idx); break;
+    case Local::Type::U16: OutputLocal<i16>(op.loc_idx); break;
+    case Local::Type::I32: OutputLocal<i32>(op.loc_idx); break;
+    case Local::Type::U32: OutputLocal<u32>(op.loc_idx); break;
+    case Local::Type::I64: OutputLocal<i64>(op.loc_idx); break;
+    case Local::Type::U64: OutputLocal<u64>(op.loc_idx); break;
+    case Local::Type::Float: OutputLocal<float>(op.loc_idx); break;
+    case Local::Type::Double: OutputLocal<double>(op.loc_idx); break;
+    case Local::Type::Pointer: OutputLocal<calyx::Pointer>(op.loc_idx); break;
+    case Local::Type::Struct: OutputLocal<calyx::Struct>(op.loc_idx); break;
   }
 }
 

@@ -23,7 +23,7 @@ struct Interpreter : Backend {
   std::vector<u8> stack{};
   std::vector<std::variant<i64, label_offset_t>> pointer_values{};
 
-  void InterpretGlobalInitializer(Program::global_t& dest, block_label_t entry);
+  void InterpretGlobalInitializer(global_t& dest, block_label_t entry);
 
   calyx::Pointer MakePointer(std::variant<i64, label_offset_t> value) {
     const auto idx = pointer_values.size();
@@ -53,8 +53,6 @@ struct Interpreter : Backend {
   void EmitProgram(const Program& program) final;
   void VisualizeProgram(const Program& program, const std::string& filename);
 
-  void Emit(const AllocateLocal& op) final;
-  void Emit(const DeallocateLocal& op) final;
   void Emit(const LoadLocalAddr& op) final;
   void Emit(const LoadGlobalAddr& op) final;
   void Emit(const ArgMakeLocal& op) final;

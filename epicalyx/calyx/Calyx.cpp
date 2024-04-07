@@ -31,12 +31,16 @@ template<> const std::string type_string<Pointer>::value = "pointer";
 }
 
 size_t Program::Hash() const {
-  cotyl::map<block_label_t, const block_t&> sorted{blocks.begin(), blocks.end()};
-  size_t seed = blocks.size();
-  for (const auto& [block_idx, block] : sorted) {
-    calyx::hash_combine(seed, block_idx);
-    for (const auto& directive : block) {
-      calyx::hash_combine(seed, directive->type_id);
+  size_t seed = functions.size();
+  cotyl::map<block_label_t, const Function&> sorted{functions.begin(), functions.end()};
+  for (const auto& [sym, function] : functions) {
+    calyx::hash_combine(seed, function.blocks.size());
+    cotyl::map<block_label_t, const block_t&> sorted{function.blocks.begin(), function.blocks.end()};
+    for (const auto& [block_idx, block] : sorted) {
+      calyx::hash_combine(seed, block_idx);
+      for (const auto& directive : block) {
+        calyx::hash_combine(seed, directive->type_id);
+      }
     }
   }
   return seed;
@@ -197,14 +201,6 @@ std::string Unop<T>::ToString() const {
     case UnopType::BinNot: op_str = "~"; break;
   }
   return cotyl::FormatStr("unop  v%s = %s<%s> v%s", this->idx, op_str, detail::type_string<T>::value, right_idx);
-}
-
-std::string AllocateLocal::ToString() const {
-  return cotyl::FormatStr("alloc c%s: %s", loc_idx, size);
-}
-
-std::string DeallocateLocal::ToString() const {
-  return cotyl::FormatStr("dallc c%s: %s", loc_idx, size);
 }
 
 template<typename T>
@@ -427,14 +423,6 @@ void LoadGlobalAddr::Emit(Backend& backend) {
 
 template<typename T>
 void StoreGlobal<T>::Emit(Backend& backend) {
-  backend.Emit(*this);
-}
-
-void AllocateLocal::Emit(Backend& backend) {
-  backend.Emit(*this);
-}
-
-void DeallocateLocal::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 

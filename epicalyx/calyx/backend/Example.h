@@ -9,8 +9,6 @@ struct Example : Backend {
 
   void EmitProgram(const Program& program) final;
 
-  void Emit(const AllocateLocal& op) final;
-  void Emit(const DeallocateLocal& op) final;
   void Emit(const LoadLocalAddr& op) final;
   void Emit(const LoadGlobalAddr& op) final;
   void Emit(const ArgMakeLocal& op) final;

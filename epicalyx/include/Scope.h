@@ -34,13 +34,26 @@ template<typename K, typename V, bool allow_multiple_assignment = false>
 struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
   using base = Scope<cotyl::unordered_map<K, V>>;
 
+  void Clear() {
+    base::scope.clear();
+  }
+
   void Set(const K& key, const V& value) {
     if constexpr(!allow_multiple_assignment) {
       if (HasTop(key)) {
         throw cotyl::FormatExceptStr("Redefinition of %s", key);
       }
     }
-    base::scope.back()[key] = value;
+    base::scope.back().emplace(key, value);
+  }
+  
+  void Set(const K& key, V&& value) {
+    if constexpr(!allow_multiple_assignment) {
+      if (HasTop(key)) {
+        throw cotyl::FormatExceptStr("Redefinition of %s", key);
+      }
+    }
+    base::scope.back().emplace(key, std::move(value));
   }
 
   bool Has(const K& key) const {

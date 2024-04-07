@@ -349,7 +349,7 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
         todo.erase(it);
       }
 
-      auto inserted = new_program.blocks.emplace(current_new_block_idx, calyx::Program::block_t{}).first;
+      auto inserted = new_program.blocks.emplace(current_new_block_idx, calyx::block_t{}).first;
       current_block = &inserted->second;
       auto& node = new_block_graph.EmplaceNodeIfNotExists(current_new_block_idx, nullptr);
       if (node.value) continue;  // we have already emitted this block
@@ -375,13 +375,6 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
   while (RemoveUnused(new_program));
 }
 
-void BasicOptimizer::Emit(const AllocateLocal& op) {
-  OutputCopy(op);
-}
-
-void BasicOptimizer::Emit(const DeallocateLocal& op) {
-  OutputCopy(op);
-}
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Woverloaded-virtual"
 

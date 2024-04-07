@@ -14,10 +14,16 @@
 namespace epi::calyx {
 
 struct Backend;
+struct Function;
 
 using var_index_t = u64;
 using block_label_t = u64;
-using program_pos_t = std::pair<block_label_t, int>;
+
+struct program_pos_t {
+  Function* func;
+  block_label_t block;
+  int offset;
+};
 
 struct label_offset_t {
   std::string label;
@@ -56,24 +62,39 @@ using calyx_upcast_t = typename calyx_upcast<T>::type;
 
 #define calyx_op_type(op) typename std::decay_t<decltype(op)>
 
-struct Argument {
+
+struct Local {
+
   enum class Type {
-    I8, U8, I16, U16, I32, U32, I64, U64, Float, Double, Pointer, Struct
+    I8, U8, I16, U16, 
+    I32, U32, I64, U64, Float, Double, Pointer, Struct
   };
 
-  Argument() = default;
-  
-  Argument(Type type, var_index_t arg_idx, bool variadic = false) :
-          type(type), arg_idx(arg_idx), variadic(variadic), stride(0) {
-
-  }
-
-  Argument(Type type, var_index_t arg_idx, u64 stride, bool variadic = false) :
-          type(type), arg_idx(arg_idx), variadic(variadic), stride(stride) {
+  Local(Type type, var_index_t idx, size_t size) : 
+      type{type}, idx{idx}, size{size} {
 
   }
 
   Type type;
+  var_index_t idx;
+  size_t size;
+};
+
+struct Argument {
+
+  Argument() = default;
+  
+  Argument(Local::Type type, var_index_t arg_idx, bool variadic = false) :
+          type(type), arg_idx(arg_idx), variadic(variadic), stride(0) {
+
+  }
+
+  Argument(Local::Type type, var_index_t arg_idx, u64 stride, bool variadic = false) :
+          type(type), arg_idx(arg_idx), variadic(variadic), stride(stride) {
+
+  }
+
+  Local::Type type;
   var_index_t arg_idx;
   bool variadic;
   union {
@@ -82,25 +103,38 @@ struct Argument {
   };
 };
 
+struct Directive;
+using pDirective = std::unique_ptr<Directive>;
+using block_t = std::vector<pDirective>;
+using global_t = std::variant<i8, u8, i16, u16, i32, u32, i64, u64, float, double, Pointer, label_offset_t>;
+
+struct Function {
+
+  Function(const std::string& symbol) : symbol{symbol} { }
+
+  std::string symbol;
+  // program code
+  // block 0 is special
+  cotyl::unordered_map<block_label_t, block_t> blocks{};
+
+  cotyl::unordered_map<var_index_t, Local> locals{};  
+};
+
+struct Program {
+  // function symbols -> entrypoint block ID
+  cotyl::unordered_map<std::string, Function> functions{};
+
+  // string constants
+  std::vector<std::string> strings{};
+
+  // global variable sizes
+  cotyl::unordered_map<std::string, global_t> globals{};
+
+  size_t Hash() const;
+};
+
 // IR var idx and Argument
 using arg_list_t = std::vector<std::pair<var_index_t, Argument>>;
-
-struct Var {
-  enum class Type {
-    I32, U32, I64, U64, Float, Double, Pointer, Struct
-  };
-
-  Var(Type type, u64 stride = 0) :
-      type(type), stride(stride) {
-
-  }
-
-  Type type;
-  union {
-    u64 stride;  // for pointers
-    u64 size;    // for structs
-  };
-};
 
 
 struct Directive {
@@ -128,8 +162,6 @@ struct Directive {
   virtual void Emit(Backend& backend) = 0;
 };
 
-using pDirective = std::unique_ptr<Directive>;
-
 struct Expr : Directive {
   
   Expr(size_t type_id, var_index_t idx) :
@@ -149,26 +181,6 @@ struct Branch : Directive {
   }
 
   virtual std::vector<block_label_t> Destinations() const = 0;
-};
-
-struct Program {
-  using block_t = std::vector<pDirective>;
-  using global_t = std::variant<i8, u8, i16, u16, i32, u32, i64, u64, float, double, Pointer, label_offset_t>;
-
-  // program code
-  // block 0 is special
-  cotyl::unordered_map<block_label_t, block_t> blocks{};
-
-  // function symbols -> entrypoint block ID
-  cotyl::unordered_map<std::string, calyx::block_label_t> functions{};
-
-  // string constants
-  std::vector<std::string> strings{};
-
-  // global variable sizes
-  cotyl::unordered_map<std::string, global_t> globals{};
-
-  size_t Hash() const;
 };
 
 enum class BinopType {
@@ -572,35 +584,6 @@ struct StoreGlobal : Directive {
   static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
-struct AllocateLocal : Directive {
-
-  AllocateLocal(var_index_t loc_idx, u64 size) :
-      Directive(Class::Stack, GetTID()), loc_idx(loc_idx), size(size) {
-
-  }
-
-  var_index_t loc_idx;
-  u64 size;
-
-  std::string ToString() const final;
-  void Emit(Backend& backend) final;
-  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
-};
-
-struct DeallocateLocal : Directive {
-
-  DeallocateLocal(var_index_t loc_idx, u64 size) :
-      Directive(Class::Stack, GetTID()), loc_idx(loc_idx), size(size) {
-
-  }
-
-  var_index_t loc_idx;
-  u64 size;
-
-  std::string ToString() const final;
-  void Emit(Backend& backend) final;
-  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
-};
 
 template<typename T>
 struct LoadFromPointer : Expr {

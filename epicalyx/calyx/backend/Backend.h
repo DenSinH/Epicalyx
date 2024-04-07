@@ -11,8 +11,6 @@ struct Backend {
 
   virtual void EmitProgram(const Program& program) = 0;
 
-  virtual void Emit(const AllocateLocal& op) = 0;
-  virtual void Emit(const DeallocateLocal& op) = 0;
   virtual void Emit(const LoadLocalAddr& op) = 0;
   virtual void Emit(const LoadGlobalAddr& op) = 0;
   virtual void Emit(const ArgMakeLocal& op) = 0;

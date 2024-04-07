@@ -2,13 +2,12 @@
 
 #include "ast/NodeVisitor.h"
 #include "calyx/Calyx.h"
+#include "Emitter.h"
 #include "Scope.h"
 
 #include <stack>
 
 namespace epi {
-
-struct Emitter;
 
 
 struct ASTWalker : public ast::NodeVisitor {
@@ -32,40 +31,70 @@ struct ASTWalker : public ast::NodeVisitor {
     };
   };
 
-  struct Local {
-    calyx::var_index_t idx;
-    u64 size;
+  struct LocalData {
+    calyx::Local* loc;
+    pType<const CType> type;
   };
 
   std::stack<std::pair<State, StateData>> state{};
   std::stack<calyx::block_label_t> break_stack{};
   std::stack<calyx::block_label_t> continue_stack{};
   std::stack<calyx::Select*> select_stack{};
+  // goto labels
   cotyl::unordered_map<std::string, calyx::block_label_t> local_labels{};
 
-  cotyl::MapScope<std::string, Local> locals{};
-  cotyl::MapScope<std::string, pType<const CType>> local_types{};
-
+  cotyl::MapScope<std::string, LocalData> locals{};
+  cotyl::unordered_map<std::string, pType<const CType>> symbol_types{};
+  
   calyx::var_index_t current;
   Emitter& emitter;
+
+  void NewFunction(const std::string& symbol, const pType<const CType>& type) {
+    emitter.NewFunction(symbol);
+    symbol_types.emplace(symbol, type);
+
+    state = {};
+    break_stack = {};
+    continue_stack = {};
+    select_stack = {};
+    local_labels.clear();
+    locals.Clear();
+  }
+
+  static calyx::Local::Type GetCalyxType(const pType<const CType>& type);
+
+  calyx::var_index_t AddLocal(const std::string& name, const pType<const CType>& type) {
+    auto c_idx = emitter.c_counter++;
+    size_t size = type->Sizeof();
+    auto& loc = emitter.current_function->locals.emplace(c_idx, GetCalyxType(type), c_idx, size).first->second;
+    locals.Set(name, LocalData{ &loc, type });
+    return c_idx;
+  }
+
+  const pType<const CType>& GetSymbolType(const std::string& symbol) const {
+    if (locals.Has(symbol)) {
+      return locals.Get(symbol).type;
+    }
+    return symbol_types.at(symbol);
+  }
 
   const ast::FunctionDefinitionNode* function = nullptr;
 
   template<template<typename T> class Op, typename... Args>
-  void EmitIntegralExpr(calyx::Var::Type type, Args... args);
+  void EmitIntegralExpr(Emitter::Var::Type type, Args... args);
   template<template<typename T> class Op, typename... Args>
-  void EmitArithExpr(calyx::Var::Type type, Args... args);
+  void EmitArithExpr(Emitter::Var::Type type, Args... args);
   template<template<typename T> class Op, typename... Args>
-  void EmitPointerIntegralExpr(calyx::Var::Type type, u64 stride, Args... args);
+  void EmitPointerIntegralExpr(Emitter::Var::Type type, u64 stride, Args... args);
   template<template<typename T> class Op, typename... Args>
-  void EmitPointerExpr(calyx::Var::Type type, u64 stride, Args... args);
+  void EmitPointerExpr(Emitter::Var::Type type, u64 stride, Args... args);
   template<template<typename T> class Op, typename... Args>
-  void EmitBranch(calyx::Var::Type type, Args... args);
+  void EmitBranch(Emitter::Var::Type type, Args... args);
   template<template<typename T> class Op, typename... Args>
-  void EmitCompare(calyx::Var::Type type, Args... args);
+  void EmitCompare(Emitter::Var::Type type, Args... args);
 
   struct BinopCastResult {
-    calyx::Var var;
+    Emitter::Var var;
     calyx::var_index_t left;
     calyx::var_index_t right;
   };

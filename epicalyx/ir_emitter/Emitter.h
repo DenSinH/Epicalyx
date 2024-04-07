@@ -12,8 +12,25 @@ struct Emitter {
 
   Emitter();
 
+  struct Var {
+    enum class Type {
+      I32, U32, I64, U64, Float, Double, Pointer, Struct
+    };
+
+    Var(Type type, u64 stride = 0) :
+        type(type), stride(stride) {
+
+    }
+
+    Type type;
+    union {
+      u64 stride;  // for pointers
+      u64 size;    // for structs
+    };
+  };
+
   template<typename T, typename... Args>
-  calyx::var_index_t EmitExpr(calyx::Var var, Args... args) {
+  calyx::var_index_t EmitExpr(Var var, Args... args) {
     if (!reachable) {
       return 0;
     }
@@ -39,14 +56,14 @@ struct Emitter {
       default:
         break;
     }
-    program.blocks[current_block].push_back(std::move(directive));
+    current_function->blocks[current_block].push_back(std::move(directive));
     return ref;
   }
 
   calyx::block_label_t MakeBlock() {
     // block 0 is special
-    calyx::block_label_t id = program.blocks.size() + 1;
-    program.blocks.emplace(id, calyx::Program::block_t{});
+    calyx::block_label_t id = current_function->blocks.size() + 1;
+    current_function->blocks.emplace(id, calyx::block_t{});
     return id;
   }
 
@@ -61,11 +78,21 @@ struct Emitter {
   calyx::var_index_t ir_counter = 1;  // ir vars
   calyx::var_index_t c_counter = 1;   // c vars
 
+  calyx::Function* current_function = nullptr;
   calyx::block_label_t current_block = 0;
 
-  // first var is special
-  std::vector<calyx::Var> vars{{calyx::Var::Type::I32}};
+  std::vector<Var> vars;
   calyx::Program program{};
+
+  void NewFunction(const std::string& symbol) {
+    current_function = &program.functions.emplace(symbol, symbol).first->second;
+    SelectBlock(MakeBlock());
+    ir_counter = 1;
+    c_counter = 1;
+    
+    // first var is special
+    vars = {{Var::Type::I32}};
+  }
 
 private:
   bool reachable = true;

@@ -7,14 +7,6 @@ void Example::EmitProgram(const Program& program) {
 
 }
 
-void Example::Emit(const AllocateLocal& op) {
-
-}
-
-void Example::Emit(const DeallocateLocal& op) {
-
-}
-
 template<typename To, typename From>
 void Example::EmitCast(const Cast<To, From>& op) {
 
