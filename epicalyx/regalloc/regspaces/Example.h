@@ -27,8 +27,6 @@ struct ExampleRegSpace final : RegisterSpace {
   template<typename T>
   void OutputLocal(var_index_t loc_idx);
 
-  void Emit(const AllocateLocal& op) final;
-  void Emit(const DeallocateLocal& op) final;
   void Emit(const LoadLocalAddr& op) final;
   void Emit(const LoadGlobalAddr& op) final;
   void Emit(const ArgMakeLocal& op) final;

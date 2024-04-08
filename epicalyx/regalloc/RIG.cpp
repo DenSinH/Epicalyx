@@ -9,8 +9,8 @@
 
 namespace epi {
 
-RIG RIG::GenerateRIG(const Program& program) {
-  const auto deps = ProgramDependencies::GetDependencies(program);
+RIG RIG::GenerateRIG(const Function& function) {
+  const auto deps = FunctionDependencies::GetDependencies(function);
   RIG rig{};
 
   struct InstrLiveliness {
@@ -35,8 +35,8 @@ RIG RIG::GenerateRIG(const Program& program) {
   
   // initialize empty nodes
   cotyl::unordered_map<block_label_t, Liveliness> liveliness{};
-  liveliness.reserve(program.blocks.size());
-  for (const auto& [block_idx, block] : program.blocks) {
+  liveliness.reserve(function.blocks.size());
+  for (const auto& [block_idx, block] : function.blocks) {
     liveliness.emplace(block_idx, Liveliness{block.size()});
   }
 
@@ -57,31 +57,37 @@ RIG RIG::GenerateRIG(const Program& program) {
     }
 
     // forced "out" for program result
-    if (var.program_result.first) 
-      liveliness.at(var.program_result.first).out.emplace(gvar);
+    if (var.function_result.first) 
+      liveliness.at(var.function_result.first).out.emplace(gvar);
   }
 
   // same for locals
   for (const auto& [loc_idx, loc] : deps.local_graph) {
     if (!loc_idx) continue;
     const auto gvar = GeneralizedVar::Local(loc_idx);
-    liveliness.at(loc.created.first).def.emplace(gvar);
-    liveliness.at(loc.created.first).single[loc.created.second].def = gvar;
     rig.graph.AddNodeIfNotExists(gvar.NodeUID(), std::move(gvar));
+
+    cotyl::unordered_map<block_label_t, int> first_write{};
+    for (const auto& pos : loc.writes) {
+      liveliness.at(pos.first).single[pos.second].def = gvar;
+      // deps are computed in order
+      if (!first_write.contains(pos.first)) {
+        first_write.emplace(pos.first, pos.second);
+      }
+    }
 
     for (const auto& pos : loc.reads) {
       liveliness.at(pos.first).single[pos.second].use.emplace_back(gvar);
-      if (pos.first != loc.created.first) {
+
+      // in block in if the read happens before the first write
+      if (!first_write.contains(pos.first) || first_write.at(pos.first) > pos.second) {
         liveliness.at(pos.first).in.emplace(gvar);
       }
     }
 
-    for (const auto& pos : loc.writes) {
-      liveliness.at(pos.first).single[pos.second].def = gvar;
-    }
   }
   
-  // program graph may not be acyclic
+  // function graph may not be acyclic
   const auto sort = TopSort(deps.block_graph, false);
   /* Algorithm:
    * This is an adapted version, since most sources seem to assume that 

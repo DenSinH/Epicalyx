@@ -5,17 +5,17 @@ using namespace ast;
 
 namespace detail {
 
-template<typename T> struct calyx_type;
-template<> struct calyx_type<i32> { static constexpr auto value = Emitter::Var::Type::I32; };
-template<> struct calyx_type<u32> { static constexpr auto value = Emitter::Var::Type::U32; };
-template<> struct calyx_type<i64> { static constexpr auto value = Emitter::Var::Type::I64; };
-template<> struct calyx_type<u64> { static constexpr auto value = Emitter::Var::Type::U64; };
-template<> struct calyx_type<float> { static constexpr auto value = Emitter::Var::Type::Float; };
-template<> struct calyx_type<double> { static constexpr auto value = Emitter::Var::Type::Double; };
-template<> struct calyx_type<calyx::Pointer> { static constexpr auto value = Emitter::Var::Type::Pointer; };
-template<> struct calyx_type<calyx::Struct> { static constexpr auto value = Emitter::Var::Type::Struct; };
+template<typename T> struct calyx_var_type;
+template<> struct calyx_var_type<i32> { static constexpr auto value = Emitter::Var::Type::I32; };
+template<> struct calyx_var_type<u32> { static constexpr auto value = Emitter::Var::Type::U32; };
+template<> struct calyx_var_type<i64> { static constexpr auto value = Emitter::Var::Type::I64; };
+template<> struct calyx_var_type<u64> { static constexpr auto value = Emitter::Var::Type::U64; };
+template<> struct calyx_var_type<float> { static constexpr auto value = Emitter::Var::Type::Float; };
+template<> struct calyx_var_type<double> { static constexpr auto value = Emitter::Var::Type::Double; };
+template<> struct calyx_var_type<calyx::Pointer> { static constexpr auto value = Emitter::Var::Type::Pointer; };
+template<> struct calyx_var_type<calyx::Struct> { static constexpr auto value = Emitter::Var::Type::Struct; };
 template<typename T>
-constexpr auto calyx_type_v = calyx_type<T>::value;
+constexpr auto calyx_var_type_v = calyx_var_type<T>::value;
 
 template<class Sig>
 struct func;
@@ -96,16 +96,16 @@ struct EmitterTypeVisitor : TypeVisitor {
 template<typename T>
 struct CastToEmitter {
   static calyx::var_index_t do_cast(ASTWalker& walker, Emitter::Var::Type src_t, calyx::var_index_t src_idx) {
-    if (!std::is_same_v<calyx::calyx_upcast_t<T>, T> || (calyx_type_v<calyx::calyx_upcast_t<T>> != src_t)) {
+    if (!std::is_same_v<calyx::calyx_upcast_t<T>, T> || (calyx_var_type_v<calyx::calyx_upcast_t<T>> != src_t)) {
       using upcast = typename calyx::calyx_upcast_t<T>;
       switch (src_t) {
-        case Emitter::Var::Type::I32: return walker.emitter.EmitExpr<calyx::Cast<T, i32>>({ calyx_type_v<upcast> }, src_idx);
-        case Emitter::Var::Type::U32: return walker.emitter.EmitExpr<calyx::Cast<T, u32>>({ calyx_type_v<upcast> }, src_idx);
-        case Emitter::Var::Type::I64: return walker.emitter.EmitExpr<calyx::Cast<T, i64>>({ calyx_type_v<upcast> }, src_idx);
-        case Emitter::Var::Type::U64: return walker.emitter.EmitExpr<calyx::Cast<T, u64>>({ calyx_type_v<upcast> }, src_idx);
-        case Emitter::Var::Type::Float: return walker.emitter.EmitExpr<calyx::Cast<T, float>>({ calyx_type_v<upcast> }, src_idx);
-        case Emitter::Var::Type::Double: return walker.emitter.EmitExpr<calyx::Cast<T, double>>({ calyx_type_v<upcast> }, src_idx);
-        case Emitter::Var::Type::Pointer: return walker.emitter.EmitExpr<calyx::Cast<T, calyx::Pointer>>({ calyx_type_v<upcast> }, src_idx);
+        case Emitter::Var::Type::I32: return walker.emitter.EmitExpr<calyx::Cast<T, i32>>({ calyx_var_type_v<upcast> }, src_idx);
+        case Emitter::Var::Type::U32: return walker.emitter.EmitExpr<calyx::Cast<T, u32>>({ calyx_var_type_v<upcast> }, src_idx);
+        case Emitter::Var::Type::I64: return walker.emitter.EmitExpr<calyx::Cast<T, i64>>({ calyx_var_type_v<upcast> }, src_idx);
+        case Emitter::Var::Type::U64: return walker.emitter.EmitExpr<calyx::Cast<T, u64>>({ calyx_var_type_v<upcast> }, src_idx);
+        case Emitter::Var::Type::Float: return walker.emitter.EmitExpr<calyx::Cast<T, float>>({ calyx_var_type_v<upcast> }, src_idx);
+        case Emitter::Var::Type::Double: return walker.emitter.EmitExpr<calyx::Cast<T, double>>({ calyx_var_type_v<upcast> }, src_idx);
+        case Emitter::Var::Type::Pointer: return walker.emitter.EmitExpr<calyx::Cast<T, calyx::Pointer>>({ calyx_var_type_v<upcast> }, src_idx);
         default:
           return 0;
       }
@@ -140,7 +140,7 @@ struct CastToEmitter {
 template<typename T>
 struct CallEmitter {
   static calyx::var_index_t emit_value(ASTWalker& walker, calyx::var_index_t fn_idx, calyx::arg_list_t args, calyx::arg_list_t var_args) {
-    return walker.emitter.EmitExpr<calyx::Call<calyx::calyx_upcast_t<T>>>({calyx_type_v<calyx::calyx_upcast_t<T>> }, fn_idx, std::move(args), std::move(var_args));
+    return walker.emitter.EmitExpr<calyx::Call<calyx::calyx_upcast_t<T>>>({calyx_var_type_v<calyx::calyx_upcast_t<T>> }, fn_idx, std::move(args), std::move(var_args));
   }
 
   static calyx::var_index_t emit_pointer(ASTWalker& walker, u64 stride, calyx::var_index_t fn_idx, calyx::arg_list_t args, calyx::arg_list_t var_args) {
@@ -151,7 +151,7 @@ struct CallEmitter {
 template<typename T>
 struct LoadLocalEmitter {
   static calyx::var_index_t emit_value(ASTWalker& walker, calyx::var_index_t c_idx) {
-    return walker.emitter.EmitExpr<calyx::LoadLocal<T>>({calyx_type_v<calyx::calyx_upcast_t<T>> }, c_idx);
+    return walker.emitter.EmitExpr<calyx::LoadLocal<T>>({ calyx_var_type_v<typename calyx::LoadLocal<T>::result_t> }, c_idx);
   }
 
   static calyx::var_index_t emit_pointer(ASTWalker& walker, u64 stride, calyx::var_index_t c_idx) {
@@ -186,7 +186,7 @@ struct StoreLocalEmitter {
 template<typename T>
 struct LoadGlobalEmitter {
   static calyx::var_index_t emit_value(ASTWalker& walker, const std::string& symbol) {
-    return walker.emitter.EmitExpr<calyx::LoadGlobal<T>>({calyx_type_v<calyx::calyx_upcast_t<T>> }, symbol);
+    return walker.emitter.EmitExpr<calyx::LoadGlobal<T>>({calyx_var_type_v<typename calyx::LoadGlobal<T>::result_t> }, symbol);
   }
 
   static calyx::var_index_t emit_pointer(ASTWalker& walker, u64 stride, const std::string& symbol) {
@@ -234,7 +234,7 @@ struct ReturnEmitter {
 template<typename T>
 struct LoadFromPointerEmitter {
   static calyx::var_index_t emit_value(ASTWalker& walker, calyx::var_index_t ptr_idx) {
-    return walker.emitter.EmitExpr<calyx::LoadFromPointer<T>>({calyx_type_v<calyx::calyx_upcast_t<T>> }, ptr_idx);
+    return walker.emitter.EmitExpr<calyx::LoadFromPointer<T>>({calyx_var_type_v<typename calyx::LoadFromPointer<T>::result_t> }, ptr_idx);
   }
 
   static calyx::var_index_t emit_pointer(ASTWalker& walker, u64 stride, calyx::var_index_t ptr_idx) {

@@ -42,7 +42,7 @@ block_label_t BasicOptimizer::CommonBlockAncestor(block_label_t first, block_lab
 }
 
 template<class BadPred, class GoodPred>
-bool BasicOptimizer::NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, program_pos_t pos) const {
+bool BasicOptimizer::NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, func_pos_t pos) const {
   cotyl::unordered_set<block_label_t> todo{};
   cotyl::unordered_set<block_label_t> done{};
 
@@ -55,10 +55,8 @@ bool BasicOptimizer::NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, program
   while (true) {
     bool _reachable = true;
 
-    // use new program block if already made
-    // EXCEPT for the current block, as it is still being built,
-    // meaning branches may be missing
-    const auto& block = program.blocks.at(pos.first);
+    // use old program blocks
+    const auto& block = old_function.blocks.at(pos.first);
 
     while (_reachable && pos.second < block.size()) {
       const auto& op = block[pos.second];
@@ -99,10 +97,10 @@ bool BasicOptimizer::NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, program
   return true;
 }
 
-bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const Local& local) {
+bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const LocalData& local) {
   const auto& old_local = old_deps.local_graph.at(loc_idx);
-  cotyl::unordered_set<program_pos_t> reads  = {old_local.reads.begin(), old_local.reads.end()};
-  cotyl::unordered_set<program_pos_t> writes = {old_local.writes.begin(), old_local.writes.end()};
+  cotyl::unordered_set<func_pos_t> reads  = {old_local.reads.begin(), old_local.reads.end()};
+  cotyl::unordered_set<func_pos_t> writes = {old_local.writes.begin(), old_local.writes.end()};
   
   static const cotyl::unordered_set<size_t> alias_blocking_tids = {
     Call<i32>::GetTID(),
@@ -140,7 +138,7 @@ bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const Local& local) {
   // local does not need to be flushed if no "bad" operation (load) happens
   // before a "good" operation (store)
   return !NoBadBeforeGoodAllPaths(
-    [&](const pDirective& op, const program_pos_t& pos) -> bool {
+    [&](const pDirective& op, const func_pos_t& pos) -> bool {
       // we need to flush the local if it is read before it is stored again
       // or if any aliased variable exists, and one of the following happens:
       // - a pointer read (potentially reading the local's (aliased) value)
@@ -156,7 +154,7 @@ bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const Local& local) {
       // operation is OK, does not affect local
       return false;
     },
-    [&](const pDirective& op, const program_pos_t& pos) -> bool {
+    [&](const pDirective& op, const func_pos_t& pos) -> bool {
       // write: stop searching path
       return writes.contains(pos);
     },
@@ -164,7 +162,7 @@ bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const Local& local) {
   );
 }
 
-void BasicOptimizer::FlushLocal(var_index_t loc_idx, Local&& local) {
+void BasicOptimizer::FlushLocal(var_index_t loc_idx, LocalData&& local) {
   if (locals.contains(loc_idx)) {
     if (local.store && ShouldFlushLocal(loc_idx, local)) Output(std::move(local.store));
     locals.erase(loc_idx);
@@ -187,10 +185,13 @@ void BasicOptimizer::FlushAliasedLocals() {
       continue;
     }
 
-    // no need to check ShouldFlushLocal,
+    // no need to check ShouldFlushLocal, 
     // this is a forced local flush
     // ShouldFlushLocal will return true anyway,
     // since this will be used on pointer writes / calls
+    // if this local is aliased, but no write exists,
+    // it should still be removed, as the stored read
+    // value may become invalid
     removed.emplace_back(loc_idx);
     if (local.store) {
       Output(std::move(local.store));
@@ -211,7 +212,7 @@ void BasicOptimizer::TryReplaceVar(calyx::var_index_t& var_idx) const {
 template<typename T, class F>
 bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
   for (const auto& [var_idx, loc] : vars_found) {
-    auto& directive = new_program.blocks.at(loc.first)[loc.second];
+    auto& directive = new_function.blocks.at(loc.first)[loc.second];
     if (IsType<T>(directive)) {
       auto candidate_block = loc.first;
       // todo: make generic, call on new_block_graph
@@ -235,10 +236,10 @@ bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
 void BasicOptimizer::ResolveBranchIndirection(block_label_t& dest) {
   cotyl::unordered_set<block_label_t> found{dest};
 
-  while (program.blocks.at(dest).size() == 1) {
+  while (old_function.blocks.at(dest).size() == 1) {
     // single branch block
     // recursion resolves single branch chains
-    auto& link_directive = program.blocks.at(dest)[0];
+    auto& link_directive = old_function.blocks.at(dest)[0];
     if (!IsType<UnconditionalBranch>(link_directive)) {
       break;
     }
@@ -255,7 +256,7 @@ void BasicOptimizer::ResolveBranchIndirection(block_label_t& dest) {
 template<typename T>
 const T* BasicOptimizer::TryGetVarDirective(var_index_t idx) const {
   auto [block, in_block] = vars_found.at(idx);
-  auto& directive = new_program.blocks.at(block)[in_block];
+  auto& directive = new_function.blocks.at(block)[in_block];
   if (IsType<T>(directive)) {
     return cotyl::unique_ptr_cast<T>(directive);
   }
@@ -271,7 +272,7 @@ void BasicOptimizer::LinkBlock(block_label_t next_block) {
   // if they differ at all
   cotyl::Assert(*old_deps.block_graph.At(next_block).from.begin() == current_old_pos.first);
 
-  block_links.emplace(next_block, program_pos_t{current_new_block_idx, current_block->size()});
+  block_links.emplace(next_block, func_pos_t{current_new_block_idx, current_block->size()});
   current_old_pos.first = next_block;
 }
 
@@ -316,11 +317,8 @@ void BasicOptimizer::RemoveUnreachableBlockEdges(block_label_t block) {
   }
 }
 
-void BasicOptimizer::EmitProgram(const Program& _program) {
-  // find initial dependencies
-  new_program.functions    = std::move(_program.functions);
-  new_program.globals      = std::move(_program.globals);
-  new_program.strings      = std::move(_program.strings);
+Function&& BasicOptimizer::Optimize() {
+  new_function.locals = std::move(old_function.locals);
 
   cotyl::unordered_map<block_label_t, u32> top_sort_positions{};
   {
@@ -331,48 +329,45 @@ void BasicOptimizer::EmitProgram(const Program& _program) {
     }
   }
 
-  for (const auto& [symbol, entry] : new_program.functions) {
-    new_block_graph = {};
-    todo = {entry};
-    vars_found.clear();
+  todo = {Function::Entry};
 
-    while (!todo.empty()) {
-      cotyl::Assert(locals.empty());
+  while (!todo.empty()) {
+    cotyl::Assert(locals.empty());
 
-      // emit in topological order
-      {
-        auto it = std::ranges::min_element(todo, [&](const block_label_t& a, const block_label_t& b) {
-            return top_sort_positions.at(a) < top_sort_positions.at(b);
-        });
-        current_old_pos.first = current_new_block_idx = *it;
-        reachable = true;
-        todo.erase(it);
-      }
-
-      auto inserted = new_program.blocks.emplace(current_new_block_idx, calyx::block_t{}).first;
-      current_block = &inserted->second;
-      auto& node = new_block_graph.EmplaceNodeIfNotExists(current_new_block_idx, nullptr);
-      if (node.value) continue;  // we have already emitted this block
-      node.value = current_block;
-
-      bool block_finished;
-      do {
-        block_finished = true;
-        block_links.emplace(current_old_pos.first, program_pos_t{current_new_block_idx, current_block->size()});
-        const auto block = current_old_pos.first;
-        current_old_pos.second = 0;
-        for (const auto& directive : _program.blocks.at(block)) {
-          directive->Emit(*this);
-          // hit return statement/branch, block finished
-          if (!reachable) { RemoveUnreachableBlockEdges(block); break; }
-          // jumped to linked block, block NOT finished
-          if (current_old_pos.first != block) { block_finished = false; break; }
-          current_old_pos.second++;  
-        }
-      } while (!block_finished);
+    // emit in topological order
+    {
+      auto it = std::ranges::min_element(todo, [&](const block_label_t& a, const block_label_t& b) {
+          return top_sort_positions.at(a) < top_sort_positions.at(b);
+      });
+      current_old_pos.first = current_new_block_idx = *it;
+      reachable = true;
+      todo.erase(it);
     }
+
+    auto inserted = new_function.blocks.emplace(current_new_block_idx, calyx::block_t{}).first;
+    current_block = &inserted->second;
+    auto& node = new_block_graph.EmplaceNodeIfNotExists(current_new_block_idx, nullptr);
+    if (node.value) continue;  // we have already emitted this block
+    node.value = current_block;
+
+    bool block_finished;
+    do {
+      block_finished = true;
+      block_links.emplace(current_old_pos.first, func_pos_t{current_new_block_idx, current_block->size()});
+      const auto block = current_old_pos.first;
+      current_old_pos.second = 0;
+      for (const auto& directive : old_function.blocks.at(block)) {
+        directive->Emit(*this);
+        // hit return statement/branch, block finished
+        if (!reachable) { RemoveUnreachableBlockEdges(block); break; }
+        // jumped to linked block, block NOT finished
+        if (current_old_pos.first != block) { block_finished = false; break; }
+        current_old_pos.second++;  
+      }
+    } while (!block_finished);
   }
-  while (RemoveUnused(new_program));
+  while (RemoveUnused(new_function));
+  return std::move(new_function);
 }
 
 #pragma clang diagnostic push
@@ -426,7 +421,7 @@ void BasicOptimizer::EmitLoadLocal(const LoadLocal<T>& op) {
     // we can store this value to the locals, though without
     // a "store" directive
     if constexpr(!std::is_same_v<T, Struct>) {
-      locals.emplace(op.loc_idx, Local{
+      locals.emplace(op.loc_idx, LocalData{
           .aliases = 0,
           .replacement = std::make_unique<Cast<T, calyx_op_type(op)::result_t>>(0, op.idx),
           .store = nullptr
@@ -453,7 +448,7 @@ void BasicOptimizer::EmitStoreLocal(const StoreLocal<T>& _op) {
 
     // overwrite current local state
     const auto loc_idx = op->loc_idx;  // op will be moved when assigning
-    locals[loc_idx] = Local{
+    locals[loc_idx] = LocalData{
             .aliases = aliases,
             .replacement = std::make_unique<Cast<T, calyx_op_type(*op)::src_t>>(0, op->src),
             .store = std::move(op)
@@ -524,7 +519,7 @@ void BasicOptimizer::EmitStoreToPointer(const StoreToPointer<T>& _op) {
       }
 
       // replace alias
-      locals[alias] = Local{
+      locals[alias] = LocalData{
               .aliases = aliases,
               .replacement = std::make_unique<Cast<T, calyx_op_type(*op)::src_t>>(0, op->src),
               .store = std::make_unique<StoreLocal<T>>(alias, op->src)

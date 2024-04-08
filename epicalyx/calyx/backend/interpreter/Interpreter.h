@@ -23,7 +23,7 @@ struct Interpreter : Backend {
   std::vector<u8> stack{};
   std::vector<std::variant<i64, label_offset_t>> pointer_values{};
 
-  void InterpretGlobalInitializer(global_t& dest, block_label_t entry);
+  void InterpretGlobalInitializer(global_t& dest, Function&& func);
 
   calyx::Pointer MakePointer(std::variant<i64, label_offset_t> value) {
     const auto idx = pointer_values.size();
@@ -45,13 +45,13 @@ struct Interpreter : Backend {
   // IR variables
   cotyl::MapScope<calyx::var_index_t, std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>, true> vars{};
 
-  program_counter_t pos{0, 0};
+  program_counter_t pos{nullptr, {0, 0}};
   // link, return_to, args, var_args
   std::stack<std::tuple<program_counter_t, calyx::var_index_t, calyx::arg_list_t, calyx::arg_list_t>> call_stack{};
   std::optional<std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> returned = {};
 
-  void EmitProgram(const Program& program) final;
-  void VisualizeProgram(const Program& program, const std::string& filename);
+  void EnterFunction(const Function* function);
+  void EmitProgram(const Program& program);
 
   void Emit(const LoadLocalAddr& op) final;
   void Emit(const LoadGlobalAddr& op) final;

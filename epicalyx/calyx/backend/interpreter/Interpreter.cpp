@@ -1,6 +1,4 @@
 #include "Interpreter.h"
-
-#include "cycle/Cycle.h"
 #include "CustomAssert.h"
 #include "Exceptions.h"
 #include "Format.h"
@@ -14,91 +12,42 @@
 
 namespace epi::calyx {
 
+void Interpreter::InterpretGlobalInitializer(global_t& dest, Function&& func) {
+  call_stack.emplace(program_counter_t{nullptr, {0, 0}}, -1, arg_list_t{}, arg_list_t{});
+  EnterFunction(&func);
 
-void Interpreter::VisualizeProgram(const Program& program, const std::string& filename) {
-  auto graph = std::make_unique<epi::cycle::VisualGraph>();
-
-  for (const auto& [i, block] : program.blocks) {
-    graph->n(i).title(cotyl::Format("L%d", i));
-    for (const auto& directive : block) {
-      switch (directive->cls) {
-        case Directive::Class::Expression:
-        case Directive::Class::Stack:
-        case Directive::Class::Store:
-        case Directive::Class::Return:
-        case Directive::Class::Call:  // todo
-          graph->n(i, directive->ToString());
-          break;
-        case Directive::Class::Branch: {
-          auto* branch = cotyl::unique_ptr_cast<Branch>(directive);
-          const auto destinations = branch->Destinations();
-          auto node = graph->n(i, directive->ToString());
-          for (const auto& dest : destinations) {
-            node->n(dest);
-          }
-          break;
-        }
-        case Directive::Class::Select: {
-          auto node = graph->n(i, directive->ToString());
-          auto* select = cotyl::unique_ptr_cast<Select>(directive);
-          for (auto [val, block] : select->table) {
-            node->n(block, std::to_string(val));
-          }
-          if (select->_default) {
-            node->n(select->_default, "default");
-          }
-          break;
-        }
-      }
-    }
+  while (pos.pos.first) {
+    auto& directive = pos.func->blocks.at(pos.pos.first)[pos.pos.second];
+    pos.pos.second++;
+    directive->Emit(*this);
   }
 
-  for (const auto& [symbol, block] : program.functions) {
-    graph->n(block).title(symbol + "(*)");
-  }
+  std::visit([&](auto& var) {
+    using var_t = std::decay_t<decltype(var)>;
 
-  graph->Visualize(filename);
-}
+    std::visit([&](auto& glob) {
+      using glob_t = std::decay_t<decltype(glob)>;
 
-void Interpreter::InterpretGlobalInitializer(global_t& dest, block_label_t entry) {
-    pos.first = entry;
-    pos.second = 0;
-    call_stack.emplace(std::make_pair(0, 0), -1, arg_list_t{}, arg_list_t{});
-    vars.NewLayer();
-    locals.NewLayer();
-
-    while (pos.first) {
-      auto& directive = program.blocks.at(pos.first)[pos.second];
-      pos.second++;
-      directive->Emit(*this);
-    }
-
-    std::visit([&](auto& var) {
-      using var_t = std::decay_t<decltype(var)>;
-
-      std::visit([&](auto& glob) {
-        using glob_t = std::decay_t<decltype(glob)>;
-
-        if constexpr(std::is_same_v<var_t, Pointer>) {
-          auto pval = ReadPointer(var.value);
-          if (std::holds_alternative<label_offset_t>(pval)) {
-            dest = std::get<label_offset_t>(pval);
-          }
-          else {
-            dest = Pointer{std::get<i64>(pval)};
-          }
+      if constexpr(std::is_same_v<var_t, Pointer>) {
+        auto pval = ReadPointer(var.value);
+        if (std::holds_alternative<label_offset_t>(pval)) {
+          dest = std::get<label_offset_t>(pval);
         }
         else {
-          if constexpr(std::is_same_v<calyx_upcast_t<glob_t>, var_t>) {
-            glob = var;
-          }
-          else cotyl::Assert(false);
+          dest = Pointer{std::get<i64>(pval)};
         }
-      }, dest);
-    }, vars.Get(-1));
+      }
+      else {
+        if constexpr(std::is_same_v<calyx_upcast_t<glob_t>, var_t>) {
+          glob = var;
+        }
+        else cotyl::Assert(false);
+      }
+    }, dest);
+  }, vars.Get(-1));
 
-    vars.Reset();
-    locals.Reset();
+  vars.Reset();
+  locals.Reset();
 }
 
 void Interpreter::EmitProgram(const Program& program) {
@@ -120,12 +69,11 @@ void Interpreter::EmitProgram(const Program& program) {
     }, global);
   }
 
-  pos.first = program.functions.at("main");
-  pos.second = 0;
+  EnterFunction(&program.functions.at("main"));
   returned.reset();
-  while (!returned) {
-    const auto& directive = program.blocks.at(pos.first).at(pos.second);
-    pos.second++;
+  while (!returned.has_value()) {
+    const auto& directive = pos.func->blocks.at(pos.pos.first).at(pos.pos.second);
+    pos.pos.second++;
     directive->Emit(*this);
   }
 
@@ -142,17 +90,20 @@ void Interpreter::EmitProgram(const Program& program) {
   }, returned.value());
 }
 
-void Interpreter::Emit(const AllocateLocal& op) {
-//  cotyl::Assert(!c_vars.contains(op.loc_idx), op.ToString());
-  locals.Set(op.loc_idx, std::make_pair(stack.size(), op.size));
-  stack.resize(stack.size() + op.size);
-}
 
-void Interpreter::Emit(const DeallocateLocal& op) {
-  u64 value = 0;
-  memcpy(&value, &stack[locals.Get(op.loc_idx).first], op.size);
-//  std::cout << 'c' << op.loc_idx << " = " << std::hex << value << " on dealloc" << std::endl;
-//  stack.resize(stack.size() - op.size);
+void Interpreter::EnterFunction(const Function* function) {
+  pos.func = function;
+  pos.pos.first = Function::Entry;
+  pos.pos.second = 0;
+
+  vars.NewLayer();
+
+  // allocate locals
+  locals.NewLayer();
+  for (const auto& [loc_idx, local] : pos.func->locals) {
+    locals.Set(loc_idx, std::make_pair(stack.size(), local.size));
+    stack.resize(stack.size() + local.size);
+  }
 }
 
 template<typename To, typename From>
@@ -322,27 +273,24 @@ template<typename T>
 void Interpreter::EmitCall(const Call<T>& op) {
   call_stack.emplace(pos, op.idx, op.args, op.var_args);
   auto pointer = ReadPointer(std::get<Pointer>(vars.Get(op.fn_idx)).value);
+  const Function* func;
   if (std::holds_alternative<i64>(pointer)) {
-    pos.first = std::get<i64>(pointer);
+    // pos.pos.first = std::get<i64>(pointer);
+    throw cotyl::UnimplementedException("Interpreter call pointer value");
   }
   else {
     auto pval = std::get<calyx::label_offset_t>(pointer);
-    pos.first = program.functions.at(pval.label);
+    func = &program.functions.at(pval.label);
     cotyl::Assert(pval.offset == 0, "Cannot jump to offset label in call");
   }
 
-  pos.second = 0;
-  locals.NewLayer();
-  vars.NewLayer();
+  EnterFunction(func);
 }
 
 template<typename T>
 void Interpreter::EmitCallLabel(const CallLabel<T>& op) {
   call_stack.emplace(pos, op.idx, op.args, op.var_args);
-  pos.first = program.functions.at(op.label);
-  pos.second = 0;
-  locals.NewLayer();
-  vars.NewLayer();
+  EnterFunction(&program.functions.at(op.label));
 }
 
 void Interpreter::Emit(const ArgMakeLocal& op) {
@@ -692,8 +640,8 @@ void Interpreter::EmitCompareImm(const CompareImm<T>& op) {
 }
 
 void Interpreter::Emit(const UnconditionalBranch& op) {
-  pos.first  = op.dest;
-  pos.second = 0;
+  pos.pos.first  = op.dest;
+  pos.pos.second = 0;
 }
 
 template<typename T>
@@ -732,8 +680,8 @@ void Interpreter::EmitBranchCompare(const BranchCompare<T>& op) {
     }
   }
 
-  pos.first = branch ? op.tdest : op.fdest;
-  pos.second = 0;
+  pos.pos.first = branch ? op.tdest : op.fdest;
+  pos.pos.second = 0;
 }
 
 template<typename T>
@@ -772,8 +720,8 @@ void Interpreter::EmitBranchCompareImm(const BranchCompareImm<T>& op) {
     }
   }
 
-  pos.first = branch ? op.tdest : op.fdest;
-  pos.second = 0;
+  pos.pos.first = branch ? op.tdest : op.fdest;
+  pos.pos.second = 0;
 }
 
 void Interpreter::Emit(const Select& op) {
@@ -781,12 +729,12 @@ void Interpreter::Emit(const Select& op) {
   auto val = std::get<calyx_op_type(op)::src_t>(vars.Get(op.idx));
   cotyl::Assert(op._default || op.table.contains(val), "Jump table does not contain value");
   if (op.table.contains(val)) {
-    pos.first  = op.table.at(val);
+    pos.pos.first  = op.table.at(val);
   }
   else {
-    pos.first = op._default;
+    pos.pos.first = op._default;
   }
-  pos.second = 0;
+  pos.pos.second = 0;
 }
 
 template<typename T>

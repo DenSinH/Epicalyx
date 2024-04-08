@@ -53,12 +53,16 @@ struct ASTWalker : public ast::NodeVisitor {
     emitter.NewFunction(symbol);
     symbol_types.emplace(symbol, type);
 
-    state = {};
-    break_stack = {};
-    continue_stack = {};
-    select_stack = {};
+    // state = {};
+    // break_stack = {};
+    // continue_stack = {};
+    // select_stack = {};
     local_labels.clear();
     locals.Clear();
+  }
+
+  void EndFunction() {
+    // cotyl::Assert(s);
   }
 
   static calyx::Local::Type GetCalyxType(const pType<const CType>& type);
@@ -66,7 +70,7 @@ struct ASTWalker : public ast::NodeVisitor {
   calyx::var_index_t AddLocal(const std::string& name, const pType<const CType>& type) {
     auto c_idx = emitter.c_counter++;
     size_t size = type->Sizeof();
-    auto& loc = emitter.current_function->locals.emplace(c_idx, GetCalyxType(type), c_idx, size).first->second;
+    auto& loc = emitter.current_function->locals.emplace(c_idx, calyx::Local{GetCalyxType(type), c_idx, size}).first->second;
     locals.Set(name, LocalData{ &loc, type });
     return c_idx;
   }

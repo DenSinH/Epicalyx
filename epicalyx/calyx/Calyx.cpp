@@ -1,9 +1,14 @@
 #include "Calyx.h"
-#include "SStream.h"
+#include "cycle/Cycle.h"
 #include "backend/Backend.h"
 
+#include "SStream.h"
 #include "Format.h"
 #include "Hash.h"
+#include "Cast.h"
+#include "Format.h"
+
+#include <iostream>
 
 
 namespace epi::calyx {
@@ -28,22 +33,117 @@ template<> const std::string type_string<double>::value = "double";
 template<> const std::string type_string<Struct>::value = "struct";
 template<> const std::string type_string<Pointer>::value = "pointer";
 
+std::string TypeString(const Local::Type& type) {
+  switch (type) {
+    case Local::Type::I8: return type_string<i8>::value;
+    case Local::Type::U8: return type_string<u8>::value;
+    case Local::Type::I16: return type_string<i16>::value;
+    case Local::Type::U16: return type_string<u16>::value;
+    case Local::Type::I32: return type_string<i32>::value;
+    case Local::Type::U32: return type_string<u32>::value;
+    case Local::Type::I64: return type_string<i64>::value;
+    case Local::Type::U64: return type_string<u64>::value;
+    case Local::Type::Float: return type_string<float>::value;
+    case Local::Type::Double: return type_string<double>::value;
+    case Local::Type::Struct: return type_string<Struct>::value;
+    case Local::Type::Pointer: return type_string<Pointer>::value;
+  }
+}
+
+}
+
+size_t Function::Hash() const {
+  size_t seed = blocks.size();
+  cotyl::map<block_label_t, const block_t&> sorted{blocks.begin(), blocks.end()};
+  for (const auto& [block_idx, block] : sorted) {
+    calyx::hash_combine(seed, block_idx);
+    for (const auto& directive : block) {
+      calyx::hash_combine(seed, directive->type_id);
+    }
+  }
+  return seed;
 }
 
 size_t Program::Hash() const {
   size_t seed = functions.size();
-  cotyl::map<block_label_t, const Function&> sorted{functions.begin(), functions.end()};
+  cotyl::map<std::string, const Function&> sorted{functions.begin(), functions.end()};
   for (const auto& [sym, function] : functions) {
-    calyx::hash_combine(seed, function.blocks.size());
-    cotyl::map<block_label_t, const block_t&> sorted{function.blocks.begin(), function.blocks.end()};
-    for (const auto& [block_idx, block] : sorted) {
-      calyx::hash_combine(seed, block_idx);
-      for (const auto& directive : block) {
-        calyx::hash_combine(seed, directive->type_id);
+    calyx::hash_combine(seed, function.Hash());
+  }
+  return seed;
+}
+
+
+void PrintProgram(const Program& program) {
+  std::cout << std::endl << std::endl;
+  std::cout << "-- program" << std::endl;
+  for (const auto& [sym, func] : program.functions) {
+    std::cout << sym << std::endl;
+    for (const auto& [i, block] : func.blocks) {
+      if (!block.empty()) {
+        std::cout << sym << ".L" << i << std::endl;
+        for (const auto& op : block) {
+          std::cout << "    " << op->ToString() << std::endl;
+        }
       }
     }
   }
-  return seed;
+}
+
+static i64 GetNodeID(const Function& func, block_label_t block_idx) {
+  return (std::uintptr_t)(&func.blocks.at(block_idx));
+}
+
+void VisualizeProgram(const Program& program, const std::string& filename) {
+  auto graph = std::make_unique<epi::cycle::VisualGraph>();
+
+  for (const auto& [symbol, func] : program.functions) {
+    for (const auto& [block_idx, block] : func.blocks) {
+      const auto id = GetNodeID(func, block_idx);
+      graph->n(id).title(cotyl::Format("L%d", block_idx));
+      for (const auto& directive : block) {
+        switch (directive->cls) {
+          case Directive::Class::Expression:
+          case Directive::Class::Stack:
+          case Directive::Class::Store:
+          case Directive::Class::Return:
+          case Directive::Class::Call:  // todo
+            graph->n(id, directive->ToString());
+            break;
+          case Directive::Class::Branch: {
+            auto node = graph->n(id, directive->ToString());
+            auto* branch = cotyl::unique_ptr_cast<Branch>(directive);
+            const auto destinations = branch->Destinations();
+            for (const auto& dest : destinations) {
+              node->n(GetNodeID(func, dest));
+            }
+            break;
+          }
+          case Directive::Class::Select: {
+            auto node = graph->n(id, directive->ToString());
+            auto* select = cotyl::unique_ptr_cast<Select>(directive);
+            for (auto [val, dest] : select->table) {
+              node->n(GetNodeID(func, dest), std::to_string(val));
+            }
+            if (select->_default) {
+              node->n(GetNodeID(func, select->_default), "default");
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    auto fnode = graph->n((std::uintptr_t)&func);
+    fnode.title(symbol + "(*)");
+    fnode->n(GetNodeID(func, Function::Entry));
+    for (const auto& [loc_idx, local] : func.locals) {
+      const std::string label = cotyl::Format("%s c%d", detail::TypeString(local.type).c_str(), loc_idx);
+      graph->n((std::uintptr_t)&func, label);
+    }
+  }
+
+  graph->Visualize(filename);
 }
 
 template<typename To, typename From>

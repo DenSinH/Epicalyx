@@ -15,7 +15,7 @@ struct RegisterSpace;
 
 struct RIG {
 
-  static RIG GenerateRIG(const Program& program);
+  static RIG GenerateRIG(const Function& program);
   void Reduce(const RegisterSpace& regspace);
   void Visualize(const std::string& filename) const;
 

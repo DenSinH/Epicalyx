@@ -18,11 +18,11 @@ struct Function;
 
 using var_index_t = u64;
 using block_label_t = u64;
+using func_pos_t = std::pair<block_label_t, int>;
 
 struct program_pos_t {
-  Function* func;
-  block_label_t block;
-  int offset;
+  const Function* func;
+  func_pos_t pos;
 };
 
 struct label_offset_t {
@@ -109,6 +109,7 @@ using block_t = std::vector<pDirective>;
 using global_t = std::variant<i8, u8, i16, u16, i32, u32, i64, u64, float, double, Pointer, label_offset_t>;
 
 struct Function {
+  static constexpr block_label_t Entry = 1;
 
   Function(const std::string& symbol) : symbol{symbol} { }
 
@@ -118,6 +119,8 @@ struct Function {
   cotyl::unordered_map<block_label_t, block_t> blocks{};
 
   cotyl::unordered_map<var_index_t, Local> locals{};  
+  
+  size_t Hash() const;
 };
 
 struct Program {
@@ -132,6 +135,9 @@ struct Program {
 
   size_t Hash() const;
 };
+
+void VisualizeProgram(const Program& program, const std::string& filename);
+void PrintProgram(const Program& program);
 
 // IR var idx and Argument
 using arg_list_t = std::vector<std::pair<var_index_t, Argument>>;

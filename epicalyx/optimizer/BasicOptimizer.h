@@ -14,31 +14,35 @@ using namespace calyx;
 
 struct BasicOptimizer final : calyx::Backend {
 
-  BasicOptimizer(const Program& program) :
-      program(program), old_deps{ProgramDependencies::GetDependencies(program)} {
+  // todo: function level stuff
+  BasicOptimizer(Function&& function) : 
+      old_function{std::move(function)},
+      old_deps{FunctionDependencies::GetDependencies(old_function)},
+      new_function{old_function.symbol} {
 
   }
 
-  const Program& program;
-  ProgramDependencies old_deps;
-  cotyl::unordered_map<block_label_t, program_pos_t> block_links{};
-  Graph<block_label_t, const block_t*, true> new_block_graph{};
+private:
+  Function old_function;
+  FunctionDependencies old_deps;
 
-  calyx::Program new_program{};
+  calyx::Function new_function;
+  cotyl::unordered_map<block_label_t, func_pos_t> block_links{};
+  Graph<block_label_t, const block_t*, true> new_block_graph{};
 
   // direct variable replacements
   cotyl::unordered_map<var_index_t, var_index_t> var_replacement{};
 
-  struct Local {
+  struct LocalData {
     var_index_t aliases = 0;                    // local might alias another local
     std::unique_ptr<calyx::Expr> replacement;   // replacement for LoadLocals
     pDirective store;                           // store to flush local with
   };
 
   // local replacements (loads/stores/alias loads/alias stores)
-  cotyl::unordered_map<var_index_t, Local> locals{};
+  cotyl::unordered_map<var_index_t, LocalData> locals{};
 
-  void FlushLocal(var_index_t loc_idx, Local&& local);
+  void FlushLocal(var_index_t loc_idx, LocalData&& local);
   void FlushCurrentLocals();
   void FlushAliasedLocals();
 
@@ -47,7 +51,7 @@ struct BasicOptimizer final : calyx::Backend {
 
   // current block that is being built
   calyx::block_t* current_block{};
-  program_pos_t current_old_pos;            // position we are scanning in the old program
+  func_pos_t current_old_pos;            // position we are scanning in the old function
   block_label_t current_new_block_idx;      // block index we are building in the new program
   cotyl::unordered_set<block_label_t> todo{};
   bool reachable;
@@ -58,7 +62,7 @@ struct BasicOptimizer final : calyx::Backend {
   }
 
   template<typename T>
-  program_pos_t Output(std::unique_ptr<T>&& directive) {
+  func_pos_t Output(std::unique_ptr<T>&& directive) {
     cotyl::Assert(reachable);
     const u64 in_block = current_block->size();
     current_block->push_back(std::move(directive));
@@ -66,12 +70,12 @@ struct BasicOptimizer final : calyx::Backend {
   }
 
   template<typename T, typename... Args>
-  program_pos_t OutputNew(Args... args) {
+  func_pos_t OutputNew(Args... args) {
     return Output(std::make_unique<T>(args...));
   }
 
   template<typename T>
-  program_pos_t OutputCopy(const T& op) {
+  func_pos_t OutputCopy(const T& op) {
     return OutputNew<T>(op);
   }
 
@@ -113,11 +117,11 @@ struct BasicOptimizer final : calyx::Backend {
   // check whether predicate BadPred occurs before a GoodPred happens
   // on all forward paths (including loops) ...
   template<class BadPred, class GoodPred>
-  bool NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, program_pos_t pos) const;
+  bool NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, func_pos_t pos) const;
 
   // ... used for example to check whether we even need to flush a local,
   // or whether the value is overwritten anyway, before a write happens
-  bool ShouldFlushLocal(var_index_t loc_idx, const Local& local);
+  bool ShouldFlushLocal(var_index_t loc_idx, const LocalData& local);
 
   // try to get the expression directive a var was created with
   // return nullptr if it was not of this type
@@ -137,8 +141,9 @@ struct BasicOptimizer final : calyx::Backend {
   // find common ancestor for 2 nodes such that all paths to these nodes go through that ancestor
   block_label_t CommonBlockAncestor(block_label_t first, block_label_t second) const;
 
-  void EmitProgram(const Program& program) final;
-
+public:
+  Function&& Optimize();
+  
   void Emit(const LoadLocalAddr& op) final;
   void Emit(const LoadGlobalAddr& op) final;
   void Emit(const ArgMakeLocal& op) final;

@@ -12,47 +12,51 @@ namespace epi {
 
 using namespace calyx;
 
-struct ProgramDependencies final : calyx::Backend {
 
-  static ProgramDependencies GetDependencies(const Program& program) {
-    auto deps = ProgramDependencies();
-    deps.EmitProgram(program);
-    return deps;
-  }
-
-  Graph<block_label_t, const block_t*, true> block_graph{};
+struct FunctionDependencies final : calyx::Backend {
 
   struct Var {
-    program_pos_t created = {0, 0};
+    func_pos_t created = {0, 0};
     // variables depend on at most 2 others through a binop
     cotyl::static_vector<var_index_t, 2> deps{};
     bool is_call_result = false;
-    std::vector<program_pos_t> reads{};
-    program_pos_t program_result = {0, 0};
+    std::vector<func_pos_t> reads{};
+    func_pos_t function_result = {0, 0};
 
     // local aliases (i.e. v12 = &c1)
     // 0 means no alias
     var_index_t aliases = 0;
   };
 
-  cotyl::unordered_map<var_index_t, Var> var_graph{};
-
   struct LocalData {
-    program_pos_t created = {0, 0};
-    std::vector<program_pos_t> writes{};
-    std::vector<program_pos_t> reads{};
+    std::vector<func_pos_t> writes{};
+    std::vector<func_pos_t> reads{};
     bool needs_address = false;
 
     std::vector<var_index_t> aliased_by{};
   };
 
+  std::string symbol{};
+
+  Graph<block_label_t, const block_t*, true> block_graph{};
+  cotyl::unordered_map<var_index_t, Var> var_graph{};
   cotyl::unordered_map<var_index_t, LocalData> local_graph{};
 
-  program_pos_t pos;
+  explicit FunctionDependencies() { }
 
-  void VisualizeVars(const std::string& filename);
+  FunctionDependencies(const std::string& symbol) : symbol{symbol} { 
 
-  void EmitProgram(const Program& program) final;
+  }
+  
+  static FunctionDependencies GetDependencies(const Function& function) {
+    auto deps = FunctionDependencies();
+    deps.EmitFunction(function);
+    return deps;
+  }
+  void EmitFunction(const Function& function);
+
+protected:
+  func_pos_t pos;
 
   void Emit(const LoadLocalAddr& op) final;
   void Emit(const LoadGlobalAddr& op) final;
@@ -103,6 +107,22 @@ struct ProgramDependencies final : calyx::Backend {
 
 #include "calyx/backend/Methods.inl"
 
+};
+
+struct ProgramDependencies {
+
+  cotyl::unordered_map<std::string, FunctionDependencies> func_deps{};
+
+  static ProgramDependencies GetDependencies(const calyx::Program& program) {
+    auto deps = ProgramDependencies();
+    deps.ParseProgram(program);
+    return deps;
+  }
+
+  void VisualizeVars(const std::string& filename);
+
+private:
+  void ParseProgram(const Program& program);
 };
 
 }

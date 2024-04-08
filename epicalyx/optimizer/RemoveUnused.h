@@ -4,9 +4,9 @@
 namespace epi {
 
 namespace calyx {
-struct Program;
+struct Function;
 }
 
-size_t RemoveUnused(calyx::Program& program);
+size_t RemoveUnused(calyx::Function& program);
 
 }

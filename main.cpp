@@ -13,19 +13,6 @@
 
 #include "Log.h"
 
-void PrintProgram(const epi::Program& program) {
-  std::cout << std::endl << std::endl;
-  std::cout << "-- program" << std::endl;
-  for (const auto& [i, block] : program.blocks) {
-    if (!block.empty()) {
-      std::cout << 'L' << i << std::endl;
-      for (const auto& op : block) {
-        std::cout << "    " << op->ToString() << std::endl;
-      }
-    }
-  }
-}
-
 
 #undef catch_errors
 
@@ -38,13 +25,9 @@ void PrintProgram(const epi::Program& program) {
 
 
 int main() {
-  auto preprocessor = epi::Preprocessor("examples/emitting/loops.c");
-
-  // while (!preprocessor.EOS()) {
-  //   std::cout << preprocessor.Get();
-  // }
-  // return 0;
-
+  const std::string file = "examples/emitting/loops.c";
+  const std::string rig_func_sym = "main";
+  auto preprocessor = epi::Preprocessor(file);
   auto tokenizer = epi::Tokenizer(preprocessor);
   auto parser = epi::Parser(tokenizer);
 
@@ -72,30 +55,31 @@ int main() {
   }
 
   auto program = std::move(emitter.program);
-  PrintProgram(program);
+  epi::calyx::PrintProgram(program);
 
-  // repeating multiple times will link more blocks
-  auto prog_hash = program.Hash();
-  while (true) {
-    std::cout << "Optimizing program hash " << prog_hash << "..." << std::endl;
-    try {
-      auto optimizer = epi::BasicOptimizer(program);
-      optimizer.EmitProgram(program);
+  for (auto& [sym, func] : program.functions) {
+    // repeating multiple times will link more blocks
+    auto func_hash = func.Hash();
+    while (true) {
+      std::cout << "Optimizing program hash " << func_hash << "..." << std::endl;
+      try {
+        auto optimizer = epi::BasicOptimizer(std::move(func));
+        func = optimizer.Optimize();
 
-      program = std::move(optimizer.new_program);
-      auto new_hash = program.Hash();
-      if (prog_hash == new_hash) break;
-      prog_hash = new_hash;
-    }
-    catch_e {
-      Log::ConsoleColor<Log::Color::Red>();
-      std::cout << "Optimizer error:" << std::endl << std::endl;
-      std::cout << e.what() << std::endl;
-      return 1;
+        auto new_hash = func.Hash();
+        if (func_hash == new_hash) break;
+        func_hash = new_hash;
+      }
+      catch_e {
+        Log::ConsoleColor<Log::Color::Red>();
+        std::cout << "Optimizer error:" << std::endl << std::endl;
+        std::cout << e.what() << std::endl;
+        return 1;
+      }
     }
   }
 
-  PrintProgram(program);
+  epi::calyx::PrintProgram(program);
 
   std::cout << std::endl << std::endl;
   std::cout << "-- globals" << std::endl;
@@ -123,6 +107,8 @@ int main() {
   for (const auto& string : program.strings) {
     std::cout << '"' << string << '"' << std::endl;
   }
+
+  epi::calyx::VisualizeProgram(program, "output/program.pdf");
 
   try {
     auto interpreter = epi::calyx::Interpreter(program);
@@ -155,8 +141,6 @@ int main() {
       }, program.globals.at(glob));
     }
 
-    interpreter.VisualizeProgram(program, "output/program.pdf");
-
     auto dependencies = epi::ProgramDependencies::GetDependencies(program);
     dependencies.VisualizeVars("output/vars.pdf");
   }
@@ -167,9 +151,10 @@ int main() {
     return 1;
   }
 
-  auto rig = epi::RIG::GenerateRIG(program);
+  const auto& rig_func = program.functions.at(rig_func_sym);
+  auto rig = epi::RIG::GenerateRIG(rig_func);
 
-  auto regspace = epi::RegisterSpace::GetRegSpace<epi::ExampleRegSpace>(program);
+  auto regspace = epi::RegisterSpace::GetRegSpace<epi::ExampleRegSpace>(rig_func);
   for (const auto& [gvar, regtype] : regspace->register_type_map) {
     if (gvar.is_local) std::cout << 'c';
     else std::cout << 'v';

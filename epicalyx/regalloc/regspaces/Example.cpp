@@ -46,7 +46,7 @@ void ExampleRegSpace::OutputVar(var_index_t var_idx) {
 
 template<typename T>
 void ExampleRegSpace::OutputExpr(const Expr& expr) {
-  cotyl::Assert(is_calyx_type_v<T>, "Invalid type for expression variable result");
+  static_assert(is_calyx_type_v<T>, "Invalid type for expression variable result");
   OutputVar<T>(expr.idx);
 }
 
@@ -55,9 +55,6 @@ void ExampleRegSpace::OutputLocal(var_index_t loc_idx) {
   const auto gvar = GeneralizedVar::Local(loc_idx);
   OutputGVar<T>(gvar);
 }
-
-void ExampleRegSpace::Emit(const AllocateLocal& op) { }
-void ExampleRegSpace::Emit(const DeallocateLocal& op) { }
 
 template<typename To, typename From>
 void ExampleRegSpace::EmitCast(const Cast<To, From>& op) {

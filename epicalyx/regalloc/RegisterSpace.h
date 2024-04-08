@@ -38,13 +38,13 @@ struct RegisterSpace : Backend {
 
   template<typename T, typename... Args>
   requires (std::is_base_of_v<RegisterSpace, T>)
-  static std::unique_ptr<T> GetRegSpace(const Program& program, Args... args) {
+  static std::unique_ptr<T> GetRegSpace(const Function& function, Args... args) {
     auto result = std::make_unique<T>(args...);
-    result->EmitProgram(program);
+    result->EmitFunction(function);
     return std::move(result);
   }
 
-  void EmitProgram(const Program& program) final;
+  void EmitFunction(const Function& function);
 
   virtual register_type_t RegisterType(const GeneralizedVar& gvar) const = 0;
   virtual std::size_t RegisterTypePopulation(const register_type_t& type) const = 0;

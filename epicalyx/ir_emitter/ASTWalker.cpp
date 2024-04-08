@@ -18,14 +18,40 @@
 
 namespace epi {
 
+namespace detail {
+  
+struct CalyxLocalTypeVisitor : TypeVisitor {
+  calyx::Local::Type local_type;
+
+  void Visit(const VoidType& type) final { throw std::runtime_error("Incomplete type"); }
+  void Visit(const ValueType<i8>& type) final { local_type = calyx::Local::Type::I8; }
+  void Visit(const ValueType<u8>& type) final { local_type = calyx::Local::Type::U8; }
+  void Visit(const ValueType<i16>& type) final { local_type = calyx::Local::Type::I16; }
+  void Visit(const ValueType<u16>& type) final { local_type = calyx::Local::Type::U16; }
+  void Visit(const ValueType<i32>& type) final { local_type = calyx::Local::Type::I32; }
+  void Visit(const ValueType<u32>& type) final { local_type = calyx::Local::Type::U32; }
+  void Visit(const ValueType<i64>& type) final { local_type = calyx::Local::Type::I64; }
+  void Visit(const ValueType<u64>& type) final { local_type = calyx::Local::Type::U64; }
+  void Visit(const ValueType<float>& type) final { local_type = calyx::Local::Type::Float; }
+  void Visit(const ValueType<double>& type) final { local_type = calyx::Local::Type::Double; }
+  void Visit(const PointerType& type) final { local_type = calyx::Local::Type::Pointer; }
+  void Visit(const ArrayType& type) final { local_type = calyx::Local::Type::Pointer; }
+  void Visit(const FunctionType& type) final { local_type = calyx::Local::Type::Pointer; }
+  void Visit(const StructType& type) final { local_type = calyx::Local::Type::Struct; }
+  void Visit(const UnionType& type) final { local_type = calyx::Local::Type::Struct; }
+};
+
+}
 
 calyx::Local::Type ASTWalker::GetCalyxType(const pType<const CType>& type) {
-  throw cotyl::UnimplementedException("Calyx type from ctype");
+  detail::CalyxLocalTypeVisitor visitor{};
+  type->Visit(visitor);
+  return visitor.local_type;
 }
 
 
 void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
-  if (locals.Depth() == 1) {
+  if (locals.Depth() == 0) {
     // global symbols
     symbol_types.emplace(decl.name, decl.type);
 
@@ -37,8 +63,8 @@ void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
       if (std::holds_alternative<pExpr>(decl.value.value())) {
         auto& expr = std::get<pExpr>(decl.value.value());
 
-        auto global_entry = emitter.MakeBlock();
-        emitter.SelectBlock(global_entry);
+        calyx::Function initializer{"$init" + decl.name};
+        emitter.SetFunction(initializer);
 
         state.push({State::Read, {}});
         expr->Visit(*this);
@@ -48,7 +74,7 @@ void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
         decl.type->Visit(global_block_return_visitor);
 
         calyx::Interpreter interpreter = {emitter.program};
-        interpreter.InterpretGlobalInitializer(global, global_entry);
+        interpreter.InterpretGlobalInitializer(global, std::move(initializer));
       }
       else {
         // todo: handle initializer list
@@ -105,6 +131,8 @@ void ASTWalker::Visit(FunctionDefinitionNode& decl) {
 
   // arguments layer
   locals.PopLayer();
+
+  EndFunction();
 }
 
 void ASTWalker::Visit(IdentifierNode& decl) {
@@ -218,7 +246,7 @@ void ASTWalker::ConstVisitImpl(NumericalConstantNode<T>& expr) {
     }
   }
   else {
-    current = emitter.EmitExpr<calyx::Imm<calyx::calyx_upcast_t<T>>>({ detail::calyx_type_v<calyx::calyx_upcast_t<T>> }, expr.value);
+    current = emitter.EmitExpr<calyx::Imm<calyx::calyx_upcast_t<T>>>({ detail::calyx_var_type_v<calyx::calyx_upcast_t<T>> }, expr.value);
   }
 }
 

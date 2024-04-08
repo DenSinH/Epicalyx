@@ -84,14 +84,20 @@ struct Emitter {
   std::vector<Var> vars;
   calyx::Program program{};
 
-  void NewFunction(const std::string& symbol) {
-    current_function = &program.functions.emplace(symbol, symbol).first->second;
-    SelectBlock(MakeBlock());
+  void SetFunction(calyx::Function& func) {
+    current_function = &func;
+    const auto entry = MakeBlock();
+    cotyl::Assert(entry == calyx::Function::Entry, "Expected function entry to be block 1");
+    SelectBlock(entry);
     ir_counter = 1;
     c_counter = 1;
     
     // first var is special
     vars = {{Var::Type::I32}};
+  }
+
+  void NewFunction(const std::string& symbol) {
+    SetFunction(program.functions.emplace(symbol, symbol).first->second);
   }
 
 private:

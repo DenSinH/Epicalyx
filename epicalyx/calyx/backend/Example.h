@@ -7,7 +7,7 @@ namespace epi::calyx {
 
 struct Example : Backend {
 
-  void EmitProgram(const Program& program) final;
+  void EmitProgram(const Program& program);
 
   void Emit(const LoadLocalAddr& op) final;
   void Emit(const LoadGlobalAddr& op) final;
