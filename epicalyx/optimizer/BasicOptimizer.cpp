@@ -220,7 +220,7 @@ bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
 
       // todo: shift directives back for earlier ancestor blocks
       // todo: improve this
-      if (ancestor == current_new_block_idx || ancestor == candidate_block) {
+      if (ancestor == current_new_block_idx && ancestor == candidate_block) {
         const auto* candidate = cotyl::unique_ptr_cast<const T>(directive);
         if (predicate(*candidate, op)) {
           var_replacement[op.idx] = candidate->idx;

@@ -10,7 +10,10 @@ namespace epi {
 static void NullifyUnusedLocals(calyx::Function& func, FunctionDependencies& deps) {
   // remove unused locals
   for (const auto& [loc_idx, local] : deps.local_graph) {
-    if (local.reads.empty()) {
+    bool local_unread = std::all_of(local.reads.begin(), local.reads.end(), [&](const auto& pos) {
+      return func.blocks.at(pos.first)[pos.second] == nullptr;
+    });
+    if (local_unread) {
       // local is never read/aliased
       // remove all local writes
       for (const auto& pos : local.writes) {

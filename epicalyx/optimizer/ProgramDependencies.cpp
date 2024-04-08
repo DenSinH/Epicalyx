@@ -52,6 +52,11 @@ void FunctionDependencies::EmitFunction(const Function& function) {
     block_graph.AddNodeIfNotExists(block_idx, &block);
   }
 
+  local_graph.reserve(function.locals.size());
+  for (const auto& [loc_idx, local] : function.locals) {
+    local_graph.emplace(loc_idx, LocalData{});
+  }
+
   for (const auto& [i, block] : function.blocks) {
     pos.first = i;
     for (int j = 0; j < block.size(); j++) {
@@ -71,21 +76,21 @@ void FunctionDependencies::EmitCast(const Cast<To, From>& op) {
 template<typename T>
 void FunctionDependencies::EmitLoadLocal(const LoadLocal<T>& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;
-  cotyl::get_default(local_graph, op.loc_idx).reads.push_back(pos);
+  local_graph.at(op.loc_idx).reads.push_back(pos);
 }
 
 void FunctionDependencies::Emit(const LoadLocalAddr& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;
   var_graph[op.idx].aliases = op.loc_idx;
-  cotyl::get_default(local_graph, op.loc_idx).reads.push_back(pos);
-  local_graph[op.loc_idx].needs_address = true;
-  local_graph[op.loc_idx].aliased_by.emplace_back(op.idx);
+  local_graph.at(op.loc_idx).reads.push_back(pos);
+  local_graph.at(op.loc_idx).needs_address = true;
+  local_graph.at(op.loc_idx).aliased_by.emplace_back(op.idx);
 }
 
 template<typename T>
 void FunctionDependencies::EmitStoreLocal(const StoreLocal<T>& op) {
   cotyl::get_default(var_graph, op.src).reads.push_back(pos);
-  cotyl::get_default(local_graph, op.loc_idx).writes.push_back(pos);
+  local_graph.at(op.loc_idx).writes.push_back(pos);
 }
 
 template<typename T>
@@ -146,7 +151,7 @@ void FunctionDependencies::EmitCallLabel(const CallLabel<T>& op) {
 }
 
 void FunctionDependencies::Emit(const ArgMakeLocal& op) {
-  cotyl::get_default(local_graph, op.loc_idx).writes.push_back(pos);
+  local_graph.at(op.loc_idx).writes.push_back(pos);
 }
 
 template<typename T>
