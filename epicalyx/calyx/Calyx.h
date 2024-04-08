@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <variant>
+#include <optional>
 #include <bit>
 
 
@@ -70,14 +71,20 @@ struct Local {
     I32, U32, I64, U64, Float, Double, Pointer, Struct
   };
 
+  Local(Type type, var_index_t idx, size_t size, std::optional<var_index_t>&& arg_idx) : 
+      type{type}, idx{idx}, size{size}, arg_idx{std::move(arg_idx)} {
+
+  }
+
   Local(Type type, var_index_t idx, size_t size) : 
-      type{type}, idx{idx}, size{size} {
+      Local{type, idx, size, {}} {
 
   }
 
   Type type;
   var_index_t idx;
   size_t size;
+  std::optional<var_index_t> arg_idx{};
 };
 
 struct Argument {
@@ -677,21 +684,6 @@ struct CallLabel : Directive {
   std::string label;
   arg_list_t args;
   arg_list_t var_args;
-
-  std::string ToString() const final;
-  void Emit(Backend& backend) final;
-  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
-};
-
-struct ArgMakeLocal : Directive {
-
-  ArgMakeLocal(Argument arg, var_index_t loc_idx) :
-      Directive(Class::Stack, GetTID()), arg(arg), loc_idx(loc_idx) {
-
-  }
-
-  Argument arg;
-  var_index_t loc_idx;
 
   std::string ToString() const final;
   void Emit(Backend& backend) final;

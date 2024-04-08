@@ -146,7 +146,6 @@ public:
   
   void Emit(const LoadLocalAddr& op) final;
   void Emit(const LoadGlobalAddr& op) final;
-  void Emit(const ArgMakeLocal& op) final;
 
   template<typename To, typename From>
   void EmitCast(const Cast<To, From>& op);

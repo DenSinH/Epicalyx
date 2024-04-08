@@ -6,6 +6,7 @@
 #include "Scope.h"
 
 #include <stack>
+#include <stack>
 
 namespace epi {
 
@@ -72,10 +73,10 @@ struct ASTWalker : public ast::NodeVisitor {
 
   static calyx::Local::Type GetCalyxType(const pType<const CType>& type);
 
-  calyx::var_index_t AddLocal(const std::string& name, const pType<const CType>& type) {
+  calyx::var_index_t AddLocal(const std::string& name, const pType<const CType>& type, std::optional<calyx::var_index_t> arg_index = {}) {
     auto c_idx = emitter.c_counter++;
     size_t size = type->Sizeof();
-    auto& loc = emitter.current_function->locals.emplace(c_idx, calyx::Local{GetCalyxType(type), c_idx, size}).first->second;
+    auto& loc = emitter.current_function->locals.emplace(c_idx, calyx::Local{GetCalyxType(type), c_idx, size, std::move(arg_index)}).first->second;
     locals.Set(name, LocalData{ &loc, type });
     return c_idx;
   }

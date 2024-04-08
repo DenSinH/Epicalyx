@@ -572,10 +572,6 @@ void BasicOptimizer::EmitCallLabel(const CallLabel<T>& _op) {
   Output(std::move(op));
 }
 
-void BasicOptimizer::Emit(const ArgMakeLocal& op) {
-  OutputCopy(op);
-}
-
 template<typename T>
 void BasicOptimizer::EmitReturn(const Return<T>& _op) {
   auto op = CopyDirective(_op);

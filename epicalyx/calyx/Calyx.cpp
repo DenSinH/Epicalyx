@@ -138,7 +138,13 @@ void VisualizeProgram(const Program& program, const std::string& filename) {
     fnode.title(symbol + "(*)");
     fnode->n(GetNodeID(func, Function::Entry));
     for (const auto& [loc_idx, local] : func.locals) {
-      const std::string label = cotyl::Format("%s c%d", detail::TypeString(local.type).c_str(), loc_idx);
+      std::string label;
+      if (local.arg_idx.has_value()) {
+        label = cotyl::Format("%s c%d <- a%d", detail::TypeString(local.type).c_str(), loc_idx, local.arg_idx.value());
+      }
+      else {
+        label = cotyl::Format("%s c%d", detail::TypeString(local.type).c_str(), loc_idx);
+      }
       graph->n((std::uintptr_t)&func, label);
     }
   }
@@ -412,10 +418,6 @@ std::string CallLabel<T>::ToString() const {
   }
 }
 
-std::string ArgMakeLocal::ToString() const {
-  return cotyl::FormatStr("mkloc c%s <- a%s", loc_idx, arg.arg_idx);
-}
-
 template<typename To, typename From>
 requires (
   is_calyx_arithmetic_ptr_type_v<From> && 
@@ -546,10 +548,6 @@ void Call<T>::Emit(Backend& backend) {
 template<typename T>
 requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
 void CallLabel<T>::Emit(Backend& backend) {
-  backend.Emit(*this);
-}
-
-void ArgMakeLocal::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 

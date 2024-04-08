@@ -60,10 +60,6 @@ void Example::EmitCallLabel(const CallLabel<T>& op) {
 
 }
 
-void Example::Emit(const ArgMakeLocal& op) {
-
-}
-
 template<typename T>
 void Example::EmitReturn(const Return<T>& op) {
 

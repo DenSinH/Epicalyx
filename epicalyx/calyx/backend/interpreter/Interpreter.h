@@ -51,11 +51,11 @@ struct Interpreter : Backend {
   std::optional<std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> returned = {};
 
   void EnterFunction(const Function* function);
+  void LoadArg(const calyx::Local& loc);
   void EmitProgram(const Program& program);
 
   void Emit(const LoadLocalAddr& op) final;
   void Emit(const LoadGlobalAddr& op) final;
-  void Emit(const ArgMakeLocal& op) final;
 
   template<typename To, typename From>
   void EmitCast(const Cast<To, From>& op);

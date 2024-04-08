@@ -111,11 +111,7 @@ void ASTWalker::Visit(FunctionDefinitionNode& decl) {
   for (int i = 0; i < decl.signature->arg_types.size(); i++) {
     // turn arguments into locals
     auto& arg = decl.signature->arg_types[i];
-    auto c_idx = AddLocal(arg.name, arg.type);
-    auto visitor = detail::ArgumentTypeVisitor(i, false);
-    arg.type->Visit(visitor);
-
-    emitter.Emit<calyx::ArgMakeLocal>(visitor.result, c_idx);
+    AddLocal(arg.name, arg.type, i);
   }
 
   // locals layer

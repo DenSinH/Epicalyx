@@ -150,10 +150,6 @@ void FunctionDependencies::EmitCallLabel(const CallLabel<T>& op) {
   }
 }
 
-void FunctionDependencies::Emit(const ArgMakeLocal& op) {
-  local_graph.at(op.loc_idx).writes.push_back(pos);
-}
-
 template<typename T>
 void FunctionDependencies::EmitReturn(const Return<T>& op) {
   if constexpr(!std::is_same_v<T, void>) {

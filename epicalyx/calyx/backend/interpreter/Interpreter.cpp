@@ -90,6 +90,73 @@ void Interpreter::EmitProgram(const Program& program) {
   }, returned.value());
 }
 
+void Interpreter::LoadArg(const calyx::Local& loc) {
+  auto [_, __, args, ___] = call_stack.top();
+
+  // locals have already been allocated on function entry
+  const auto stack_loc = locals.Get(loc.idx).first;
+  const auto arg_idx = loc.arg_idx.value();
+  switch (loc.type) {
+    case Local::Type::I8: {
+      i32 value = std::get<i32>(vars.Get(args[arg_idx].first));
+      std::memcpy(&stack[stack_loc], &value, sizeof(value));
+      break;
+    }
+    case Local::Type::U8: {
+      u32 value = std::get<u32>(vars.Get(args[arg_idx].first));
+      std::memcpy(&stack[stack_loc], &value, sizeof(value));
+      break;
+    }
+    case Local::Type::I16: {
+      i32 value = std::get<i32>(vars.Get(args[arg_idx].first));
+      std::memcpy(&stack[stack_loc], &value, sizeof(value));
+      break;
+    }
+    case Local::Type::U16: {
+      u32 value = std::get<u32>(vars.Get(args[arg_idx].first));
+      std::memcpy(&stack[stack_loc], &value, sizeof(value));
+      break;
+    }
+    case Local::Type::I32: {
+      i32 value = std::get<i32>(vars.Get(args[arg_idx].first));
+      std::memcpy(&stack[stack_loc], &value, sizeof(value));
+      break;
+    }
+    case Local::Type::U32: {
+      u32 value = std::get<u32>(vars.Get(args[arg_idx].first));
+      std::memcpy(&stack[stack_loc], &value, sizeof(value));
+      break;
+    }
+    case Local::Type::I64: {
+      i64 value = std::get<i64>(vars.Get(args[arg_idx].first));
+      std::memcpy(&stack[stack_loc], &value, sizeof(value));
+      break;
+    }
+    case Local::Type::U64: {
+      u64 value = std::get<u64>(vars.Get(args[arg_idx].first));
+      std::memcpy(&stack[stack_loc], &value, sizeof(value));
+      break;
+    }
+    case Local::Type::Float: {
+      float value = std::get<float>(vars.Get(args[arg_idx].first));
+      std::memcpy(&stack[stack_loc], &value, sizeof(value));
+      break;
+    }
+    case Local::Type::Double: {
+      double value = std::get<double>(vars.Get(args[arg_idx].first));
+      std::memcpy(&stack[stack_loc], &value, sizeof(value));
+      break;
+    }
+    case Local::Type::Pointer: {
+      Pointer value = std::get<Pointer>(vars.Get(args[arg_idx].first));
+      std::memcpy(&stack[stack_loc], &value, sizeof(value));
+      break;
+    }
+    case Local::Type::Struct: {
+      throw cotyl::UnimplementedException("struct argument");
+    }
+  }
+}
 
 void Interpreter::EnterFunction(const Function* function) {
   pos.func = function;
@@ -103,6 +170,9 @@ void Interpreter::EnterFunction(const Function* function) {
   for (const auto& [loc_idx, local] : pos.func->locals) {
     locals.Set(loc_idx, std::make_pair(stack.size(), local.size));
     stack.resize(stack.size() + local.size);
+    if (local.arg_idx.has_value()) {
+      LoadArg(local);
+    }
   }
 }
 
@@ -291,73 +361,6 @@ template<typename T>
 void Interpreter::EmitCallLabel(const CallLabel<T>& op) {
   call_stack.emplace(pos, op.idx, op.args, op.var_args);
   EnterFunction(&program.functions.at(op.label));
-}
-
-void Interpreter::Emit(const ArgMakeLocal& op) {
-  auto [_, __, args, ___] = call_stack.top();
-
-  // locals have already been allocated on function entry
-  const auto stack_loc = locals.Get(op.loc_idx).first;
-  switch (op.arg.type) {
-    case Local::Type::I8: {
-      i32 value = std::get<i32>(vars.Get(args[op.arg.arg_idx].first));
-      std::memcpy(&stack[stack_loc], &value, sizeof(value));
-      break;
-    }
-    case Local::Type::U8: {
-      u32 value = std::get<u32>(vars.Get(args[op.arg.arg_idx].first));
-      std::memcpy(&stack[stack_loc], &value, sizeof(value));
-      break;
-    }
-    case Local::Type::I16: {
-      i32 value = std::get<i32>(vars.Get(args[op.arg.arg_idx].first));
-      std::memcpy(&stack[stack_loc], &value, sizeof(value));
-      break;
-    }
-    case Local::Type::U16: {
-      u32 value = std::get<u32>(vars.Get(args[op.arg.arg_idx].first));
-      std::memcpy(&stack[stack_loc], &value, sizeof(value));
-      break;
-    }
-    case Local::Type::I32: {
-      i32 value = std::get<i32>(vars.Get(args[op.arg.arg_idx].first));
-      std::memcpy(&stack[stack_loc], &value, sizeof(value));
-      break;
-    }
-    case Local::Type::U32: {
-      u32 value = std::get<u32>(vars.Get(args[op.arg.arg_idx].first));
-      std::memcpy(&stack[stack_loc], &value, sizeof(value));
-      break;
-    }
-    case Local::Type::I64: {
-      i64 value = std::get<i64>(vars.Get(args[op.arg.arg_idx].first));
-      std::memcpy(&stack[stack_loc], &value, sizeof(value));
-      break;
-    }
-    case Local::Type::U64: {
-      u64 value = std::get<u64>(vars.Get(args[op.arg.arg_idx].first));
-      std::memcpy(&stack[stack_loc], &value, sizeof(value));
-      break;
-    }
-    case Local::Type::Float: {
-      float value = std::get<float>(vars.Get(args[op.arg.arg_idx].first));
-      std::memcpy(&stack[stack_loc], &value, sizeof(value));
-      break;
-    }
-    case Local::Type::Double: {
-      double value = std::get<double>(vars.Get(args[op.arg.arg_idx].first));
-      std::memcpy(&stack[stack_loc], &value, sizeof(value));
-      break;
-    }
-    case Local::Type::Pointer: {
-      Pointer value = std::get<Pointer>(vars.Get(args[op.arg.arg_idx].first));
-      std::memcpy(&stack[stack_loc], &value, sizeof(value));
-      break;
-    }
-    case Local::Type::Struct: {
-      throw cotyl::UnimplementedException("struct argument");
-    }
-  }
 }
 
 template<typename T>
