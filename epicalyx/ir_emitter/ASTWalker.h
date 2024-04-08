@@ -49,6 +49,10 @@ struct ASTWalker : public ast::NodeVisitor {
   calyx::var_index_t current;
   Emitter& emitter;
 
+  void AddGlobal(const std::string& symbol, const pType<const CType>& type) {
+    symbol_types.emplace(symbol, type);
+  }
+
   void NewFunction(const std::string& symbol, const pType<const CType>& type) {
     emitter.NewFunction(symbol);
     symbol_types.emplace(symbol, type);
@@ -58,11 +62,12 @@ struct ASTWalker : public ast::NodeVisitor {
     // continue_stack = {};
     // select_stack = {};
     local_labels.clear();
+    cotyl::Assert(locals.Depth() == 1, "Local scope is not empty at function start");
     locals.Clear();
   }
 
   void EndFunction() {
-    // cotyl::Assert(s);
+    cotyl::Assert(locals.Depth() == 1, "Local scope is not empty after function");
   }
 
   static calyx::Local::Type GetCalyxType(const pType<const CType>& type);

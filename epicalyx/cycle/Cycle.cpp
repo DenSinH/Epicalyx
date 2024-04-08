@@ -52,6 +52,7 @@ void VisualGraph::Visualize(const std::string& filename) {
           switch (c) {
             case '<': label << "&lt;"; break;
             case '>': label << "&gt;"; break;
+            case '&': label << "&amp;"; break;
             default: label << c; break;
           }
         }

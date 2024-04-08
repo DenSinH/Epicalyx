@@ -36,6 +36,7 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
 
   void Clear() {
     base::scope.clear();
+    base::scope.emplace_back();
   }
 
   void Set(const K& key, const V& value) {

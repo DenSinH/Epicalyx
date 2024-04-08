@@ -897,7 +897,10 @@ void BasicOptimizer::Emit(const UnconditionalBranch& _op) {
   const auto& block_deps = new_block_graph.At(current_new_block_idx);
   if (block_deps.to.empty()) {
     // no dependencies so far, we can link this block if the next block only has one input
-    if (!new_block_graph.Has(op->dest) && old_deps.block_graph.At(op->dest).from.size() == 1) {
+    bool can_link = !new_block_graph.Has(op->dest) 
+      && old_deps.block_graph.At(op->dest).from.size() == 1
+      && *old_deps.block_graph.At(op->dest).from.begin() == current_old_pos.first;
+    if (can_link) {
       LinkBlock(op->dest);
       return;
     }

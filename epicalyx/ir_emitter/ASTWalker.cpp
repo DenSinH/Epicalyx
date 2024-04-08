@@ -51,9 +51,9 @@ calyx::Local::Type ASTWalker::GetCalyxType(const pType<const CType>& type) {
 
 
 void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
-  if (locals.Depth() == 0) {
+  if (locals.Depth() == 1) {
     // global symbols
-    symbol_types.emplace(decl.name, decl.type);
+    AddGlobal(decl.name, decl.type);
 
     auto global_init_visitor = detail::GlobalInitializerVisitor();
     decl.type->Visit(global_init_visitor);

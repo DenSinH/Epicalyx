@@ -12,6 +12,5 @@ int main() {
   y = 2;
   x += y;
   int** temp = &ptr;
-  int x = *temp;
   return *(*temp - 1);
 }

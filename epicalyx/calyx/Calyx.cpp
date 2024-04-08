@@ -143,6 +143,7 @@ void VisualizeProgram(const Program& program, const std::string& filename) {
     }
   }
 
+  graph->allow_multi_edge = true;
   graph->Visualize(filename);
 }
 

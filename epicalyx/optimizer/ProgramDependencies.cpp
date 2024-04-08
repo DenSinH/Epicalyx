@@ -217,6 +217,7 @@ void FunctionDependencies::EmitCompare(const Compare<T>& op) {
 
 template<typename T>
 void FunctionDependencies::EmitCompareImm(const CompareImm<T>& op) {
+  cotyl::get_default(var_graph, op.idx).created = pos;
   cotyl::get_default(var_graph, op.idx).deps.push_back(op.left_idx);
   cotyl::get_default(var_graph, op.left_idx).reads.push_back(pos);
 }

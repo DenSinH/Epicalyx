@@ -296,82 +296,61 @@ void Interpreter::EmitCallLabel(const CallLabel<T>& op) {
 void Interpreter::Emit(const ArgMakeLocal& op) {
   auto [_, __, args, ___] = call_stack.top();
 
-  const auto stack_loc = stack.size();
+  // locals have already been allocated on function entry
+  const auto stack_loc = locals.Get(op.loc_idx).first;
   switch (op.arg.type) {
     case Local::Type::I8: {
       i32 value = std::get<i32>(vars.Get(args[op.arg.arg_idx].first));
-      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
-      stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U8: {
       u32 value = std::get<u32>(vars.Get(args[op.arg.arg_idx].first));
-      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
-      stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::I16: {
       i32 value = std::get<i32>(vars.Get(args[op.arg.arg_idx].first));
-      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
-      stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U16: {
       u32 value = std::get<u32>(vars.Get(args[op.arg.arg_idx].first));
-      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
-      stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::I32: {
       i32 value = std::get<i32>(vars.Get(args[op.arg.arg_idx].first));
-      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
-      stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U32: {
       u32 value = std::get<u32>(vars.Get(args[op.arg.arg_idx].first));
-      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
-      stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::I64: {
       i64 value = std::get<i64>(vars.Get(args[op.arg.arg_idx].first));
-      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
-      stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U64: {
       u64 value = std::get<u64>(vars.Get(args[op.arg.arg_idx].first));
-      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
-      stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::Float: {
       float value = std::get<float>(vars.Get(args[op.arg.arg_idx].first));
-      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
-      stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::Double: {
       double value = std::get<double>(vars.Get(args[op.arg.arg_idx].first));
-      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
-      stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::Pointer: {
       Pointer value = std::get<Pointer>(vars.Get(args[op.arg.arg_idx].first));
-      locals.Set(op.loc_idx, std::make_pair(stack_loc, sizeof(value)));
-      stack.resize(stack.size() + sizeof(value));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }

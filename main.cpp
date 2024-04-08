@@ -25,7 +25,7 @@
 
 
 int main() {
-  const std::string file = "examples/emitting/binop.c";
+  const std::string file = "examples/emitting/ternary.c";
   const std::string rig_func_sym = "main";
   auto preprocessor = epi::Preprocessor(file);
   auto tokenizer = epi::Tokenizer(preprocessor);
