@@ -132,6 +132,9 @@ private:
   // tracked in the var_replacement map
   void TryReplaceVar(calyx::var_index_t& var_idx) const;
 
+  template<typename T>
+  void TryReplaceOperand(calyx::Operand<T>& var) const;
+
   // remove any unreachable block edges from the old_deps.block_graph
   // this is the ONLY function that affects the old dependencies.
   // Doing this improves block linking, speeding up optimization
