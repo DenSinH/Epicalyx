@@ -85,6 +85,20 @@ RIG RIG::GenerateRIG(const Function& function) {
       }
     }
 
+    if (function.locals.at(loc_idx).arg_idx.has_value()) {
+      // defined in entry
+      liveliness.at(Function::Entry).def.emplace(gvar);
+    }
+
+    // local is only "def"ined in an ENTIRE block
+    // if it is not read before this
+    // otherwise, some other defined value was needed
+    // as "in"put
+    for (const auto& [block_idx, pos] : first_write) {
+      if (!liveliness.at(block_idx).in.contains(gvar)) {
+        liveliness.at(block_idx).def.emplace(gvar);
+      }
+    }
   }
   
   // function graph may not be acyclic

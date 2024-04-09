@@ -84,7 +84,7 @@ struct Operand {
   Operand(const Imm& imm) : value{imm} { }
   Operand(Imm&& imm) : value{std::move(imm)} { }
 
-  bool IsImm() const { return std::holds_alternative<Var>(value); }
+  bool IsImm() const { return std::holds_alternative<Imm>(value); }
   const T& GetImm() const { return std::get<Imm>(value).value; }
   T& GetImm() { return std::get<Imm>(value).value; }
   
@@ -182,7 +182,6 @@ void PrintProgram(const Program& program);
 // IR var idx and Argument
 using arg_list_t = std::vector<std::pair<var_index_t, Argument>>;
 
-
 struct Directive {
   enum class Class {
     Expression,  // includes loads
@@ -229,6 +228,19 @@ struct Branch : Directive {
   virtual std::vector<block_label_t> Destinations() const = 0;
 };
 
+template<typename T>
+struct Store : Directive {
+  using src_t = calyx_upcast_t<T>;
+
+  Store(size_t type_id, Operand<src_t> src) : 
+      Directive(Class::Store, type_id),
+      src{src} {
+
+  }
+
+  Operand<src_t> src;
+};
+
 enum class BinopType {
   Add,
   Sub,
@@ -251,7 +263,6 @@ enum class UnopType {
 };
 
 enum class CmpType {
-  // signed or unsigned is from the type of the cmp instruction
   Eq, Ne, Lt, Le, Gt, Ge
 };
 
@@ -260,7 +271,7 @@ requires (
   is_calyx_arithmetic_ptr_type_v<From> && 
   (is_calyx_arithmetic_ptr_type_v<To> || is_calyx_small_type_v<To>)
 )
-struct Cast : Expr {
+struct Cast final : Expr {
   using result_t = calyx_upcast_t<To>;
   using src_t = From;
   Cast(var_index_t idx, var_index_t right_idx) :
@@ -277,7 +288,7 @@ struct Cast : Expr {
 
 template<typename T>
 requires (is_calyx_arithmetic_type_v<T>)
-struct Binop : Expr {
+struct Binop final : Expr {
   using result_t = T;
   using src_t = T;
   Binop(var_index_t idx, var_index_t left, BinopType op, Operand<T> right) :
@@ -296,7 +307,7 @@ struct Binop : Expr {
 
 template<typename T>
 requires (is_calyx_integral_type_v<T>)
-struct Shift : Expr {
+struct Shift final : Expr {
   using result_t = T;
   using src_t = T;
   // shift type changed when value is negative anyway
@@ -317,7 +328,7 @@ struct Shift : Expr {
 
 template<typename T>
 requires (is_calyx_arithmetic_ptr_type_v<T>)
-struct Compare : Expr {
+struct Compare final : Expr {
   using result_t = i32;
   using src_t = T;
   Compare(var_index_t idx, var_index_t left, CmpType op, Operand<T> right) :
@@ -334,7 +345,7 @@ struct Compare : Expr {
   static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
-struct UnconditionalBranch : Branch {
+struct UnconditionalBranch final : Branch {
   UnconditionalBranch(block_label_t dest) :
       Branch(Class::Branch, GetTID()),
       dest{dest} {
@@ -352,7 +363,7 @@ struct UnconditionalBranch : Branch {
 
 template<typename T>
 requires (is_calyx_arithmetic_ptr_type_v<T>)
-struct BranchCompare : Branch {
+struct BranchCompare final : Branch {
   using src_t = T;
 
   BranchCompare(block_label_t tdest, block_label_t fdest, var_index_t left, CmpType op, Operand<T> right) :
@@ -379,7 +390,7 @@ struct BranchCompare : Branch {
 
 template<typename T>
 requires (is_calyx_integral_type_v<T>)
-struct AddToPointer : Expr {
+struct AddToPointer final : Expr {
   using result_t = Pointer;
   using offset_t = T;
 
@@ -399,7 +410,7 @@ struct AddToPointer : Expr {
 
 template<typename T>
 requires (is_calyx_type_v<T>)
-struct Imm : Expr {
+struct Imm final : Expr {
   using result_t = T;
   Imm(var_index_t idx, T value) :
       Expr(GetTID(), idx), value(value) {
@@ -415,7 +426,7 @@ struct Imm : Expr {
 
 template<typename T>
 requires (is_calyx_arithmetic_type_v<T>)
-struct Unop : Expr {
+struct Unop final : Expr {
   using result_t = T;
   using src_t = T;
   Unop(var_index_t idx, UnopType op, var_index_t right) :
@@ -432,7 +443,7 @@ struct Unop : Expr {
 };
 
 template<typename T>
-struct LoadLocal : Expr {
+struct LoadLocal final : Expr {
   using result_t = calyx_upcast_t<T>;
   LoadLocal(var_index_t idx, var_index_t loc_idx, i32 offset = 0) :
       Expr(GetTID(), idx), loc_idx(loc_idx), offset(offset) {
@@ -447,7 +458,7 @@ struct LoadLocal : Expr {
   static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
-struct LoadLocalAddr : Expr {
+struct LoadLocalAddr final : Expr {
   using result_t = Pointer;
   LoadLocalAddr(var_index_t idx, var_index_t loc_idx) :
           Expr(GetTID(), idx), loc_idx(loc_idx){
@@ -462,16 +473,17 @@ struct LoadLocalAddr : Expr {
 };
 
 template<typename T>
-struct StoreLocal : Directive {
-  using src_t = calyx_upcast_t<T>;
+struct StoreLocal final : public Store<T> {
+  using src_t = Store<T>::src_t;
 
   StoreLocal(var_index_t loc_idx, Operand<src_t> src, i32 offset = 0) :
-      Directive(Class::Store, GetTID()), loc_idx(loc_idx), src(src), offset(offset) {
+      Store<T>(GetTID(), src), 
+      loc_idx(loc_idx), 
+      offset(offset) {
 
   }
 
   var_index_t loc_idx;
-  Operand<src_t> src;
   i32 offset;  // struct fields
 
   std::string ToString() const final;
@@ -480,7 +492,7 @@ struct StoreLocal : Directive {
 };
 
 template<typename T>
-struct LoadGlobal : Expr {
+struct LoadGlobal final : Expr {
   using result_t = calyx_upcast_t<T>;
   LoadGlobal(var_index_t idx, std::string symbol, i32 offset = 0) :
       Expr(GetTID(), idx), symbol(std::move(symbol)), offset(offset) {
@@ -495,7 +507,7 @@ struct LoadGlobal : Expr {
   static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
-struct LoadGlobalAddr : Expr {
+struct LoadGlobalAddr final : Expr {
   using result_t = Pointer;
   LoadGlobalAddr(var_index_t idx, std::string symbol) :
           Expr(GetTID(), idx), symbol(std::move(symbol)){
@@ -510,16 +522,17 @@ struct LoadGlobalAddr : Expr {
 };
 
 template<typename T>
-struct StoreGlobal : Directive {
-  using src_t = calyx_upcast_t<T>;
+struct StoreGlobal final : public Store<T> {
+  using src_t = Store<T>::src_t;
 
   StoreGlobal(std::string symbol, Operand<src_t> src, i32 offset = 0) :
-      Directive(Class::Store, GetTID()), symbol(std::move(symbol)), src(src), offset(offset) {
+      Store<T>(GetTID(), src),
+      symbol(std::move(symbol)), 
+      offset(offset) {
 
   }
 
   std::string symbol;
-  Operand<src_t> src;
   i32 offset;  // struct fields
 
   std::string ToString() const final;
@@ -529,7 +542,7 @@ struct StoreGlobal : Directive {
 
 
 template<typename T>
-struct LoadFromPointer : Expr {
+struct LoadFromPointer final : Expr {
   using result_t = calyx_upcast_t<T>;
   
   LoadFromPointer(var_index_t idx, var_index_t ptr_idx, i32 offset = 0) :
@@ -546,16 +559,17 @@ struct LoadFromPointer : Expr {
 };
 
 template<typename T>
-struct StoreToPointer : Directive {
-  using src_t = calyx_upcast_t<T>;
+struct StoreToPointer final : public Store<T> {
+  using src_t = Store<T>::src_t;
 
   StoreToPointer(var_index_t ptr_idx, Operand<src_t> src, i32 offset = 0) :
-      Directive(Class::Store, GetTID()), ptr_idx(ptr_idx), src(src), offset(offset) {
+      Store<T>(GetTID(), src), 
+      ptr_idx(ptr_idx), 
+      offset(offset) {
 
   }
 
   var_index_t ptr_idx;
-  Operand<src_t> src;
   i32 offset;
 
   std::string ToString() const final;
@@ -565,7 +579,7 @@ struct StoreToPointer : Directive {
 
 template<typename T>
 requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
-struct Return : Directive {
+struct Return final : Directive {
   using src_t = T;
   using op_t = std::conditional_t<
     std::is_same_v<T, void>, 
@@ -590,7 +604,7 @@ struct Return : Directive {
 
 template<typename T>
 requires (is_calyx_type_v<T> || std::is_same_v<T, void>)
-struct Call : Directive {
+struct Call final : Directive {
   using result_t = T;
 
   Call(var_index_t idx, var_index_t fn_idx, arg_list_t args, arg_list_t var_args) :
@@ -628,7 +642,7 @@ struct CallLabel : Directive {
   static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
-struct Select : Branch {
+struct Select final : Branch {
   using src_t = i64;
 
   Select(var_index_t idx) :

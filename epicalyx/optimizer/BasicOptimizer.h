@@ -14,7 +14,6 @@ using namespace calyx;
 
 struct BasicOptimizer final : calyx::Backend {
 
-  // todo: function level stuff
   BasicOptimizer(Function&& function) : 
       old_function{std::move(function)},
       old_deps{FunctionDependencies::GetDependencies(old_function)},
@@ -35,15 +34,20 @@ private:
 
   struct LocalData {
     var_index_t aliases = 0;                    // local might alias another local
-    std::unique_ptr<calyx::Expr> replacement;   // replacement for LoadLocals
+    std::shared_ptr<calyx::Expr> replacement;   // replacement for LoadLocals
     pDirective store;                           // store to flush local with
   };
 
   // local replacements (loads/stores/alias loads/alias stores)
   cotyl::unordered_map<var_index_t, LocalData> locals{};
 
-  void FlushLocal(var_index_t loc_idx, LocalData&& local);
-  void FlushCurrentLocals();
+  // local replacements in next block
+  cotyl::unordered_map<block_label_t, cotyl::unordered_map<var_index_t, std::shared_ptr<calyx::Expr>>> local_final_value{};
+
+  void FlushOnBranch();
+  template<typename T>
+  requires (std::is_base_of_v<Branch, T>)
+  void DoBranch(std::unique_ptr<T>&& branch);
   void FlushAliasedLocals();
 
   // variable found location in new program

@@ -145,20 +145,28 @@ bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const LocalData& loca
   );
 }
 
-void BasicOptimizer::FlushLocal(var_index_t loc_idx, LocalData&& local) {
-  if (locals.contains(loc_idx)) {
-    if (local.store && ShouldFlushLocal(loc_idx, local)) Output(std::move(local.store));
-    locals.erase(loc_idx);
-  }
-}
-
-void BasicOptimizer::FlushCurrentLocals() {
+void BasicOptimizer::FlushOnBranch() {
   for (auto& [loc_idx, local] : locals) {
     if (local.store && ShouldFlushLocal(loc_idx, local)) {
       Output(std::move(local.store));
     }
   }
   locals.clear();
+}
+
+template<typename T>
+requires (std::is_base_of_v<Branch, T>)
+void BasicOptimizer::DoBranch(std::unique_ptr<T>&& branch) {
+  FlushOnBranch();
+  auto destinations = branch->Destinations();
+  for (const auto& dest : destinations) {
+    new_block_graph.AddNodeIfNotExists(dest, nullptr);
+    new_block_graph.AddEdge(current_new_block_idx, dest);
+    todo.insert(dest);
+  }
+  
+  Output(std::move(branch));
+  reachable = false;
 }
 
 void BasicOptimizer::FlushAliasedLocals() {
@@ -771,7 +779,7 @@ void BasicOptimizer::EmitShift(const Shift<T>& _op) {
   auto op = CopyDirective(_op);
   TryReplaceOperand(op->left);
   TryReplaceOperand(op->right);
-  
+
   if (op->right.IsImm()) {
     if (op->left.IsImm()) {
       // both are imm
@@ -883,15 +891,7 @@ void BasicOptimizer::Emit(const UnconditionalBranch& _op) {
     }
   }
 
-  // only flush locals on the unconditional branch non-linked blocks
-  FlushCurrentLocals();
-  if (!new_block_graph.Has(op->dest)) {
-    new_block_graph.AddNodeIfNotExists(op->dest, nullptr);
-    new_block_graph.AddEdge(current_new_block_idx, op->dest);
-    todo.insert(op->dest);
-  }
-  Output(std::move(op));
-  reachable = false;
+  DoBranch(std::move(op));
 }
 
 template<typename T>
@@ -976,19 +976,7 @@ void BasicOptimizer::EmitBranchCompare(const BranchCompare<T>& _op) {
 
   ResolveBranchIndirection(op->tdest);
   ResolveBranchIndirection(op->fdest);
-  FlushCurrentLocals();
-  if (!new_block_graph.Has(op->tdest)) {
-    new_block_graph.AddNodeIfNotExists(op->tdest, nullptr);
-    new_block_graph.AddEdge(current_new_block_idx, op->tdest);
-    todo.insert(op->tdest);
-  }
-  if (!new_block_graph.Has(op->fdest)) {
-    new_block_graph.AddNodeIfNotExists(op->fdest, nullptr);
-    new_block_graph.AddEdge(current_new_block_idx, op->fdest);
-    todo.insert(op->fdest);
-  }
-  Output(std::move(op));
-  reachable = false;
+  DoBranch(std::move(op));
 }
 
 void BasicOptimizer::Emit(const Select& _op) {
@@ -1010,26 +998,14 @@ void BasicOptimizer::Emit(const Select& _op) {
     }
   }
 
-  FlushCurrentLocals();
   for (auto& [val, block_idx] : op->table) {
     ResolveBranchIndirection(block_idx);
-    if (!new_block_graph.Has(block_idx)) {
-      new_block_graph.AddNodeIfNotExists(block_idx, nullptr);
-      new_block_graph.AddEdge(current_new_block_idx, block_idx);
-      todo.insert(block_idx);
-    }
   }
   if (op->_default) {
     ResolveBranchIndirection(op->_default);
-    if (!new_block_graph.Has(op->_default)) {
-      new_block_graph.AddNodeIfNotExists(op->_default, nullptr);
-      new_block_graph.AddEdge(current_new_block_idx, op->_default);
-      todo.insert(op->_default);
-    }
   }
 
-  Output(std::move(op));
-  reachable = false;
+  DoBranch(std::move(op));
 }
 
 template<typename T>

@@ -358,16 +358,16 @@ std::string LoadLocalAddr::ToString() const {
 
 template<typename T>
 std::string StoreLocal<T>::ToString() const {
-  if (src.IsVar()) {
+  if (this->src.IsVar()) {
     return cotyl::FormatStr(
       "store c%s = <%s> v%s", 
-      loc_idx, detail::type_string<T>::value, src.GetVar()
+      loc_idx, detail::type_string<T>::value, this->src.GetVar()
     );
   }
   else {
     return cotyl::FormatStr(
       "strim c%s = <%s> imm(%s)", 
-      loc_idx, detail::type_string<T>::value, src.GetImm()
+      loc_idx, detail::type_string<T>::value, this->src.GetImm()
     );
   }
 }
@@ -383,16 +383,16 @@ std::string LoadGlobalAddr::ToString() const {
 
 template<typename T>
 std::string StoreGlobal<T>::ToString() const {
-  if (src.IsVar()) {
+  if (this->src.IsVar()) {
     return cotyl::FormatStr(
       "sglob [%s] = <%s> v%s",
-      symbol, detail::type_string<T>::value, src.GetVar()
+      symbol, detail::type_string<T>::value, this->src.GetVar()
     );
   }
   else {
     return cotyl::FormatStr(
       "sglim [%s] = <%s> %s",
-      symbol, detail::type_string<T>::value, src.GetImm()
+      symbol, detail::type_string<T>::value, this->src.GetImm()
     );
   }
 }
@@ -404,16 +404,16 @@ std::string LoadFromPointer<T>::ToString() const {
 
 template<typename T>
 std::string StoreToPointer<T>::ToString() const {
-  if (src.IsVar()) {
+  if (this->src.IsVar()) {
     return cotyl::FormatStr(
       "store *v%s <-<%s> v%s",
-      ptr_idx, detail::type_string<T>::value, src.GetVar()
+      ptr_idx, detail::type_string<T>::value, this->src.GetVar()
     );
   }
   else {
     return cotyl::FormatStr(
       "strim *v%s <-<%s> imm(%s)",
-      ptr_idx, detail::type_string<T>::value, src.GetImm()
+      ptr_idx, detail::type_string<T>::value, this->src.GetImm()
     );
   }
 }
@@ -433,7 +433,7 @@ std::string Return<T>::ToString() const {
     }
     else {
       return cotyl::FormatStr(
-        "rtrni [%s]imm(%s)", 
+        "retrn [%s]imm(%s)", 
         detail::type_string<T>::value, val.GetImm()
       );
     }
