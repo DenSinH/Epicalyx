@@ -68,6 +68,7 @@ struct Emitter {
   }
 
   void SelectBlock(calyx::block_label_t id) {
+    cotyl::Assert(current_function->blocks.at(id).empty(), "Expected empty block on selection");
     reachable = true;
     current_block = id;
   }

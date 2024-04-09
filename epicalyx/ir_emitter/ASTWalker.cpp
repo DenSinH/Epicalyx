@@ -121,7 +121,7 @@ void ASTWalker::Visit(FunctionDefinitionNode& decl) {
   for (const auto& node : decl.body->stats) {
     node->Visit(*this);
   }
-  emitter.Emit<calyx::Return<void>>(0);
+  emitter.Emit<calyx::Return<void>>();
   // locals layer
   locals.PopLayer();
 
@@ -150,7 +150,10 @@ void ASTWalker::Visit(IdentifierNode& decl) {
     // branch to false block if 0, otherwise go to true block
     auto fblock = state.top().second.false_block;
     auto tblock = state.top().second.true_block;
-    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, tblock, fblock, current, calyx::CmpType::Ne, 0);
+    auto left = current;
+    EmitArithExpr<calyx::Imm>(emitter.vars[left].type, 0);
+    auto imm = current;
+    EmitBranch<calyx::BranchCompare>(emitter.vars[left].type, tblock, fblock, left, calyx::CmpType::Ne, imm);
     return;
   }
 
@@ -305,7 +308,10 @@ void ASTWalker::Visit(ArrayAccessNode& expr) {
     if (state.top().first == State::ConditionalBranch) {
       auto tblock = state.top().second.true_block;
       auto fblock = state.top().second.false_block;
-      EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, tblock, fblock, current, calyx::CmpType::Ne, 0);
+      auto left = current;
+      EmitArithExpr<calyx::Imm>(emitter.vars[left].type, 0);
+      auto imm = current;
+      EmitBranch<calyx::BranchCompare>(emitter.vars[left].type, tblock, fblock, left, calyx::CmpType::Ne, imm);
     }
   }
   else {
@@ -378,7 +384,10 @@ void ASTWalker::Visit(FunctionCallNode& expr) {
     if (state.top().first == State::ConditionalBranch) {
       auto tblock = state.top().second.true_block;
       auto fblock = state.top().second.false_block;
-      EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, tblock, fblock, current, calyx::CmpType::Ne, 0);
+      auto left = current;
+      EmitArithExpr<calyx::Imm>(emitter.vars[left].type, 0);
+      auto imm = current;
+      EmitBranch<calyx::BranchCompare>(emitter.vars[left].type, tblock, fblock, left, calyx::CmpType::Ne, imm);
     }
   }
 }
@@ -405,13 +414,16 @@ void ASTWalker::Visit(PostFixNode& expr) {
       auto type = emitter.vars[current].type;
       if (type == Emitter::Var::Type::Pointer) {
         auto var = emitter.vars[read];
-        current = emitter.EmitExpr<calyx::AddToPointerImm>(var, read, var.stride, 1);
+        auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, 1);
+        EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, read, var.stride, imm);
       }
       else if (type == Emitter::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for post-increment: struct");
       }
       else {
-        EmitArithExpr<calyx::BinopImm>(type, read, calyx::BinopType::Add, 1);
+        EmitArithExpr<calyx::Imm>(type, 1);
+        auto imm = current;
+        EmitArithExpr<calyx::Binop>(type, read, calyx::BinopType::Add, imm);
       }
 
       // write back
@@ -432,13 +444,16 @@ void ASTWalker::Visit(PostFixNode& expr) {
       auto type = emitter.vars[current].type;
       if (type == Emitter::Var::Type::Pointer) {
         auto var = emitter.vars[read];
-        current = emitter.EmitExpr<calyx::AddToPointerImm>(var, read, var.stride, -1);
+        auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, -1);
+        EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, read, var.stride, imm);
       }
       else if (type == Emitter::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for post-decrement: struct");
       }
       else {
-        EmitArithExpr<calyx::BinopImm>(type, read, calyx::BinopType::Sub, 1);
+        EmitArithExpr<calyx::Imm>(type, 1);
+        auto imm = current;
+        EmitArithExpr<calyx::Binop>(type, read, calyx::BinopType::Sub, imm);
       }
 
       // write back
@@ -459,7 +474,10 @@ void ASTWalker::Visit(PostFixNode& expr) {
   if (conditional_branch) {
     auto tblock = state.top().second.true_block;
     auto fblock = state.top().second.false_block;
-    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, tblock, fblock, current, calyx::CmpType::Ne, 0);
+    auto left = current;
+    EmitArithExpr<calyx::Imm>(emitter.vars[left].type, 0);
+    auto imm = current;
+    EmitBranch<calyx::BranchCompare>(emitter.vars[left].type, tblock, fblock, left, calyx::CmpType::Ne, imm);
   }
 }
 
@@ -514,11 +532,18 @@ void ASTWalker::Visit(UnopNode& expr) {
       if (conditional_branch) {
         auto tblock = state.top().second.true_block;
         auto fblock = state.top().second.false_block;
+
+      auto left = current;
+      EmitArithExpr<calyx::Imm>(emitter.vars[left].type, 0);
+      auto imm = current;
         // branch to false if current != 0 (if current == 0, then !current is true)
-        EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, fblock, tblock, current, calyx::CmpType::Ne, 0);
+        EmitBranch<calyx::BranchCompare>(emitter.vars[current].type, fblock, tblock, left, calyx::CmpType::Ne, imm);
       }
       else {
-        EmitCompare<calyx::CompareImm>(emitter.vars[current].type, current, calyx::CmpType::Eq, 0);
+        auto left = current;
+        EmitArithExpr<calyx::Imm>(emitter.vars[left].type, 0);
+        auto imm = current;
+        EmitCompare<calyx::Compare>(emitter.vars[left].type, left, calyx::CmpType::Eq, imm);
       }
 
       // return, no need to check for conditional branches, already handled
@@ -532,14 +557,19 @@ void ASTWalker::Visit(UnopNode& expr) {
       auto type = emitter.vars[current].type;
       calyx::var_index_t stored;
       if (type == Emitter::Var::Type::Pointer) {
-        auto var = emitter.vars[current];
-        current = emitter.EmitExpr<calyx::AddToPointerImm>(var, current, var.stride, 1);
+        auto left = current;
+        auto var = emitter.vars[left];
+        auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, 1);
+        EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, left, var.stride, imm);
       }
       else if (type == Emitter::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for pre-increment: struct");
       }
       else {
-        EmitArithExpr<calyx::BinopImm>(type, current, calyx::BinopType::Add, 1);
+        auto left = current;
+        EmitArithExpr<calyx::Imm>(type, 1);
+        auto imm = current;
+        EmitArithExpr<calyx::Binop>(type, left, calyx::BinopType::Add, imm);
       }
       stored = current;
 
@@ -564,14 +594,19 @@ void ASTWalker::Visit(UnopNode& expr) {
 
       // subtract 1
       if (type == Emitter::Var::Type::Pointer) {
-        auto var = emitter.vars[current];
-        current = emitter.EmitExpr<calyx::AddToPointerImm>(var, current, var.stride, -1);
+        auto left = current;
+        auto var = emitter.vars[left];
+        auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, -1);
+        EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, left, var.stride, imm);
       }
       else if (type == Emitter::Var::Type::Struct) {
         throw std::runtime_error("Bad expression for pre-decrement: struct");
       }
       else {
-        EmitArithExpr<calyx::BinopImm>(type, current, calyx::BinopType::Sub, 1);
+        auto left = current;
+        EmitArithExpr<calyx::Imm>(type, 1);
+        auto imm = current;
+        EmitArithExpr<calyx::Binop>(type, left, calyx::BinopType::Sub, imm);
       }
       stored = current;
 
@@ -643,7 +678,10 @@ void ASTWalker::Visit(UnopNode& expr) {
   if (conditional_branch) {
     auto tblock = state.top().second.true_block;
     auto fblock = state.top().second.false_block;
-    EmitBranch<calyx::BranchCompareImm>(emitter.vars[current].type, tblock, fblock, current, calyx::CmpType::Ne, 0);
+    auto left = current;
+    EmitArithExpr<calyx::Imm>(emitter.vars[left].type, 0);
+    auto imm = current;
+    EmitBranch<calyx::BranchCompare>(emitter.vars[left].type, tblock, fblock, left, calyx::CmpType::Ne, imm);
   }
 }
 
@@ -892,7 +930,10 @@ void ASTWalker::Visit(BinopNode& expr) {
     auto type = emitter.vars[current].type;
     auto tblock = state.top().second.true_block;
     auto fblock = state.top().second.false_block;
-    EmitBranch<calyx::BranchCompareImm>(type, tblock, fblock, current, calyx::CmpType::Ne, 0);
+    auto left = current;
+    EmitArithExpr<calyx::Imm>(type, 0);
+    auto imm = current;
+    EmitBranch<calyx::BranchCompare>(type, tblock, fblock, left, calyx::CmpType::Ne, imm);
   }
 }
 
@@ -1352,7 +1393,7 @@ void ASTWalker::Visit(ReturnNode& stat) {
     state.pop();
   }
   else {
-    emitter.Emit<calyx::Return<void>>(0);
+    emitter.Emit<calyx::Return<void>>();
   }
 }
 

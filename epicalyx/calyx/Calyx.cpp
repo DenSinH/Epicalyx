@@ -7,6 +7,7 @@
 #include "Hash.h"
 #include "Cast.h"
 #include "Format.h"
+#include "Exceptions.h"
 
 #include <iostream>
 
@@ -178,24 +179,18 @@ std::string Binop<T>::ToString() const {
     case BinopType::BinOr: op_str = "|"; break;
     case BinopType::BinXor: op_str = "^"; break;
   }
-  return cotyl::FormatStr("binop v%s = v%s %s<%s> v%s", this->idx, left_idx, op_str, detail::type_string<T>::value, right_idx);
-}
-
-template<typename T>
-requires (is_calyx_arithmetic_type_v<T>)
-std::string BinopImm<T>::ToString() const {
-  std::string op_str;
-  switch (op) {
-    case BinopType::Add: op_str = "+"; break;
-    case BinopType::Sub: op_str = "-"; break;
-    case BinopType::Mul: op_str = "*"; break;
-    case BinopType::Div: op_str = "/"; break;
-    case BinopType::Mod: op_str = "%"; break;
-    case BinopType::BinAnd: op_str = "&"; break;
-    case BinopType::BinOr: op_str = "|"; break;
-    case BinopType::BinXor: op_str = "^"; break;
+  if (right.IsVar()) {
+    return cotyl::FormatStr(
+      "binop v%s = v%s %s<%s> v%s",
+      this->idx, left_idx, op_str, detail::type_string<T>::value, right.GetVar()
+    );
   }
-  return cotyl::FormatStr("binim v%s = v%s %s<%s> %s", this->idx, left_idx, op_str, detail::type_string<T>::value, right);
+  else {
+    return cotyl::FormatStr(
+      "binim v%s = v%s %s<%s> %s", 
+      this->idx, left_idx, op_str, detail::type_string<T>::value, right.GetImm()
+    );
+  }
 }
 
 template<typename T>
@@ -206,18 +201,34 @@ std::string Shift<T>::ToString() const {
     case ShiftType::Left: op_str = "<<"; break;
     case ShiftType::Right: op_str = ">>"; break;
   }
-  return cotyl::FormatStr("shift v%s = v%s %s<%s> v%s", this->idx, left_idx, op_str, detail::type_string<T>::value, right_idx);
-}
-
-template<typename T>
-requires (is_calyx_integral_type_v<T>)
-std::string ShiftImm<T>::ToString() const {
-  std::string op_str;
-  switch (op) {
-    case ShiftType::Left: op_str = "<<"; break;
-    case ShiftType::Right: op_str = ">>"; break;
+  if (right.IsVar()) {
+    if (left.IsVar()) {
+      return cotyl::FormatStr(
+        "shift v%s = v%s %s<%s> v%s",
+        this->idx, left.GetVar(), op_str, detail::type_string<T>::value, right.GetVar()
+      );
+    }
+    else {
+      return cotyl::FormatStr(
+        "shift v%s = imm(%s) %s<%s> v%s",
+        this->idx, left.GetImm(), op_str, detail::type_string<T>::value, right.GetVar()
+      );
+    }
   }
-  return cotyl::FormatStr("shift v%s = v%s %s<%s> %s", this->idx, left_idx, op_str, detail::type_string<T>::value, right);
+  else {
+    if (left.IsVar()) {
+      return cotyl::FormatStr(
+        "shift v%s = v%s %s<%s> imm(%s)",
+        this->idx, left.GetVar(), op_str, detail::type_string<T>::value, right.GetImm()
+      );
+    }
+    else {
+      return cotyl::FormatStr(
+        "shift v%s = imm(%s) %s<%s> imm(%s)",
+        this->idx, left.GetImm(), op_str, detail::type_string<T>::value, right.GetImm()
+      );
+    }
+  }
 }
 
 static std::string cmp_string(CmpType type) {
@@ -235,24 +246,27 @@ static std::string to_string(const Pointer& ptr) {
   return cotyl::Format("%016x", ptr.value);
 }
 
-template<typename T>
-requires (is_calyx_arithmetic_ptr_type_v<T>)
-std::string Compare<T>::ToString() const {
-  return cotyl::FormatStr(
-          "cmp   v%s = v%s %s<%s> v%s",
-          this->idx, left_idx, cmp_string(op),
-          detail::type_string<T>::value, right_idx
-  );
+static std::string to_string(const Struct& ptr) {
+  throw cotyl::UnimplementedException("Struct to_string");
 }
 
 template<typename T>
 requires (is_calyx_arithmetic_ptr_type_v<T>)
-std::string CompareImm<T>::ToString() const {
+std::string Compare<T>::ToString() const {
+  if (right.IsVar()) {
     return cotyl::FormatStr(
-            "cmpim v%s = v%s %s<%s> %s",
-            this->idx, left_idx, cmp_string(op),
-            detail::type_string<T>::value, right
+        "cmp   v%s = v%s %s<%s> v%s",
+        this->idx, left_idx, cmp_string(op),
+        detail::type_string<T>::value, right.GetVar()
     );
+  }
+  else {
+    return cotyl::FormatStr(
+        "cmpim v%s = v%s %s<%s> %s",
+        this->idx, left_idx, cmp_string(op),
+        detail::type_string<T>::value, right.GetImm()
+    );
+  }
 }
 
 std::string UnconditionalBranch::ToString() const {
@@ -262,21 +276,20 @@ std::string UnconditionalBranch::ToString() const {
 template<typename T>
 requires (is_calyx_arithmetic_ptr_type_v<T>)
 std::string BranchCompare<T>::ToString() const {
-  return cotyl::FormatStr(
-          "brnch (v%s %s<%s> v%s) ? L%s : L%s",
-          left_idx, cmp_string(op), detail::type_string<T>::value, right_idx,
-          tdest, fdest
-  );
-}
-
-template<typename T>
-requires (is_calyx_arithmetic_ptr_type_v<T>)
-std::string BranchCompareImm<T>::ToString() const {
-  return cotyl::FormatStr(
-          "brnch (v%s %s<%s> imm(%s)) ? L%s : L%s",
-          left_idx, cmp_string(op), detail::type_string<T>::value, right,
-          tdest, fdest
-  );
+  if (right.IsVar()) {
+    return cotyl::FormatStr(
+        "brnch (v%s %s<%s> v%s) ? L%s : L%s",
+        left_idx, cmp_string(op), detail::type_string<T>::value, right.GetVar(),
+        tdest, fdest
+    );
+  }
+  else {
+    return cotyl::FormatStr(
+        "brnch (v%s %s<%s> imm(%s)) ? L%s : L%s",
+        left_idx, cmp_string(op), detail::type_string<T>::value, right.GetImm(),
+        tdest, fdest
+    );
+  }
 }
 
 std::string Select::ToString() const {
@@ -286,11 +299,35 @@ std::string Select::ToString() const {
 template<typename T>
 requires (is_calyx_integral_type_v<T>)
 std::string AddToPointer<T>::ToString() const {
-  return cotyl::FormatStr("ptrad v%s = v%s + %s * v%s", this->idx, ptr_idx, stride, right_idx);
-}
-
-std::string AddToPointerImm::ToString() const {
-  return cotyl::FormatStr("paddi v%s = v%s + %s * imm(%s)", this->idx, ptr_idx, stride, right);
+  if (ptr.IsVar()) {
+    if (right.IsVar()) {
+      return cotyl::FormatStr(
+        "ptrad v%s = v%s + %s * v%s", 
+        this->idx, ptr.GetVar(), stride, right.GetVar()
+      );
+    }
+    else {
+      return cotyl::FormatStr(
+        "paddi v%s = v%s + %s * imm(%s)", 
+        this->idx, ptr.GetVar(), stride, right.GetImm()
+      );
+    }
+  }
+  else {
+    if (right.IsVar()) {
+      return cotyl::FormatStr(
+        "ptrad v%s = %s + %s * v%s", 
+        this->idx, ptr.GetImm(), stride, right.GetVar()
+      );
+    }
+    else {
+      return cotyl::FormatStr(
+        "paddi v%s = %s + %s * imm(%s)", 
+        this->idx, ptr.GetImm(), stride, right.GetImm()
+      );
+    }
+  }
+  
 }
 
 template<typename T>
@@ -321,7 +358,18 @@ std::string LoadLocalAddr::ToString() const {
 
 template<typename T>
 std::string StoreLocal<T>::ToString() const {
-  return cotyl::FormatStr("store c%s = <%s> v%s", loc_idx, detail::type_string<T>::value, src);
+  if (src.IsVar()) {
+    return cotyl::FormatStr(
+      "store c%s = <%s> v%s", 
+      loc_idx, detail::type_string<T>::value, src.GetVar()
+    );
+  }
+  else {
+    return cotyl::FormatStr(
+      "strim c%s = <%s> imm(%s)", 
+      loc_idx, detail::type_string<T>::value, src.GetImm()
+    );
+  }
 }
 
 template<typename T>
@@ -335,7 +383,18 @@ std::string LoadGlobalAddr::ToString() const {
 
 template<typename T>
 std::string StoreGlobal<T>::ToString() const {
-  return cotyl::FormatStr("sglob [%s] = <%s> v%s", symbol, detail::type_string<T>::value, src);
+  if (src.IsVar()) {
+    return cotyl::FormatStr(
+      "sglob [%s] = <%s> v%s",
+      symbol, detail::type_string<T>::value, src.GetVar()
+    );
+  }
+  else {
+    return cotyl::FormatStr(
+      "sglim [%s] = <%s> %s",
+      symbol, detail::type_string<T>::value, src.GetImm()
+    );
+  }
 }
 
 template<typename T>
@@ -345,7 +404,18 @@ std::string LoadFromPointer<T>::ToString() const {
 
 template<typename T>
 std::string StoreToPointer<T>::ToString() const {
-  return cotyl::FormatStr("store *v%s <-<%s> v%s", ptr_idx, detail::type_string<T>::value, src);
+  if (src.IsVar()) {
+    return cotyl::FormatStr(
+      "store *v%s <-<%s> v%s",
+      ptr_idx, detail::type_string<T>::value, src.GetVar()
+    );
+  }
+  else {
+    return cotyl::FormatStr(
+      "strim *v%s <-<%s> imm(%s)",
+      ptr_idx, detail::type_string<T>::value, src.GetImm()
+    );
+  }
 }
 
 template<typename T>
@@ -355,7 +425,18 @@ std::string Return<T>::ToString() const {
     return "retrn void";
   }
   else {
-    return cotyl::FormatStr("retrn [%s]v%s", detail::type_string<T>::value, idx);
+    if (val.IsVar()) {
+      return cotyl::FormatStr(
+        "retrn [%s]v%s", 
+        detail::type_string<T>::value, val.GetVar()
+      );
+    }
+    else {
+      return cotyl::FormatStr(
+        "rtrni [%s]imm(%s)", 
+        detail::type_string<T>::value, val.GetImm()
+      );
+    }
   }
 }
 
@@ -434,32 +515,14 @@ void Binop<T>::Emit(Backend& backend) {
 }
 
 template<typename T>
-requires (is_calyx_arithmetic_type_v<T>)
-void BinopImm<T>::Emit(Backend& backend) {
-  backend.Emit(*this);
-}
-
-template<typename T>
 requires (is_calyx_integral_type_v<T>)
 void Shift<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
 template<typename T>
-requires (is_calyx_integral_type_v<T>)
-void ShiftImm<T>::Emit(Backend& backend) {
-  backend.Emit(*this);
-}
-
-template<typename T>
 requires (is_calyx_arithmetic_ptr_type_v<T>)
 void Compare<T>::Emit(Backend& backend) {
-  backend.Emit(*this);
-}
-
-template<typename T>
-requires (is_calyx_arithmetic_ptr_type_v<T>)
-void CompareImm<T>::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
@@ -474,12 +537,6 @@ void BranchCompare<T>::Emit(Backend& backend) {
 }
 
 template<typename T>
-requires (is_calyx_arithmetic_ptr_type_v<T>)
-void BranchCompareImm<T>::Emit(Backend& backend) {
-  backend.Emit(*this);
-}
-
-template<typename T>
 requires (is_calyx_arithmetic_type_v<T>)
 void Unop<T>::Emit(Backend& backend) {
   backend.Emit(*this);
@@ -488,10 +545,6 @@ void Unop<T>::Emit(Backend& backend) {
 template<typename T>
 requires (is_calyx_integral_type_v<T>)
 void AddToPointer<T>::Emit(Backend& backend) {
-  backend.Emit(*this);
-}
-
-void AddToPointerImm::Emit(Backend& backend) {
   backend.Emit(*this);
 }
 
@@ -568,21 +621,10 @@ template struct Binop<u64>;
 template struct Binop<float>;
 template struct Binop<double>;
 
-template struct BinopImm<i32>;
-template struct BinopImm<u32>;
-template struct BinopImm<i64>;
-template struct BinopImm<u64>;
-template struct BinopImm<float>;
-template struct BinopImm<double>;
-
 template struct Shift<i32>;
 template struct Shift<u32>;
 template struct Shift<i64>;
 template struct Shift<u64>;
-template struct ShiftImm<i32>;
-template struct ShiftImm<u32>;
-template struct ShiftImm<i64>;
-template struct ShiftImm<u64>;
 
 template struct Compare<i32>;
 template struct Compare<u32>;
@@ -592,14 +634,6 @@ template struct Compare<float>;
 template struct Compare<double>;
 template struct Compare<Pointer>;
 
-template struct CompareImm<i32>;
-template struct CompareImm<u32>;
-template struct CompareImm<i64>;
-template struct CompareImm<u64>;
-template struct CompareImm<float>;
-template struct CompareImm<double>;
-template struct CompareImm<Pointer>;
-
 template struct BranchCompare<i32>;
 template struct BranchCompare<u32>;
 template struct BranchCompare<i64>;
@@ -607,14 +641,6 @@ template struct BranchCompare<u64>;
 template struct BranchCompare<float>;
 template struct BranchCompare<double>;
 template struct BranchCompare<Pointer>;
-
-template struct BranchCompareImm<i32>;
-template struct BranchCompareImm<u32>;
-template struct BranchCompareImm<i64>;
-template struct BranchCompareImm<u64>;
-template struct BranchCompareImm<float>;
-template struct BranchCompareImm<double>;
-template struct BranchCompareImm<Pointer>;
 
 template struct Call<i32>;
 template struct Call<u32>;
@@ -664,6 +690,7 @@ template struct Imm<i64>;
 template struct Imm<u64>;
 template struct Imm<float>;
 template struct Imm<double>;
+template struct Imm<Pointer>;
 
 template struct LoadLocal<i8>;
 template struct LoadLocal<u8>;

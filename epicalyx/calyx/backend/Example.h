@@ -39,19 +39,11 @@ struct Example : Backend {
   template<typename T>
   void EmitBinop(const Binop<T>& op);
   template<typename T>
-  void EmitBinopImm(const BinopImm<T>& op);
-  template<typename T>
   void EmitShift(const Shift<T>& op);
-  template<typename T>
-  void EmitShiftImm(const ShiftImm<T>& op);
   template<typename T>
   void EmitCompare(const Compare<T>& op);
   template<typename T>
-  void EmitCompareImm(const CompareImm<T>& op);
-  template<typename T>
   void EmitBranchCompare(const BranchCompare<T>& op);
-  template<typename T>
-  void EmitBranchCompareImm(const BranchCompareImm<T>& op);
   template<typename T>
   void EmitAddToPointer(const AddToPointer<T>& op);
 

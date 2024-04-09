@@ -75,7 +75,7 @@ void ExampleRegSpace::Emit(const LoadLocalAddr& op) {
 template<typename T>
 void ExampleRegSpace::EmitStoreLocal(const StoreLocal<T>& op) {
   OutputLocal<T>(op.loc_idx);
-  OutputVar<calyx_op_type(op)::src_t>(op.src);
+  if (op.src.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.src.GetVar());
 }
 
 template<typename T>
@@ -89,7 +89,7 @@ void ExampleRegSpace::Emit(const LoadGlobalAddr& op) {
 
 template<typename T>
 void ExampleRegSpace::EmitStoreGlobal(const StoreGlobal<T>& op) {
-  OutputVar<calyx_op_type(op)::src_t>(op.src);
+  if (op.src.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.src.GetVar());
 }
 
 template<typename T>
@@ -100,7 +100,7 @@ void ExampleRegSpace::EmitLoadFromPointer(const LoadFromPointer<T>& op) {
 
 template<typename T>
 void ExampleRegSpace::EmitStoreToPointer(const StoreToPointer<T>& op) {
-  OutputVar<calyx_op_type(op)::src_t>(op.src);
+  if (op.src.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.src.GetVar());
   OutputVar<calyx::Pointer>(op.ptr_idx);
 }
 
@@ -122,7 +122,7 @@ void ExampleRegSpace::EmitCallLabel(const CallLabel<T>& op) {
 template<typename T>
 void ExampleRegSpace::EmitReturn(const Return<T>& op) {
   if constexpr(!std::is_same_v<T, void>) {
-    OutputVar<calyx_op_type(op)::src_t>(op.idx);
+    if (op.val.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.val.GetVar());
   }
 }
 
@@ -141,39 +141,21 @@ template<typename T>
 void ExampleRegSpace::EmitBinop(const Binop<T>& op) {
   OutputExpr<calyx_op_type(op)::result_t>(op);
   OutputVar<calyx_op_type(op)::src_t>(op.left_idx);
-  OutputVar<calyx_op_type(op)::src_t>(op.right_idx);
-}
-
-template<typename T>
-void ExampleRegSpace::EmitBinopImm(const BinopImm<T>& op) {
-  OutputExpr<calyx_op_type(op)::result_t>(op);
-  OutputVar<calyx_op_type(op)::src_t>(op.left_idx);
+  if (op.right.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.right.GetVar());
 }
 
 template<typename T>
 void ExampleRegSpace::EmitShift(const Shift<T>& op) {
   OutputExpr<calyx_op_type(op)::result_t>(op);
-  OutputVar<calyx_op_type(op)::src_t>(op.left_idx);
-  OutputVar<calyx_op_type(op)::shift_t>(op.right_idx);
-}
-
-template<typename T>
-void ExampleRegSpace::EmitShiftImm(const ShiftImm<T>& op) {
-  OutputExpr<calyx_op_type(op)::result_t>(op);
-  OutputVar<calyx_op_type(op)::src_t>(op.left_idx);
+  if (op.left.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.left.GetVar());
+  if (op.right.IsVar()) OutputVar<calyx_op_type(op)::shift_t>(op.right.GetVar());
 }
 
 template<typename T>
 void ExampleRegSpace::EmitCompare(const Compare<T>& op) {
   OutputExpr<calyx_op_type(op)::result_t>(op);
   OutputVar<calyx_op_type(op)::src_t>(op.left_idx);
-  OutputVar<calyx_op_type(op)::src_t>(op.right_idx);
-}
-
-template<typename T>
-void ExampleRegSpace::EmitCompareImm(const CompareImm<T>& op) {
-  OutputExpr<calyx_op_type(op)::result_t>(op);
-  OutputVar<calyx_op_type(op)::src_t>(op.left_idx);
+  if (op.right.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.right.GetVar());
 }
 
 void ExampleRegSpace::Emit(const UnconditionalBranch& op) {
@@ -183,12 +165,7 @@ void ExampleRegSpace::Emit(const UnconditionalBranch& op) {
 template<typename T>
 void ExampleRegSpace::EmitBranchCompare(const BranchCompare<T>& op) {
   OutputVar<calyx_op_type(op)::src_t>(op.left_idx);
-  OutputVar<calyx_op_type(op)::src_t>(op.right_idx);
-}
-
-template<typename T>
-void ExampleRegSpace::EmitBranchCompareImm(const BranchCompareImm<T>& op) {
-  OutputVar<calyx_op_type(op)::src_t>(op.left_idx);
+  if (op.right.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.right.GetVar());
 }
 
 void ExampleRegSpace::Emit(const Select& op) {
@@ -198,13 +175,8 @@ void ExampleRegSpace::Emit(const Select& op) {
 template<typename T>
 void ExampleRegSpace::EmitAddToPointer(const AddToPointer<T>& op) {
   OutputExpr<calyx::Pointer>(op);
-  OutputVar<calyx::Pointer>(op.ptr_idx);
-  OutputVar<calyx_op_type(op)::offset_t>(op.right_idx);
-}
-
-void ExampleRegSpace::Emit(const AddToPointerImm& op) {
-  OutputExpr<calyx::Pointer>(op);
-  OutputVar<calyx::Pointer>(op.ptr_idx);
+  if (op.ptr.IsVar()) OutputVar<calyx::Pointer>(op.ptr.GetVar());
+  if (op.right.IsVar()) OutputVar<calyx_op_type(op)::offset_t>(op.right.GetVar());
 }
 
 #define BACKEND_NAME ExampleRegSpace

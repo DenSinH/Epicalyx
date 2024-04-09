@@ -257,7 +257,13 @@ void Interpreter::EmitStoreLocal(const StoreLocal<T>& op) {
   else {
     // works the same for pointers
     using src_t = calyx_op_type(op)::src_t;
-    T value = (T)std::get<src_t>(vars.Get(op.src));
+    T value;
+    if (op.src.IsVar()) {
+      value = (T)std::get<src_t>(vars.Get(op.src.GetVar()));
+    }
+    else {
+      value = (T)op.src.GetImm();
+    }
     memcpy(&stack[locals.Get(op.loc_idx).first], &value, sizeof(T));
   }
 }
@@ -288,7 +294,13 @@ void Interpreter::EmitStoreGlobal(const StoreGlobal<T>& op) {
   else {
     using src_t = calyx_op_type(op)::src_t;
     cotyl::Assert(global_data[globals.at(op.symbol)].size() == sizeof(T));
-    T value = (T)std::get<src_t>(vars.Get(op.src));
+    T value;
+    if (op.src.IsVar()) {
+      value = (T)std::get<src_t>(vars.Get(op.src.GetVar()));
+    }
+    else {
+      value = (T)op.src.GetImm();
+    }
     std::memcpy(global_data[globals.at(op.symbol)].data(), &value, sizeof(T));
   }
 }
@@ -324,7 +336,13 @@ void Interpreter::EmitStoreToPointer(const StoreToPointer<T>& op) {
   }
   else {
     using src_t = calyx_op_type(op)::src_t;
-    T value = std::get<src_t>(vars.Get(op.src));
+    T value;
+    if (op.src.IsVar()) {
+      value = (T)std::get<src_t>(vars.Get(op.src.GetVar()));
+    }
+    else {
+      value = (T)op.src.GetImm();
+    }
 
     if (std::holds_alternative<i64>(pointer)) {
       const auto pval = std::get<i64>(pointer);
@@ -365,25 +383,41 @@ void Interpreter::EmitCallLabel(const CallLabel<T>& op) {
 
 template<typename T>
 void Interpreter::EmitReturn(const Return<T>& op) {
-  auto top_vars = vars.Top();
-  auto top_locals = locals.Top();
-  locals.PopLayer();
-  vars.PopLayer();
-
-  if (call_stack.empty()) {
-    returned = top_vars.at(op.idx);
+  if constexpr(std::is_same_v<T, Struct>) {
+    throw cotyl::UnimplementedException("Struct return");
   }
   else {
-    auto [_pos, return_to, _, __] = call_stack.top();
-    call_stack.pop();
-    pos = _pos;
-    if constexpr(!std::is_same_v<T, void>) {
-      vars.Set(return_to, top_vars.at(op.idx));
-    }
-  }
+    auto top_vars = vars.Top();
+    auto top_locals = locals.Top();
+    locals.PopLayer();
+    vars.PopLayer();
 
-  for (const auto& [idx, local] : top_locals) {
-    stack.resize(stack.size() - local.second);
+    if (call_stack.empty()) {
+      if constexpr(!std::is_same_v<T, void>) {
+        if (op.val.IsVar()) {
+          returned = top_vars.at(op.val.GetVar());
+        }
+        else {
+          returned = op.val.GetImm();
+        }
+      }
+      else {
+        throw std::runtime_error("void return from main");
+      }
+    }
+    else {
+      auto [_pos, return_to, _, __] = call_stack.top();
+      call_stack.pop();
+      pos = _pos;
+      if constexpr(!std::is_same_v<T, void>) {
+        if (op.val.IsVar()) vars.Set(return_to, top_vars.at(op.val.GetVar()));
+        else vars.Set(return_to, op.val.GetImm());
+      }
+    }
+
+    for (const auto& [idx, local] : top_locals) {
+      stack.resize(stack.size() - local.second);
+    }
   }
 }
 
@@ -414,7 +448,14 @@ template<typename T>
 void Interpreter::EmitBinop(const Binop<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   T left = std::get<T>(vars.Get(op.left_idx));
-  T right = std::get<T>(vars.Get(op.right_idx));
+  T right;
+  if (op.right.IsVar()) {
+    right = std::get<T>(vars.Get(op.right.GetVar()));
+  }
+  else {
+    right = op.right.GetImm();
+  }
+
   T result;
   switch (op.op) {
     case BinopType::Add: result = left + right; break;
@@ -462,60 +503,23 @@ void Interpreter::EmitBinop(const Binop<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitBinopImm(const BinopImm<T>& op) {
-//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
-  T left = std::get<T>(vars.Get(op.left_idx));
-  T result;
-  switch (op.op) {
-    case BinopType::Add: result = left + op.right; break;
-    case BinopType::Sub: result = left - op.right; break;
-    case BinopType::Mul: result = left * op.right; break;
-    case BinopType::Div: result = left / op.right; break;
-    case BinopType::Mod: {
-      if constexpr(std::is_integral_v<T>) {
-        result = left % op.right;
-        break;
-      }
-      else {
-        throw std::runtime_error("Float operands for mod expression");
-      }
-    }
-    case BinopType::BinAnd:{
-      if constexpr(std::is_integral_v<T>) {
-        result = left & op.right;
-        break;
-      }
-      else {
-        throw std::runtime_error("Float operands for bin and expression");
-      }
-    }
-    case BinopType::BinOr: {
-      if constexpr(std::is_integral_v<T>) {
-        result = left | op.right;
-        break;
-      }
-      else {
-        throw std::runtime_error("Float operands for bin or expression");
-      }
-    }
-    case BinopType::BinXor:{
-      if constexpr(std::is_integral_v<T>) {
-        result = left ^ op.right;
-        break;
-      }
-      else {
-        throw std::runtime_error("Float operands for bin xor expression");
-      }
-    }
-  }
-  vars.Set(op.idx, result);
-}
-
-template<typename T>
 void Interpreter::EmitShift(const Shift<T>& op) {
 //  cotyl::Assert(!vars.contains(op.idx), op.ToString());
-  T left = std::get<T>(vars.Get(op.left_idx));
-  auto right = std::get<calyx_op_type(op)::shift_t>(vars.Get(op.right_idx));
+  T left;
+  calyx_op_type(op)::shift_t right;
+  if (op.left.IsVar()) {
+    left = std::get<T>(vars.Get(op.left.GetVar()));
+  }
+  else {
+    left = op.left.GetImm();
+  }
+  if (op.right.IsVar()) {
+    right = std::get<calyx_op_type(op)::shift_t>(vars.Get(op.right.GetVar()));
+  }
+  else {
+    right = op.right.GetImm();
+  }
+  
   switch (op.op) {
     case calyx::ShiftType::Left: {
       left <<= right;
@@ -530,26 +534,15 @@ void Interpreter::EmitShift(const Shift<T>& op) {
 }
 
 template<typename T>
-void Interpreter::EmitShiftImm(const ShiftImm<T>& op) {
-//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
-  T left = std::get<T>(vars.Get(op.left_idx));
-  switch (op.op) {
-    case calyx::ShiftType::Left: {
-      left <<= op.right;
-      break;
-    }
-    case calyx::ShiftType::Right: {
-      left >>= op.right;
-      break;
-    }
-  }
-  vars.Set(op.idx, left);
-}
-
-template<typename T>
 void Interpreter::EmitCompare(const Compare<T>& op) {
   T left = std::get<T>(vars.Get(op.left_idx));
-  T right = std::get<T>(vars.Get(op.right_idx));
+  T right;
+  if (op.right.IsVar()) {
+    right = std::get<T>(vars.Get(op.right.GetVar()));
+  }
+  else {
+    right = op.right.GetImm();
+  }
   calyx_op_type(op)::result_t result;
 
   if constexpr(std::is_same_v<T, calyx::Pointer>) {
@@ -584,43 +577,6 @@ void Interpreter::EmitCompare(const Compare<T>& op) {
   vars.Set(op.idx, result);
 }
 
-template<typename T>
-void Interpreter::EmitCompareImm(const CompareImm<T>& op) {
-  T left = std::get<T>(vars.Get(op.left_idx));
-  calyx_op_type(op)::result_t result;
-
-  if constexpr(std::is_same_v<T, calyx::Pointer>) {
-    auto lptr = ReadPointer(left.value);
-    auto rptr = ReadPointer(op.right.value);
-    if (std::holds_alternative<i64>(lptr) && std::holds_alternative<i64>(rptr)) {
-      auto lval = std::get<i64>(lptr);
-      auto rval = std::get<i64>(rptr);
-      switch (op.op) {
-        case CmpType::Eq: result = lval == rval; break;
-        case CmpType::Ne: result = lval != rval; break;
-        case CmpType::Lt: result = lval <  rval; break;
-        case CmpType::Le: result = lval <= rval; break;
-        case CmpType::Gt: result = lval >  rval; break;
-        case CmpType::Ge: result = lval >= rval; break;
-      }
-    }
-    else {
-      throw cotyl::UnimplementedException("symbol compare");
-    }
-  }
-  else {
-    switch (op.op) {
-      case CmpType::Eq: result = left == op.right; break;
-      case CmpType::Ne: result = left != op.right; break;
-      case CmpType::Lt: result = left <  op.right; break;
-      case CmpType::Le: result = left <= op.right; break;
-      case CmpType::Gt: result = left >  op.right; break;
-      case CmpType::Ge: result = left >= op.right; break;
-    }
-  }
-  vars.Set(op.idx, result);
-}
-
 void Interpreter::Emit(const UnconditionalBranch& op) {
   pos.pos.first  = op.dest;
   pos.pos.second = 0;
@@ -629,52 +585,18 @@ void Interpreter::Emit(const UnconditionalBranch& op) {
 template<typename T>
 void Interpreter::EmitBranchCompare(const BranchCompare<T>& op) {
   T left = std::get<T>(vars.Get(op.left_idx));
-  T right = std::get<T>(vars.Get(op.right_idx));
+  T right;
+  if (op.right.IsVar()) {
+    right = std::get<T>(vars.Get(op.right.GetVar()));
+  }
+  else {
+    right = op.right.GetImm();
+  }
   bool branch;
 
   if constexpr(std::is_same_v<T, Pointer>) {
     auto lptr = ReadPointer(left.value);
     auto rptr = ReadPointer(right.value);
-    if (std::holds_alternative<i64>(lptr) && std::holds_alternative<i64>(rptr)) {
-      auto lval = std::get<i64>(lptr);
-      auto rval = std::get<i64>(rptr);
-      switch (op.op) {
-        case CmpType::Eq: branch = lval == rval; break;
-        case CmpType::Ne: branch = lval != rval; break;
-        case CmpType::Lt: branch = lval <  rval; break;
-        case CmpType::Le: branch = lval <= rval; break;
-        case CmpType::Gt: branch = lval >  rval; break;
-        case CmpType::Ge: branch = lval >= rval; break;
-      }
-    }
-    else {
-      throw cotyl::UnimplementedException("symbol compare");
-    }
-  }
-  else {
-    switch (op.op) {
-      case calyx::CmpType::Eq: branch = left == right; break;
-      case calyx::CmpType::Ne: branch = left != right; break;
-      case calyx::CmpType::Gt: branch = left >  right; break;
-      case calyx::CmpType::Ge: branch = left >= right; break;
-      case calyx::CmpType::Lt: branch = left <  right; break;
-      case calyx::CmpType::Le: branch = left <= right; break;
-    }
-  }
-
-  pos.pos.first = branch ? op.tdest : op.fdest;
-  pos.pos.second = 0;
-}
-
-template<typename T>
-void Interpreter::EmitBranchCompareImm(const BranchCompareImm<T>& op) {
-  T left = std::get<T>(vars.Get(op.left_idx));
-  T right = op.right;
-  bool branch;
-
-  if constexpr(std::is_same_v<T, Pointer>) {
-    auto lptr = ReadPointer(left.value);
-    auto rptr = ReadPointer(op.right.value);
     if (std::holds_alternative<i64>(lptr) && std::holds_alternative<i64>(rptr)) {
       auto lval = std::get<i64>(lptr);
       auto rval = std::get<i64>(rptr);
@@ -721,25 +643,23 @@ void Interpreter::Emit(const Select& op) {
 
 template<typename T>
 void Interpreter::EmitAddToPointer(const AddToPointer<T>& op) {
-  calyx::Pointer left = std::get<calyx::Pointer>(vars.Get(op.ptr_idx));
-  const auto lptr = ReadPointer(left.value);
-  auto right = std::get<calyx_op_type(op)::offset_t>(vars.Get(op.right_idx));
-  calyx::Pointer result;
-  if (std::holds_alternative<i64>(lptr)) {
-    result = MakePointer(std::get<i64>(lptr) + (i64)op.stride * (i64)right);
+  calyx::Pointer left;
+  if (op.ptr.IsVar()) {
+    left = std::get<calyx::Pointer>(vars.Get(op.ptr.GetVar()));
   }
   else {
-    auto pval = std::get<calyx::label_offset_t>(lptr);
-    result = MakePointer(calyx::label_offset_t{pval.label, pval.offset + (i64) op.stride * (i64) right});
+    left = op.ptr.GetImm();
   }
-  vars.Set(op.idx, result);
-}
-
-void Interpreter::Emit(const AddToPointerImm& op) {
-  calyx::Pointer left = std::get<calyx::Pointer>(vars.Get(op.ptr_idx));
   const auto lptr = ReadPointer(left.value);
-  calyx_op_type(op)::offset_t right = op.right;
+  calyx_op_type(op)::offset_t right;
+  if (op.right.IsVar()) {
+    right = std::get<calyx_op_type(op)::offset_t>(vars.Get(op.right.GetVar()));
+  }
+  else {
+    right = op.right.GetImm();
+  }
   calyx::Pointer result;
+
   if (std::holds_alternative<i64>(lptr)) {
     result = MakePointer(std::get<i64>(lptr) + (i64)op.stride * (i64)right);
   }
