@@ -8,31 +8,21 @@
 namespace epi {
 
 static void NullifyUnusedLocals(calyx::Function& func, FunctionDependencies& deps) {
-  std::vector<var_index_t> to_remove{};
-
   // remove unused locals
-  for (const auto& [loc_idx, local] : func.locals) {
-    if (deps.local_graph.contains(loc_idx)) {
-      const auto& loc_data = deps.local_graph.at(loc_idx);
-      bool local_unread = std::all_of(loc_data.reads.begin(), loc_data.reads.end(), [&](const auto& pos) {
-        return func.blocks.at(pos.first)[pos.second] == nullptr;
-      });
-      if (local_unread) {
-        // local is never read/aliased
-        // remove all local writes
-        for (const auto& pos : loc_data.writes) {
-          func.blocks.at(pos.first)[pos.second] = nullptr;
-        }
-        to_remove.emplace_back(loc_idx);
+  for (const auto& [loc_idx, local] : deps.local_graph) {
+    bool local_unread = std::all_of(local.reads.begin(), local.reads.end(), [&](const auto& pos) {
+      return func.blocks.at(pos.first)[pos.second] == nullptr;
+    });
+    if (local_unread) {
+      // local is never read/aliased
+      // remove all local writes
+      for (const auto& pos : local.writes) {
+        func.blocks.at(pos.first)[pos.second] = nullptr;
+      }
+      if (!func.locals.at(loc_idx).arg_idx.has_value()) {
+        func.locals.erase(loc_idx);
       }
     }
-    else if (!local.arg_idx.has_value()) {
-      to_remove.emplace_back(loc_idx);
-    }
-  }
-
-  for (const auto& loc_idx : to_remove) {
-    func.locals.erase(loc_idx);
   }
 }
 
