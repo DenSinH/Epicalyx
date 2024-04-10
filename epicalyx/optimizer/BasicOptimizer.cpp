@@ -146,10 +146,12 @@ bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const LocalData& loca
 }
 
 void BasicOptimizer::FlushOnBranch() {
+  auto& final_values = local_final_values[current_new_block_idx];
   for (auto& [loc_idx, local] : locals) {
     if (local.store && ShouldFlushLocal(loc_idx, local)) {
       Output(std::move(local.store));
     }
+    final_values.insert_or_assign(loc_idx, std::move(local.replacement));
   }
   locals.clear();
 }
@@ -235,7 +237,7 @@ bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
 }
 
 
-void BasicOptimizer::ResolveBranchIndirection(block_label_t& dest) {
+void BasicOptimizer::ResolveBranchIndirection(block_label_t& dest) const {
   cotyl::unordered_set<block_label_t> found{dest};
 
   while (old_function.blocks.at(dest).size() == 1) {
@@ -252,6 +254,12 @@ void BasicOptimizer::ResolveBranchIndirection(block_label_t& dest) {
     // tight infinite loop of single branch blocks
     if (found.contains(dest)) break;
     found.emplace(dest);
+  }
+}
+
+void BasicOptimizer::ResolveBlockLinks(block_label_t& block_idx) const {
+  while (block_links.contains(block_idx)) {
+    block_idx = block_links.at(block_idx).first;
   }
 }
 
@@ -355,7 +363,6 @@ Function&& BasicOptimizer::Optimize() {
     bool block_finished;
     do {
       block_finished = true;
-      block_links.emplace(current_old_pos.first, func_pos_t{current_new_block_idx, current_block->size()});
       const auto block = current_old_pos.first;
       current_old_pos.second = 0;
       for (const auto& directive : old_function.blocks.at(block)) {
@@ -412,6 +419,58 @@ void BasicOptimizer::EmitCast(const Cast<To, From>& _op) {
 }
 
 template<typename T>
+bool BasicOptimizer::TryPropagateLocalReplacement(const LoadLocal<T>& op) {
+  // try to find local replacement from previous blocks
+  // only for non-aliased locals
+  if (old_deps.local_graph.at(op.loc_idx).aliased_by.empty()) {
+    local_replacement_t repl = nullptr;
+    for (const auto& block_idx : old_deps.block_graph.At(current_new_block_idx).from) {
+      auto new_block_idx = block_idx;
+      ResolveBlockLinks(new_block_idx);
+      if (!local_final_values.contains(new_block_idx)) {
+        // no old value for block, can't check validity on other
+        // branches, so no replacement
+        // also captures the case where the target block is 
+        // the current block, or loops, where the topological
+        // ordering of emitting makes it so the from idx
+        // block will not yet have a local_final_values
+        repl = nullptr;
+        break;
+      }
+      auto& final_values = local_final_values.at(new_block_idx);
+      if (!final_values.contains(op.loc_idx)) {
+        // no old value for local in block, can't check validity on
+        // other branches, no replacement
+        repl = nullptr;
+        break;
+      }
+      auto& candidate = final_values.at(op.loc_idx);
+      if (!repl) {
+        // first replacement candidate
+        repl = candidate;
+      }
+      else if (repl != candidate) {
+        // two different candidates, skip...
+        repl = nullptr;
+        break;
+      }
+    }
+    if (repl) {
+      // found replacement, emit and store / propagate final value
+      locals.emplace(op.loc_idx, LocalData{
+          .aliases = 0,
+          .replacement = repl,
+          .store = nullptr
+      });
+      repl->idx = op.idx;
+      repl->Emit(*this);
+      return true;
+    }
+  }
+  return false;
+}
+
+template<typename T>
 void BasicOptimizer::EmitLoadLocal(const LoadLocal<T>& op) {
   if (locals.contains(op.loc_idx)) {
     // local value stored in IR var
@@ -420,12 +479,14 @@ void BasicOptimizer::EmitLoadLocal(const LoadLocal<T>& op) {
     repl->Emit(*this);
   }
   else {
+    if (TryPropagateLocalReplacement(op)) return;
+
     // we can store this value to the locals, though without
     // a "store" directive
     if constexpr(!std::is_same_v<T, Struct>) {
       locals.emplace(op.loc_idx, LocalData{
           .aliases = 0,
-          .replacement = std::make_unique<Cast<T, calyx_op_type(op)::result_t>>(0, op.idx),
+          .replacement = std::make_shared<Cast<T, calyx_op_type(op)::result_t>>(0, op.idx),
           .store = nullptr
       });
     }
@@ -456,7 +517,7 @@ void BasicOptimizer::EmitStoreLocal(const StoreLocal<T>& _op) {
       const auto loc_idx = op->loc_idx;  // op will be moved when assigning
       locals[loc_idx] = LocalData{
               .aliases = aliases,
-              .replacement = std::make_unique<Cast<T, calyx_op_type(*op)::src_t>>(0, src),
+              .replacement = std::make_shared<Cast<T, calyx_op_type(*op)::src_t>>(0, src),
               .store = std::move(op)
       };
     }
@@ -470,7 +531,7 @@ void BasicOptimizer::EmitStoreLocal(const StoreLocal<T>& _op) {
       const auto loc_idx = op->loc_idx;  // op will be moved when assigning
       locals[loc_idx] = LocalData{
               .aliases = 0,
-              .replacement = std::make_unique<Imm<calyx_op_type(*op)::src_t>>(0, (T)src),
+              .replacement = std::make_shared<Imm<calyx_op_type(*op)::src_t>>(0, (T)src),
               .store = std::move(op)
       };
       return;
@@ -542,7 +603,7 @@ void BasicOptimizer::EmitStoreToPointer(const StoreToPointer<T>& _op) {
         // replace alias
         locals[alias] = LocalData{
                 .aliases = aliases,
-                .replacement = std::make_unique<Cast<T, calyx_op_type(*op)::src_t>>(0, src),
+                .replacement = std::make_shared<Cast<T, calyx_op_type(*op)::src_t>>(0, src),
                 .store = std::make_unique<StoreLocal<T>>(alias, typename Operand<calyx_op_type(*op)::src_t>::Var{src})
         };
       }
@@ -552,7 +613,7 @@ void BasicOptimizer::EmitStoreToPointer(const StoreToPointer<T>& _op) {
         // replace alias
         locals[alias] = LocalData{
                 .aliases = 0,
-                .replacement = std::make_unique<Imm<calyx_op_type(*op)::src_t>>(0, src),
+                .replacement = std::make_shared<Imm<calyx_op_type(*op)::src_t>>(0, src),
                 .store = std::make_unique<StoreLocal<T>>(alias, typename Operand<calyx_op_type(*op)::src_t>::Imm{src})
         };
       }

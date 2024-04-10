@@ -25,8 +25,8 @@
 
 
 int main() {
-  const std::string file = "examples/emitting/loops.c";
-  const std::string rig_func_sym = "main";
+  std::string file = "examples/emitting/branches.c";
+  std::string rig_func_sym = "test";
   auto preprocessor = epi::Preprocessor(file);
   auto tokenizer = epi::Tokenizer(preprocessor);
   auto parser = epi::Parser(tokenizer);
@@ -151,6 +151,9 @@ int main() {
     return 1;
   }
 
+  if (!program.functions.contains(rig_func_sym)) {
+    rig_func_sym = "main";
+  }
   const auto& rig_func = program.functions.at(rig_func_sym);
   auto rig = epi::RIG::GenerateRIG(rig_func);
 

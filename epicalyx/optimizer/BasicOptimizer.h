@@ -32,17 +32,18 @@ private:
   // direct variable replacements
   cotyl::unordered_map<var_index_t, var_index_t> var_replacement{};
 
+  using local_replacement_t = std::shared_ptr<calyx::Expr>;
   struct LocalData {
-    var_index_t aliases = 0;                    // local might alias another local
-    std::shared_ptr<calyx::Expr> replacement;   // replacement for LoadLocals
-    pDirective store;                           // store to flush local with
+    var_index_t aliases = 0;           // local might alias another local
+    local_replacement_t replacement;   // replacement for LoadLocals
+    pDirective store;                  // store to flush local with
   };
 
   // local replacements (loads/stores/alias loads/alias stores)
   cotyl::unordered_map<var_index_t, LocalData> locals{};
 
   // local replacements in next block
-  cotyl::unordered_map<block_label_t, cotyl::unordered_map<var_index_t, std::shared_ptr<calyx::Expr>>> local_final_value{};
+  cotyl::unordered_map<block_label_t, cotyl::unordered_map<var_index_t, local_replacement_t>> local_final_values{};
 
   void FlushOnBranch();
   template<typename T>
@@ -111,8 +112,14 @@ private:
   template<typename T, class F>
   bool FindExprResultReplacement(T& op, F predicate);
 
+  template<typename T>
+  bool TryPropagateLocalReplacement(const LoadLocal<T>& op);
+
   // resolve branch indirections to single-branch blocks
-  void ResolveBranchIndirection(block_label_t& dest);
+  void ResolveBranchIndirection(block_label_t& dest) const;
+
+  // resolve block links from old block labels to new block labels
+  void ResolveBlockLinks(block_label_t& dest) const;
 
   // link two blocks by "jumping" to that block and
   // emitting from there
