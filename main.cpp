@@ -25,7 +25,7 @@
 
 
 int main() {
-  std::string file = "examples/emitting/branches.c";
+  std::string file = "examples/emitting/functions.c";
   std::string rig_func_sym = "test";
   auto preprocessor = epi::Preprocessor(file);
   auto tokenizer = epi::Tokenizer(preprocessor);

@@ -8,6 +8,8 @@
 namespace epi {
 
 static void NullifyUnusedLocals(calyx::Function& func, FunctionDependencies& deps) {
+  std::vector<var_index_t> to_remove{};
+
   // remove unused locals
   for (const auto& [loc_idx, local] : func.locals) {
     if (deps.local_graph.contains(loc_idx)) {
@@ -21,12 +23,16 @@ static void NullifyUnusedLocals(calyx::Function& func, FunctionDependencies& dep
         for (const auto& pos : loc_data.writes) {
           func.blocks.at(pos.first)[pos.second] = nullptr;
         }
-        func.locals.erase(loc_idx);
+        to_remove.emplace_back(loc_idx);
       }
     }
     else if (!local.arg_idx.has_value()) {
-      func.locals.erase(loc_idx);
+      to_remove.emplace_back(loc_idx);
     }
+  }
+
+  for (const auto& loc_idx : to_remove) {
+    func.locals.erase(loc_idx);
   }
 }
 
