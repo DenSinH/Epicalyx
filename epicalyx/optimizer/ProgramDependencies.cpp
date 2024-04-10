@@ -201,7 +201,7 @@ void FunctionDependencies::EmitCompare(const Compare<T>& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;
   cotyl::get_default(var_graph, op.idx).deps.push_back(op.left_idx);
   cotyl::get_default(var_graph, op.left_idx).reads.push_back(pos);
-  if (op.right.GetVar()) {
+  if (op.right.IsVar()) {
     cotyl::get_default(var_graph, op.idx).deps.push_back(op.right.GetVar());
     cotyl::get_default(var_graph, op.right.GetVar()).reads.push_back(pos);
   }
