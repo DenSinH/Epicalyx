@@ -8,7 +8,7 @@
 
 namespace epi {
 
-class Tokenizer : public cotyl::Stream<std::unique_ptr<Token>> {
+class Tokenizer : public cotyl::Stream<AnyToken> {
 public:
 
   Tokenizer(cotyl::Stream<char>& in_stream) :
@@ -18,7 +18,7 @@ public:
   void PrintLoc() const final { in_stream.PrintLoc(); };
 
 protected:
-  pToken GetNew() override;
+  AnyToken GetNew() override;
   bool IsEOS() override;
 
   virtual void SkipBlanks();
@@ -27,12 +27,12 @@ protected:
 
 private:
   template<typename T, typename ...Args>
-  static pToken Make(Args... args) {
-    return std::make_unique<T>(args...);
+  static AnyToken Make(Args... args) {
+    return MakeAnyToken<T>(args...);
   }
 
   std::string ReadString(const char delimiter);
-  pToken ReadNumericalConstant();
+  AnyToken ReadNumericalConstant();
 };
 
 }

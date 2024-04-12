@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Format.h"
+#include "Variant.h"
 
 #include "ast/Node.h"
 #include "parser/ConstTokenVisitor.h"
@@ -185,6 +186,21 @@ struct StringConstantToken : public Token {
   const std::string value;
 };
 
-using pToken = std::unique_ptr<Token>;
+using AnyToken = cotyl::Variant<Token,
+  Token,
+  IdentifierToken,
+  NumericalConstantToken<i32>,
+  NumericalConstantToken<u32>,
+  NumericalConstantToken<i64>,
+  NumericalConstantToken<u64>,
+  NumericalConstantToken<float>,
+  NumericalConstantToken<double>,
+  StringConstantToken
+>;
+
+template<typename T, typename... Args>
+AnyToken MakeAnyToken(const Args&... args) {
+  return AnyToken(T{args...});
+}
 
 }

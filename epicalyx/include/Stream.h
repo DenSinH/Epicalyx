@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Format.h"
+#include "Variant.h"
 #include "Exceptions.h"
 
 #include <deque>
@@ -22,6 +23,11 @@ struct base_type<std::unique_ptr<T>> {
 
 template<typename T>
 struct base_type<std::shared_ptr<T>> {
+  using type = T;
+};
+
+template<typename T, typename... Args>
+struct base_type<cotyl::Variant<T, Args...>> {
   using type = T;
 };
 
@@ -89,7 +95,7 @@ struct Stream : public Locatable {
       buf.push_back(GetNew());
     }
     if constexpr(deref) {
-      dest = buf[amount].get();
+      dest = &(*buf[amount]);
     }
     else {
       dest = &buf[amount];

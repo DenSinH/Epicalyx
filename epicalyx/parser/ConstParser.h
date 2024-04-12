@@ -16,7 +16,7 @@ namespace epi {
 
 struct ConstParser : public cotyl::Locatable {
 
-  ConstParser(cotyl::Stream<pToken>& in_stream) : in_stream{in_stream} { }
+  ConstParser(cotyl::Stream<AnyToken>& in_stream) : in_stream{in_stream} { }
 
   void PrintLoc() const final;
 
@@ -29,7 +29,7 @@ struct ConstParser : public cotyl::Locatable {
   virtual pExpr EAssignment();
   i64 EConstexpr();
 
-  cotyl::Stream<pToken>& in_stream;
+  cotyl::Stream<AnyToken>& in_stream;
 
   virtual pType<const CType> ResolveIdentifierType(const std::string& name) const;
 };

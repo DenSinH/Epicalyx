@@ -29,6 +29,8 @@ add_executable(
         epicalyx
         main.cpp
         epicalyx/include/Stream.h
+        epicalyx/include/Variant.h
+        epicalyx/include/Packs.h
         epicalyx/include/Format.h
         epicalyx/include/Is.h
         epicalyx/include/Scope.h

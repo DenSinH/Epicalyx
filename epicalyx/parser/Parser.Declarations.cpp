@@ -64,7 +64,7 @@ void Parser::DStaticAssert() {
   auto expr = Parser::EConstexpr();
   in_stream.Eat(TokenType::Comma);
   in_stream.Expect(TokenType::StringConstant);
-  auto str = cotyl::unique_ptr_cast<StringConstantToken>(in_stream.Get())->value;
+  auto str = in_stream.Get().get<StringConstantToken>().value;
   in_stream.EatSequence(TokenType::RParen, TokenType::SemiColon);
 
   if (!expr) {
@@ -77,7 +77,7 @@ pType<> Parser::DEnum() {
   std::string name;
   if (in_stream.IsAfter(0, TokenType::Identifier)) {
     // enum name
-    name = cotyl::unique_ptr_cast<IdentifierToken>(in_stream.Get())->name;
+    name = in_stream.Get().get<IdentifierToken>().name;
     if (!in_stream.EatIf(TokenType::LBrace)) {
       // check if enum was defined before
       if (!enums.Has(name)) {
@@ -94,7 +94,7 @@ pType<> Parser::DEnum() {
   enum_type counter = 0;
   do {
     in_stream.Expect(TokenType::Identifier);
-    std::string constant = cotyl::unique_ptr_cast<IdentifierToken>(in_stream.Get())->name;
+    std::string constant = in_stream.Get().get<IdentifierToken>().name;
     if (in_stream.EatIf(TokenType::Assign)) {
       // constant = value
       // update counter
@@ -123,7 +123,7 @@ pType<> Parser::DStruct() {
   }
 
   if (in_stream.IsAfter(0, TokenType::Identifier)) {
-    name = cotyl::unique_ptr_cast<IdentifierToken>(in_stream.Get())->name;
+    name = in_stream.Get().get<IdentifierToken>().name;
     if (!in_stream.EatIf(TokenType::LBrace)) {
       if (is_struct) {
         return structdefs.Get(name)->Clone();
@@ -531,7 +531,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
           }
           case TokenType::Identifier: {
             // (typedef name) or (name)
-            std::string ident_name = cotyl::unique_ptr_cast<IdentifierToken>(in_stream.Get())->name;
+            std::string ident_name = in_stream.Get().get<IdentifierToken>().name;
             if (!typedefs.Has(ident_name)) {
               // if not typdef name: direct declarator name
               if (!name.empty()) {
@@ -575,7 +575,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
         if (!name.empty()) {
           throw std::runtime_error("Double name in declaration");
         }
-        name = cotyl::unique_ptr_cast<IdentifierToken>(in_stream.Get())->name;
+        name = in_stream.Get().get<IdentifierToken>().name;
         break;
       }
       case TokenType::LBracket: {

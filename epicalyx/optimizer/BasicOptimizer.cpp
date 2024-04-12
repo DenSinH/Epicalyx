@@ -673,7 +673,8 @@ void BasicOptimizer::EmitCall(const Call<T>& _op) {
 
   // need to flush locals on call, in case a pointer read/store happens
   FlushAliasedLocals();
-  vars_found[op->idx] = Output(std::move(op));
+  const auto idx = op->idx;
+  vars_found[idx] = Output(std::move(op));
 }
 
 template<typename T>
@@ -688,7 +689,9 @@ void BasicOptimizer::EmitCallLabel(const CallLabel<T>& _op) {
 
   // need to flush locals on call, in case a pointer read/store happens
   FlushAliasedLocals();
-  vars_found[op->idx] = Output(std::move(op));
+  // op will be moved on read
+  const auto idx = op->idx;
+  vars_found[idx] = Output(std::move(op));
 }
 
 template<typename T>

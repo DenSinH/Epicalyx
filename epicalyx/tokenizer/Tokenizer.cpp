@@ -17,7 +17,7 @@ bool Tokenizer::IsEOS() {
   return in_stream.EOS();
 }
 
-pToken Tokenizer::GetNew() {
+AnyToken Tokenizer::GetNew() {
   char c;
   SkipBlanks();
   if (!in_stream.Peek(c)) {
@@ -49,7 +49,7 @@ pToken Tokenizer::GetNew() {
         if (is_unsigned) {
           return Make<NumericalConstantToken<u32>>(value);
         }
-        return Make<NumericalConstantToken<i32>>(value);
+        return Make<NumericalConstantToken<i32>>((i32)value);
       }
     }
 
@@ -78,7 +78,7 @@ pToken Tokenizer::GetNew() {
       value <<= 8;
       value |= (u8)k;
     }
-    return Make<NumericalConstantToken<i32>>(value);
+    return Make<NumericalConstantToken<i32>>((i32)value);
   }
   else {
     // punctuator
@@ -176,7 +176,7 @@ std::string Tokenizer::ReadString(const char delimiter) {
   return str.finalize();
 }
 
-pToken Tokenizer::ReadNumericalConstant() {
+AnyToken Tokenizer::ReadNumericalConstant() {
   cotyl::StringStream value{};
   bool dot = false;
   bool exponent = false;
@@ -306,7 +306,7 @@ pToken Tokenizer::ReadNumericalConstant() {
       return Make<NumericalConstantToken<double>>(val);
     }
     else {
-      return Make<NumericalConstantToken<float>>(val);
+      return Make<NumericalConstantToken<float>>((float)val);
     }
   }
   if (is_unsigned) {
@@ -330,7 +330,7 @@ pToken Tokenizer::ReadNumericalConstant() {
       return Make<NumericalConstantToken<u64>>(val);
     }
     else {
-      return Make<NumericalConstantToken<u32>>(val);
+      return Make<NumericalConstantToken<u32>>((u32)val);
     }
   }
   else {
@@ -355,7 +355,7 @@ pToken Tokenizer::ReadNumericalConstant() {
       return Make<NumericalConstantToken<i64>>(val);
     }
     else {
-      return Make<NumericalConstantToken<i32>>(val);
+      return Make<NumericalConstantToken<i32>>((i32)val);
     }
   }
 }

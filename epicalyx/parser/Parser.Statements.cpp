@@ -168,7 +168,7 @@ pNode<StatNode> Parser::SStatement() {
     case TokenType::Goto: {
       in_stream.Skip();
       in_stream.Expect(TokenType::Identifier);
-      std::string label = cotyl::unique_ptr_cast<IdentifierToken>(in_stream.Get())->name;
+      std::string label = in_stream.Get().get<IdentifierToken>().name;
       in_stream.Eat(TokenType::SemiColon);
 
       // labels might be predeclared
@@ -220,7 +220,7 @@ pNode<StatNode> Parser::SStatement() {
     case TokenType::Identifier: {
       if (in_stream.IsAfter(1, TokenType::Colon)) {
         // label
-        std::string name = cotyl::unique_ptr_cast<IdentifierToken>(in_stream.Get())->name;
+        std::string name = in_stream.Get().get<IdentifierToken>().name;
         in_stream.Skip();
         if (labels.contains(name)) {
           throw cotyl::FormatExceptStr("Duplicate label: %s", name);

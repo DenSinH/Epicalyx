@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SStream.h"
+#include "Variant.h"
 
 #include <stdexcept>
 #include <memory>
@@ -22,6 +23,10 @@ static std::string to_string(const T& t) {
 
 template<typename T> static std::string to_string(const std::unique_ptr<T>& t) { return t->ToString(); }
 template<typename T> static std::string to_string(const std::shared_ptr<T>& t) { return t->ToString(); }
+template<typename T, typename... Args> 
+static std::string to_string(const cotyl::Variant<T, Args...>& t) { 
+  return t->ToString(); 
+}
 [[maybe_unused]] static std::string to_string(const std::string& s) { return s; }
 
 template<typename... Args>
