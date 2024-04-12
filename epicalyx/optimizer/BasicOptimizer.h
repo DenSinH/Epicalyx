@@ -26,38 +26,7 @@ private:
   FunctionDependencies old_deps;
 
   calyx::Function new_function;
-  cotyl::unordered_map<block_label_t, func_pos_t> block_links{};
-  Graph<block_label_t, const block_t*, true> new_block_graph{};
-
-  // direct variable replacements
-  cotyl::unordered_map<var_index_t, var_index_t> var_replacement{};
-
-  using local_replacement_t = std::shared_ptr<calyx::Expr>;
-  struct LocalData {
-    var_index_t aliases = 0;           // local might alias another local
-    local_replacement_t replacement;   // replacement for LoadLocals
-    pDirective store;                  // store to flush local with
-  };
-
-  // local replacements (loads/stores/alias loads/alias stores)
-  cotyl::unordered_map<var_index_t, LocalData> locals{};
-
-  // local replacements in next block
-  using local_values_t = cotyl::unordered_map<var_index_t, local_replacement_t>;
-  cotyl::unordered_map<block_label_t, local_values_t> local_initial_values{};
-  cotyl::unordered_map<block_label_t, local_values_t> local_final_values{};
-
-  void FlushOnBranch();
-  template<typename T>
-  requires (std::is_base_of_v<Branch, T>)
-  void DoBranch(std::unique_ptr<T>&& branch);
-  void FlushAliasedLocals();
-  void PropagateLocalValues();
-  void StoreLocalData(var_index_t loc_idx, LocalData&& local);
-
-  // variable found location in new program
-  cotyl::unordered_map<calyx::var_index_t, std::pair<calyx::block_label_t, u64>> vars_found{};
-
+  
   // current block that is being built
   calyx::block_t* current_block{};
   func_pos_t current_old_pos;            // position we are scanning in the old function
@@ -101,6 +70,7 @@ private:
   }
 
   template<typename T>
+  requires (std::is_base_of_v<Expr, T>)
   void OutputExprCopy(const T& expr) {
     vars_found.emplace(expr.idx, OutputCopy(expr));
   }
@@ -110,6 +80,15 @@ private:
     auto repl = T(args...);
     Emit(repl);
   }
+
+  cotyl::unordered_map<block_label_t, func_pos_t> block_links{};
+  Graph<block_label_t, const block_t*, true> new_block_graph{};
+
+  // direct variable replacements
+  cotyl::unordered_map<var_index_t, var_index_t> var_replacement{};
+
+  // variable found location in new program
+  cotyl::unordered_map<calyx::var_index_t, std::pair<calyx::block_label_t, u64>> vars_found{};
 
   // find a suitable replacement for some expression result
   // based on a predicate
@@ -125,6 +104,48 @@ private:
   // link two blocks by "jumping" to that block and
   // emitting from there
   void LinkBlock(block_label_t next_block);
+
+  using local_replacement_t = std::shared_ptr<calyx::Expr>;
+  struct LocalData {
+    var_index_t aliases = 0;           // local might alias another local
+    local_replacement_t replacement;   // replacement for LoadLocals
+    pDirective store;                  // store to flush local with
+  };
+
+  // local replacements (loads/stores/alias loads/alias stores)
+  cotyl::unordered_map<var_index_t, LocalData> locals{};
+
+  // local replacements in next block
+  using local_values_t = cotyl::unordered_map<var_index_t, local_replacement_t>;
+  cotyl::unordered_map<block_label_t, local_values_t> local_initial_values{};
+  cotyl::unordered_map<block_label_t, local_values_t> local_final_values{};
+
+  // flush all current locals
+  // i.e., emit their writes and store their substitutions
+  // for local propagation
+  void FlushOnBranch();
+
+  // emit a branch type instruction, flush locals and set state
+  // also constructs the new_block_graph
+  template<typename T>
+  requires (std::is_base_of_v<Branch, T>)
+  void DoBranch(std::unique_ptr<T>&& branch);
+
+  // Flush current aliased locals
+  // to be executed on instructions that may invalidate
+  // the local state (i.e. a pointer write/read or a call)
+  // as these may update the local's value and a
+  // later flush of the write operation (or any reads
+  // in the function call) may retrieve the wrong value
+  void FlushAliasedLocals();
+
+  // propagate local values when starting a new block
+  void PropagateLocalValues();
+
+  // store local data on write
+  // this delays the write and instead saves it to the local
+  // replacements, to be flushed / stored for propagation later
+  void StoreLocalData(var_index_t loc_idx, LocalData&& local);
 
   // check whether predicate BadPred occurs before a GoodPred happens
   // on all forward paths (including loops) ...

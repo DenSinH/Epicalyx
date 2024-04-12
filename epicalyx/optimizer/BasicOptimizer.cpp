@@ -155,19 +155,19 @@ bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const LocalData& loca
   cotyl::unordered_set<func_pos_t> writes = {old_local.writes.begin(), old_local.writes.end()};
   
   static const cotyl::unordered_set<size_t> alias_blocking_tids = {
-   LoadFromPointer<i8>::GetTID(),                                                                  
-   LoadFromPointer<u8>::GetTID(),                                                                  
-   LoadFromPointer<i16>::GetTID(),                                                                  
-   LoadFromPointer<u16>::GetTID(),                                                                      
-   LoadFromPointer<i32>::GetTID(),     Call<i32>::GetTID(),     CallLabel<i32>::GetTID(),     
-   LoadFromPointer<u32>::GetTID(),     Call<u32>::GetTID(),     CallLabel<u32>::GetTID(),     
-   LoadFromPointer<i64>::GetTID(),     Call<i64>::GetTID(),     CallLabel<i64>::GetTID(),     
-   LoadFromPointer<u64>::GetTID(),     Call<u64>::GetTID(),     CallLabel<u64>::GetTID(),     
-   LoadFromPointer<float>::GetTID(),   Call<float>::GetTID(),   CallLabel<float>::GetTID(),       
-   LoadFromPointer<double>::GetTID(),  Call<double>::GetTID(),  CallLabel<double>::GetTID(),        
-   LoadFromPointer<Struct>::GetTID(),  Call<Pointer>::GetTID(), CallLabel<Pointer>::GetTID(),         
-   LoadFromPointer<Pointer>::GetTID(), Call<Struct>::GetTID(),  CallLabel<Struct>::GetTID(),        
-                                       Call<void>::GetTID(),    CallLabel<void>::GetTID(),      
+   StoreToPointer<i8>::GetTID(),      LoadFromPointer<i8>::GetTID(),                                                                  
+   StoreToPointer<u8>::GetTID(),      LoadFromPointer<u8>::GetTID(),                                                                  
+   StoreToPointer<i16>::GetTID(),     LoadFromPointer<i16>::GetTID(),                                                                  
+   StoreToPointer<u16>::GetTID(),     LoadFromPointer<u16>::GetTID(),                                                                      
+   StoreToPointer<i32>::GetTID(),     LoadFromPointer<i32>::GetTID(),     Call<i32>::GetTID(),     CallLabel<i32>::GetTID(),     
+   StoreToPointer<u32>::GetTID(),     LoadFromPointer<u32>::GetTID(),     Call<u32>::GetTID(),     CallLabel<u32>::GetTID(),     
+   StoreToPointer<i64>::GetTID(),     LoadFromPointer<i64>::GetTID(),     Call<i64>::GetTID(),     CallLabel<i64>::GetTID(),     
+   StoreToPointer<u64>::GetTID(),     LoadFromPointer<u64>::GetTID(),     Call<u64>::GetTID(),     CallLabel<u64>::GetTID(),     
+   StoreToPointer<float>::GetTID(),   LoadFromPointer<float>::GetTID(),   Call<float>::GetTID(),   CallLabel<float>::GetTID(),       
+   StoreToPointer<double>::GetTID(),  LoadFromPointer<double>::GetTID(),  Call<double>::GetTID(),  CallLabel<double>::GetTID(),        
+   StoreToPointer<Struct>::GetTID(),  LoadFromPointer<Struct>::GetTID(),  Call<Pointer>::GetTID(), CallLabel<Pointer>::GetTID(),         
+   StoreToPointer<Pointer>::GetTID(), LoadFromPointer<Pointer>::GetTID(), Call<Struct>::GetTID(),  CallLabel<Struct>::GetTID(),        
+                                                                          Call<void>::GetTID(),    CallLabel<void>::GetTID(),      
   };
 
   // local does not need to be flushed if no "bad" operation (load) happens
@@ -515,7 +515,7 @@ void BasicOptimizer::EmitLoadLocal(const LoadLocal<T>& op) {
         });
       }
       OutputExprCopy(op);
-  }
+    }
   }
 }
 
@@ -558,6 +558,9 @@ void BasicOptimizer::EmitStoreLocal(const StoreLocal<T>& _op) {
               .store = std::move(op)
       });
       return;
+    }
+    else {
+      Output(std::move(op));
     }
   }
 }
@@ -602,6 +605,10 @@ void BasicOptimizer::EmitLoadFromPointer(const LoadFromPointer<T>& _op) {
     }
     return;
   }
+
+  // this needs to happen, as we may be computing aliases wrong,
+  // and we do not want to break the program control flow
+  FlushAliasedLocals();
   OutputExpr(std::move(op));
 }
 
@@ -664,10 +671,9 @@ void BasicOptimizer::EmitCall(const Call<T>& _op) {
     return;
   }
 
-  vars_found[op->idx] = std::make_pair(current_new_block_idx, current_block->size());
   // need to flush locals on call, in case a pointer read/store happens
   FlushAliasedLocals();
-  Output(std::move(op));
+  vars_found[op->idx] = Output(std::move(op));
 }
 
 template<typename T>
@@ -680,10 +686,9 @@ void BasicOptimizer::EmitCallLabel(const CallLabel<T>& _op) {
     TryReplaceVar(var_idx);
   }
 
-  vars_found[op->idx] = std::make_pair(current_new_block_idx, current_block->size());
   // need to flush locals on call, in case a pointer read/store happens
   FlushAliasedLocals();
-  Output(std::move(op));
+  vars_found[op->idx] = Output(std::move(op));
 }
 
 template<typename T>
