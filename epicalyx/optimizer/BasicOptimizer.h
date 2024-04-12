@@ -43,13 +43,17 @@ private:
   cotyl::unordered_map<var_index_t, LocalData> locals{};
 
   // local replacements in next block
-  cotyl::unordered_map<block_label_t, cotyl::unordered_map<var_index_t, local_replacement_t>> local_final_values{};
+  using local_values_t = cotyl::unordered_map<var_index_t, local_replacement_t>;
+  cotyl::unordered_map<block_label_t, local_values_t> local_initial_values{};
+  cotyl::unordered_map<block_label_t, local_values_t> local_final_values{};
 
   void FlushOnBranch();
   template<typename T>
   requires (std::is_base_of_v<Branch, T>)
   void DoBranch(std::unique_ptr<T>&& branch);
   void FlushAliasedLocals();
+  void PropagateLocalValues();
+  void StoreLocalData(var_index_t loc_idx, LocalData&& local);
 
   // variable found location in new program
   cotyl::unordered_map<calyx::var_index_t, std::pair<calyx::block_label_t, u64>> vars_found{};
@@ -111,9 +115,6 @@ private:
   // based on a predicate
   template<typename T, class F>
   bool FindExprResultReplacement(T& op, F predicate);
-
-  template<typename T>
-  bool TryPropagateLocalReplacement(const LoadLocal<T>& op);
 
   // resolve branch indirections to single-branch blocks
   void ResolveBranchIndirection(block_label_t& dest) const;

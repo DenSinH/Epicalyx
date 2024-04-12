@@ -97,6 +97,58 @@ bool BasicOptimizer::NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, func_po
   return true;
 }
 
+void BasicOptimizer::PropagateLocalValues() {
+  // try to find local replacement from previous blocks
+  auto& initial_values = local_initial_values[current_new_block_idx];
+
+  for (const auto& [loc_idx, _] : new_function.locals) {
+    local_replacement_t repl = nullptr;
+    for (const auto& block_idx : old_deps.block_graph.At(current_new_block_idx).from) {
+      auto new_block_idx = block_idx;
+      ResolveBlockLinks(new_block_idx);
+      if (!local_final_values.contains(new_block_idx)) {
+        // no old value for block, can't check validity on other
+        // branches, so no replacement
+        // also captures the case where the target block is 
+        // the current block, or loops, where the topological
+        // ordering of emitting makes it so the from idx
+        // block will not yet have a local_final_values
+        repl = nullptr;
+        break;
+      }
+      auto& final_values = local_final_values.at(new_block_idx);
+      if (!final_values.contains(loc_idx)) {
+        // no old value for local in block, can't check validity on
+        // other branches, no replacement
+        repl = nullptr;
+        break;
+      }
+      auto& candidate = final_values.at(loc_idx);
+      if (!repl) {
+        // first replacement candidate
+        repl = candidate;
+      }
+      else if (repl != candidate) {
+        // two different candidates, skip...
+        repl = nullptr;
+        break;
+      }
+    }
+    if (repl) {
+      // found replacement, emit and store / propagate final value
+      initial_values.insert_or_assign(loc_idx, repl);
+    }
+  }
+}
+
+void BasicOptimizer::StoreLocalData(var_index_t loc_idx, LocalData&& local) {
+  // invalidate initial value for local in current block
+  local_initial_values[current_new_block_idx].erase(loc_idx);
+
+  // store local value
+  locals.insert_or_assign(loc_idx, std::move(local));
+}
+
 bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const LocalData& local) {
   const auto& old_local = old_deps.local_graph.at(loc_idx);
   cotyl::unordered_set<func_pos_t> reads  = {old_local.reads.begin(), old_local.reads.end()};
@@ -153,6 +205,14 @@ void BasicOptimizer::FlushOnBranch() {
     }
     final_values.insert_or_assign(loc_idx, std::move(local.replacement));
   }
+
+  // propagate any initial values that were unchanged
+  for (auto& [loc_idx, repl] : local_initial_values[current_new_block_idx]) {
+    if (!final_values.contains(loc_idx)) {
+      final_values.emplace(loc_idx, repl);
+    }
+  }
+
   locals.clear();
 }
 
@@ -173,6 +233,7 @@ void BasicOptimizer::DoBranch(std::unique_ptr<T>&& branch) {
 
 void BasicOptimizer::FlushAliasedLocals() {
   std::vector<var_index_t> removed{};
+  auto& initial_values = local_initial_values[current_new_block_idx];
   for (auto& [loc_idx, local] : locals) {
     if (old_deps.local_graph.at(loc_idx).aliased_by.empty()) {
       continue;
@@ -189,6 +250,11 @@ void BasicOptimizer::FlushAliasedLocals() {
     if (local.store) {
       Output(std::move(local.store));
     }
+
+    // erase from local_initial_values, this value is not valid
+    // anymore, as an aliased local invalidating operation
+    // (call, pointer write) happened
+    initial_values.erase(loc_idx);
   }
 
   for (const auto& loc_idx : removed) {
@@ -352,6 +418,10 @@ Function&& BasicOptimizer::Optimize() {
       current_old_pos.first = current_new_block_idx = *it;
       reachable = true;
       todo.erase(it);
+
+      // propagate new local values when branching to an
+      // (ACTUAL) new block
+      PropagateLocalValues();
     }
 
     auto inserted = new_function.blocks.emplace(current_new_block_idx, calyx::block_t{}).first;
@@ -419,58 +489,6 @@ void BasicOptimizer::EmitCast(const Cast<To, From>& _op) {
 }
 
 template<typename T>
-bool BasicOptimizer::TryPropagateLocalReplacement(const LoadLocal<T>& op) {
-  // try to find local replacement from previous blocks
-  // only for non-aliased locals
-  if (old_deps.local_graph.at(op.loc_idx).aliased_by.empty()) {
-    local_replacement_t repl = nullptr;
-    for (const auto& block_idx : old_deps.block_graph.At(current_new_block_idx).from) {
-      auto new_block_idx = block_idx;
-      ResolveBlockLinks(new_block_idx);
-      if (!local_final_values.contains(new_block_idx)) {
-        // no old value for block, can't check validity on other
-        // branches, so no replacement
-        // also captures the case where the target block is 
-        // the current block, or loops, where the topological
-        // ordering of emitting makes it so the from idx
-        // block will not yet have a local_final_values
-        repl = nullptr;
-        break;
-      }
-      auto& final_values = local_final_values.at(new_block_idx);
-      if (!final_values.contains(op.loc_idx)) {
-        // no old value for local in block, can't check validity on
-        // other branches, no replacement
-        repl = nullptr;
-        break;
-      }
-      auto& candidate = final_values.at(op.loc_idx);
-      if (!repl) {
-        // first replacement candidate
-        repl = candidate;
-      }
-      else if (repl != candidate) {
-        // two different candidates, skip...
-        repl = nullptr;
-        break;
-      }
-    }
-    if (repl) {
-      // found replacement, emit and store / propagate final value
-      locals.emplace(op.loc_idx, LocalData{
-          .aliases = 0,
-          .replacement = repl,
-          .store = nullptr
-      });
-      repl->idx = op.idx;
-      repl->Emit(*this);
-      return true;
-    }
-  }
-  return false;
-}
-
-template<typename T>
 void BasicOptimizer::EmitLoadLocal(const LoadLocal<T>& op) {
   if (locals.contains(op.loc_idx)) {
     // local value stored in IR var
@@ -479,18 +497,25 @@ void BasicOptimizer::EmitLoadLocal(const LoadLocal<T>& op) {
     repl->Emit(*this);
   }
   else {
-    if (TryPropagateLocalReplacement(op)) return;
-
-    // we can store this value to the locals, though without
-    // a "store" directive
-    if constexpr(!std::is_same_v<T, Struct>) {
-      locals.emplace(op.loc_idx, LocalData{
-          .aliases = 0,
-          .replacement = std::make_shared<Cast<T, calyx_op_type(op)::result_t>>(0, op.idx),
-          .store = nullptr
-      });
+    auto& initial_values = local_initial_values[current_new_block_idx];
+    if (initial_values.contains(op.loc_idx)) {
+      // propagate initial value
+      auto& repl = initial_values.at(op.loc_idx);
+      repl->idx = op.idx;
+      repl->Emit(*this);
     }
-    OutputExprCopy(op);
+    else {
+      // we can store this value to the locals, though without
+      // a "store" directive
+      if constexpr(!std::is_same_v<T, Struct>) {
+        StoreLocalData(op.loc_idx, LocalData{
+            .aliases = 0,
+            .replacement = std::make_shared<Cast<T, calyx_op_type(op)::result_t>>(0, op.idx),
+            .store = nullptr
+        });
+      }
+      OutputExprCopy(op);
+  }
   }
 }
 
@@ -507,19 +532,17 @@ void BasicOptimizer::EmitStoreLocal(const StoreLocal<T>& _op) {
     auto& src = op->src.GetVar();
     
     if constexpr(!std::is_same_v<T, Struct>) {
-      var_index_t aliases = 0;
-      if (old_deps.var_graph.at(src).aliases) {
-        // var alias stored to local (i.e. int var; int* al = &var; int* al2 = al;)
-        aliases = old_deps.var_graph.at(src).aliases;
-      }
+      // var alias stored to local (i.e. int var; int* al = &var; int* al2 = al;)
+      // this is 0 if the "src" variable does not alias a variable anyway
+      var_index_t aliases = old_deps.var_graph.at(src).aliases;
 
       // overwrite current local state
       const auto loc_idx = op->loc_idx;  // op will be moved when assigning
-      locals[loc_idx] = LocalData{
+      StoreLocalData(loc_idx, LocalData{
               .aliases = aliases,
               .replacement = std::make_shared<Cast<T, calyx_op_type(*op)::src_t>>(0, src),
               .store = std::move(op)
-      };
+      });
     }
     else {
       Output(std::move(op));
@@ -529,11 +552,11 @@ void BasicOptimizer::EmitStoreLocal(const StoreLocal<T>& _op) {
     const auto& src = op->src.GetImm();
     if constexpr(!std::is_same_v<T, Struct>) {
       const auto loc_idx = op->loc_idx;  // op will be moved when assigning
-      locals[loc_idx] = LocalData{
+      StoreLocalData(loc_idx, LocalData{
               .aliases = 0,
               .replacement = std::make_shared<Imm<calyx_op_type(*op)::src_t>>(0, (T)src),
               .store = std::move(op)
-      };
+      });
       return;
     }
   }
@@ -595,27 +618,25 @@ void BasicOptimizer::EmitStoreToPointer(const StoreToPointer<T>& _op) {
         auto src = op->src.GetVar();
         // storing aliased variable to another alias
         // i.e. int* zalias1 = &z; int** zaliasptr; *zaliasptr = zalias1;
-        var_index_t aliases = 0;
-        if (old_deps.var_graph.at(src).aliases) {
-          aliases = old_deps.var_graph.at(src).aliases;
-        }
+        // this is 0 if the "src" variable does not alias a local anyway
+        var_index_t aliases = old_deps.var_graph.at(src).aliases;
 
         // replace alias
-        locals[alias] = LocalData{
+        StoreLocalData(alias, LocalData{
                 .aliases = aliases,
                 .replacement = std::make_shared<Cast<T, calyx_op_type(*op)::src_t>>(0, src),
                 .store = std::make_unique<StoreLocal<T>>(alias, typename Operand<calyx_op_type(*op)::src_t>::Var{src})
-        };
+        });
       }
       else {
         T src = (T)op->src.GetImm();
 
         // replace alias
-        locals[alias] = LocalData{
+        StoreLocalData(alias, LocalData{
                 .aliases = 0,
                 .replacement = std::make_shared<Imm<calyx_op_type(*op)::src_t>>(0, src),
                 .store = std::make_unique<StoreLocal<T>>(alias, typename Operand<calyx_op_type(*op)::src_t>::Imm{src})
-        };
+        });
       }
       return;
     }
