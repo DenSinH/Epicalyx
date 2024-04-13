@@ -34,6 +34,16 @@ struct unordered_map final : public boost::unordered_map<K, V> {
   bool contains(const K& key) const {
     return this->find(key) != this->end();
   }
+
+  template<typename... Args>
+  V& emplace_or_assign(K key, Args&&... args) {
+    auto result = this->emplace(std::move(key), args...);
+    if (!result.second) {
+      std::destroy_at(&result.first->second);
+      new (&result.first->second) V{std::move(args)...};
+    }
+    return result.first->second;
+  }
 };
 
 template<typename T>

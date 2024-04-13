@@ -1,6 +1,6 @@
 #pragma once
 
-#include "calyx/backend/Backend.h"
+#include "calyx/Calyx.h"
 #include "ProgramDependencies.h"
 #include "Containers.h"
 #include "CustomAssert.h"
@@ -10,7 +10,7 @@
 
 namespace epi {
 
-struct BasicOptimizer final : calyx::Backend {
+struct BasicOptimizer {
 
   BasicOptimizer(calyx::Function&& function) : 
       old_function{std::move(function)},
@@ -18,6 +18,8 @@ struct BasicOptimizer final : calyx::Backend {
       new_function{old_function.symbol} {
 
   }
+
+  calyx::Function&& Optimize();
 
 private:
   calyx::Function old_function;
@@ -33,21 +35,21 @@ private:
   bool reachable;
 
   template<typename T> 
-  std::unique_ptr<T> CopyDirective(const T& directive) {
-    return std::make_unique<T>(directive);
+  T CopyDirective(const T& directive) {
+    return directive;
   }
 
   template<typename T>
-  func_pos_t Output(std::unique_ptr<T>&& directive) {
+  func_pos_t Output(T&& directive) {
     cotyl::Assert(reachable);
     const u64 in_block = current_block->size();
-    current_block->push_back(std::move(directive));
+    current_block->push_back(T{std::move(directive)});
     return std::make_pair(current_new_block_idx, in_block);
   }
 
   template<typename T, typename... Args>
   func_pos_t OutputNew(Args... args) {
-    return Output(std::make_unique<T>(args...));
+    return Output(T{args...});
   }
 
   template<typename T>
@@ -61,9 +63,10 @@ private:
   }
 
   template<typename T>
-  void OutputExpr(std::unique_ptr<T>&& expr) {
+  requires (std::is_base_of_v<calyx::Expr, T>)
+  void OutputExpr(T&& expr) {
     // expr will be moved before reading the idx on the return
-    const auto idx = expr->idx;
+    const auto idx = expr.idx;
     vars_found.emplace(idx, Output(std::move(expr)));
   }
 
@@ -103,11 +106,11 @@ private:
   // emitting from there
   void LinkBlock(block_label_t next_block);
 
-  using local_replacement_t = std::shared_ptr<calyx::Expr>;
+  using local_replacement_t = std::shared_ptr<calyx::AnyExpr>;
   struct LocalData {
-    var_index_t aliases = 0;           // local might alias another local
-    local_replacement_t replacement;   // replacement for LoadLocals
-    calyx::pDirective store;           // store to flush local with
+    var_index_t aliases = 0;                     // local might alias another local
+    local_replacement_t replacement;             // replacement for LoadLocals
+    std::optional<calyx::AnyDirective> store;    // store to flush local with
   };
 
   // local replacements (loads/stores/alias loads/alias stores)
@@ -127,7 +130,7 @@ private:
   // also constructs the new_block_graph
   template<typename T>
   requires (std::is_base_of_v<calyx::Branch, T>)
-  void DoBranch(std::unique_ptr<T>&& branch);
+  void DoBranch(T&& branch);
 
   // Flush current aliased locals
   // to be executed on instructions that may invalidate
@@ -174,50 +177,53 @@ private:
 
   // find common ancestor for 2 nodes such that all paths to these nodes go through that ancestor
   block_label_t CommonBlockAncestor(block_label_t first, block_label_t second) const;
-
-public:
-  calyx::Function&& Optimize();
   
-  void Emit(const calyx::LoadLocalAddr& op) final;
-  void Emit(const calyx::LoadGlobalAddr& op) final;
+  void Emit(const calyx::AnyDirective& dir) {
+    dir.template visit<void>([&](const auto& d) { Emit(d); });
+  }
+
+  void Emit(const calyx::AnyExpr& expr) {
+    expr.template visit<void>([&](const auto& e) { Emit(e); });
+  }
 
   template<typename To, typename From>
-  void EmitCast(const calyx::Cast<To, From>& op);
+  void Emit(const calyx::Cast<To, From>& op);
   template<typename T>
-  void EmitLoadLocal(const calyx::LoadLocal<T>& op);
+  void Emit(const calyx::LoadLocal<T>& op);
+  void Emit(const calyx::LoadLocalAddr& op);
   template<typename T>
-  void EmitStoreLocal(const calyx::StoreLocal<T>& op);
+  void Emit(const calyx::StoreLocal<T>& op);
   template<typename T>
-  void EmitLoadGlobal(const calyx::LoadGlobal<T>& op);
+  void Emit(const calyx::LoadGlobal<T>& op);
+  void Emit(const calyx::LoadGlobalAddr& op);
   template<typename T>
-  void EmitStoreGlobal(const calyx::StoreGlobal<T>& op);
+  void Emit(const calyx::StoreGlobal<T>& op);
   template<typename T>
-  void EmitLoadFromPointer(const calyx::LoadFromPointer<T>& op);
+  void Emit(const calyx::LoadFromPointer<T>& op);
   template<typename T>
-  void EmitStoreToPointer(const calyx::StoreToPointer<T>& op);
+  void Emit(const calyx::StoreToPointer<T>& op);
   template<typename T>
-  void EmitCall(const calyx::Call<T>& op);
+  void Emit(const calyx::AddToPointer<T>& op);
   template<typename T>
-  void EmitCallLabel(const calyx::CallLabel<T>& op);
+  void Emit(const calyx::Call<T>& op);
   template<typename T>
-  void EmitReturn(const calyx::Return<T>& op);
+  void Emit(const calyx::CallLabel<T>& op);
   template<typename T>
-  void EmitImm(const calyx::Imm<T>& op);
+  void Emit(const calyx::Return<T>& op);
   template<typename T>
-  void EmitUnop(const calyx::Unop<T>& op);
+  void Emit(const calyx::Imm<T>& op);
   template<typename T>
-  void EmitBinop(const calyx::Binop<T>& op);
+  void Emit(const calyx::Unop<T>& op);
   template<typename T>
-  void EmitShift(const calyx::Shift<T>& op);
+  void Emit(const calyx::Binop<T>& op);
   template<typename T>
-  void EmitCompare(const calyx::Compare<T>& op);
+  void Emit(const calyx::Shift<T>& op);
   template<typename T>
-  void EmitBranchCompare(const calyx::BranchCompare<T>& op);
+  void Emit(const calyx::Compare<T>& op);
   template<typename T>
-  void EmitAddToPointer(const calyx::AddToPointer<T>& op);
-
-#include "calyx/backend/Methods.inl"
-
+  void Emit(const calyx::BranchCompare<T>& op);
+  void Emit(const calyx::UnconditionalBranch& op);
+  void Emit(const calyx::Select& op);
 };
 
 }

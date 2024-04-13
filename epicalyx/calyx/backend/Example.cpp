@@ -3,17 +3,17 @@
 
 namespace epi::calyx {
 
-void Example::EmitProgram(const Program& program) {
+void Example::Emit(const Program& program) {
 
 }
 
 template<typename To, typename From>
-void Example::EmitCast(const Cast<To, From>& op) {
+void Example::Emit(const Cast<To, From>& op) {
 
 }
 
 template<typename T>
-void Example::EmitLoadLocal(const LoadLocal<T>& op) {
+void Example::Emit(const LoadLocal<T>& op) {
 
 }
 
@@ -22,12 +22,12 @@ void Example::Emit(const LoadLocalAddr& op) {
 }
 
 template<typename T>
-void Example::EmitStoreLocal(const StoreLocal<T>& op) {
+void Example::Emit(const StoreLocal<T>& op) {
 
 }
 
 template<typename T>
-void Example::EmitLoadGlobal(const LoadGlobal<T>& op) {
+void Example::Emit(const LoadGlobal<T>& op) {
 
 }
 
@@ -36,57 +36,57 @@ void Example::Emit(const LoadGlobalAddr& op) {
 }
 
 template<typename T>
-void Example::EmitStoreGlobal(const StoreGlobal<T>& op) {
+void Example::Emit(const StoreGlobal<T>& op) {
 
 }
 
 template<typename T>
-void Example::EmitLoadFromPointer(const LoadFromPointer<T>& op) {
+void Example::Emit(const LoadFromPointer<T>& op) {
   
 }
 
 template<typename T>
-void Example::EmitStoreToPointer(const StoreToPointer<T>& op) {
+void Example::Emit(const StoreToPointer<T>& op) {
   
 }
 
 template<typename T>
-void Example::EmitCall(const Call<T>& op) {
+void Example::Emit(const Call<T>& op) {
 
 }
 
 template<typename T>
-void Example::EmitCallLabel(const CallLabel<T>& op) {
+void Example::Emit(const CallLabel<T>& op) {
 
 }
 
 template<typename T>
-void Example::EmitReturn(const Return<T>& op) {
+void Example::Emit(const Return<T>& op) {
 
 }
 
 template<typename T>
-void Example::EmitImm(const Imm<T>& op) {
+void Example::Emit(const Imm<T>& op) {
 
 }
 
 template<typename T>
-void Example::EmitUnop(const Unop<T>& op) {
+void Example::Emit(const Unop<T>& op) {
 
 }
 
 template<typename T>
-void Example::EmitBinop(const Binop<T>& op) {
+void Example::Emit(const Binop<T>& op) {
 
 }
 
 template<typename T>
-void Example::EmitShift(const Shift<T>& op) {
+void Example::Emit(const Shift<T>& op) {
 
 }
 
 template<typename T>
-void Example::EmitCompare(const Compare<T>& op) {
+void Example::Emit(const Compare<T>& op) {
 
 }
 
@@ -95,7 +95,7 @@ void Example::Emit(const UnconditionalBranch& op) {
 }
 
 template<typename T>
-void Example::EmitBranchCompare(const BranchCompare<T>& op) {
+void Example::Emit(const BranchCompare<T>& op) {
 
 }
 
@@ -104,11 +104,8 @@ void Example::Emit(const Select& op) {
 }
 
 template<typename T>
-void Example::EmitAddToPointer(const AddToPointer<T>& op) {
+void Example::Emit(const AddToPointer<T>& op) {
 
 }
-
-#define BACKEND_NAME Example
-#include "Templates.inl"
 
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "calyx/backend/Backend.h"
+#include "calyx/Calyx.h"
 #include "Containers.h"
 #include "cycle/Graph.h"
 
@@ -11,7 +11,7 @@
 namespace epi {
 
 
-struct FunctionDependencies final : calyx::Backend {
+struct FunctionDependencies {
 
   struct Var {
     func_pos_t created = {0, 0};
@@ -56,46 +56,48 @@ struct FunctionDependencies final : calyx::Backend {
 protected:
   func_pos_t pos;
 
-  void Emit(const calyx::LoadLocalAddr& op) final;
-  void Emit(const calyx::LoadGlobalAddr& op) final;
+  void Emit(const calyx::AnyDirective& dir) {
+    dir.template visit<void>([&](const auto& d) { Emit(d); });
+  }
 
   template<typename To, typename From>
-  void EmitCast(const calyx::Cast<To, From>& op);
+  void Emit(const calyx::Cast<To, From>& op);
   template<typename T>
-  void EmitLoadLocal(const calyx::LoadLocal<T>& op);
+  void Emit(const calyx::LoadLocal<T>& op);
+  void Emit(const calyx::LoadLocalAddr& op);
   template<typename T>
-  void EmitStoreLocal(const calyx::StoreLocal<T>& op);
+  void Emit(const calyx::StoreLocal<T>& op);
   template<typename T>
-  void EmitLoadGlobal(const calyx::LoadGlobal<T>& op);
+  void Emit(const calyx::LoadGlobal<T>& op);
+  void Emit(const calyx::LoadGlobalAddr& op);
   template<typename T>
-  void EmitStoreGlobal(const calyx::StoreGlobal<T>& op);
+  void Emit(const calyx::StoreGlobal<T>& op);
   template<typename T>
-  void EmitLoadFromPointer(const calyx::LoadFromPointer<T>& op);
+  void Emit(const calyx::LoadFromPointer<T>& op);
   template<typename T>
-  void EmitStoreToPointer(const calyx::StoreToPointer<T>& op);
+  void Emit(const calyx::StoreToPointer<T>& op);
   template<typename T>
-  void EmitCall(const calyx::Call<T>& op);
+  void Emit(const calyx::AddToPointer<T>& op);
   template<typename T>
-  void EmitCallLabel(const calyx::CallLabel<T>& op);
+  void Emit(const calyx::Call<T>& op);
   template<typename T>
-  void EmitReturn(const calyx::Return<T>& op);
+  void Emit(const calyx::CallLabel<T>& op);
   template<typename T>
-  void EmitImm(const calyx::Imm<T>& op);
+  void Emit(const calyx::Return<T>& op);
   template<typename T>
-  void EmitUnop(const calyx::Unop<T>& op);
+  void Emit(const calyx::Imm<T>& op);
   template<typename T>
-  void EmitBinop(const calyx::Binop<T>& op);
+  void Emit(const calyx::Unop<T>& op);
   template<typename T>
-  void EmitShift(const calyx::Shift<T>& op);
+  void Emit(const calyx::Binop<T>& op);
   template<typename T>
-  void EmitCompare(const calyx::Compare<T>& op);
+  void Emit(const calyx::Shift<T>& op);
   template<typename T>
-  void EmitBranchCompare(const calyx::BranchCompare<T>& op);
+  void Emit(const calyx::Compare<T>& op);
   template<typename T>
-  void EmitAddToPointer(const calyx::AddToPointer<T>& op);
-
-#include "calyx/backend/Methods.inl"
-
+  void Emit(const calyx::BranchCompare<T>& op);
+  void Emit(const calyx::UnconditionalBranch& op);
+  void Emit(const calyx::Select& op);
 };
 
 struct ProgramDependencies {

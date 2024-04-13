@@ -2,7 +2,7 @@
 
 #include "Default.h"
 #include "GeneralizedVar.h"
-#include "calyx/backend/Backend.h"
+#include "calyx/Directive.h"
 
 #include <memory>
 #include <optional>
@@ -32,7 +32,7 @@ using register_type_t = u32;
 using register_idx_t = u32;
 using register_t = std::pair<register_type_t, register_idx_t>;
 
-struct RegisterSpace : calyx::Backend {
+struct RegisterSpace {
 
   template<typename T, typename... Args>
   requires (std::is_base_of_v<RegisterSpace, T>)
@@ -42,6 +42,7 @@ struct RegisterSpace : calyx::Backend {
     return std::move(result);
   }
 
+  virtual void Emit(const calyx::AnyDirective& directive) = 0;
   void EmitFunction(const calyx::Function& function);
 
   virtual register_type_t RegisterType(const GeneralizedVar& gvar) const = 0;

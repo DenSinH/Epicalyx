@@ -28,7 +28,7 @@ protected:
 private:
   template<typename T, typename ...Args>
   static AnyToken Make(Args... args) {
-    return AnyToken::Make<T>(args...);
+    return T(args...);
   }
 
   std::string ReadString(const char delimiter);

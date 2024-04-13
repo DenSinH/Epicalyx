@@ -59,13 +59,13 @@ void ExampleRegSpace::OutputLocal(var_index_t loc_idx) {
 }
 
 template<typename To, typename From>
-void ExampleRegSpace::EmitCast(const Cast<To, From>& op) {
+void ExampleRegSpace::Emit(const Cast<To, From>& op) {
   OutputExpr<calyx_op_type(op)::result_t>(op);
   OutputVar<calyx_op_type(op)::src_t>(op.right_idx);
 }
 
 template<typename T>
-void ExampleRegSpace::EmitLoadLocal(const LoadLocal<T>& op) {
+void ExampleRegSpace::Emit(const LoadLocal<T>& op) {
   OutputExpr<calyx_op_type(op)::result_t>(op);
   OutputLocal<T>(op.loc_idx);
 }
@@ -75,13 +75,13 @@ void ExampleRegSpace::Emit(const LoadLocalAddr& op) {
 }
 
 template<typename T>
-void ExampleRegSpace::EmitStoreLocal(const StoreLocal<T>& op) {
+void ExampleRegSpace::Emit(const StoreLocal<T>& op) {
   OutputLocal<T>(op.loc_idx);
   if (op.src.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.src.GetVar());
 }
 
 template<typename T>
-void ExampleRegSpace::EmitLoadGlobal(const LoadGlobal<T>& op) {
+void ExampleRegSpace::Emit(const LoadGlobal<T>& op) {
   OutputExpr<calyx_op_type(op)::result_t>(op);
 }
 
@@ -90,24 +90,24 @@ void ExampleRegSpace::Emit(const LoadGlobalAddr& op) {
 }
 
 template<typename T>
-void ExampleRegSpace::EmitStoreGlobal(const StoreGlobal<T>& op) {
+void ExampleRegSpace::Emit(const StoreGlobal<T>& op) {
   if (op.src.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.src.GetVar());
 }
 
 template<typename T>
-void ExampleRegSpace::EmitLoadFromPointer(const LoadFromPointer<T>& op) {
+void ExampleRegSpace::Emit(const LoadFromPointer<T>& op) {
   OutputExpr<calyx_op_type(op)::result_t>(op);
   OutputVar<calyx::Pointer>(op.ptr_idx);
 }
 
 template<typename T>
-void ExampleRegSpace::EmitStoreToPointer(const StoreToPointer<T>& op) {
+void ExampleRegSpace::Emit(const StoreToPointer<T>& op) {
   if (op.src.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.src.GetVar());
   OutputVar<calyx::Pointer>(op.ptr_idx);
 }
 
 template<typename T>
-void ExampleRegSpace::EmitCall(const Call<T>& op) {
+void ExampleRegSpace::Emit(const Call<T>& op) {
   if constexpr(!std::is_same_v<T, void>) {
     OutputVar<calyx_op_type(op)::result_t>(op.idx);
   }
@@ -115,46 +115,46 @@ void ExampleRegSpace::EmitCall(const Call<T>& op) {
 }
 
 template<typename T>
-void ExampleRegSpace::EmitCallLabel(const CallLabel<T>& op) {
+void ExampleRegSpace::Emit(const CallLabel<T>& op) {
   if constexpr(!std::is_same_v<T, void>) {
     OutputVar<calyx_op_type(op)::result_t>(op.idx);
   }
 }
 
 template<typename T>
-void ExampleRegSpace::EmitReturn(const Return<T>& op) {
+void ExampleRegSpace::Emit(const Return<T>& op) {
   if constexpr(!std::is_same_v<T, void>) {
     if (op.val.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.val.GetVar());
   }
 }
 
 template<typename T>
-void ExampleRegSpace::EmitImm(const Imm<T>& op) {
+void ExampleRegSpace::Emit(const Imm<T>& op) {
   OutputExpr<calyx_op_type(op)::result_t>(op);
 }
 
 template<typename T>
-void ExampleRegSpace::EmitUnop(const Unop<T>& op) {
+void ExampleRegSpace::Emit(const Unop<T>& op) {
   OutputExpr<calyx_op_type(op)::result_t>(op);
   OutputVar<calyx_op_type(op)::src_t>(op.right_idx);
 }
 
 template<typename T>
-void ExampleRegSpace::EmitBinop(const Binop<T>& op) {
+void ExampleRegSpace::Emit(const Binop<T>& op) {
   OutputExpr<calyx_op_type(op)::result_t>(op);
   OutputVar<calyx_op_type(op)::src_t>(op.left_idx);
   if (op.right.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.right.GetVar());
 }
 
 template<typename T>
-void ExampleRegSpace::EmitShift(const Shift<T>& op) {
+void ExampleRegSpace::Emit(const Shift<T>& op) {
   OutputExpr<calyx_op_type(op)::result_t>(op);
   if (op.left.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.left.GetVar());
   if (op.right.IsVar()) OutputVar<calyx_op_type(op)::shift_t>(op.right.GetVar());
 }
 
 template<typename T>
-void ExampleRegSpace::EmitCompare(const Compare<T>& op) {
+void ExampleRegSpace::Emit(const Compare<T>& op) {
   OutputExpr<calyx_op_type(op)::result_t>(op);
   OutputVar<calyx_op_type(op)::src_t>(op.left_idx);
   if (op.right.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.right.GetVar());
@@ -165,7 +165,7 @@ void ExampleRegSpace::Emit(const UnconditionalBranch& op) {
 }
 
 template<typename T>
-void ExampleRegSpace::EmitBranchCompare(const BranchCompare<T>& op) {
+void ExampleRegSpace::Emit(const BranchCompare<T>& op) {
   OutputVar<calyx_op_type(op)::src_t>(op.left_idx);
   if (op.right.IsVar()) OutputVar<calyx_op_type(op)::src_t>(op.right.GetVar());
 }
@@ -175,13 +175,10 @@ void ExampleRegSpace::Emit(const Select& op) {
 }
 
 template<typename T>
-void ExampleRegSpace::EmitAddToPointer(const AddToPointer<T>& op) {
+void ExampleRegSpace::Emit(const AddToPointer<T>& op) {
   OutputExpr<calyx::Pointer>(op);
   if (op.ptr.IsVar()) OutputVar<calyx::Pointer>(op.ptr.GetVar());
   if (op.right.IsVar()) OutputVar<calyx_op_type(op)::offset_t>(op.right.GetVar());
 }
-
-#define BACKEND_NAME ExampleRegSpace
-#include "calyx/backend/Templates.inl"
 
 }

@@ -63,20 +63,20 @@ void FunctionDependencies::EmitFunction(const Function& function) {
     pos.first = i;
     for (int j = 0; j < block.size(); j++) {
       pos.second = j;
-      block[j]->Emit(*this);
+      Emit(block.at(j));
     }
   }
 }
 
 template<typename To, typename From>
-void FunctionDependencies::EmitCast(const Cast<To, From>& op) {
+void FunctionDependencies::Emit(const Cast<To, From>& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;
   var_graph.at(op.idx).deps.push_back(op.right_idx);
   cotyl::get_default(var_graph, op.right_idx).reads.push_back(pos);
 }
 
 template<typename T>
-void FunctionDependencies::EmitLoadLocal(const LoadLocal<T>& op) {
+void FunctionDependencies::Emit(const LoadLocal<T>& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;
   local_graph.at(op.loc_idx).reads.push_back(pos);
 }
@@ -90,13 +90,13 @@ void FunctionDependencies::Emit(const LoadLocalAddr& op) {
 }
 
 template<typename T>
-void FunctionDependencies::EmitStoreLocal(const StoreLocal<T>& op) {
+void FunctionDependencies::Emit(const StoreLocal<T>& op) {
   if (op.src.IsVar()) cotyl::get_default(var_graph, op.src.GetVar()).reads.push_back(pos);
   local_graph.at(op.loc_idx).writes.push_back(pos);
 }
 
 template<typename T>
-void FunctionDependencies::EmitLoadGlobal(const LoadGlobal<T>& op) {
+void FunctionDependencies::Emit(const LoadGlobal<T>& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;
 }
 
@@ -105,25 +105,25 @@ void FunctionDependencies::Emit(const LoadGlobalAddr& op) {
 }
 
 template<typename T>
-void FunctionDependencies::EmitStoreGlobal(const StoreGlobal<T>& op) {
+void FunctionDependencies::Emit(const StoreGlobal<T>& op) {
   if (op.src.IsVar()) cotyl::get_default(var_graph, op.src.GetVar()).reads.push_back(pos);
 }
 
 template<typename T>
-void FunctionDependencies::EmitLoadFromPointer(const LoadFromPointer<T>& op) {
+void FunctionDependencies::Emit(const LoadFromPointer<T>& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;
   var_graph.at(op.idx).deps.push_back(op.ptr_idx);
   cotyl::get_default(var_graph, op.ptr_idx).reads.push_back(pos);
 }
 
 template<typename T>
-void FunctionDependencies::EmitStoreToPointer(const StoreToPointer<T>& op) {
+void FunctionDependencies::Emit(const StoreToPointer<T>& op) {
   if (op.src.IsVar()) cotyl::get_default(var_graph, op.src.GetVar()).reads.push_back(pos);
   cotyl::get_default(var_graph, op.ptr_idx).reads.push_back(pos);
 }
 
 template<typename T>
-void FunctionDependencies::EmitCall(const Call<T>& op) {
+void FunctionDependencies::Emit(const Call<T>& op) {
   cotyl::get_default(var_graph, op.fn_idx).reads.push_back(pos);
   if constexpr(!std::is_same_v<T, void>) {
     cotyl::get_default(var_graph, op.idx).created = pos;
@@ -139,7 +139,7 @@ void FunctionDependencies::EmitCall(const Call<T>& op) {
 }
 
 template<typename T>
-void FunctionDependencies::EmitCallLabel(const CallLabel<T>& op) {
+void FunctionDependencies::Emit(const CallLabel<T>& op) {
   if constexpr(!std::is_same_v<T, void>) {
     cotyl::get_default(var_graph, op.idx).created = pos;
     var_graph.at(op.idx).is_call_result = true;
@@ -153,7 +153,7 @@ void FunctionDependencies::EmitCallLabel(const CallLabel<T>& op) {
 }
 
 template<typename T>
-void FunctionDependencies::EmitReturn(const Return<T>& op) {
+void FunctionDependencies::Emit(const Return<T>& op) {
   if constexpr(!std::is_same_v<T, void>) {
     if (op.val.IsVar()) {
       cotyl::get_default(var_graph, op.val.GetVar()).reads.push_back(pos);
@@ -163,19 +163,19 @@ void FunctionDependencies::EmitReturn(const Return<T>& op) {
 }
 
 template<typename T>
-void FunctionDependencies::EmitImm(const Imm<T>& op) {
+void FunctionDependencies::Emit(const Imm<T>& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;
 }
 
 template<typename T>
-void FunctionDependencies::EmitUnop(const Unop<T>& op) {
+void FunctionDependencies::Emit(const Unop<T>& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;
   var_graph.at(op.idx).deps.push_back(op.right_idx);
   cotyl::get_default(var_graph, op.right_idx).reads.push_back(pos);
 }
 
 template<typename T>
-void FunctionDependencies::EmitBinop(const Binop<T>& op) {
+void FunctionDependencies::Emit(const Binop<T>& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;
   cotyl::get_default(var_graph, op.idx).deps.push_back(op.left_idx);
   cotyl::get_default(var_graph, op.left_idx).reads.push_back(pos);
@@ -186,7 +186,7 @@ void FunctionDependencies::EmitBinop(const Binop<T>& op) {
 }
 
 template<typename T>
-void FunctionDependencies::EmitShift(const Shift<T>& op) {
+void FunctionDependencies::Emit(const Shift<T>& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;
   if (op.left.IsVar()) {
     cotyl::get_default(var_graph, op.idx).deps.push_back(op.left.GetVar());
@@ -199,7 +199,7 @@ void FunctionDependencies::EmitShift(const Shift<T>& op) {
 }
 
 template<typename T>
-void FunctionDependencies::EmitCompare(const Compare<T>& op) {
+void FunctionDependencies::Emit(const Compare<T>& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;
   cotyl::get_default(var_graph, op.idx).deps.push_back(op.left_idx);
   cotyl::get_default(var_graph, op.left_idx).reads.push_back(pos);
@@ -214,7 +214,7 @@ void FunctionDependencies::Emit(const UnconditionalBranch& op) {
 }
 
 template<typename T>
-void FunctionDependencies::EmitBranchCompare(const BranchCompare<T>& op) {
+void FunctionDependencies::Emit(const BranchCompare<T>& op) {
   block_graph.AddEdge(pos.first, op.tdest);
   block_graph.AddEdge(pos.first, op.fdest);
   cotyl::get_default(var_graph, op.left_idx).reads.push_back(pos);
@@ -234,7 +234,7 @@ void FunctionDependencies::Emit(const Select& op) {
 }
 
 template<typename T>
-void FunctionDependencies::EmitAddToPointer(const AddToPointer<T>& op) {
+void FunctionDependencies::Emit(const AddToPointer<T>& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;
   if (op.ptr.IsVar()) {  
     cotyl::get_default(var_graph, op.idx).deps.push_back(op.ptr.GetVar());
@@ -245,8 +245,5 @@ void FunctionDependencies::EmitAddToPointer(const AddToPointer<T>& op) {
     cotyl::get_default(var_graph, op.right.GetVar()).reads.push_back(pos);
   }
 }
-
-#define BACKEND_NAME FunctionDependencies
-#include "calyx/backend/Templates.inl"
 
 }

@@ -45,9 +45,8 @@ struct Emitter {
     if (!reachable) {
       return nullptr;
     }
-    auto directive = std::make_unique<T>(args...);
-    T* ref = directive.get();
-    switch (ref->cls) {
+    calyx::AnyDirective directive = T(args...);
+    switch (directive->cls) {
       case calyx::Directive::Class::Branch:
       case calyx::Directive::Class::Return:
       case calyx::Directive::Class::Select:
@@ -57,7 +56,7 @@ struct Emitter {
         break;
     }
     current_function->blocks[current_block].push_back(std::move(directive));
-    return ref;
+    return &current_function->blocks[current_block].back().get<T>();
   }
 
   block_label_t MakeBlock() {

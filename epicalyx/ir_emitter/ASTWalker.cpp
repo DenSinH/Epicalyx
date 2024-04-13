@@ -375,7 +375,7 @@ void ASTWalker::Visit(FunctionCallNode& expr) {
   }
 
   if (signature->contained->IsVoid()) {
-    emitter.Emit<calyx::Call<void>>(0, fn, std::move(args), std::move(var_args));
+    emitter.Emit<calyx::Call<void>>(var_index_t{0}, fn, std::move(args), std::move(var_args));
   }
   else {
     auto visitor = detail::EmitterTypeVisitor<detail::CallEmitter>(*this, { fn, std::move(args), std::move(var_args) });

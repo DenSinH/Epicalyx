@@ -1,9 +1,6 @@
 #pragma once
 
-#include <variant>
-#include <array>
 #include <type_traits>
-#include <tuple>
 
 
 namespace epi::cotyl {
@@ -31,7 +28,7 @@ struct flatten_helper<pack<Ts1...>, pack<Ts2...>, Ts3...>
 }
 
 template <typename... Ts>
-using flatten_t = typename detail::flatten_helper<pack<>, Ts...>::type;
+using flatten_pack = typename detail::flatten_helper<pack<>, Ts...>::type;
 
 template<template<typename T> class Op, typename Types>
 struct map_types;
@@ -54,5 +51,14 @@ struct map_pack<Op, pack<Args...>> {
 
 template<template<typename... Args> class Op, typename Types>
 using map_pack_t = typename map_pack<Op, Types>::mapped;
+
+template <typename T, typename Pack>
+struct pack_contains;
+
+template <typename T, typename... Ts>
+struct pack_contains<T, pack<Ts...>> : std::disjunction<std::is_same<T, Ts>...> {};
+
+template <typename T, typename Pack>
+constexpr bool pack_contains_v = pack_contains<T, Pack>::value;
 
 }

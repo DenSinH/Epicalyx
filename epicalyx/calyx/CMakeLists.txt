@@ -1,4 +1,7 @@
 add_library(Calyx STATIC
+        Types.h
+        Directive.h
+        Directive.cpp
         Calyx.h
         Calyx.cpp)
 
