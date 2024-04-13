@@ -90,7 +90,7 @@ int main() {
       if constexpr(std::is_same_v<glob_t, epi::calyx::Pointer>) {
         std::cout << "%p" << std::hex << glob.value << std::endl;
       }
-      else if constexpr(std::is_same_v<glob_t, epi::calyx::label_offset_t>) {
+      else if constexpr(std::is_same_v<glob_t, epi::label_offset_t>) {
         if (glob.offset) {
           std::cout << glob.label << "+" << glob.offset << std::endl;
         }
@@ -127,7 +127,7 @@ int main() {
         if constexpr(std::is_same_v<glob_t, epi::calyx::Pointer>) {
           std::cout << "%p" << std::hex << data.value << std::endl;
         }
-        else if constexpr(std::is_same_v<glob_t, epi::calyx::label_offset_t>) {
+        else if constexpr(std::is_same_v<glob_t, epi::label_offset_t>) {
           if (data.offset) {
             std::cout << data.label << "+" << data.offset << std::endl;
           }

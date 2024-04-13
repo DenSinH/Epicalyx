@@ -23,47 +23,47 @@ struct ExampleRegSpace final : RegisterSpace {
   template<typename T>
   void OutputVar(var_index_t var_idx);
   template<typename T>
-  void OutputExpr(const Expr& expr);
+  void OutputExpr(const calyx::Expr& expr);
   template<typename T>
   void OutputLocal(var_index_t loc_idx);
 
-  void Emit(const LoadLocalAddr& op) final;
-  void Emit(const LoadGlobalAddr& op) final;
+  void Emit(const calyx::LoadLocalAddr& op) final;
+  void Emit(const calyx::LoadGlobalAddr& op) final;
 
   template<typename To, typename From>
-  void EmitCast(const Cast<To, From>& op);
+  void EmitCast(const calyx::Cast<To, From>& op);
   template<typename T>
-  void EmitLoadLocal(const LoadLocal<T>& op);
+  void EmitLoadLocal(const calyx::LoadLocal<T>& op);
   template<typename T>
-  void EmitStoreLocal(const StoreLocal<T>& op);
+  void EmitStoreLocal(const calyx::StoreLocal<T>& op);
   template<typename T>
-  void EmitLoadGlobal(const LoadGlobal<T>& op);
+  void EmitLoadGlobal(const calyx::LoadGlobal<T>& op);
   template<typename T>
-  void EmitStoreGlobal(const StoreGlobal<T>& op);
+  void EmitStoreGlobal(const calyx::StoreGlobal<T>& op);
   template<typename T>
-  void EmitLoadFromPointer(const LoadFromPointer<T>& op);
+  void EmitLoadFromPointer(const calyx::LoadFromPointer<T>& op);
   template<typename T>
-  void EmitStoreToPointer(const StoreToPointer<T>& op);
+  void EmitStoreToPointer(const calyx::StoreToPointer<T>& op);
   template<typename T>
-  void EmitCall(const Call<T>& op);
+  void EmitCall(const calyx::Call<T>& op);
   template<typename T>
-  void EmitCallLabel(const CallLabel<T>& op);
+  void EmitCallLabel(const calyx::CallLabel<T>& op);
   template<typename T>
-  void EmitReturn(const Return<T>& op);
+  void EmitReturn(const calyx::Return<T>& op);
   template<typename T>
-  void EmitImm(const Imm<T>& op);
+  void EmitImm(const calyx::Imm<T>& op);
   template<typename T>
-  void EmitUnop(const Unop<T>& op);
+  void EmitUnop(const calyx::Unop<T>& op);
   template<typename T>
-  void EmitBinop(const Binop<T>& op);
+  void EmitBinop(const calyx::Binop<T>& op);
   template<typename T>
-  void EmitShift(const Shift<T>& op);
+  void EmitShift(const calyx::Shift<T>& op);
   template<typename T>
-  void EmitCompare(const Compare<T>& op);
+  void EmitCompare(const calyx::Compare<T>& op);
   template<typename T>
-  void EmitBranchCompare(const BranchCompare<T>& op);
+  void EmitBranchCompare(const calyx::BranchCompare<T>& op);
   template<typename T>
-  void EmitAddToPointer(const AddToPointer<T>& op);
+  void EmitAddToPointer(const calyx::AddToPointer<T>& op);
 
 #include "calyx/backend/Methods.inl"
 

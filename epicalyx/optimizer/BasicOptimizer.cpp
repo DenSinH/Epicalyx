@@ -10,6 +10,8 @@
 
 namespace epi {
 
+using namespace calyx;
+
 // uses that block labels are ordered topologically
 block_label_t BasicOptimizer::CommonBlockAncestor(block_label_t first, block_label_t second) const {
   cotyl::set<block_label_t> ancestors{first, second};
@@ -262,7 +264,7 @@ void BasicOptimizer::FlushAliasedLocals() {
   }
 }
 
-void BasicOptimizer::TryReplaceVar(calyx::var_index_t& var_idx) const {
+void BasicOptimizer::TryReplaceVar(var_index_t& var_idx) const {
   if (var_replacement.contains(var_idx)) {
     var_idx = var_replacement.at(var_idx);
   }

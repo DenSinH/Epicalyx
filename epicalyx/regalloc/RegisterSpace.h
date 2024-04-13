@@ -10,8 +10,6 @@
 
 namespace epi {
 
-using namespace calyx;
-
 /*
  * Generic RegisterSpace class
  * This can be overridden to define the following:
@@ -34,17 +32,17 @@ using register_type_t = u32;
 using register_idx_t = u32;
 using register_t = std::pair<register_type_t, register_idx_t>;
 
-struct RegisterSpace : Backend {
+struct RegisterSpace : calyx::Backend {
 
   template<typename T, typename... Args>
   requires (std::is_base_of_v<RegisterSpace, T>)
-  static std::unique_ptr<T> GetRegSpace(const Function& function, Args... args) {
+  static std::unique_ptr<T> GetRegSpace(const calyx::Function& function, Args... args) {
     auto result = std::make_unique<T>(args...);
     result->EmitFunction(function);
     return std::move(result);
   }
 
-  void EmitFunction(const Function& function);
+  void EmitFunction(const calyx::Function& function);
 
   virtual register_type_t RegisterType(const GeneralizedVar& gvar) const = 0;
   virtual std::size_t RegisterTypePopulation(const register_type_t& type) const = 0;

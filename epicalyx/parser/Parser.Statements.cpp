@@ -5,6 +5,8 @@
 #include "Cast.h"
 
 namespace epi {
+  
+using namespace ast;
 
 pNode<StatNode> Parser::SStatement() {
   switch (in_stream.ForcePeek()->type) {

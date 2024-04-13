@@ -10,6 +10,8 @@
 
 namespace epi {
 
+using namespace calyx;
+
 
 void ProgramDependencies::VisualizeVars(const std::string& filename) {
   auto graph = std::make_unique<epi::cycle::VisualGraph>();

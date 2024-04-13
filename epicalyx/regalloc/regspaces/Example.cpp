@@ -7,6 +7,8 @@
 
 namespace epi {
 
+using namespace calyx;
+
 register_type_t ExampleRegSpace::RegisterType(const GeneralizedVar& gvar) const {
   return static_cast<register_type_t>(register_type_map.at(gvar));
 }

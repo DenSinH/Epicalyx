@@ -23,12 +23,12 @@ struct ASTWalker : public ast::NodeVisitor {
 
   union StateData {
     struct {
-      calyx::var_index_t var;
+      var_index_t var;
     };
 
     struct {
-      calyx::var_index_t true_block;
-      calyx::var_index_t false_block;
+      var_index_t true_block;
+      var_index_t false_block;
     };
   };
 
@@ -38,16 +38,16 @@ struct ASTWalker : public ast::NodeVisitor {
   };
 
   std::stack<std::pair<State, StateData>> state{};
-  std::stack<calyx::block_label_t> break_stack{};
-  std::stack<calyx::block_label_t> continue_stack{};
+  std::stack<block_label_t> break_stack{};
+  std::stack<block_label_t> continue_stack{};
   std::stack<calyx::Select*> select_stack{};
   // goto labels
-  cotyl::unordered_map<std::string, calyx::block_label_t> local_labels{};
+  cotyl::unordered_map<std::string, block_label_t> local_labels{};
 
   cotyl::MapScope<std::string, LocalData> locals{};
   cotyl::unordered_map<std::string, pType<const CType>> symbol_types{};
   
-  calyx::var_index_t current;
+  var_index_t current;
   Emitter& emitter;
 
   void AddGlobal(const std::string& symbol, const pType<const CType>& type) {
@@ -73,7 +73,7 @@ struct ASTWalker : public ast::NodeVisitor {
 
   static calyx::Local::Type GetCalyxType(const pType<const CType>& type);
 
-  calyx::var_index_t AddLocal(const std::string& name, const pType<const CType>& type, std::optional<calyx::var_index_t> arg_index = {}) {
+  var_index_t AddLocal(const std::string& name, const pType<const CType>& type, std::optional<var_index_t> arg_index = {}) {
     auto c_idx = emitter.c_counter++;
     size_t size = type->Sizeof();
     auto& loc = emitter.current_function->locals.emplace(c_idx, calyx::Local{GetCalyxType(type), c_idx, size, std::move(arg_index)}).first->second;
@@ -105,11 +105,11 @@ struct ASTWalker : public ast::NodeVisitor {
 
   struct BinopCastResult {
     Emitter::Var var;
-    calyx::var_index_t left;
-    calyx::var_index_t right;
+    var_index_t left;
+    var_index_t right;
   };
-  BinopCastResult BinopCastHelper(calyx::var_index_t left, calyx::var_index_t right);
-  void BinopHelper(calyx::var_index_t left, calyx::BinopType op, calyx::var_index_t right);
+  BinopCastResult BinopCastHelper(var_index_t left, var_index_t right);
+  void BinopHelper(var_index_t left, calyx::BinopType op, var_index_t right);
 
   void Visit(ast::DeclarationNode& decl) final;
   void Visit(ast::FunctionDefinitionNode& decl) final;

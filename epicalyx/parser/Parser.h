@@ -18,39 +18,37 @@ struct FunctionDefinitionNode;
 
 }
 
-using namespace ast;
-
 
 struct Parser final : public ConstParser {
   using ConstParser::ConstParser;
 
   using enum_type = i32;
 
-  pExpr EPrimary() final;
-  pExpr EPostfix();
-  pExpr EUnary();
+  ast::pExpr EPrimary() final;
+  ast::pExpr EPostfix();
+  ast::pExpr EUnary();
   pType<const CType> ETypeName();
-  pExpr ECast() final;
-  pExpr EAssignment() final;
-  pExpr EExpression();
-  Initializer EInitializer();
-  pNode<InitializerList> EInitializerList();
+  ast::pExpr ECast() final;
+  ast::pExpr EAssignment() final;
+  ast::pExpr EExpression();
+  ast::Initializer EInitializer();
+  ast::pNode<ast::InitializerList> EInitializerList();
   pType<const CType> ResolveIdentifierType(const std::string& name) const final;
-  void EExpressionList(std::vector<pExpr>& dest);
+  void EExpressionList(std::vector<ast::pExpr>& dest);
 
   void DStaticAssert();
-  std::pair<pType<>, StorageClass> DSpecifier();
+  std::pair<pType<>, ast::StorageClass> DSpecifier();
   pType<> DEnum();
   pType<> DStruct();
   std::string DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest);
-  pNode<DeclarationNode> DDeclarator(pType<> ctype, StorageClass storage);
-  void DInitDeclaratorList(std::vector<pNode<DeclarationNode>>& dest);
+  ast::pNode<ast::DeclarationNode> DDeclarator(pType<> ctype, ast::StorageClass storage);
+  void DInitDeclaratorList(std::vector<ast::pNode<ast::DeclarationNode>>& dest);
   bool IsDeclarationSpecifier(int after = 0);
 
-  pNode<StatNode> SStatement();
-  pNode<CompoundNode> SCompound();
+  ast::pNode<ast::StatNode> SStatement();
+  ast::pNode<ast::CompoundNode> SCompound();
 
-  pNode<FunctionDefinitionNode> ExternalDeclaration(std::vector<pNode<DeclarationNode>>& dest);
+  ast::pNode<ast::FunctionDefinitionNode> ExternalDeclaration(std::vector<ast::pNode<ast::DeclarationNode>>& dest);
 
   void PushScope();
   void PopScope();
@@ -77,7 +75,7 @@ struct Parser final : public ConstParser {
   cotyl::MapScope<std::string, pType<const CType>> variables{};
 
   // external results
-  std::vector<pNode<DeclNode>> declarations{};
+  std::vector<ast::pNode<ast::DeclNode>> declarations{};
 };
 
 }

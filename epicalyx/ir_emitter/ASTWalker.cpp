@@ -275,7 +275,7 @@ void ASTWalker::Visit(ArrayAccessNode& expr) {
   cotyl::Assert(cotyl::Is(state.top().first).AnyOf<State::Read, State::ConditionalBranch, State::Assign, State::Address>());
 
   state.push({State::Read, {}});
-  calyx::var_index_t ptr_idx, offs_idx;
+  var_index_t ptr_idx, offs_idx;
   if (expr.left->GetType()->IsPointer()) {
     expr.left->Visit(*this);
     ptr_idx = current;
@@ -555,7 +555,7 @@ void ASTWalker::Visit(UnopNode& expr) {
       state.pop();
 
       auto type = emitter.vars[current].type;
-      calyx::var_index_t stored;
+      var_index_t stored;
       if (type == Emitter::Var::Type::Pointer) {
         auto left = current;
         auto var = emitter.vars[left];
@@ -590,7 +590,7 @@ void ASTWalker::Visit(UnopNode& expr) {
       state.pop();
 
       auto type = emitter.vars[current].type;
-      calyx::var_index_t stored;
+      var_index_t stored;
 
       // subtract 1
       if (type == Emitter::Var::Type::Pointer) {
@@ -712,7 +712,7 @@ void ASTWalker::Visit(BinopNode& expr) {
   
   // only need to push a new state for conditional branches
   const bool conditional_branch = state.top().first == State::ConditionalBranch;
-  calyx::var_index_t left, right;
+  var_index_t left, right;
 
   if (expr.op != TokenType::LogicalAnd && expr.op != TokenType::LogicalOr) {
     if (conditional_branch) {
@@ -1137,7 +1137,7 @@ void ASTWalker::Visit(EmptyNode& stat) {
 void ASTWalker::Visit(IfNode& stat) {
   auto true_block = emitter.MakeBlock();
   auto false_block = emitter.MakeBlock();
-  calyx::block_label_t post_block;
+  block_label_t post_block;
 
   state.push({State::ConditionalBranch, {.true_block = true_block, .false_block = false_block}});
   stat.cond->Visit(*this);

@@ -8,6 +8,8 @@
 
 namespace epi {
 
+using namespace ast;
+
 void ConstParser::PrintLoc() const {
   in_stream.PrintLoc();
 }

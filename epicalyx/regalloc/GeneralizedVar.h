@@ -9,17 +9,17 @@ namespace epi {
 
 struct GeneralizedVar {
 private:
-  GeneralizedVar(calyx::var_index_t var_idx, bool is_local = false) :
+  GeneralizedVar(var_index_t var_idx, bool is_local = false) :
       idx{var_idx}, is_local{is_local} {
 
   }
 
 public:
-  calyx::var_index_t idx;
+  var_index_t idx;
   bool is_local = false;
 
-  static GeneralizedVar Var(calyx::var_index_t var_idx) { return {var_idx}; }
-  static GeneralizedVar Local(calyx::var_index_t var_idx) { return {var_idx, true}; }
+  static GeneralizedVar Var(var_index_t var_idx) { return {var_idx}; }
+  static GeneralizedVar Local(var_index_t var_idx) { return {var_idx, true}; }
   
   i64 NodeUID() const { return is_local ? -idx : idx; }
   auto operator<=>(const GeneralizedVar& other) const = default;

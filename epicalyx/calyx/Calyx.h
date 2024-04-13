@@ -12,19 +12,21 @@
 #include <optional>
 #include <bit>
 
+namespace epi {
 
-namespace epi::calyx {
-using ::epi::stringify;
+namespace calyx {
 
 struct Backend;
 struct Function;
+
+}
 
 using var_index_t = u64;
 using block_label_t = u64;
 using func_pos_t = std::pair<block_label_t, int>;
 
 struct program_pos_t {
-  const Function* func;
+  const calyx::Function* func;
   func_pos_t pos;
 };
 
@@ -32,6 +34,10 @@ struct label_offset_t {
   std::string label;
   i64 offset;
 };
+
+namespace calyx {
+
+using ::epi::stringify;
 
 struct Pointer {
   Pointer() : value(0) { }
@@ -675,4 +681,6 @@ struct Select final : Branch {
   static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
-}
+}  // namespace calyx
+
+}  // namespace epi

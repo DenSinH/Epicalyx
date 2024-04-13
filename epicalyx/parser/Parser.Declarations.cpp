@@ -10,6 +10,9 @@
 
 namespace epi {
 
+using namespace ast;
+
+
 bool Parser::IsDeclarationSpecifier(int after) {
   const Token* current;
   if (!in_stream.Peek(current, after)) {

@@ -14,21 +14,19 @@
 
 namespace epi {
 
-using namespace ast;
-
 struct ConstParser : public cotyl::Locatable {
 
   ConstParser(cotyl::Stream<AnyToken>& in_stream) : in_stream{in_stream} { }
 
   void PrintLoc() const final;
 
-  virtual pExpr EPrimary();
-  virtual pExpr ECast();
-  template<pExpr (ConstParser::*SubNode)(), enum TokenType... types>
-  pExpr EBinopImpl();
-  pExpr EBinop();
-  pExpr ETernary();
-  virtual pExpr EAssignment();
+  virtual ast::pExpr EPrimary();
+  virtual ast::pExpr ECast();
+  template<ast::pExpr (ConstParser::*SubNode)(), enum TokenType... types>
+  ast::pExpr EBinopImpl();
+  ast::pExpr EBinop();
+  ast::pExpr ETernary();
+  virtual ast::pExpr EAssignment();
   i64 EConstexpr();
 
   cotyl::Stream<AnyToken>& in_stream;

@@ -9,6 +9,8 @@
 
 namespace epi {
 
+using namespace calyx;
+
 RIG RIG::GenerateRIG(const Function& function) {
   const auto deps = FunctionDependencies::GetDependencies(function);
   RIG rig{};

@@ -30,7 +30,7 @@ struct Emitter {
   };
 
   template<typename T, typename... Args>
-  calyx::var_index_t EmitExpr(Var var, Args... args) {
+  var_index_t EmitExpr(Var var, Args... args) {
     if (!reachable) {
       return 0;
     }
@@ -60,14 +60,14 @@ struct Emitter {
     return ref;
   }
 
-  calyx::block_label_t MakeBlock() {
+  block_label_t MakeBlock() {
     // block 0 is special
-    calyx::block_label_t id = current_function->blocks.size() + 1;
+    block_label_t id = current_function->blocks.size() + 1;
     current_function->blocks.emplace(id, calyx::block_t{});
     return id;
   }
 
-  void SelectBlock(calyx::block_label_t id) {
+  void SelectBlock(block_label_t id) {
     cotyl::Assert(current_function->blocks.at(id).empty(), "Expected empty block on selection");
     reachable = true;
     current_block = id;
@@ -76,11 +76,11 @@ struct Emitter {
   void MakeProgram(std::vector<ast::pNode<ast::DeclNode>>& ast);
 
   // 0 are special IDs
-  calyx::var_index_t ir_counter = 1;  // ir vars
-  calyx::var_index_t c_counter = 1;   // c vars
+  var_index_t ir_counter = 1;  // ir vars
+  var_index_t c_counter = 1;   // c vars
 
   calyx::Function* current_function = nullptr;
-  calyx::block_label_t current_block = 0;
+  block_label_t current_block = 0;
 
   std::vector<Var> vars;
   calyx::Program program{};

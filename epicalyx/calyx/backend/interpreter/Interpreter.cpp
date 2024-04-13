@@ -1,6 +1,7 @@
 #include "Interpreter.h"
 #include "CustomAssert.h"
 #include "Exceptions.h"
+#include "Stringify.h"
 #include "Format.h"
 #include "Cast.h"
 
@@ -11,6 +12,8 @@
 
 
 namespace epi::calyx {
+
+using ::epi::stringify;
 
 void Interpreter::InterpretGlobalInitializer(global_t& dest, Function&& func) {
   call_stack.emplace(program_counter_t{nullptr, {0, 0}}, -1, arg_list_t{}, arg_list_t{});
@@ -282,7 +285,7 @@ void Interpreter::EmitLoadGlobal(const LoadGlobal<T>& op) {
 }
 
 void Interpreter::Emit(const LoadGlobalAddr& op) {
-  vars.Set(op.idx, MakePointer(calyx::label_offset_t{op.symbol, 0}));
+  vars.Set(op.idx, MakePointer(label_offset_t{op.symbol, 0}));
 }
 
 template<typename T>
@@ -318,7 +321,7 @@ void Interpreter::EmitLoadFromPointer(const LoadFromPointer<T>& op) {
       memcpy(&value, &stack[pval] + op.offset, sizeof(T));
     }
     else {
-      const auto pval = std::get<calyx::label_offset_t>(pointer);
+      const auto pval = std::get<label_offset_t>(pointer);
       cotyl::Assert(global_data[globals[pval.label]].size() - op.offset - pval.offset >= sizeof(T));
       memcpy(&value, global_data[globals[pval.label]].data() + op.offset + pval.offset, sizeof(T));
     }
@@ -349,7 +352,7 @@ void Interpreter::EmitStoreToPointer(const StoreToPointer<T>& op) {
       memcpy(&stack[pval + op.offset], &value, sizeof(T));
     }
     else {
-      const auto pval = std::get<calyx::label_offset_t>(pointer);
+      const auto pval = std::get<label_offset_t>(pointer);
       cotyl::Assert(global_data[globals[pval.label]].size() - op.offset - pval.offset >= sizeof(T));
       memcpy(global_data[globals[pval.label]].data() + op.offset + pval.offset, &value, sizeof(T));
     }
@@ -366,7 +369,7 @@ void Interpreter::EmitCall(const Call<T>& op) {
     throw cotyl::UnimplementedException("Interpreter call pointer value");
   }
   else {
-    auto pval = std::get<calyx::label_offset_t>(pointer);
+    auto pval = std::get<label_offset_t>(pointer);
     func = &program.functions.at(pval.label);
     cotyl::Assert(pval.offset == 0, "Cannot jump to offset label in call");
   }
@@ -663,8 +666,8 @@ void Interpreter::EmitAddToPointer(const AddToPointer<T>& op) {
     result = MakePointer(std::get<i64>(lptr) + (i64)op.stride * (i64)right);
   }
   else {
-    auto pval = std::get<calyx::label_offset_t>(lptr);
-    result = MakePointer(calyx::label_offset_t{pval.label, pval.offset + (i64) op.stride * (i64) right});
+    auto pval = std::get<label_offset_t>(lptr);
+    result = MakePointer(label_offset_t{pval.label, pval.offset + (i64) op.stride * (i64) right});
   }
   vars.Set(op.idx, result);
 }

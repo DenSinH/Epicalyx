@@ -10,11 +10,9 @@
 
 namespace epi {
 
-using namespace calyx;
-
 struct BasicOptimizer final : calyx::Backend {
 
-  BasicOptimizer(Function&& function) : 
+  BasicOptimizer(calyx::Function&& function) : 
       old_function{std::move(function)},
       old_deps{FunctionDependencies::GetDependencies(old_function)},
       new_function{old_function.symbol} {
@@ -22,7 +20,7 @@ struct BasicOptimizer final : calyx::Backend {
   }
 
 private:
-  Function old_function;
+  calyx::Function old_function;
   FunctionDependencies old_deps;
 
   calyx::Function new_function;
@@ -58,7 +56,7 @@ private:
   }
 
   template<typename T, typename... Args>
-  void OutputExprNew(calyx::var_index_t idx, const Args&... args) {
+  void OutputExprNew(var_index_t idx, const Args&... args) {
     vars_found.emplace(idx, OutputNew<T>(idx, args...));
   }
 
@@ -70,7 +68,7 @@ private:
   }
 
   template<typename T>
-  requires (std::is_base_of_v<Expr, T>)
+  requires (std::is_base_of_v<calyx::Expr, T>)
   void OutputExprCopy(const T& expr) {
     vars_found.emplace(expr.idx, OutputCopy(expr));
   }
@@ -82,13 +80,13 @@ private:
   }
 
   cotyl::unordered_map<block_label_t, func_pos_t> block_links{};
-  Graph<block_label_t, const block_t*, true> new_block_graph{};
+  Graph<block_label_t, const calyx::block_t*, true> new_block_graph{};
 
   // direct variable replacements
   cotyl::unordered_map<var_index_t, var_index_t> var_replacement{};
 
   // variable found location in new program
-  cotyl::unordered_map<calyx::var_index_t, std::pair<calyx::block_label_t, u64>> vars_found{};
+  cotyl::unordered_map<var_index_t, std::pair<block_label_t, u64>> vars_found{};
 
   // find a suitable replacement for some expression result
   // based on a predicate
@@ -109,7 +107,7 @@ private:
   struct LocalData {
     var_index_t aliases = 0;           // local might alias another local
     local_replacement_t replacement;   // replacement for LoadLocals
-    pDirective store;                  // store to flush local with
+    calyx::pDirective store;           // store to flush local with
   };
 
   // local replacements (loads/stores/alias loads/alias stores)
@@ -128,7 +126,7 @@ private:
   // emit a branch type instruction, flush locals and set state
   // also constructs the new_block_graph
   template<typename T>
-  requires (std::is_base_of_v<Branch, T>)
+  requires (std::is_base_of_v<calyx::Branch, T>)
   void DoBranch(std::unique_ptr<T>&& branch);
 
   // Flush current aliased locals
@@ -163,7 +161,7 @@ private:
 
   // try to replace a variable with a same-valued variable
   // tracked in the var_replacement map
-  void TryReplaceVar(calyx::var_index_t& var_idx) const;
+  void TryReplaceVar(var_index_t& var_idx) const;
 
   template<typename T>
   void TryReplaceOperand(calyx::Operand<T>& var) const;
@@ -178,45 +176,45 @@ private:
   block_label_t CommonBlockAncestor(block_label_t first, block_label_t second) const;
 
 public:
-  Function&& Optimize();
+  calyx::Function&& Optimize();
   
-  void Emit(const LoadLocalAddr& op) final;
-  void Emit(const LoadGlobalAddr& op) final;
+  void Emit(const calyx::LoadLocalAddr& op) final;
+  void Emit(const calyx::LoadGlobalAddr& op) final;
 
   template<typename To, typename From>
-  void EmitCast(const Cast<To, From>& op);
+  void EmitCast(const calyx::Cast<To, From>& op);
   template<typename T>
-  void EmitLoadLocal(const LoadLocal<T>& op);
+  void EmitLoadLocal(const calyx::LoadLocal<T>& op);
   template<typename T>
-  void EmitStoreLocal(const StoreLocal<T>& op);
+  void EmitStoreLocal(const calyx::StoreLocal<T>& op);
   template<typename T>
-  void EmitLoadGlobal(const LoadGlobal<T>& op);
+  void EmitLoadGlobal(const calyx::LoadGlobal<T>& op);
   template<typename T>
-  void EmitStoreGlobal(const StoreGlobal<T>& op);
+  void EmitStoreGlobal(const calyx::StoreGlobal<T>& op);
   template<typename T>
-  void EmitLoadFromPointer(const LoadFromPointer<T>& op);
+  void EmitLoadFromPointer(const calyx::LoadFromPointer<T>& op);
   template<typename T>
-  void EmitStoreToPointer(const StoreToPointer<T>& op);
+  void EmitStoreToPointer(const calyx::StoreToPointer<T>& op);
   template<typename T>
-  void EmitCall(const Call<T>& op);
+  void EmitCall(const calyx::Call<T>& op);
   template<typename T>
-  void EmitCallLabel(const CallLabel<T>& op);
+  void EmitCallLabel(const calyx::CallLabel<T>& op);
   template<typename T>
-  void EmitReturn(const Return<T>& op);
+  void EmitReturn(const calyx::Return<T>& op);
   template<typename T>
-  void EmitImm(const Imm<T>& op);
+  void EmitImm(const calyx::Imm<T>& op);
   template<typename T>
-  void EmitUnop(const Unop<T>& op);
+  void EmitUnop(const calyx::Unop<T>& op);
   template<typename T>
-  void EmitBinop(const Binop<T>& op);
+  void EmitBinop(const calyx::Binop<T>& op);
   template<typename T>
-  void EmitShift(const Shift<T>& op);
+  void EmitShift(const calyx::Shift<T>& op);
   template<typename T>
-  void EmitCompare(const Compare<T>& op);
+  void EmitCompare(const calyx::Compare<T>& op);
   template<typename T>
-  void EmitBranchCompare(const BranchCompare<T>& op);
+  void EmitBranchCompare(const calyx::BranchCompare<T>& op);
   template<typename T>
-  void EmitAddToPointer(const AddToPointer<T>& op);
+  void EmitAddToPointer(const calyx::AddToPointer<T>& op);
 
 #include "calyx/backend/Methods.inl"
 

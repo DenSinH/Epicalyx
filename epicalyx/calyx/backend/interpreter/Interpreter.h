@@ -40,57 +40,57 @@ struct Interpreter : Backend {
   std::vector<std::vector<u8>> global_data{{}};
 
   // points to stack location of locals
-  cotyl::MapScope<calyx::var_index_t, std::pair<i64, u64>> locals{};
+  cotyl::MapScope<var_index_t, std::pair<i64, u64>> locals{};
 
   // IR variables
-  cotyl::MapScope<calyx::var_index_t, std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>, true> vars{};
+  cotyl::MapScope<var_index_t, std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>, true> vars{};
 
   program_counter_t pos{nullptr, {0, 0}};
   // link, return_to, args, var_args
-  std::stack<std::tuple<program_counter_t, calyx::var_index_t, calyx::arg_list_t, calyx::arg_list_t>> call_stack{};
+  std::stack<std::tuple<program_counter_t, var_index_t, calyx::arg_list_t, calyx::arg_list_t>> call_stack{};
   std::optional<std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> returned = {};
 
-  void EnterFunction(const Function* function);
+  void EnterFunction(const calyx::Function* function);
   void LoadArg(const calyx::Local& loc);
-  void EmitProgram(const Program& program);
+  void EmitProgram(const calyx::Program& program);
 
-  void Emit(const LoadLocalAddr& op) final;
-  void Emit(const LoadGlobalAddr& op) final;
+  void Emit(const calyx::LoadLocalAddr& op) final;
+  void Emit(const calyx::LoadGlobalAddr& op) final;
 
   template<typename To, typename From>
-  void EmitCast(const Cast<To, From>& op);
+  void EmitCast(const calyx::Cast<To, From>& op);
   template<typename T>
-  void EmitLoadLocal(const LoadLocal<T>& op);
+  void EmitLoadLocal(const calyx::LoadLocal<T>& op);
   template<typename T>
-  void EmitStoreLocal(const StoreLocal<T>& op);
+  void EmitStoreLocal(const calyx::StoreLocal<T>& op);
   template<typename T>
-  void EmitLoadGlobal(const LoadGlobal<T>& op);
+  void EmitLoadGlobal(const calyx::LoadGlobal<T>& op);
   template<typename T>
-  void EmitStoreGlobal(const StoreGlobal<T>& op);
+  void EmitStoreGlobal(const calyx::StoreGlobal<T>& op);
   template<typename T>
-  void EmitLoadFromPointer(const LoadFromPointer<T>& op);
+  void EmitLoadFromPointer(const calyx::LoadFromPointer<T>& op);
   template<typename T>
-  void EmitStoreToPointer(const StoreToPointer<T>& op);
+  void EmitStoreToPointer(const calyx::StoreToPointer<T>& op);
   template<typename T>
-  void EmitCall(const Call<T>& op);
+  void EmitCall(const calyx::Call<T>& op);
   template<typename T>
-  void EmitCallLabel(const CallLabel<T>& op);
+  void EmitCallLabel(const calyx::CallLabel<T>& op);
   template<typename T>
-  void EmitReturn(const Return<T>& op);
+  void EmitReturn(const calyx::Return<T>& op);
   template<typename T>
-  void EmitImm(const Imm<T>& op);
+  void EmitImm(const calyx::Imm<T>& op);
   template<typename T>
-  void EmitUnop(const Unop<T>& op);
+  void EmitUnop(const calyx::Unop<T>& op);
   template<typename T>
-  void EmitBinop(const Binop<T>& op);
+  void EmitBinop(const calyx::Binop<T>& op);
   template<typename T>
-  void EmitBranchCompare(const BranchCompare<T>& op);
+  void EmitShift(const calyx::Shift<T>& op);
   template<typename T>
-  void EmitShift(const Shift<T>& op);
+  void EmitCompare(const calyx::Compare<T>& op);
   template<typename T>
-  void EmitCompare(const Compare<T>& op);
+  void EmitBranchCompare(const calyx::BranchCompare<T>& op);
   template<typename T>
-  void EmitAddToPointer(const AddToPointer<T>& op);
+  void EmitAddToPointer(const calyx::AddToPointer<T>& op);
 
 #include "../Methods.inl"
 };
