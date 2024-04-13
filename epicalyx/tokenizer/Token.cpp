@@ -4,10 +4,10 @@
 
 namespace epi {
   
-extern const cotyl::unordered_map<TokenType, TokenInfo> TokenData;
+extern const cotyl::unordered_map<TokenType, std::string> TokenNames;
 
 STRINGIFY_METHOD(TokenType) {
-  return TokenData.at(value).name;
+  return TokenNames.at(value);
 }
 
 }

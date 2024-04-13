@@ -14,14 +14,6 @@
 
 namespace epi {
 
-enum class TokenClass {
-  Identifier,
-  Keyword,
-  Punctuator,
-  StringConstant,
-  NumericalConstant,
-};
-
 enum class TokenType {
   Identifier,
 
@@ -88,18 +80,12 @@ enum class TokenType {
   // <: :> <% %> %: %:%: I don't know what these are
 };
 
-struct TokenInfo {
-  std::string name;
-  TokenClass cls;
-};
-
 STRINGIFY_METHOD(TokenType);
 
 struct Token {
-  TokenClass cls;
   TokenType type;
 
-  Token(TokenClass cls, TokenType type) : cls{cls}, type{type} {
+  Token(TokenType type) : type{type} {
 
   }
 
@@ -113,20 +99,20 @@ struct Token {
 };
 
 struct PunctuatorToken final : public Token {
-  PunctuatorToken(TokenType type) : Token{TokenClass::Punctuator, type} { }
+  PunctuatorToken(TokenType type) : Token{type} { }
 };
 
 static STRINGIFY_METHOD(PunctuatorToken) { return stringify(value.type); }
 
 struct KeywordToken final : public Token {
-  KeywordToken(TokenType type) : Token{TokenClass::Keyword, type} { }
+  KeywordToken(TokenType type) : Token{type} { }
 };
 
 static STRINGIFY_METHOD(KeywordToken) { return stringify(value.type); }
 
 struct IdentifierToken final : public Token {
   explicit IdentifierToken(std::string  name) :
-    Token(TokenClass::Identifier, TokenType::Identifier),
+    Token(TokenType::Identifier),
     name(std::move(name)) {
 
   }
@@ -140,7 +126,7 @@ static STRINGIFY_METHOD(IdentifierToken) { return value.name; }
 template<typename T>
 struct NumericalConstantToken final : public Token {
   explicit NumericalConstantToken(T value) :
-      Token(TokenClass::NumericalConstant, TokenType::NumericConstant),
+      Token(TokenType::NumericConstant),
       value(value) {
 
   }
@@ -153,7 +139,7 @@ static STRINGIFY_METHOD(NumericalConstantToken<T>) { return stringify(value.valu
 
 struct StringConstantToken : public Token {
   explicit StringConstantToken(const std::string value) :
-      Token(TokenClass::StringConstant, TokenType::StringConstant),
+      Token(TokenType::StringConstant),
       value(value) {
 
   }
