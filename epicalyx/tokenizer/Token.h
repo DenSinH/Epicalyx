@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Stringify.h"
+#include "Escape.h"
 #include "Format.h"
 #include "Variant.h"
 
@@ -22,7 +24,6 @@ enum class TokenClass {
 };
 
 enum class TokenType {
-  Invalid,
   Identifier,
 
   // constants
@@ -93,39 +94,42 @@ struct TokenInfo {
   TokenClass cls;
 };
 
-extern const cotyl::unordered_map<const std::string, TokenType> Punctuators;
-extern const cotyl::unordered_map<const std::string, TokenType> Keywords;
-extern const cotyl::unordered_map<TokenType, TokenInfo> TokenData;
-
+STRINGIFY_METHOD(TokenType);
 
 struct Token {
+  TokenClass cls;
   TokenType type;
 
-  Token() : type(TokenType::Invalid) { }
-
-  Token(TokenType type) : type(type) {
+  Token(TokenClass cls, TokenType type) : cls{cls}, type{type} {
 
   }
 
   virtual ast::pExpr GetConst(ConstTokenVisitor& v) const { return v.Visit(*this); }
-  void Expect(TokenType t) const;
 
   virtual std::string ToString() const {
-    return TokenData.at(type).name;
+    return stringify(type);
   }
 
   bool operator==(const Token& other) const {
     return type == other.type;
   }
 
-  virtual TokenClass Class() {
-    return TokenData.at(type).cls;
+  bool operator==(const TokenType& type) const {
+    return this->type == type;
   }
+};
+
+struct PunctuatorToken final : public Token {
+  PunctuatorToken(TokenType type) : Token{TokenClass::Punctuator, type} { }
+};
+
+struct KeywordToken final : public Token {
+  KeywordToken(TokenType type) : Token{TokenClass::Keyword, type} { }
 };
 
 struct IdentifierToken final : public Token {
   explicit IdentifierToken(std::string  name) :
-    Token(TokenType::Identifier),
+    Token(TokenClass::Identifier, TokenType::Identifier),
     name(std::move(name)) {
 
   }
@@ -136,10 +140,6 @@ struct IdentifierToken final : public Token {
     return name;
   }
 
-  TokenClass Class() final {
-    return TokenClass::Identifier;
-  }
-
   const std::string name;
 };
 
@@ -147,7 +147,7 @@ struct IdentifierToken final : public Token {
 template<typename T>
 struct NumericalConstantToken final : public Token {
   explicit NumericalConstantToken(T value) :
-      Token(TokenType::NumericConstant),
+      Token(TokenClass::NumericalConstant, TokenType::NumericConstant),
       value(value) {
 
   }
@@ -155,11 +155,7 @@ struct NumericalConstantToken final : public Token {
   ast::pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
 
   std::string ToString() const final {
-    return std::to_string(value);
-  }
-
-  TokenClass Class() final {
-    return TokenClass::NumericalConstant;
+    return stringify(value);
   }
 
   const T value;
@@ -168,7 +164,7 @@ struct NumericalConstantToken final : public Token {
 
 struct StringConstantToken : public Token {
   explicit StringConstantToken(const std::string value) :
-      Token(TokenType::StringConstant),
+      Token(TokenClass::StringConstant, TokenType::StringConstant),
       value(value) {
 
   }
@@ -176,18 +172,15 @@ struct StringConstantToken : public Token {
   ast::pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
 
   std::string ToString() const final {
-    return cotyl::Format("\"%s\"", value.c_str());
-  }
-
-  TokenClass Class() final {
-    return TokenClass::StringConstant;
+    return cotyl::Format("\"%s\"", cotyl::Escape(value).c_str());
   }
 
   const std::string value;
 };
 
 using AnyToken = cotyl::Variant<Token,
-  Token,
+  PunctuatorToken,
+  KeywordToken,
   IdentifierToken,
   NumericalConstantToken<i32>,
   NumericalConstantToken<u32>,

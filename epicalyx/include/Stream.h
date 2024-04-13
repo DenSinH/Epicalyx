@@ -7,6 +7,7 @@
 #include <deque>
 #include <string>
 #include <iostream>
+#include <concepts>
 
 
 namespace epi::cotyl {
@@ -34,6 +35,11 @@ struct base_type<cotyl::Variant<T, Args...>> {
 template<typename T>
 struct base_type {
   using type = std::decay_t<T>;
+};
+
+template<typename T, typename U>
+concept Comparable = requires(T t, U u) {
+    { t == u } -> std::same_as<bool>;
 };
 
 }
@@ -111,37 +117,47 @@ struct Stream : public Locatable {
     return value;
   }
 
-  bool IsAfter(size_t amount, const base_t& expect) {
+  template<typename S>
+  requires detail::Comparable<base_t, S>
+  bool IsAfter(size_t amount, const S& expect) {
     const base_t* value;
     return Peek(value, amount) && *value == expect;
   }
 
-  template<typename ...Args>
-  bool IsAfter(size_t amount, const base_t& expect, const Args& ... args) {
+  template<typename S, typename ...Args>
+  requires (detail::Comparable<base_t, S> && (detail::Comparable<base_t, Args> && ...))
+  bool IsAfter(size_t amount, const S& expect, const Args& ... args) {
     return IsAfter(amount, expect) || IsAfter(amount, args...);
   }
 
-  void Expect(const base_t& expect) {
+  template<typename S>
+  requires detail::Comparable<base_t, S>
+  T Expect(const S& expect) {
     if (!IsAfter(0, expect)) {
       throw cotyl::FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, Get());
     }
+    return Get();
   }
 
   bool SequenceAfter(size_t amount) {
     return true;
   }
 
-  template<typename ...Args>
-  bool SequenceAfter(size_t amount, const base_t& expect, const Args& ... args) {
+  template<typename S, typename ...Args>
+  requires (detail::Comparable<base_t, S> && (detail::Comparable<base_t, Args> && ...))
+  bool SequenceAfter(size_t amount, const S& expect, const Args& ... args) {
     return IsAfter(amount, expect) && SequenceAfter(amount + 1, args...);
   }
 
-  void EatSequence(const base_t& expect) {
+  template<typename S>
+  requires detail::Comparable<base_t, S>
+  void EatSequence(const S& expect) {
     Eat(expect);
   }
 
-  template<typename ...Args>
-  void EatSequence(const base_t& expect, const Args&... args) {
+  template<typename S, typename ...Args>
+  requires (detail::Comparable<base_t, S> && (detail::Comparable<base_t, Args> && ...))
+  void EatSequence(const S& expect, const Args&... args) {
     Eat(expect);
     EatSequence(args...);
   }
@@ -159,24 +175,26 @@ struct Stream : public Locatable {
     }
   }
 
-  virtual T Eat(const base_t& expect) {
-    using std::to_string;
-
+  template<typename S>
+  requires detail::Comparable<base_t, S>
+  T Eat(const S& expect) {
     T got = Get();
     if constexpr(deref) {
-      if (*got != expect) {
+      if (!(*got == expect)) {
         throw FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, got);
       }
     }
     else {
-      if (got != expect) {
+      if (!(got == expect)) {
         throw FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, got);
       }
     }
     return std::move(got);
   }
 
-  bool EatIf(const base_t& expect) {
+  template<typename S>
+  requires detail::Comparable<base_t, S>
+  bool EatIf(const S& expect) {
     if (IsAfter(0, expect)) {
       Skip();
       return true;

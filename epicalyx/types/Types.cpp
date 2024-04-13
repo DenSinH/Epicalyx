@@ -16,7 +16,7 @@ std::string StructUnionType::ToString() const {
   repr << " {";
 
   for (const auto& field : fields) {
-    repr << "\n  " << field.type->ToString() << ' ' << field.name;
+    repr << "\n  " << stringify(field.type) << ' ' << field.name;
     if (field.size) {
       repr << " : " << field.size;
     }
@@ -74,14 +74,14 @@ bool StructUnionType::_EqualTypeImpl(const StructUnionType& other) const {
 
 std::string FunctionType::Arg::ToString() const {
   if (name.empty()) {
-    return type->ToString();
+    return stringify(type);
   }
   return cotyl::FormatStr("%s %s", type, name);
 }
 
 std::string FunctionType::ToString() const {
   cotyl::StringStream repr{};
-  std::string formatted = cotyl::FormatStr("(%s)(", contained ? contained->ToString() : "%%");
+  std::string formatted = cotyl::FormatStr("(%s)(", contained ? stringify(contained) : "%%");
   repr << formatted;
   repr << cotyl::Join(", ", arg_types);
   if (variadic) {

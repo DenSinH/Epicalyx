@@ -3,11 +3,11 @@
 
 
 namespace epi {
+  
+extern const cotyl::unordered_map<TokenType, TokenInfo> TokenData;
 
-void Token::Expect(TokenType t) const {
-  if (type != t) [[unlikely]] {
-    throw cotyl::FormatExceptStr("Invalid token: expected %s, got %s", Token(t), *this);
-  }
+STRINGIFY_METHOD(TokenType) {
+  return TokenData.at(value).name;
 }
 
 }

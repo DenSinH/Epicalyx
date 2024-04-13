@@ -44,8 +44,17 @@ struct Variant {
   const T& get() const {
     return std::get<T>(value);
   }
-    
+  
+  template<typename R, typename... Args>
+  R visit(Args&&... args) {
+    return std::visit(overloaded{args...}, value);
+  }
+
 private:
+  // for simple visitor pattern
+  template<class... Args>
+  struct overloaded : Args... { using Args::operator()...; };
+
   std::variant<Ts...> value;
 };
 

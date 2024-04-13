@@ -24,7 +24,7 @@ std::string DeclarationNode::ToString() const {
   else if (!name.empty()) {
     return cotyl::FormatStr("%s %s", type, name);
   }
-  return type->ToString();
+  return stringify(type);
 }
 
 std::string FunctionDefinitionNode::ToString() const {

@@ -3,6 +3,7 @@
 #include "Default.h"
 #include "Is.h"
 #include "Containers.h"
+#include "Stringify.h"
 
 #include <memory>
 #include <string>
@@ -13,6 +14,7 @@
 
 
 namespace epi::calyx {
+using ::epi::stringify;
 
 struct Backend;
 struct Function;
@@ -38,9 +40,13 @@ struct Pointer {
   i64 value;
 };
 
+STRINGIFY_METHOD(Pointer);
+
 static_assert(sizeof(Pointer) == sizeof(i64));
 
 struct Struct { };
+
+STRINGIFY_METHOD(Struct);
 
 template<typename T>
 constexpr bool is_calyx_small_type_v = epi::cotyl::is_in_v<T, i8, u8, i16, u16>;

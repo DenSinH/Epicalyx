@@ -51,11 +51,11 @@ std::string ForNode::ToString() const {
   result << cotyl::Join(", ", decls);
   result << cotyl::Join(", ", inits);
   result << "; ";
-  result << cond->ToString();
+  result << stringify(cond);
   result << "; ";
   result << cotyl::Join(", ", updates);
   result << ") ";
-  result << stat->ToString();
+  result << stringify(stat);
   return result.finalize();
 }
 
@@ -68,7 +68,7 @@ std::string CompoundNode::ToString() const {
   repr << '{';
   for (const auto& stat : stats) {
     repr << '\n';
-    repr << stat->ToString();
+    repr << stringify(stat);
     if (stat->IsDeclarationNode()) {
       repr << ';';
     }

@@ -26,9 +26,9 @@ void ConstTypeVisitor::Visit(const ValueType<double>& type) { VisitValueType(typ
 
 std::string FunctionCallNode::ToString() const {
   cotyl::StringStream result{};
-  result << left->ToString() << '(';
+  result << stringify(left) << '(';
   for (int i = 0; i < args.size(); i++) {
-    result << args[i]->ToString();
+    result << stringify(args[i]);
     if (i != args.size() - 1) {
       result << ", ";
     }
@@ -93,7 +93,7 @@ pType<const CType> PostFixNode::SemanticAnalysisImpl(const ConstParser& parser) 
     case TokenType::Incr: return left->SemanticAnalysis(parser)->Incr();
     case TokenType::Decr: return left->SemanticAnalysis(parser)->Decr();
     default:
-      throw cotyl::FormatExceptStr("Bad AST (PostFixNode: %s)", Token(op));
+      throw cotyl::FormatExceptStr("Bad AST (PostFixNode: %s)", PunctuatorToken(op));
   }
 }
 
@@ -108,7 +108,7 @@ pType<const CType> UnopNode::SemanticAnalysisImpl(const ConstParser& parser) con
     case TokenType::Tilde: return left->SemanticAnalysis(parser)->BinNot();
     case TokenType::Exclamation: return left->SemanticAnalysis(parser)->LogNot();
     default:
-      throw cotyl::FormatExceptStr("Bad AST (UnopNode: %s)", Token(op));
+      throw cotyl::FormatExceptStr("Bad AST (UnopNode: %s)", PunctuatorToken(op));
   }
 }
 
@@ -137,7 +137,7 @@ pType<const CType> BinopNode::SemanticAnalysisImpl(const ConstParser& parser) co
     case TokenType::LogicalAnd: return left->SemanticAnalysis(parser)->LogAnd(*right->SemanticAnalysis(parser));
     case TokenType::LogicalOr: return left->SemanticAnalysis(parser)->LogOr(*right->SemanticAnalysis(parser));
     default:
-      throw cotyl::FormatExceptStr("Bad AST (BinopNode: %s)", Token(op));
+      throw cotyl::FormatExceptStr("Bad AST (BinopNode: %s)", PunctuatorToken(op));
   }
 }
 
@@ -182,7 +182,7 @@ pType<const CType> AssignmentNode::SemanticAnalysisImpl(const ConstParser& parse
       return left_t;
     }
     default:
-      throw cotyl::FormatExceptStr("Bad AST (assign: %s)", Token(op));
+      throw cotyl::FormatExceptStr("Bad AST (assign: %s)", PunctuatorToken(op));
   }
 }
 

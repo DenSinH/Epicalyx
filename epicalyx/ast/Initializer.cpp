@@ -28,10 +28,10 @@ std::string InitializerList::ToString() const {
       repr << " = ";
     }
     if (std::holds_alternative<pExpr>(init.second)) {
-      repr << std::get<pExpr>(init.second)->ToString() << ',';
+      repr << stringify(std::get<pExpr>(init.second)) << ',';
     }
     else {
-      repr << std::get<pNode<InitializerList>>(init.second)->ToString() << ',';
+      repr << stringify(std::get<pNode<InitializerList>>(init.second)) << ',';
     }
   }
   std::string result = std::regex_replace(repr.finalize(), std::regex("\n"), "\n  ");

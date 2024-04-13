@@ -178,7 +178,7 @@ void Interpreter::EnterFunction(const Function* function) {
 
 template<typename To, typename From>
 void Interpreter::EmitCast(const Cast<To, From>& op) {
-//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+ cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
   using result_t = calyx_op_type(op)::result_t;
   using src_t = calyx_op_type(op)::src_t;
   if constexpr(std::is_same_v<To, Pointer>) {
@@ -231,7 +231,7 @@ void Interpreter::EmitCast(const Cast<To, From>& op) {
 
 template<typename T>
 void Interpreter::EmitLoadLocal(const LoadLocal<T>& op) {
-//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+  cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
   if constexpr(std::is_same_v<T, Struct>) {
     throw cotyl::UnimplementedException("load struct cvar");
   }
@@ -250,7 +250,6 @@ void Interpreter::Emit(const LoadLocalAddr& op) {
 
 template<typename T>
 void Interpreter::EmitStoreLocal(const StoreLocal<T>& op) {
-//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
   if constexpr(std::is_same_v<T, Struct>) {
     throw cotyl::UnimplementedException("store struct local");
   }
@@ -423,13 +422,13 @@ void Interpreter::EmitReturn(const Return<T>& op) {
 
 template<typename T>
 void Interpreter::EmitImm(const Imm<T>& op) {
-//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+  cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
   vars.Set(op.idx, op.value);
 }
 
 template<typename T>
 void Interpreter::EmitUnop(const Unop<T>& op) {
-//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+  cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
   T right = std::get<T>(vars.Get(op.right_idx));
   switch (op.op) {
     case UnopType::Neg:
@@ -446,7 +445,7 @@ void Interpreter::EmitUnop(const Unop<T>& op) {
 
 template<typename T>
 void Interpreter::EmitBinop(const Binop<T>& op) {
-//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+  cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
   T left = std::get<T>(vars.Get(op.left_idx));
   T right;
   if (op.right.IsVar()) {
@@ -504,7 +503,7 @@ void Interpreter::EmitBinop(const Binop<T>& op) {
 
 template<typename T>
 void Interpreter::EmitShift(const Shift<T>& op) {
-//  cotyl::Assert(!vars.contains(op.idx), op.ToString());
+  cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
   T left;
   calyx_op_type(op)::shift_t right;
   if (op.left.IsVar()) {

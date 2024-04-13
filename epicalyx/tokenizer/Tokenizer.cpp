@@ -8,6 +8,9 @@
 
 namespace epi {
 
+extern const cotyl::unordered_map<const std::string, TokenType> Punctuators;
+extern const cotyl::unordered_map<const std::string, TokenType> Keywords;
+
 void Tokenizer::SkipBlanks() {
   in_stream.SkipWhile(std::isspace);
 }
@@ -56,7 +59,7 @@ AnyToken Tokenizer::GetNew() {
     // identifier or keyword
     auto identifier = detail::get_identifier(in_stream);
     if (Keywords.contains(identifier)) {
-      return Make<Token>(Keywords.at(identifier));
+      return Make<KeywordToken>(Keywords.at(identifier));
     }
     else {
       return Make<IdentifierToken>(identifier);
@@ -84,7 +87,7 @@ AnyToken Tokenizer::GetNew() {
     // punctuator
     if (in_stream.SequenceAfter(0, '.', '.', '.')) {
       in_stream.Skip(3);
-      return Make<Token>(TokenType::Ellipsis);
+      return Make<PunctuatorToken>(TokenType::Ellipsis);
     }
 
     cotyl::StringStream str{};
@@ -96,12 +99,12 @@ AnyToken Tokenizer::GetNew() {
       else {
         std::string punctuator = str.current();
         punctuator.erase(punctuator.size() - 1);
-        return Make<Token>(Punctuators.at(punctuator));
+        return Make<PunctuatorToken>(Punctuators.at(punctuator));
       }
     } while (in_stream.Peek(c));
 
     if (Punctuators.contains(str.current())) {
-      return Make<Token>(Punctuators.at(str.finalize()));
+      return Make<KeywordToken>(Punctuators.at(str.finalize()));
     }
 
     throw cotyl::EndOfFileException();

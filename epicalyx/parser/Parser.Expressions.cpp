@@ -13,7 +13,12 @@ using namespace ast;
 
 pExpr ConstParser::EPrimary() {
   auto current = in_stream.Get();
-  switch (current->Class()) {
+  // return current.visit(
+  //   [](const IdentifierToken& ident) -> pExpr { 
+  //     throw cotyl::UnexpectedIdentifierException();
+  //   }
+  // );
+  switch (current->cls) {
     case TokenClass::Identifier: {
       throw cotyl::UnexpectedIdentifierException();
     }
@@ -25,7 +30,9 @@ pExpr ConstParser::EPrimary() {
     case TokenClass::Punctuator: {
       // has to be (ternary), since in the BaseParser we do not expect assignment
       // type initializer caught in cast expression
-      current->Expect(TokenType::LParen);
+      if (current->type != TokenType::LParen) {
+        throw cotyl::FormatExceptStr("Invalid token: expected (), got %s", *current);
+      }
       auto expr = ETernary();
       in_stream.Eat(TokenType::RParen);
       return expr;
@@ -37,7 +44,7 @@ pExpr ConstParser::EPrimary() {
 
 pExpr Parser::EPrimary() {
   auto current = in_stream.Get();
-  switch (current->Class()) {
+  switch (current->cls) {
     case TokenClass::Identifier: {
       // identifier might be enum value
       std::string name = current.get<IdentifierToken>().name;
@@ -54,7 +61,9 @@ pExpr Parser::EPrimary() {
     case TokenClass::Punctuator: {
       // has to be (expression)
       // type initializer caught in cast expression
-      current->Expect(TokenType::LParen);
+      if (current->type != TokenType::LParen) {
+        throw cotyl::FormatExceptStr("Invalid token: expected (), got %s", *current);
+      }
       // todo: is (expression), but the list part makes no sense
       auto expr = EExpression();
       in_stream.Eat(TokenType::RParen);

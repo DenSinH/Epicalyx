@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SStream.h"
-#include "Variant.h"
+#include "Stringify.h"
 
 #include <stdexcept>
 #include <memory>
@@ -10,24 +10,6 @@
 
 
 namespace epi::cotyl {
-
-template<typename T>
-static std::string to_string(const T& t) {
-  if constexpr(std::is_arithmetic_v<T>) {
-    return std::to_string(t);
-  }
-  else {
-    return t.ToString();
-  }
-}
-
-template<typename T> static std::string to_string(const std::unique_ptr<T>& t) { return t->ToString(); }
-template<typename T> static std::string to_string(const std::shared_ptr<T>& t) { return t->ToString(); }
-template<typename T, typename... Args> 
-static std::string to_string(const cotyl::Variant<T, Args...>& t) { 
-  return t->ToString(); 
-}
-[[maybe_unused]] static std::string to_string(const std::string& s) { return s; }
 
 template<typename... Args>
 std::string Format(const std::string& format, const Args& ... args) {
@@ -42,8 +24,7 @@ std::string Format(const std::string& format, const Args& ... args) {
 
 template<typename ...Args>
 std::string FormatStr(const std::string& format, const Args& ... args) {
-  using epi::cotyl::to_string;
-  return Format(format, to_string(args).c_str()...);
+  return Format(format, stringify(args).c_str()...);
 }
 
 
@@ -63,33 +44,9 @@ std::string Join(const std::string& delimiter, const std::vector<T>& values) {
 
   cotyl::StringStream result{};
   for (int i = 0; i < values.size() - 1; i++) {
-    result << values[i].ToString() << ", ";
+    result << stringify(values[i]) << ", ";
   }
-  result << values.back().ToString();
-  return result.finalize();
-}
-
-template<typename T>
-std::string Join(const std::string& delimiter, const std::vector<std::unique_ptr<T>>& values) {
-  if (values.empty()) return "";
-
-  cotyl::StringStream result{};
-  for (int i = 0; i < values.size() - 1; i++) {
-    result << values[i]->ToString() << ", ";
-  }
-  result << values.back()->ToString();
-  return result.finalize();
-}
-
-template<typename T>
-std::string Join(const std::string& delimiter, const std::vector<std::shared_ptr<T>>& values) {
-  if (values.empty()) return "";
-
-  cotyl::StringStream result{};
-  for (int i = 0; i < values.size() - 1; i++) {
-    result << values[i]->to_string() << ", ";
-  }
-  result << values.back()->to_string();
+  result << stringify(values.back());
   return result.finalize();
 }
 

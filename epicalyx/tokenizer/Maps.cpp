@@ -4,7 +4,7 @@
 
 namespace epi {
 
-const cotyl::unordered_map<const std::string, TokenType> Keywords = {
+extern const cotyl::unordered_map<const std::string, TokenType> Keywords = {
         { "auto",           TokenType::Auto },
         { "break",          TokenType::Break },
         { "case",           TokenType::Case },
@@ -51,7 +51,7 @@ const cotyl::unordered_map<const std::string, TokenType> Keywords = {
         { "_Thread_local",  TokenType::ThreadLocal },
 };
 
-const cotyl::unordered_map<const std::string, TokenType> Punctuators = {
+extern  const cotyl::unordered_map<const std::string, TokenType> Punctuators = {
     { "[",   TokenType::LBracket },
     { "]",   TokenType::RBracket },
     { "(",   TokenType::LParen },
@@ -103,8 +103,7 @@ const cotyl::unordered_map<const std::string, TokenType> Punctuators = {
 };
 
 
-const cotyl::unordered_map<TokenType, TokenInfo> TokenData = {
-        { TokenType::Invalid, { "<Invalid token>" } },
+extern const cotyl::unordered_map<TokenType, TokenInfo> TokenData = {
         { TokenType::Auto, { "auto", TokenClass::Keyword } },
         { TokenType::Break, { "break", TokenClass::Keyword } },
         { TokenType::Case, { "case", TokenClass::Keyword } },

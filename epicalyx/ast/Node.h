@@ -13,6 +13,7 @@ struct Parser;
 }
 
 namespace epi::ast {
+using ::epi::stringify;
 
 struct DeclarationNode;
 struct FunctionDefinitionNode;

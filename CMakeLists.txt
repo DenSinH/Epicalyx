@@ -31,6 +31,7 @@ add_executable(
         epicalyx/include/Stream.h
         epicalyx/include/Variant.h
         epicalyx/include/Packs.h
+        epicalyx/include/Stringify.h
         epicalyx/include/Format.h
         epicalyx/include/Is.h
         epicalyx/include/Scope.h

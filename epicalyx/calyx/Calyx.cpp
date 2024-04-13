@@ -84,7 +84,7 @@ void PrintProgram(const Program& program) {
       if (!block.empty()) {
         std::cout << sym << ".L" << i << std::endl;
         for (const auto& op : block) {
-          std::cout << "    " << op->ToString() << std::endl;
+          std::cout << "    " << stringify(op) << std::endl;
         }
       }
     }
@@ -109,10 +109,10 @@ void VisualizeProgram(const Program& program, const std::string& filename) {
           case Directive::Class::Store:
           case Directive::Class::Return:
           case Directive::Class::Call:  // todo
-            graph->n(id, directive->ToString());
+            graph->n(id, stringify(directive));
             break;
           case Directive::Class::Branch: {
-            auto node = graph->n(id, directive->ToString());
+            auto node = graph->n(id, stringify(directive));
             auto* branch = cotyl::unique_ptr_cast<Branch>(directive);
             const auto destinations = branch->Destinations();
             for (const auto& dest : destinations) {
@@ -121,7 +121,7 @@ void VisualizeProgram(const Program& program, const std::string& filename) {
             break;
           }
           case Directive::Class::Select: {
-            auto node = graph->n(id, directive->ToString());
+            auto node = graph->n(id, stringify(directive));
             auto* select = cotyl::unique_ptr_cast<Select>(directive);
             for (auto [val, dest] : select->table) {
               node->n(GetNodeID(func, dest), std::to_string(val));
@@ -152,6 +152,14 @@ void VisualizeProgram(const Program& program, const std::string& filename) {
 
   graph->allow_multi_edge = true;
   graph->Visualize(filename);
+}
+
+STRINGIFY_METHOD(Pointer) { 
+  return cotyl::Format("%p", value.value); 
+}
+
+STRINGIFY_METHOD(Struct) { 
+  return "<struct type>"; 
 }
 
 template<typename To, typename From>

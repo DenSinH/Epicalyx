@@ -210,7 +210,7 @@ struct PostFixNode final : public ExprNode {
   const pExpr left;
   const TokenType op;
 
-  std::string ToString() const final { return cotyl::FormatStr("(%s)%s", left, Token(op)); }
+  std::string ToString() const final { return cotyl::FormatStr("(%s)%s", left, PunctuatorToken(op)); }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   // EReduce is just the constant node from the PostFixNode operation (will always be nullptr)
 
@@ -231,7 +231,7 @@ struct UnopNode final : public ExprNode {
   const pExpr left;
   const TokenType op;
 
-  std::string ToString() const final { return cotyl::FormatStr("%s(%s)", Token(op), left); }
+  std::string ToString() const final { return cotyl::FormatStr("%s(%s)", PunctuatorToken(op), left); }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   // EReduce is just the constant node from the unary operation
 
@@ -276,7 +276,7 @@ struct BinopNode final : public ExprNode {
   pExpr right;
 
   std::string ToString() const final {
-    return cotyl::FormatStr("(%s) %s (%s)", left, Token(op), right);
+    return cotyl::FormatStr("(%s) %s (%s)", left, PunctuatorToken(op), right);
   }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pExpr EReduce(const Parser& parser) final;
@@ -301,7 +301,7 @@ struct TernaryNode final : public ExprNode {
   pExpr _false;
 
   std::string ToString() const final {
-    return cotyl::FormatStr("(%s) ? (%s) : (%s)", cond, _true->ToString(), _false);
+    return cotyl::FormatStr("(%s) ? (%s) : (%s)", cond, stringify(_true), _false);
   }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pExpr EReduce(const Parser& parser) final;
@@ -326,7 +326,7 @@ struct AssignmentNode final : public ExprNode {
   pExpr right;
 
   std::string ToString() const final {
-    return cotyl::FormatStr("%s %s (%s)", left, Token(op), right);
+    return cotyl::FormatStr("%s %s (%s)", left, PunctuatorToken(op), right);
   }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pExpr EReduce(const Parser& parser) final;
