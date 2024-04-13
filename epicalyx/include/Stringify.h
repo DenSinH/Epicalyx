@@ -22,7 +22,9 @@ static STRINGIFY_METHOD(std::shared_ptr<T>) {
 
 template<typename T, typename... Ts> 
 static STRINGIFY_METHOD(cotyl::Variant<T, Ts...>) { 
-  return stringify(*value); 
+  return value.template visit<std::string>(
+    [](const auto& value) -> std::string { return stringify(value); }
+  ); 
 }
 
 static STRINGIFY_METHOD(std::string) { 

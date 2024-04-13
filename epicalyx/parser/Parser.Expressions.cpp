@@ -2,9 +2,9 @@
 #include "ast/Expression.h"
 #include "ast/Declaration.h"
 #include "tokenizer/Token.h"
-#include "ConstTokenVisitor.h"
 #include "Is.h"
 #include "Cast.h"
+#include "TypeTraits.h"
 
 
 namespace epi {
@@ -13,65 +13,71 @@ using namespace ast;
 
 pExpr ConstParser::EPrimary() {
   auto current = in_stream.Get();
-  // return current.visit(
-  //   [](const IdentifierToken& ident) -> pExpr { 
-  //     throw cotyl::UnexpectedIdentifierException();
-  //   }
-  // );
-  switch (current->cls) {
-    case TokenClass::Identifier: {
+  return current.template visit<pExpr>(
+    [](const IdentifierToken& ident) -> pExpr { 
       throw cotyl::UnexpectedIdentifierException();
-    }
-    case TokenClass::StringConstant:
-    case TokenClass::NumericalConstant: {
-      auto visitor = ConstTokenVisitor();
-      return current->GetConst(visitor);
-    }
-    case TokenClass::Punctuator: {
+    },
+    [](const StringConstantToken& str) -> pExpr {
+      return std::make_unique<StringConstantNode>(str.value);
+    },
+    [&](const PunctuatorToken& punc) -> pExpr {
       // has to be (ternary), since in the BaseParser we do not expect assignment
       // type initializer caught in cast expression
-      if (current->type != TokenType::LParen) {
-        throw cotyl::FormatExceptStr("Invalid token: expected (), got %s", *current);
+      if (punc.type != TokenType::LParen) {
+        throw cotyl::FormatExceptStr("Invalid token: expected (, got %s", current);
       }
       auto expr = ETernary();
       in_stream.Eat(TokenType::RParen);
       return expr;
+    },
+    [](const KeywordToken& keyw) -> pExpr {
+      throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", keyw);
+    },
+    [](const auto& num) -> pExpr {
+      using tok_t = std::decay_t<decltype(num)>;
+      static_assert(cotyl::is_instantiation_of_v<NumericalConstantToken, tok_t>);
+      auto val = num.value;
+      return std::make_unique<NumericalConstantNode<decltype(val)>>(val);
     }
-    default:
-      throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", current);
-  }
+  );
 }
 
 pExpr Parser::EPrimary() {
   auto current = in_stream.Get();
-  switch (current->cls) {
-    case TokenClass::Identifier: {
+  return current.template visit<pExpr>(
+    [&](const IdentifierToken& ident) -> pExpr { 
       // identifier might be enum value
-      std::string name = current.get<IdentifierToken>().name;
+      std::string name = ident.name;
       if (enum_values.Has(name)) {
         // replace enum values with constants immediately
         return std::make_unique<NumericalConstantNode<enum_type>>(enum_values.Get(name));
       }
-    } [[fallthrough]];
-    case TokenClass::StringConstant:
-    case TokenClass::NumericalConstant: {
-      auto visitor = ConstTokenVisitor();
-      return current->GetConst(visitor);
-    }
-    case TokenClass::Punctuator: {
+      return std::make_unique<IdentifierNode>(ident.name);
+    },
+    [](const StringConstantToken& str) -> pExpr {
+      return std::make_unique<StringConstantNode>(str.value);
+    },
+    [&](const PunctuatorToken& punc) -> pExpr {
       // has to be (expression)
       // type initializer caught in cast expression
-      if (current->type != TokenType::LParen) {
-        throw cotyl::FormatExceptStr("Invalid token: expected (), got %s", *current);
+      if (punc.type != TokenType::LParen) {
+        throw cotyl::FormatExceptStr("Invalid token: expected (, got %s", punc);
       }
       // todo: is (expression), but the list part makes no sense
       auto expr = EExpression();
       in_stream.Eat(TokenType::RParen);
       return expr;
+    },
+    [](const KeywordToken& keyw) -> pExpr {
+      throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", keyw);
+    },
+    [](const auto& num) -> pExpr {
+      using tok_t = std::decay_t<decltype(num)>;
+      static_assert(cotyl::is_instantiation_of_v<NumericalConstantToken, tok_t>);
+      auto val = num.value;
+      return std::make_unique<NumericalConstantNode<decltype(val)>>(val);
     }
-    default:
-      throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", current);
-  }
+  );
 }
 
 pExpr Parser::EPostfix() {

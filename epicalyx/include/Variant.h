@@ -12,10 +12,11 @@ template<typename Parent, typename... Ts>
 requires (std::is_base_of_v<Parent, Ts> && ...)
 struct Variant {
 
-  template<typename T>
-  Variant(const T& val) : value{val} { }
-  template<typename T>
-  Variant(T&& val) : value{std::move(val)} { }
+  template<typename T, typename... Args>
+  requires (std::is_same_v<T, Ts> || ...)
+  static Variant<Parent, Ts...> Make(const Args&... args) {
+    return {T{args...}};
+  }
 
   Parent* operator->() {
     return std::visit([](auto& arg) -> Parent* { return &arg; }, value);
@@ -50,7 +51,18 @@ struct Variant {
     return std::visit(overloaded{args...}, value);
   }
 
+  template<typename R, typename... Args>
+  R visit(Args&&... args) const {
+    return std::visit(overloaded{args...}, value);
+  }
+
 private:
+  template<typename T>
+  Variant(T&& value) : value{std::move(value)} { }
+
+  template<typename T>
+  Variant(const T& value) : value{value} { }
+
   // for simple visitor pattern
   template<class... Args>
   struct overloaded : Args... { using Args::operator()...; };

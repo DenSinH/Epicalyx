@@ -1,8 +1,6 @@
 add_library(Parser STATIC
         Parser.h
         Parser.Expressions.cpp
-        ConstTokenVisitor.h
-        ConstTokenVisitor.cpp
         Parser.Declarations.cpp
         Parser.Statements.cpp
         Parser.cpp

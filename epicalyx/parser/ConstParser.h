@@ -14,6 +14,8 @@
 
 namespace epi {
 
+using namespace ast;
+
 struct ConstParser : public cotyl::Locatable {
 
   ConstParser(cotyl::Stream<AnyToken>& in_stream) : in_stream{in_stream} { }

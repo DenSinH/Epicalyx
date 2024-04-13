@@ -1,12 +1,11 @@
 #pragma once
 
+#include "Default.h"
 #include "Stringify.h"
 #include "Escape.h"
 #include "Format.h"
 #include "Variant.h"
 
-#include "ast/Node.h"
-#include "parser/ConstTokenVisitor.h"
 #include "Containers.h"
 
 #include <string>
@@ -104,12 +103,6 @@ struct Token {
 
   }
 
-  virtual ast::pExpr GetConst(ConstTokenVisitor& v) const { return v.Visit(*this); }
-
-  virtual std::string ToString() const {
-    return stringify(type);
-  }
-
   bool operator==(const Token& other) const {
     return type == other.type;
   }
@@ -123,9 +116,13 @@ struct PunctuatorToken final : public Token {
   PunctuatorToken(TokenType type) : Token{TokenClass::Punctuator, type} { }
 };
 
+static STRINGIFY_METHOD(PunctuatorToken) { return stringify(value.type); }
+
 struct KeywordToken final : public Token {
   KeywordToken(TokenType type) : Token{TokenClass::Keyword, type} { }
 };
+
+static STRINGIFY_METHOD(KeywordToken) { return stringify(value.type); }
 
 struct IdentifierToken final : public Token {
   explicit IdentifierToken(std::string  name) :
@@ -134,14 +131,10 @@ struct IdentifierToken final : public Token {
 
   }
 
-  ast::pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
-
-  std::string ToString() const final {
-    return name;
-  }
-
   const std::string name;
 };
+
+static STRINGIFY_METHOD(IdentifierToken) { return value.name; }
 
 
 template<typename T>
@@ -152,15 +145,11 @@ struct NumericalConstantToken final : public Token {
 
   }
 
-  ast::pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
-
-  std::string ToString() const final {
-    return stringify(value);
-  }
-
   const T value;
 };
 
+template<typename T>
+static STRINGIFY_METHOD(NumericalConstantToken<T>) { return stringify(value.value); }
 
 struct StringConstantToken : public Token {
   explicit StringConstantToken(const std::string value) :
@@ -169,14 +158,12 @@ struct StringConstantToken : public Token {
 
   }
 
-  ast::pExpr GetConst(ConstTokenVisitor& v) const final { return v.Visit(*this); }
-
-  std::string ToString() const final {
-    return cotyl::Format("\"%s\"", cotyl::Escape(value).c_str());
-  }
-
   const std::string value;
 };
+
+static STRINGIFY_METHOD(StringConstantToken) {
+  return cotyl::Format("\"%s\"", cotyl::Escape(value.value).c_str());
+}
 
 using AnyToken = cotyl::Variant<Token,
   PunctuatorToken,
@@ -190,10 +177,5 @@ using AnyToken = cotyl::Variant<Token,
   NumericalConstantToken<double>,
   StringConstantToken
 >;
-
-template<typename T, typename... Args>
-AnyToken MakeAnyToken(const Args&... args) {
-  return AnyToken(T{args...});
-}
 
 }
