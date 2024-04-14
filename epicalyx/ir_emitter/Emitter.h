@@ -3,6 +3,7 @@
 #include "calyx/Calyx.h"
 #include "ast/Node.h"
 #include "Containers.h"
+#include "TypeTraits.h"
 
 #include <vector>
 
@@ -46,15 +47,17 @@ struct Emitter {
       return nullptr;
     }
     calyx::AnyDirective directive = T(args...);
-    switch (directive->cls) {
-      case calyx::Directive::Class::Branch:
-      case calyx::Directive::Class::Return:
-      case calyx::Directive::Class::Select:
-        reachable = false;
-        break;
-      default:
-        break;
-    }
+    directive.visit<void>(
+      [&](const auto& dir) {
+        using dir_t = std::decay_t<decltype(dir)>;
+        if constexpr(std::is_base_of_v<calyx::Branch, dir_t>) {
+          reachable = false;
+        }
+        else if constexpr(cotyl::is_instantiation_of_v<calyx::Return, dir_t>) {
+          reachable = false;
+        }
+      }
+    );
     current_function->blocks[current_block].push_back(std::move(directive));
     return &current_function->blocks[current_block].back().get<T>();
   }

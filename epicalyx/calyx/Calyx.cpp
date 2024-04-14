@@ -71,36 +71,26 @@ void VisualizeProgram(const Program& program, const std::string& filename) {
       const auto id = GetNodeID(func, block_idx);
       graph->n(id).title(cotyl::Format("L%d", block_idx));
       for (const auto& directive : block) {
-        switch (directive->cls) {
-          case Directive::Class::NoOp:
-          case Directive::Class::Expression:
-          case Directive::Class::Stack:
-          case Directive::Class::Store:
-          case Directive::Class::Return:
-          case Directive::Class::Call:  // todo
-            graph->n(id, stringify(directive));
-            break;
-          case Directive::Class::Branch: {
-            auto node = graph->n(id, stringify(directive));
-            auto* branch = reinterpret_cast<const Branch*>(&(*directive));
-            const auto destinations = branch->Destinations();
-            for (const auto& dest : destinations) {
-              node->n(GetNodeID(func, dest));
-            }
-            break;
-          }
-          case Directive::Class::Select: {
-            auto node = graph->n(id, stringify(directive));
-            const auto& select = directive.get<Select>();
+        directive.visit<void>(
+          [&](const Select& select) {
+            auto node = graph->n(id, stringify(select));
             for (auto [val, dest] : select.table) {
               node->n(GetNodeID(func, dest), std::to_string(val));
             }
             if (select._default) {
               node->n(GetNodeID(func, select._default), "default");
             }
-            break;
+          },
+          [&](const auto& dir) {
+            auto node = graph->n(id, stringify(dir));
+            if constexpr (std::is_base_of_v<Branch, std::decay_t<decltype(dir)>>) {
+              const auto destinations = dir.Destinations();
+              for (const auto& dest : destinations) {
+                node->n(GetNodeID(func, dest));
+              }
+            }
           }
-        }
+        );
       }
     }
 

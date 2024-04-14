@@ -24,6 +24,15 @@ struct Variant {
     value.template emplace<T>(std::forward<Args...>(args)...);
   }
 
+  template<typename T>
+  bool holds_alternative() const {
+    return std::holds_alternative<T>(value);
+  }
+
+  size_t index() const {
+    return value.index();
+  }
+
   Parent* operator->() {
     return std::visit([](auto& arg) -> Parent* { return &arg; }, value);
   }

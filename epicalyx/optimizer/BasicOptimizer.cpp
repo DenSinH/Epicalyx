@@ -6,6 +6,7 @@
 #include "Containers.h"
 #include "CustomAssert.h"
 #include "Algorithm.h"
+#include "TypeTraits.h"
 
 
 namespace epi {
@@ -62,23 +63,21 @@ bool BasicOptimizer::NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, func_po
 
     while (_reachable && pos.second < block.size()) {
       const auto& op = block.at(pos.second);
-      switch (op->cls) {
-        case Directive::Class::Branch:
-        case Directive::Class::Select: {
-          auto* branch = reinterpret_cast<const Branch*>(&(*op));
-          const auto destinations = branch->Destinations();
-          for (const auto& block_idx : destinations) {
-            register_branch(block_idx);
+      op.visit<void>(
+        [&](const auto& dir) {
+          using dir_t = std::decay_t<decltype(dir)>;
+          if constexpr(std::is_base_of_v<calyx::Branch, dir_t>) {
+            const auto destinations = dir.Destinations();
+            for (const auto& block_idx : destinations) {
+              register_branch(block_idx);
+            }
+            _reachable = false;
           }
-          _reachable = false;
-          break;
+          else if constexpr(cotyl::is_instantiation_of_v<calyx::Return, dir_t>) {
+            _reachable = false;
+          }
         }
-        case Directive::Class::Return:
-          _reachable = false;
-          break;
-        default:
-          break;
-      }
+      );
 
       if (bad(op, pos)) return false;
       if (good(op, pos)) break;
@@ -289,7 +288,7 @@ template<typename T, class F>
 bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
   for (const auto& [var_idx, loc] : vars_found) {
     auto& directive = new_function.blocks.at(loc.first)[loc.second];
-    if (IsType<T>(directive)) {
+    if (IsType<std::decay_t<T>>(directive)) {
       auto candidate_block = loc.first;
       // todo: make generic, call on new_block_graph
       auto ancestor = CommonBlockAncestor(candidate_block, current_new_block_idx);
