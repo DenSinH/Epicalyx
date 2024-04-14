@@ -27,10 +27,10 @@ struct ExampleRegSpace final : RegisterSpace {
   template<typename T>
   void OutputLocal(var_index_t loc_idx);
 
-  void Emit(const calyx::AnyDirective& dir) final {
-    dir.template visit<void>([&](const auto& d) { Emit(d); });
-  }
+  void Emit(const calyx::AnyDirective& dir) final;
+  void Emit(var_index_t loc_idx, const calyx::Local& loc) final;
 
+  void Emit(const calyx::NoOp& op) { }
   template<typename To, typename From>
   void Emit(const calyx::Cast<To, From>& op);
   template<typename T>

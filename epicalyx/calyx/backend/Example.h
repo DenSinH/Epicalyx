@@ -15,6 +15,7 @@ struct Example {
     });
   }
 
+  void Emit(const calyx::NoOp& op) { }
   template<typename To, typename From>
   void Emit(const calyx::Cast<To, From>& op);
   template<typename T>

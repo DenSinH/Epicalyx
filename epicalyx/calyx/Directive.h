@@ -16,6 +16,7 @@ using arg_list_t = std::vector<std::pair<var_index_t, Argument>>;
 
 struct Directive {
   enum class Class {
+    NoOp,
     Expression,  // includes loads
     Store,
     Stack,
@@ -72,6 +73,14 @@ struct Store : Directive {
   }
 
   Operand<src_t> src;
+};
+
+struct NoOp : Directive {
+
+  NoOp() : Directive(Class::NoOp, GetTID()) { }
+  
+  std::string ToString() const;
+  static constexpr size_t GetTID() { return std::bit_cast<size_t>(&GetTID); }
 };
 
 enum class BinopType {
@@ -550,6 +559,7 @@ using expr_pack = cotyl::flatten_pack<
 >;
 
 using directive_pack = cotyl::flatten_pack<
+  NoOp,
   expr_pack,
   UnconditionalBranch,
   cotyl::map_types_t<BranchCompare, calyx_arithmetic_ptr_types>,

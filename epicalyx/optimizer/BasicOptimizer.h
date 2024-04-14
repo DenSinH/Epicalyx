@@ -110,7 +110,7 @@ private:
   struct LocalData {
     var_index_t aliases = 0;                     // local might alias another local
     local_replacement_t replacement;             // replacement for LoadLocals
-    std::optional<calyx::AnyDirective> store;    // store to flush local with
+    std::unique_ptr<calyx::AnyDirective> store;  // store to flush local with
   };
 
   // local replacements (loads/stores/alias loads/alias stores)
@@ -186,6 +186,7 @@ private:
     expr.template visit<void>([&](const auto& e) { Emit(e); });
   }
 
+  void Emit(const calyx::NoOp& op) { }
   template<typename To, typename From>
   void Emit(const calyx::Cast<To, From>& op);
   template<typename T>

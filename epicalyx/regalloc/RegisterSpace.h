@@ -2,7 +2,7 @@
 
 #include "Default.h"
 #include "GeneralizedVar.h"
-#include "calyx/Directive.h"
+#include "calyx/Calyx.h"
 
 #include <memory>
 #include <optional>
@@ -43,6 +43,7 @@ struct RegisterSpace {
   }
 
   virtual void Emit(const calyx::AnyDirective& directive) = 0;
+  virtual void Emit(var_index_t loc_idx, const calyx::Local& loc) = 0;
   void EmitFunction(const calyx::Function& function);
 
   virtual register_type_t RegisterType(const GeneralizedVar& gvar) const = 0;

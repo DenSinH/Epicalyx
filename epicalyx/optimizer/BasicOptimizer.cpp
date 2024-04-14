@@ -138,7 +138,7 @@ void BasicOptimizer::PropagateLocalValues() {
     }
     if (repl) {
       // found replacement, emit and store / propagate final value
-      initial_values.emplace_or_assign(loc_idx, std::move(repl));
+      initial_values.insert_or_assign(loc_idx, std::move(repl));
     }
   }
 }
@@ -148,7 +148,7 @@ void BasicOptimizer::StoreLocalData(var_index_t loc_idx, LocalData&& local) {
   local_initial_values[current_new_block_idx].erase(loc_idx);
 
   // store local value
-  locals.emplace_or_assign(loc_idx, std::move(local));
+  locals.insert_or_assign(loc_idx, std::move(local));
 }
 
 bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const LocalData& local) {
@@ -202,10 +202,11 @@ bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const LocalData& loca
 void BasicOptimizer::FlushOnBranch() {
   auto& final_values = local_final_values[current_new_block_idx];
   for (auto& [loc_idx, local] : locals) {
-    if (local.store.has_value() && ShouldFlushLocal(loc_idx, local)) {
-      Output(std::move(local.store.value()));
+    if (local.store && ShouldFlushLocal(loc_idx, local)) {
+      auto store = std::move(local.store);
+      Output(std::move(*store));
     }
-    final_values.emplace_or_assign(loc_idx, std::move(local.replacement));
+    final_values.insert_or_assign(loc_idx, std::move(local.replacement));
   }
 
   // propagate any initial values that were unchanged
@@ -249,8 +250,9 @@ void BasicOptimizer::FlushAliasedLocals() {
     // it should still be removed, as the stored read
     // value may become invalid
     removed.emplace_back(loc_idx);
-    if (local.store.has_value()) {
-      Output(std::move(local.store.value()));
+    if (local.store) {
+      auto store = std::move(local.store);
+      Output(std::move(*store));
     }
 
     // erase from local_initial_values, this value is not valid
@@ -545,7 +547,7 @@ void BasicOptimizer::Emit(const StoreLocal<T>& _op) {
       StoreLocalData(loc_idx, LocalData{
               .aliases = aliases,
               .replacement = std::make_shared<AnyExpr>(Cast<T, calyx_op_type(op)::src_t>{0, src}),
-              .store = std::move(op)
+              .store = std::make_unique<AnyDirective>(std::move(op))
       });
     }
     else {
@@ -559,7 +561,7 @@ void BasicOptimizer::Emit(const StoreLocal<T>& _op) {
       StoreLocalData(loc_idx, LocalData{
               .aliases = 0,
               .replacement = std::make_shared<AnyExpr>(Imm<calyx_op_type(op)::src_t>{0, (T)src}),
-              .store = std::move(op)
+              .store = std::make_unique<AnyDirective>(std::move(op))
       });
       return;
     }
@@ -636,7 +638,7 @@ void BasicOptimizer::Emit(const StoreToPointer<T>& _op) {
         StoreLocalData(alias, LocalData{
                 .aliases = aliases,
                 .replacement = std::make_shared<AnyExpr>(Cast<T, calyx_op_type(op)::src_t>{0, src}),
-                .store = StoreLocal<T>{alias, typename Operand<calyx_op_type(op)::src_t>::Var{src}}
+                .store = std::make_unique<AnyDirective>(StoreLocal<T>{alias, typename Operand<calyx_op_type(op)::src_t>::Var{src}})
         });
       }
       else {
@@ -646,7 +648,7 @@ void BasicOptimizer::Emit(const StoreToPointer<T>& _op) {
         StoreLocalData(alias, LocalData{
                 .aliases = 0,
                 .replacement = std::make_shared<AnyExpr>(Imm<calyx_op_type(op)::src_t>{0, src}),
-                .store = StoreLocal<T>{alias, typename Operand<calyx_op_type(op)::src_t>::Imm{src}}
+                .store = std::make_unique<AnyDirective>(StoreLocal<T>{alias, typename Operand<calyx_op_type(op)::src_t>::Imm{src}})
         });
       }
       return;

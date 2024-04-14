@@ -72,6 +72,7 @@ void VisualizeProgram(const Program& program, const std::string& filename) {
       graph->n(id).title(cotyl::Format("L%d", block_idx));
       for (const auto& directive : block) {
         switch (directive->cls) {
+          case Directive::Class::NoOp:
           case Directive::Class::Expression:
           case Directive::Class::Stack:
           case Directive::Class::Store:

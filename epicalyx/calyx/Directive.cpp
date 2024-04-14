@@ -44,6 +44,10 @@ std::string TypeString(const Local::Type& type) {
 
 }
 
+std::string NoOp::ToString() const {
+  return "noop ";
+}
+
 template<typename To, typename From>
 requires (
   is_calyx_arithmetic_ptr_type_v<From> && 
@@ -395,6 +399,10 @@ template<typename... Ts>
 struct DirectiveInstantiator<cotyl::pack<Ts...>> : public Ts... {};
 
 template struct DirectiveInstantiator<detail::directive_pack>;
+
+std::string ToStringInstantiator(const AnyDirective& dir) {
+  return dir.template visit<std::string>([](const auto& dir) -> std::string { return dir.ToString(); });
+}
 
 // static_assert(sizeof(AnyDirective) == 12);
 

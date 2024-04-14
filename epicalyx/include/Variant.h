@@ -12,25 +12,17 @@ template<typename Parent, typename... Ts>
 requires (std::is_base_of_v<Parent, Ts> && ...)
 struct Variant {
 
-  Variant(Variant&& other) : value{std::move(other.value)} { }
-
   template<typename T>
   Variant(T&& value) : value{std::move(value)} { }
 
   template<typename T>
   Variant(const T& value) : value{value} { }
 
-  // template<typename T, typename... Args>
-  // requires (std::is_same_v<T, Ts> || ...)
-  // static Variant<Parent, Ts...> Make(const Args&... args) {
-  //   return {T(args...)};
-  // }
-
-  // template<typename T, typename... Args>
-  // requires (std::is_same_v<T, Ts> || ...)
-  // static Variant<Parent, Ts...> Make(Args&&... args) {
-  //   return {T(std::move(args)...)};
-  // }
+  template<typename T, typename... Args>
+  requires (std::is_same_v<T, Ts> || ...)
+  void emplace(Args&&... args) {
+    value.template emplace<T>(std::forward<Args...>(args)...);
+  }
 
   Parent* operator->() {
     return std::visit([](auto& arg) -> Parent* { return &arg; }, value);

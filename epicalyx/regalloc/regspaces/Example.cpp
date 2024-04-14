@@ -1,6 +1,7 @@
 #include "Example.h"
 #include "CustomAssert.h"
 #include "Format.h"
+#include "Exceptions.h"
 
 #include <type_traits>
 
@@ -33,6 +34,9 @@ void ExampleRegSpace::OutputGVar(const GeneralizedVar& gvar) {
   }
   else if constexpr(std::is_same_v<T, calyx::Pointer>) {
     type = RegType::GPR;
+  }
+  else if constexpr(std::is_same_v<T, calyx::Struct>) {
+    throw cotyl::UnimplementedException("Struct register allocation");
   }
   else {
     type = RegType::FPR;
@@ -179,6 +183,33 @@ void ExampleRegSpace::Emit(const AddToPointer<T>& op) {
   OutputExpr<calyx::Pointer>(op);
   if (op.ptr.IsVar()) OutputVar<calyx::Pointer>(op.ptr.GetVar());
   if (op.right.IsVar()) OutputVar<calyx_op_type(op)::offset_t>(op.right.GetVar());
+}
+
+void ExampleRegSpace::Emit(const AnyDirective& dir) {
+  dir.template visit<void>([&](const auto& d) { Emit(d); });
+}
+
+void ExampleRegSpace::Emit(var_index_t loc_idx, const Local& loc) {
+  auto gvar = GeneralizedVar::Local(loc_idx);
+  switch (loc.type) {
+    case Local::Type::I8:
+    case Local::Type::U8:
+    case Local::Type::I16:
+    case Local::Type::U16:
+    case Local::Type::I32:
+    case Local::Type::U32:
+    case Local::Type::I64:
+    case Local::Type::U64:
+    case Local::Type::Pointer:
+      register_type_map.emplace(gvar, RegType::GPR);
+      return;
+    case Local::Type::Float:
+    case Local::Type::Double:
+      register_type_map.emplace(gvar, RegType::FPR);
+      return;
+    case Local::Type::Struct:
+      throw cotyl::UnimplementedException("Not struct register type");
+  }
 }
 
 }
