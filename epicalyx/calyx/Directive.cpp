@@ -401,9 +401,23 @@ struct DirectiveInstantiator<cotyl::pack<Ts...>> : public Ts... {};
 template struct DirectiveInstantiator<detail::directive_pack>;
 
 std::string ToStringInstantiator(const AnyDirective& dir) {
-  return dir.template visit<std::string>([](const auto& dir) -> std::string { return dir.ToString(); });
+  return dir.visit<std::string>([](const auto& dir) -> std::string { return dir.ToString(); });
 }
 
+bool IsBlockEnd(const AnyDirective& dir) {
+  return dir.visit<bool>(
+    [&](const auto& dir) {
+      using dir_t = std::decay_t<decltype(dir)>;
+      if constexpr(std::is_base_of_v<calyx::Branch, dir_t>) {
+        return true;
+      }
+      else if constexpr(cotyl::is_instantiation_of_v<calyx::Return, dir_t>) {
+        return true;
+      }
+      return false;
+    }
+  );
+}
 // static_assert(sizeof(AnyDirective) == 12);
 
 }

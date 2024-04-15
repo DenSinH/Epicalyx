@@ -3,6 +3,10 @@
 
 namespace epi::calyx {
 
+void Example::Emit(const AnyDirective& dir) {
+  dir.visit<void>([&](const auto& d) { Emit(d); });
+}
+
 void Example::Emit(const Program& program) {
 
 }

@@ -13,7 +13,7 @@ using namespace ast;
 
 pExpr ConstParser::EPrimary() {
   auto current = in_stream.Get();
-  return current.template visit<pExpr>(
+  return current.visit<pExpr>(
     [](const IdentifierToken& ident) -> pExpr { 
       throw cotyl::UnexpectedIdentifierException();
     },
@@ -44,7 +44,7 @@ pExpr ConstParser::EPrimary() {
 
 pExpr Parser::EPrimary() {
   auto current = in_stream.Get();
-  return current.template visit<pExpr>(
+  return current.visit<pExpr>(
     [&](const IdentifierToken& ident) -> pExpr { 
       // identifier might be enum value
       std::string name = ident.name;

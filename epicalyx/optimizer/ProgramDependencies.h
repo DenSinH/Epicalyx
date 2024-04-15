@@ -36,7 +36,7 @@ struct FunctionDependencies {
 
   std::string symbol{};
 
-  Graph<block_label_t, const calyx::block_t*, true> block_graph{};
+  Graph<block_label_t, const calyx::BasicBlock*, true> block_graph{};
   cotyl::unordered_map<var_index_t, Var> var_graph{};
   cotyl::unordered_map<var_index_t, LocalData> local_graph{};
 
@@ -56,10 +56,9 @@ struct FunctionDependencies {
 protected:
   func_pos_t pos;
 
-  void Emit(const calyx::AnyDirective& dir) {
-    dir.template visit<void>([&](const auto& d) { Emit(d); });
-  }
+  void Emit(const calyx::AnyDirective& dir);
 
+private:
   void Emit(const calyx::NoOp& op) { }
   template<typename To, typename From>
   void Emit(const calyx::Cast<To, From>& op);

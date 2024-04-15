@@ -186,7 +186,7 @@ void ExampleRegSpace::Emit(const AddToPointer<T>& op) {
 }
 
 void ExampleRegSpace::Emit(const AnyDirective& dir) {
-  dir.template visit<void>([&](const auto& d) { Emit(d); });
+  dir.visit<void>([&](const auto& d) { Emit(d); });
 }
 
 void ExampleRegSpace::Emit(var_index_t loc_idx, const Local& loc) {

@@ -53,10 +53,9 @@ struct Interpreter {
   void EnterFunction(const calyx::Function* function);
   void LoadArg(const calyx::Local& loc);
   void EmitProgram(const calyx::Program& program);
-  void Emit(const calyx::AnyDirective& dir) {
-    dir.template visit<void>([&](const auto& d) { Emit(d); });
-  }
+  void Emit(const calyx::AnyDirective& dir);
 
+private:
   void Emit(const calyx::NoOp& op) { }
   template<typename To, typename From>
   void Emit(const calyx::Cast<To, From>& op);

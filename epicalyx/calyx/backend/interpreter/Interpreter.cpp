@@ -20,7 +20,7 @@ void Interpreter::InterpretGlobalInitializer(global_t& dest, Function&& func) {
   EnterFunction(&func);
 
   while (pos.pos.first) {
-    auto& directive = pos.func->blocks.at(pos.pos.first)[pos.pos.second];
+    auto& directive = pos.func->blocks.at(pos.pos.first).at(pos.pos.second);
     pos.pos.second++;
     Emit(directive);
   }
@@ -51,6 +51,10 @@ void Interpreter::InterpretGlobalInitializer(global_t& dest, Function&& func) {
 
   vars.Reset();
   locals.Reset();
+}
+
+void Interpreter::Emit(const AnyDirective& dir) {
+  dir.visit<void>([&](const auto& d) { Emit(d); });
 }
 
 void Interpreter::EmitProgram(const Program& program) {

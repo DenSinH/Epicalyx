@@ -5,3 +5,5 @@ build/
 *.exe
 *.ini
 output/*.pdf
+profiling_tools/
+-.json

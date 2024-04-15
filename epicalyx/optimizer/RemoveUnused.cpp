@@ -1,7 +1,6 @@
 #include "RemoveUnused.h"
 #include "calyx/Calyx.h"
 #include "ProgramDependencies.h"
-#include "IRCompare.h"
 
 #include <algorithm>
 
@@ -12,7 +11,7 @@ static void NullifyUnusedLocals(calyx::Function& func, FunctionDependencies& dep
   // remove unused locals
   for (const auto& [loc_idx, local] : deps.local_graph) {
     bool local_unread = std::all_of(local.reads.begin(), local.reads.end(), [&](const auto& pos) {
-      return IsType<calyx::NoOp>(func.blocks.at(pos.first).at(pos.second));
+      return calyx::IsType<calyx::NoOp>(func.blocks.at(pos.first).at(pos.second));
     });
     if (local_unread) {
       // local is never read/aliased
@@ -40,7 +39,7 @@ static void NullifyUnusedVars(calyx::Function& function, FunctionDependencies& d
     // remove nullified reads
     auto& var = dependencies.var_graph.at(var_idx);
     std::erase_if(var.reads, [&](const auto& pos) { 
-      return IsType<calyx::NoOp>(function.blocks.at(pos.first).at(pos.second)); 
+      return calyx::IsType<calyx::NoOp>(function.blocks.at(pos.first).at(pos.second)); 
     });
 
     // NEVER erase call results
@@ -67,9 +66,7 @@ size_t RemoveUnused(calyx::Function& function) {
   // remove nullified directives
   size_t removed_directives = 0;
   for (auto& [block_idx, block] : function.blocks) {
-    removed_directives += std::erase_if(block, 
-      [](const auto& dir) -> bool { return IsType<calyx::NoOp>(dir); }
-    );
+    removed_directives += block.RemoveNoOps();
   }
   return removed_directives;
 }

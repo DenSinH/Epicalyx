@@ -28,7 +28,7 @@ private:
   calyx::Function new_function;
   
   // current block that is being built
-  calyx::block_t* current_block{};
+  calyx::BasicBlock* current_block{};
   func_pos_t current_old_pos;            // position we are scanning in the old function
   block_label_t current_new_block_idx;      // block index we are building in the new program
   cotyl::unordered_set<block_label_t> todo{};
@@ -83,7 +83,7 @@ private:
   }
 
   cotyl::unordered_map<block_label_t, func_pos_t> block_links{};
-  Graph<block_label_t, const calyx::block_t*, true> new_block_graph{};
+  Graph<block_label_t, const calyx::BasicBlock*, true> new_block_graph{};
 
   // direct variable replacements
   cotyl::unordered_map<var_index_t, var_index_t> var_replacement{};
@@ -178,14 +178,10 @@ private:
   // find common ancestor for 2 nodes such that all paths to these nodes go through that ancestor
   block_label_t CommonBlockAncestor(block_label_t first, block_label_t second) const;
   
-  void Emit(const calyx::AnyDirective& dir) {
-    dir.template visit<void>([&](const auto& d) { Emit(d); });
-  }
+  void Emit(const calyx::AnyDirective& dir);
+  void Emit(const calyx::AnyExpr& expr);
 
-  void Emit(const calyx::AnyExpr& expr) {
-    expr.template visit<void>([&](const auto& e) { Emit(e); });
-  }
-
+private:
   void Emit(const calyx::NoOp& op) { }
   template<typename To, typename From>
   void Emit(const calyx::Cast<To, From>& op);

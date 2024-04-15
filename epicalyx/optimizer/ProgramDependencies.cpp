@@ -68,6 +68,10 @@ void FunctionDependencies::EmitFunction(const Function& function) {
   }
 }
 
+void FunctionDependencies::Emit(const AnyDirective& dir) {
+  dir.visit<void>([&](const auto& d) { Emit(d); });
+}
+
 template<typename To, typename From>
 void FunctionDependencies::Emit(const Cast<To, From>& op) {
   cotyl::get_default(var_graph, op.idx).created = pos;

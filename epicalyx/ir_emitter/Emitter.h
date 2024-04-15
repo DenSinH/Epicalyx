@@ -47,17 +47,9 @@ struct Emitter {
       return nullptr;
     }
     calyx::AnyDirective directive = T(args...);
-    directive.visit<void>(
-      [&](const auto& dir) {
-        using dir_t = std::decay_t<decltype(dir)>;
-        if constexpr(std::is_base_of_v<calyx::Branch, dir_t>) {
-          reachable = false;
-        }
-        else if constexpr(cotyl::is_instantiation_of_v<calyx::Return, dir_t>) {
-          reachable = false;
-        }
-      }
-    );
+    if (calyx::IsBlockEnd(directive)) {
+      reachable = false;
+    }
     current_function->blocks[current_block].push_back(std::move(directive));
     return &current_function->blocks[current_block].back().get<T>();
   }
@@ -65,7 +57,7 @@ struct Emitter {
   block_label_t MakeBlock() {
     // block 0 is special
     block_label_t id = current_function->blocks.size() + 1;
-    current_function->blocks.emplace(id, calyx::block_t{});
+    current_function->blocks.emplace(id, calyx::BasicBlock{});
     return id;
   }
 

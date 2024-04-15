@@ -1,6 +1,5 @@
 #include "BasicOptimizer.h"
 #include "RemoveUnused.h"
-#include "IRCompare.h"
 #include "Cast.h"
 #include "Is.h"
 #include "Containers.h"
@@ -156,19 +155,48 @@ bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const LocalData& loca
   cotyl::unordered_set<func_pos_t> writes = {old_local.writes.begin(), old_local.writes.end()};
   
   static const cotyl::unordered_set<size_t> alias_blocking_tids = {
-   StoreToPointer<i8>::GetTID(),      LoadFromPointer<i8>::GetTID(),                                                                  
-   StoreToPointer<u8>::GetTID(),      LoadFromPointer<u8>::GetTID(),                                                                  
-   StoreToPointer<i16>::GetTID(),     LoadFromPointer<i16>::GetTID(),                                                                  
-   StoreToPointer<u16>::GetTID(),     LoadFromPointer<u16>::GetTID(),                                                                      
-   StoreToPointer<i32>::GetTID(),     LoadFromPointer<i32>::GetTID(),     Call<i32>::GetTID(),     CallLabel<i32>::GetTID(),     
-   StoreToPointer<u32>::GetTID(),     LoadFromPointer<u32>::GetTID(),     Call<u32>::GetTID(),     CallLabel<u32>::GetTID(),     
-   StoreToPointer<i64>::GetTID(),     LoadFromPointer<i64>::GetTID(),     Call<i64>::GetTID(),     CallLabel<i64>::GetTID(),     
-   StoreToPointer<u64>::GetTID(),     LoadFromPointer<u64>::GetTID(),     Call<u64>::GetTID(),     CallLabel<u64>::GetTID(),     
-   StoreToPointer<float>::GetTID(),   LoadFromPointer<float>::GetTID(),   Call<float>::GetTID(),   CallLabel<float>::GetTID(),       
-   StoreToPointer<double>::GetTID(),  LoadFromPointer<double>::GetTID(),  Call<double>::GetTID(),  CallLabel<double>::GetTID(),        
-   StoreToPointer<Struct>::GetTID(),  LoadFromPointer<Struct>::GetTID(),  Call<Pointer>::GetTID(), CallLabel<Pointer>::GetTID(),         
-   StoreToPointer<Pointer>::GetTID(), LoadFromPointer<Pointer>::GetTID(), Call<Struct>::GetTID(),  CallLabel<Struct>::GetTID(),        
-                                                                          Call<void>::GetTID(),    CallLabel<void>::GetTID(),      
+      AnyDirective::type_index_v<StoreToPointer<i8>>,                                                                   
+      AnyDirective::type_index_v<StoreToPointer<u8>>,                                                                   
+      AnyDirective::type_index_v<StoreToPointer<i16>>,                                                                   
+      AnyDirective::type_index_v<StoreToPointer<u16>>,                                                                       
+      AnyDirective::type_index_v<StoreToPointer<i32>>,    
+      AnyDirective::type_index_v<StoreToPointer<u32>>,    
+      AnyDirective::type_index_v<StoreToPointer<i64>>,    
+      AnyDirective::type_index_v<StoreToPointer<u64>>,    
+      AnyDirective::type_index_v<StoreToPointer<float>>,     
+      AnyDirective::type_index_v<StoreToPointer<double>>,      
+      AnyDirective::type_index_v<StoreToPointer<Struct>>,        
+      AnyDirective::type_index_v<StoreToPointer<Pointer>>,
+      AnyDirective::type_index_v<LoadFromPointer<i8>>,     
+      AnyDirective::type_index_v<LoadFromPointer<u8>>,     
+      AnyDirective::type_index_v<LoadFromPointer<i16>>,    
+      AnyDirective::type_index_v<LoadFromPointer<u16>>,    
+      AnyDirective::type_index_v<LoadFromPointer<i32>>,    
+      AnyDirective::type_index_v<LoadFromPointer<u32>>,    
+      AnyDirective::type_index_v<LoadFromPointer<i64>>,    
+      AnyDirective::type_index_v<LoadFromPointer<u64>>,    
+      AnyDirective::type_index_v<LoadFromPointer<float>>,  
+      AnyDirective::type_index_v<LoadFromPointer<double>>, 
+      AnyDirective::type_index_v<LoadFromPointer<Struct>>, 
+      AnyDirective::type_index_v<LoadFromPointer<Pointer>>,
+      AnyDirective::type_index_v<Call<i32>>,     
+      AnyDirective::type_index_v<Call<u32>>,     
+      AnyDirective::type_index_v<Call<i64>>,     
+      AnyDirective::type_index_v<Call<u64>>,     
+      AnyDirective::type_index_v<Call<float>>,   
+      AnyDirective::type_index_v<Call<double>>,  
+      AnyDirective::type_index_v<Call<Pointer>>, 
+      AnyDirective::type_index_v<Call<Struct>>,  
+      AnyDirective::type_index_v<Call<void>>, 
+      AnyDirective::type_index_v<CallLabel<i32>>,     
+      AnyDirective::type_index_v<CallLabel<u32>>,     
+      AnyDirective::type_index_v<CallLabel<i64>>,     
+      AnyDirective::type_index_v<CallLabel<u64>>,     
+      AnyDirective::type_index_v<CallLabel<float>>,    
+      AnyDirective::type_index_v<CallLabel<double>>,   
+      AnyDirective::type_index_v<CallLabel<Pointer>>,  
+      AnyDirective::type_index_v<CallLabel<Struct>>,   
+      AnyDirective::type_index_v<CallLabel<void>>,        
   };
 
   // local does not need to be flushed if no "bad" operation (load) happens
@@ -182,7 +210,7 @@ bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const LocalData& loca
       //                    reading the local's value)
       if (reads.contains(pos)) return true;
       if (!old_local.aliased_by.empty()) {
-        if (alias_blocking_tids.contains(op->type_id)) {
+        if (alias_blocking_tids.contains(op.index())) {
           return true;
         }
       }
@@ -287,7 +315,7 @@ void BasicOptimizer::TryReplaceOperand(Operand<T>& var) const {
 template<typename T, class F>
 bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
   for (const auto& [var_idx, loc] : vars_found) {
-    auto& directive = new_function.blocks.at(loc.first)[loc.second];
+    auto& directive = new_function.blocks.at(loc.first).at(loc.second);
     if (IsType<std::decay_t<T>>(directive)) {
       auto candidate_block = loc.first;
       // todo: make generic, call on new_block_graph
@@ -314,7 +342,7 @@ void BasicOptimizer::ResolveBranchIndirection(block_label_t& dest) const {
   while (old_function.blocks.at(dest).size() == 1) {
     // single branch block
     // recursion resolves single branch chains
-    auto& link_directive = old_function.blocks.at(dest)[0];
+    auto& link_directive = old_function.blocks.at(dest).at(0);
     if (!IsType<UnconditionalBranch>(link_directive)) {
       break;
     }
@@ -337,7 +365,7 @@ void BasicOptimizer::ResolveBlockLinks(block_label_t& block_idx) const {
 template<typename T>
 const T* BasicOptimizer::TryGetVarDirective(var_index_t idx) const {
   auto [block, in_block] = vars_found.at(idx);
-  auto& directive = new_function.blocks.at(block)[in_block];
+  const auto& directive = new_function.blocks.at(block).at(in_block);
   if (IsType<T>(directive)) {
     return &directive.get<T>();
   }
@@ -429,7 +457,7 @@ Function&& BasicOptimizer::Optimize() {
       PropagateLocalValues();
     }
 
-    auto inserted = new_function.blocks.emplace(current_new_block_idx, calyx::block_t{}).first;
+    auto inserted = new_function.blocks.emplace(current_new_block_idx, calyx::BasicBlock{}).first;
     current_block = &inserted->second;
     auto& node = new_block_graph.EmplaceNodeIfNotExists(current_new_block_idx, nullptr);
     if (node.value) continue;  // we have already emitted this block
@@ -452,6 +480,14 @@ Function&& BasicOptimizer::Optimize() {
   }
   while (RemoveUnused(new_function));
   return std::move(new_function);
+}
+
+void BasicOptimizer::Emit(const AnyDirective& dir) {
+  dir.visit<void>([&](const auto& d) { Emit(d); });
+}
+
+void BasicOptimizer::Emit(const AnyExpr& expr) {
+  expr.visit<void>([&](const auto& d) { Emit(d); });
 }
 
 #pragma clang diagnostic push

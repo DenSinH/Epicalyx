@@ -15,6 +15,16 @@
 
 namespace epi::calyx {
 
+void BasicBlock::push_back(AnyDirective&& value) {
+  directives.push_back(std::move(value));
+}
+
+std::size_t BasicBlock::RemoveNoOps() {
+  return std::erase_if(directives, 
+    [](const auto& dir) -> bool { return IsType<calyx::NoOp>(dir); }
+  );
+}
+
 namespace detail {
 
 std::string TypeString(const Local::Type& type);
@@ -23,11 +33,11 @@ std::string TypeString(const Local::Type& type);
 
 size_t Function::Hash() const {
   size_t seed = blocks.size();
-  cotyl::map<block_label_t, const block_t&> sorted{blocks.begin(), blocks.end()};
+  cotyl::map<block_label_t, const BasicBlock&> sorted{blocks.begin(), blocks.end()};
   for (const auto& [block_idx, block] : sorted) {
     calyx::hash_combine(seed, block_idx);
     for (const auto& directive : block) {
-      calyx::hash_combine(seed, directive->type_id);
+      calyx::hash_combine(seed, directive.index());
     }
   }
   return seed;

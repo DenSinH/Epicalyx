@@ -13,9 +13,26 @@
 
 namespace epi::calyx {
 
-struct Directive;
-using block_t = std::vector<AnyDirective>;
-using global_t = std::variant<i8, u8, i16, u16, i32, u32, i64, u64, float, double, Pointer, label_offset_t>;
+struct BasicBlock {
+
+  std::size_t size() const { return directives.size(); }
+  auto begin() { return directives.begin(); }
+  auto end() { return directives.end(); }
+  auto begin() const { return directives.begin(); }
+  auto end() const { return directives.end(); }
+  auto back() const { return directives.back(); }
+  bool empty() const { return directives.empty(); }
+  const AnyDirective& at(std::size_t index) const { return directives.at(index); }
+  AnyDirective& at(std::size_t index) { return directives.at(index); }
+  void reserve(std::size_t size) { directives.reserve(size); }
+  void push_back(AnyDirective&& value);
+
+  std::size_t RemoveNoOps();
+
+private:
+  std::vector<AnyDirective> directives{};
+};
+
 
 struct Function {
   static constexpr block_label_t Entry = 1;
@@ -25,7 +42,7 @@ struct Function {
   std::string symbol;
   // program code
   // block 0 is special
-  cotyl::unordered_map<block_label_t, block_t> blocks{};
+  cotyl::unordered_map<block_label_t, BasicBlock> blocks{};
 
   cotyl::unordered_map<var_index_t, Local> locals{};  
   
