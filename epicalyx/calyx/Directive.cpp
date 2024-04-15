@@ -391,6 +391,18 @@ std::string CallLabel<T>::ToString() const {
   }
 }
 
+STRINGIFY_METHOD(AnyExpr) {
+  return value.visit<std::string>([](const auto& dir) -> std::string { 
+    return dir.ToString(); 
+  });
+}
+
+STRINGIFY_METHOD(AnyDirective) {
+  return value.visit<std::string>([](const auto& dir) -> std::string { 
+    return dir.ToString(); 
+  });
+}
+
 // force instantiation of all directives
 template<typename...>
 struct DirectiveInstantiator;
@@ -399,10 +411,6 @@ template<typename... Ts>
 struct DirectiveInstantiator<cotyl::pack<Ts...>> : public Ts... {};
 
 template struct DirectiveInstantiator<detail::directive_pack>;
-
-std::string ToStringInstantiator(const AnyDirective& dir) {
-  return dir.visit<std::string>([](const auto& dir) -> std::string { return dir.ToString(); });
-}
 
 bool IsBlockEnd(const AnyDirective& dir) {
   return dir.visit<bool>(

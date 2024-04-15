@@ -4,6 +4,7 @@
 #include "Packs.h"
 #include "Stringify.h"
 
+#include <variant>
 #include <string>
 #include <optional>
 

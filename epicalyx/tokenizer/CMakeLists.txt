@@ -1,5 +1,6 @@
 add_library(Tokenizer STATIC
         Token.h
+        TokenType.h
         Tokenizer.h
         Maps.cpp
         Tokenizer.cpp

@@ -8,11 +8,20 @@
  * constant expression
  * */
 
-#include "Stream.h"
-#include "tokenizer/Token.h"
+#include "Locatable.h"
 #include "ast/Initializer.h"
 
 namespace epi {
+
+namespace cotyl {
+
+template<typename T>
+struct Stream;
+
+}
+
+struct AnyToken;
+enum class TokenType;
 
 struct ConstParser : public cotyl::Locatable {
 

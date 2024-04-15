@@ -1,8 +1,9 @@
 #include "Parser.h"
 
+#include "Stream.h"
+#include "tokenizer/Token.h"
 #include "ast/Statement.h"
 #include "ast/Declaration.h"
-#include "Cast.h"
 
 namespace epi {
   

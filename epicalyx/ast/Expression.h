@@ -4,7 +4,7 @@
 #include "NodeVisitor.h"
 #include "Initializer.h"
 #include "types/EpiCType.h"
-#include "tokenizer/Token.h"
+#include "tokenizer/TokenType.h"
 #include "Escape.h"
 
 #include <string>
@@ -210,7 +210,7 @@ struct PostFixNode final : public ExprNode {
   const pExpr left;
   const TokenType op;
 
-  std::string ToString() const final { return cotyl::FormatStr("(%s)%s", left, PunctuatorToken(op)); }
+  std::string ToString() const final { return cotyl::FormatStr("(%s)%s", left, op); }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   // EReduce is just the constant node from the PostFixNode operation (will always be nullptr)
 
@@ -231,7 +231,7 @@ struct UnopNode final : public ExprNode {
   const pExpr left;
   const TokenType op;
 
-  std::string ToString() const final { return cotyl::FormatStr("%s(%s)", PunctuatorToken(op), left); }
+  std::string ToString() const final { return cotyl::FormatStr("%s(%s)", op, left); }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   // EReduce is just the constant node from the unary operation
 
@@ -276,7 +276,7 @@ struct BinopNode final : public ExprNode {
   pExpr right;
 
   std::string ToString() const final {
-    return cotyl::FormatStr("(%s) %s (%s)", left, PunctuatorToken(op), right);
+    return cotyl::FormatStr("(%s) %s (%s)", left, op, right);
   }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pExpr EReduce(const Parser& parser) final;
@@ -326,7 +326,7 @@ struct AssignmentNode final : public ExprNode {
   pExpr right;
 
   std::string ToString() const final {
-    return cotyl::FormatStr("%s %s (%s)", left, PunctuatorToken(op), right);
+    return cotyl::FormatStr("%s %s (%s)", left, op, right);
   }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pExpr EReduce(const Parser& parser) final;

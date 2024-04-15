@@ -1,5 +1,8 @@
 #include "Parser.h"
 
+#include "Exceptions.h"
+#include "Stream.h"
+#include "tokenizer/Token.h"
 #include "ast/Declaration.h"
 #include "ast/Statement.h"
 

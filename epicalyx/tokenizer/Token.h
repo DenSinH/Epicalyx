@@ -2,85 +2,14 @@
 
 #include "Default.h"
 #include "Stringify.h"
-#include "Escape.h"
-#include "Format.h"
 #include "Variant.h"
-
-#include "Containers.h"
+#include "TokenType.h"
 
 #include <string>
 #include <utility>
 
 
 namespace epi {
-
-enum class TokenType {
-  Identifier,
-
-  // constants
-  NumericConstant, StringConstant,
-
-  // Keywords
-  Auto, Break, Case, Char, Const, Continue, Default, Do,
-  Double, Else, Enum, Extern, Float, For, Goto, If, Inline,
-  Int, Long, Register, Restrict, Return, Short, Signed, Sizeof,
-  Static, Struct, Switch, Typedef, Union, Unsigned, Void, Volatile,
-  While, Alignas, Alignof, Atomic, Bool, Complex, Generic, Imaginary,
-  Noreturn, StaticAssert, ThreadLocal,
-
-  // Punctuators
-  LBracket,       // [
-  RBracket,       // ]
-  LParen,         // (
-  RParen,         // )
-  LBrace,         // {
-  RBrace,         // }
-  Dot,            // .
-  Arrow,          // ->
-  Incr,           // ++
-  Decr,           // --
-  Ampersand,      // &
-  Asterisk,       // *
-  Plus,           // +
-  Minus,          // -
-  Tilde,          // ~
-  Exclamation,    // !
-  Div,            // /
-  Mod,            // %
-  LShift,         // <<
-  RShift,         // >>
-  Less,           // <
-  Greater,        // >
-  LessEqual,      // <=
-  GreaterEqual,   // >=
-  Equal,          // ==
-  NotEqual,       // !=
-  BinXor,         // ^
-  BinOr,          // |
-  LogicalAnd,     // &&
-  LogicalOr,      // ||
-  Question,       // ?
-  Colon,          // :
-  SemiColon,      // ;
-  Ellipsis,       // ...
-  Assign,         // =
-  IMul,           // *=
-  IDiv,           // /=
-  IMod,           // %=
-  IPlus,          // +=
-  IMinus,         // -=
-  ILShift,        // <<=
-  IRShift,        // >>=
-  IAnd,           // &=
-  IXor,           // ^=
-  IOr,            // |=
-  Comma,          // ,
-  Hashtag,        // #
-  HHashtag,       // ##
-  // <: :> <% %> %: %:%: I don't know what these are
-};
-
-STRINGIFY_METHOD(TokenType);
 
 struct Token {
   TokenType type;
@@ -102,13 +31,13 @@ struct PunctuatorToken final : public Token {
   PunctuatorToken(TokenType type) : Token{type} { }
 };
 
-static STRINGIFY_METHOD(PunctuatorToken) { return stringify(value.type); }
+STRINGIFY_METHOD(PunctuatorToken);
 
 struct KeywordToken final : public Token {
   KeywordToken(TokenType type) : Token{type} { }
 };
 
-static STRINGIFY_METHOD(KeywordToken) { return stringify(value.type); }
+STRINGIFY_METHOD(KeywordToken);
 
 struct IdentifierToken final : public Token {
   explicit IdentifierToken(std::string  name) :
@@ -120,7 +49,7 @@ struct IdentifierToken final : public Token {
   const std::string name;
 };
 
-static STRINGIFY_METHOD(IdentifierToken) { return value.name; }
+STRINGIFY_METHOD(IdentifierToken);
 
 
 template<typename T>
@@ -135,7 +64,7 @@ struct NumericalConstantToken final : public Token {
 };
 
 template<typename T>
-static STRINGIFY_METHOD(NumericalConstantToken<T>) { return stringify(value.value); }
+STRINGIFY_METHOD(NumericalConstantToken<T>);
 
 struct StringConstantToken : public Token {
   explicit StringConstantToken(const std::string value) :
@@ -147,11 +76,11 @@ struct StringConstantToken : public Token {
   const std::string value;
 };
 
-static STRINGIFY_METHOD(StringConstantToken) {
-  return cotyl::Format("\"%s\"", cotyl::Escape(value.value).c_str());
-}
+STRINGIFY_METHOD(StringConstantToken);
 
-using AnyToken = cotyl::Variant<Token,
+namespace detail {
+
+using any_token_t = cotyl::Variant<Token,
   PunctuatorToken,
   KeywordToken,
   IdentifierToken,
@@ -163,5 +92,14 @@ using AnyToken = cotyl::Variant<Token,
   NumericalConstantToken<double>,
   StringConstantToken
 >;
+
+}
+
+struct AnyToken : detail::any_token_t {
+  using base_t = detail::any_token_t;
+  using detail::any_token_t::any_token_t;
+};
+
+STRINGIFY_METHOD(AnyToken);
 
 }

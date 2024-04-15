@@ -1,10 +1,10 @@
 #include "Parser.h"
+
+#include "TypeTraits.h"
+#include "Stream.h"
+#include "tokenizer/Token.h"
 #include "ast/Expression.h"
 #include "ast/Declaration.h"
-#include "tokenizer/Token.h"
-#include "Is.h"
-#include "Cast.h"
-#include "TypeTraits.h"
 
 
 namespace epi {
@@ -229,7 +229,7 @@ template<pExpr (ConstParser::*SubNode)(), enum TokenType... types>
 pExpr ConstParser::EBinopImpl() {
   pExpr node = (this->*SubNode)();
   const Token* current;
-  while (in_stream.Peek(current) && cotyl::Is(current->type).AnyOf<types...>()) {
+  while (in_stream.Peek(current) && ((current->type == types) || ...)) {
     auto type = in_stream.Get()->type;
     node = std::make_unique<BinopNode>(std::move(node), type, (this->*SubNode)());
   }

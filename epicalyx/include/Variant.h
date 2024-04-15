@@ -1,6 +1,5 @@
 #pragma once
 
-#include <variant>
 #include <type_traits>
 #include <stdexcept>
 #include "TypeTraits.h"
@@ -13,16 +12,51 @@ requires (std::is_base_of_v<Parent, Ts> && ...)
 struct Variant {
 
   template<typename T>
+  requires (std::is_same_v<T, Ts> || ...)
   static constexpr std::size_t type_index_v = cotyl::type_index_v<T, Ts...>;
 
   Variant() = delete;
 
+  Variant(Variant<Parent, Ts...>&& other) :
+      type_index{other.type_index} {
+    other.visit<void>([&](auto&& o) {
+      using type_t = std::decay_t<decltype(o)>;
+      new(&memory) type_t{std::move(o)};
+    });
+  }
+
+  Variant(const Variant<Parent, Ts...>& other) :
+      type_index{other.type_index} {
+    other.visit<void>([&](const auto& o) {
+      using type_t = std::decay_t<decltype(o)>;
+      new(&memory) type_t{o};
+    });
+  }
+
+  ~Variant() {
+    visit<void>([&](auto&& o) {
+      using type_t = std::decay_t<decltype(o)>;
+      reinterpret_cast<type_t*>(&memory)->~type_t();
+    });
+  }
+
+//   Variant<Parent, Ts...>& operator=(const Variant<Parent, Ts...>& other) {
+//     type_index = other.type_index;
+//     other.visit<void>([&](const auto& o) {
+//       using type_t = std::decay_t<decltype(o)>;
+//       *(reinterpret_cast<type_t*>(&memory)) = o;
+//     });
+//     return *this;
+//   }
+
   template<typename T>
+  requires (std::is_same_v<T, Ts> || ...)
   [[clang::always_inline]] Variant(T&& value) : type_index{type_index_v<T>} {
     new(&memory) T{std::move(value)};
   }
 
   template<typename T>
+  requires (std::is_same_v<T, Ts> || ...)
   [[clang::always_inline]] Variant(const T& value) : type_index{type_index_v<T>} {
     new(&memory) T{value};
   }
@@ -35,6 +69,7 @@ struct Variant {
   }
 
   template<typename T>
+  requires (std::is_same_v<T, Ts> || ...)
   [[clang::always_inline]] bool holds_alternative() const {
     return type_index == type_index_v<T>;
   }
@@ -44,31 +79,31 @@ struct Variant {
   }
 
   [[clang::always_inline]] Parent* operator->() {
-    return (Parent*)&memory;
+    return reinterpret_cast<Parent*>(&memory);
   }
 
   [[clang::always_inline]] const Parent* operator->() const {
-    return (const Parent*)&memory;
+    return reinterpret_cast<const Parent*>(&memory);
   }
 
   [[clang::always_inline]] Parent& operator*() { 
-    return *((Parent*)&memory);
+    return *(reinterpret_cast<Parent*>(&memory));
   }
 
   [[clang::always_inline]] const Parent& operator*() const { 
-    return *((const Parent*)&memory);
+    return *(reinterpret_cast<const Parent*>(&memory));
   }
 
   template<typename T>
   requires (std::is_same_v<T, Ts> || ...)
   [[clang::always_inline]] T& get() {
-    return *((T*)&memory);
+    return *(reinterpret_cast<T*>(&memory));
   }
 
   template<typename T>
   requires (std::is_same_v<T, Ts> || ...)
   [[clang::always_inline]] const T& get() const {
-    return *((const T*)&memory);
+    return *(reinterpret_cast<const T*>(&memory));
   }
   
   template<typename R, typename... Args>

@@ -3,7 +3,6 @@
 #include "Exceptions.h"
 #include "Stringify.h"
 #include "Format.h"
-#include "Cast.h"
 
 #include <stdexcept>
 #include <iostream>

@@ -3,6 +3,7 @@
 #include "Format.h"
 #include "Variant.h"
 #include "Exceptions.h"
+#include "Locatable.h"
 
 #include <deque>
 #include <string>
@@ -16,6 +17,15 @@ namespace detail {
 
 template<typename T>
 struct base_type;
+
+template<typename T>
+concept has_base_t = requires {
+    typename T::base_t;
+    std::is_base_of<typename T::base_t, T>::value;
+};
+
+template<has_base_t T>
+struct base_type<T> : base_type<typename T::base_t> { };
 
 template<typename T>
 struct base_type<std::unique_ptr<T>> {
@@ -43,10 +53,6 @@ concept Comparable = requires(T t, U u) {
 };
 
 }
-
-struct Locatable {
-  virtual void PrintLoc() const = 0;
-};
 
 template<typename T>
 struct Stream : public Locatable {

@@ -32,8 +32,11 @@ add_compile_options(-Wno-format-security)
 add_executable(
         epicalyx
         main.cpp
+        epicalyx/include/Locatable.h
         epicalyx/include/Stream.h
         epicalyx/include/Variant.h
+        epicalyx/include/TypeTraits.h
+        epicalyx/include/TypeName.h
         epicalyx/include/Packs.h
         epicalyx/include/Stringify.h
         epicalyx/include/Format.h

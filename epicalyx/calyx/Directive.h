@@ -4,6 +4,7 @@
 #include "Variant.h"
 #include "Packs.h"
 #include "Containers.h"
+#include "Stringify.h"
 
 #include <bit>
 #include <vector>
@@ -500,17 +501,29 @@ using directive_pack = cotyl::flatten_pack<
   cotyl::map_types_t<Return, calyx_return_types>
 >;
 
-}
-
-using AnyExpr = cotyl::map_pack_t<
+using any_expr_t = cotyl::map_pack_t<
   detail::any_expr_helper,
   detail::expr_pack
 >;
 
-using AnyDirective = cotyl::map_pack_t<
+using any_directive_t = cotyl::map_pack_t<
   detail::any_directive_helper,
   detail::directive_pack
 >;
+
+}
+
+struct AnyExpr : detail::any_expr_t {
+  using detail::any_expr_t::any_expr_t;
+};
+
+STRINGIFY_METHOD(AnyExpr);
+
+struct AnyDirective : detail::any_directive_t {
+  using detail::any_directive_t::any_directive_t;
+};
+
+STRINGIFY_METHOD(AnyDirective);
 
 bool IsBlockEnd(const AnyDirective& dir);
 
