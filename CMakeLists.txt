@@ -35,6 +35,9 @@ add_executable(
         epicalyx/include/Locatable.h
         epicalyx/include/Stream.h
         epicalyx/include/Variant.h
+        epicalyx/include/swl/variant.hpp
+        epicalyx/include/swl/variant_visit.hpp
+        epicalyx/include/swl/variant_detail.hpp
         epicalyx/include/TypeTraits.h
         epicalyx/include/TypeName.h
         epicalyx/include/Packs.h
