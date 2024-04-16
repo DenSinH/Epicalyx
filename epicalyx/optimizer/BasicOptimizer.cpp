@@ -3,7 +3,6 @@
 #include "Is.h"
 #include "Containers.h"
 #include "CustomAssert.h"
-#include "Algorithm.h"
 #include "TypeTraits.h"
 
 

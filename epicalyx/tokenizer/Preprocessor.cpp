@@ -8,6 +8,7 @@
 #include "SStream.h"
 
 #include <ranges>
+#include <iostream>
 
 
 namespace epi {

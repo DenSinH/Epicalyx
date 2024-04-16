@@ -62,7 +62,6 @@ set(INCLUDE_HEADERS
   ${PROJECT_SOURCE_DIR}/epicalyx/include/CustomAssert.h
   ${PROJECT_SOURCE_DIR}/epicalyx/include/Containers.h
   ${PROJECT_SOURCE_DIR}/epicalyx/include/Hash.h
-  ${PROJECT_SOURCE_DIR}/epicalyx/include/Algorithm.h 
   ${PROJECT_SOURCE_DIR}/epicalyx/include/Exceptions.h
 )
 

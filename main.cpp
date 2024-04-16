@@ -44,6 +44,7 @@ int main() {
   std::cout << sizeof(epi::AnyToken) << std::endl;
   std::cout << sizeof(std::string) << std::endl;
   std::cout << sizeof(const std::string) << std::endl;
+  std::cout << sizeof(std::string_view) << std::endl;
   return 0;
 
   std::string file = "examples/emitting/optimizing.c";

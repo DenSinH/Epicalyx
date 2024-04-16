@@ -3,6 +3,7 @@
 #include "Default.h"
 #include "Packs.h"
 #include "Stringify.h"
+#include "CustomAssert.h"
 
 #include <variant>
 #include <string>
@@ -17,8 +18,8 @@ struct Function;
 
 }
 
-using var_index_t = u64;
-using block_label_t = u64;
+using var_index_t = u32;
+using block_label_t = u32;
 using func_pos_t = std::pair<block_label_t, int>;
 
 struct program_pos_t {
@@ -93,28 +94,46 @@ struct Operand {
   // ALWAYS instantiate as var index
   template<typename S>
   requires (std::is_integral_v<S>)
-  Operand(S var_idx) : value{Var{(var_index_t)var_idx}} { }
+  Operand(S var_idx) : is_var{true}, var{(var_index_t)var_idx} { }
 
-  Operand(const Var& var) : value{var} { }
-  Operand(Var&& var) : value{std::move(var)} { }
-  Operand(const Imm& imm) : value{imm} { }
-  Operand(Imm&& imm) : value{std::move(imm)} { }
+  Operand(const Var& var) : is_var{true}, var{var} { }
+  Operand(Var&& var) : is_var{true}, var{std::move(var)} { }
+  Operand(const Imm& imm) : is_var{false}, imm{imm} { }
+  Operand(Imm&& imm) : is_var{false}, imm{std::move(imm)} { }
 
-  bool IsImm() const { return std::holds_alternative<Imm>(value); }
-  const T& GetImm() const { return std::get<Imm>(value).value; }
-  T& GetImm() { return std::get<Imm>(value).value; }
+  bool IsImm() const { return !is_var; }
+  const T& GetImm() const {
+    cotyl::Assert(IsImm(), "Invalid operand access");
+    return imm.value; 
+  }
+
+  T& GetImm() { 
+    cotyl::Assert(IsImm(), "Invalid operand access");
+    return imm.value; 
+  }
   
-  bool IsVar() const { return std::holds_alternative<Var>(value); }
-  const var_index_t& GetVar() const { return std::get<Var>(value).var_idx; }
-  var_index_t& GetVar() { return std::get<Var>(value).var_idx; }
+  bool IsVar() const { return is_var; }
+  const var_index_t& GetVar() const { 
+    cotyl::Assert(IsVar(), "Invalid operand access");
+    return var.var_idx; 
+  }
+
+  var_index_t& GetVar() { 
+    cotyl::Assert(IsVar(), "Invalid operand access");
+    return var.var_idx;
+  }
 
 private:
-  std::variant<Var, Imm> value;
+  bool is_var;
+  union {
+    Var var;
+    Imm imm;
+  };
 };
 
 struct Local {
 
-  enum class Type {
+  enum class Type : u32 {
     I8, U8, I16, U16, 
     I32, U32, I64, U64,
     Float, Double, Pointer, Struct

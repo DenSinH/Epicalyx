@@ -58,7 +58,7 @@ struct NoOp : Directive {
   std::string ToString() const;
 };
 
-enum class BinopType {
+enum class BinopType : u32 {
   Add,
   Sub,
   Mul,
@@ -69,17 +69,17 @@ enum class BinopType {
   BinXor,
 };
 
-enum class ShiftType {
+enum class ShiftType : u32 {
   Left,
   Right,
 };
 
-enum class UnopType {
+enum class UnopType : u32 {
   Neg,
   BinNot
 };
 
-enum class CmpType {
+enum class CmpType : u32 {
   Eq, Ne, Lt, Le, Gt, Ge
 };
 
