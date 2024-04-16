@@ -1,11 +1,12 @@
 #pragma once 
 
+#include "Default.h"
 #include "Stringify.h"
 
 
 namespace epi {
 
-enum class TokenType {
+enum class TokenType : u32 {
   Identifier,
 
   // constants

@@ -3,7 +3,7 @@
 
 #include "calyx/Calyx.h"
 #include "calyx/backend/interpreter/Interpreter.h"
-#include "types/EpiCType.h"
+#include "types/Types.h"
 #include "ast/Declaration.h"
 #include "ast/Statement.h"
 #include "ast/Expression.h"

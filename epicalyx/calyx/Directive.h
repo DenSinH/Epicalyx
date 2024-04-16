@@ -18,7 +18,6 @@ using arg_list_t = std::vector<std::pair<var_index_t, Argument>>;
 struct Directive {
 
   Directive() = default;
-  virtual ~Directive() = default;
 
 };
 

@@ -2,6 +2,7 @@
 #include "Is.h"
 #include "Stream.h"
 #include "tokenizer/Token.h"
+#include "types/Types.h"
 #include "ast/Declaration.h"
 #include "ast/Statement.h"
 

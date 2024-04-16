@@ -36,7 +36,23 @@ std::string InitializerList::ToString() const {
   }
   std::string result = std::regex_replace(repr.finalize(), std::regex("\n"), "\n  ");
   return result + "\n}";
-}
+}  
+
+void InitializerListVisitor::Visit(const VoidType& type) { throw std::runtime_error("Invalid initializer list: cannot cast type to incomplete type void"); }
+void InitializerListVisitor::Visit(const ValueType<i8>& type) { VisitScalar(type); }
+void InitializerListVisitor::Visit(const ValueType<u8>& type) { VisitScalar(type); }
+void InitializerListVisitor::Visit(const ValueType<i16>& type) { VisitScalar(type); }
+void InitializerListVisitor::Visit(const ValueType<u16>& type) { VisitScalar(type); }
+void InitializerListVisitor::Visit(const ValueType<i32>& type) { VisitScalar(type); }
+void InitializerListVisitor::Visit(const ValueType<u32>& type) { VisitScalar(type); }
+void InitializerListVisitor::Visit(const ValueType<i64>& type) { VisitScalar(type); }
+void InitializerListVisitor::Visit(const ValueType<u64>& type) { VisitScalar(type); }
+void InitializerListVisitor::Visit(const ValueType<float>& type) { VisitScalar(type); }
+void InitializerListVisitor::Visit(const ValueType<double>& type) { VisitScalar(type); }
+void InitializerListVisitor::Visit(const PointerType& type) { VisitScalar(type); }
+void InitializerListVisitor::Visit(const FunctionType& type) { VisitScalar(type); }
+void InitializerListVisitor::Visit(const StructType& type) { VisitStructLike(type); }
+void InitializerListVisitor::Visit(const UnionType& type) { VisitStructLike(type); }
 
 void ValidInitializerListVisitor::VisitScalar(const CType& type) {
   if (list.list.empty()) {

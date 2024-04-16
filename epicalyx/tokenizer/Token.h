@@ -51,7 +51,6 @@ struct IdentifierToken final : public Token {
 
 STRINGIFY_METHOD(IdentifierToken);
 
-
 template<typename T>
 struct NumericalConstantToken final : public Token {
   explicit NumericalConstantToken(T value) :

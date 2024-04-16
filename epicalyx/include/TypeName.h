@@ -6,10 +6,14 @@
 #include <array>   // std::array
 #include <utility> // std::index_sequence
 
+namespace epi::cotyl {
+
+namespace detail {
+
 template <std::size_t...Idxs>
 constexpr auto substring_as_array(std::string_view str, std::index_sequence<Idxs...>)
 {
-  return std::array{str[Idxs]..., '\n'};
+  return std::array{str[Idxs]...};
 }
 
 template <typename T>
@@ -45,9 +49,13 @@ struct type_name_holder {
   static inline constexpr auto value = type_name_array<T>();
 };
 
+}
+
 template <typename T>
 constexpr auto type_name() -> std::string_view
 {
-  constexpr auto& value = type_name_holder<T>::value;
+  constexpr auto& value = detail::type_name_holder<T>::value;
   return std::string_view{value.data(), value.size()};
+}
+
 }

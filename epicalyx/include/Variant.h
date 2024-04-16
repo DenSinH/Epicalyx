@@ -56,13 +56,21 @@ struct Variant {
   template<typename T>
   requires (std::is_same_v<T, Ts> || ...)
   T& get() {
+#ifndef NDEBUG
     return swl::get<T>(value);
+#else 
+    return swl::unsafe_get<T>(value);
+#endif
   }
 
   template<typename T>
   requires (std::is_same_v<T, Ts> || ...)
   const T& get() const {
+#ifndef NDEBUG
     return swl::get<T>(value);
+#else 
+    return swl::unsafe_get<T>(value);
+#endif
   }
   
   template<typename R, typename... Args>

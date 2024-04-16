@@ -21,7 +21,7 @@ struct Stream;
 }
 
 struct AnyToken;
-enum class TokenType;
+enum class TokenType : u32;
 
 struct ConstParser : public cotyl::Locatable {
 
