@@ -4,3 +4,4 @@ add_library(File STATIC
 set_target_properties(File PROPERTIES LINKER_LANGUAGE CXX)
 
 target_include_directories(File PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_precompile_headers(File REUSE_FROM epicalyx-config)

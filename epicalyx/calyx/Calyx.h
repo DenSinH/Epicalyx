@@ -27,8 +27,6 @@ struct BasicBlock {
   void reserve(std::size_t size) { directives.reserve(size); }
   void push_back(AnyDirective&& value);
 
-  std::size_t RemoveNoOps();
-
 private:
   std::vector<AnyDirective> directives{};
 };

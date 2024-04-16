@@ -7,8 +7,9 @@
 
 namespace epi {
 
-static void NullifyUnusedLocals(calyx::Function& func, FunctionDependencies& deps) {
+static std::size_t NullifyUnusedLocals(calyx::Function& func, FunctionDependencies& deps) {
   // remove unused locals
+  std::size_t removed = 0;
   for (const auto& [loc_idx, local] : deps.local_graph) {
     bool local_unread = std::all_of(local.reads.begin(), local.reads.end(), [&](const auto& pos) {
       return calyx::IsType<calyx::NoOp>(func.blocks.at(pos.first).at(pos.second));
@@ -21,12 +22,15 @@ static void NullifyUnusedLocals(calyx::Function& func, FunctionDependencies& dep
       }
       if (!func.locals.at(loc_idx).arg_idx.has_value()) {
         func.locals.erase(loc_idx);
+        removed++;
       }
     }
   }
+  return removed;
 }
 
-static void NullifyUnusedVars(calyx::Function& function, FunctionDependencies& dependencies) {
+static std::size_t NullifyUnusedVars(calyx::Function& function, FunctionDependencies& dependencies) {
+  std::size_t removed = 0;
   cotyl::unordered_set<var_index_t> todo{};
   // copy map keys
   std::transform(dependencies.var_graph.begin(), dependencies.var_graph.end(), std::inserter(todo, todo.begin()),
@@ -52,23 +56,22 @@ static void NullifyUnusedVars(calyx::Function& function, FunctionDependencies& d
 
       // nullify write
       function.blocks.at(var.created.first).at(var.created.second).template emplace<calyx::NoOp>();
+      removed++;
     }
   }
+  return removed;
 }
 
-size_t RemoveUnused(calyx::Function& function) {
+std::size_t RemoveUnused(calyx::Function& function) {
+  std::size_t removed = 0;
   auto deps = FunctionDependencies::GetDependencies(function);
 
   // this also removed any uses from the stored vars
-  NullifyUnusedLocals(function, deps);
-  NullifyUnusedVars(function, deps);
+  removed += NullifyUnusedLocals(function, deps);
+  removed += NullifyUnusedVars(function, deps);
 
-  // remove nullified directives
-  size_t removed_directives = 0;
-  for (auto& [block_idx, block] : function.blocks) {
-    removed_directives += block.RemoveNoOps();
-  }
-  return removed_directives;
+  // noops will be removed in the next optimization step
+  return removed;
 }
 
 }

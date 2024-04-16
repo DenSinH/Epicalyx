@@ -1,3 +1,5 @@
+#pragma once
+
 #ifdef USE_BOOST
 
 #include <functional>
@@ -49,7 +51,7 @@ namespace epi::calyx {
 
 // template <class T>
 // inline void hash_combine(std::size_t& seed, T const& v) {
-
+#error "Unimplemented definition of hash_combine"
 // }
 
 }

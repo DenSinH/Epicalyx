@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.29)
 project(epicalyx)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -6,8 +6,18 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # set( CMAKE_VERBOSE_MAKEFILE on )
 
+# configure ccache for better compile times
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    message(STATUS "Found ccache, using for optimized compilation")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+endif()
+
+# find boost
 find_package(Boost 1.75.0)
 
+# it is possible to build without boost
 if(${Boost_FOUND})
     message(STATUS "Found Boost at ${Boost_INCLUDE_DIR}")
     include_directories(epicalyx ${Boost_INCLUDE_DIR})
@@ -16,8 +26,13 @@ else()
   message(STATUS "Boost not found, using stl. Please set BOOST_ROOT (or BOOSTROOT) environment variables.")
 endif()
 
-include_directories(epicalyx epicalyx/include)
+# set up include directories
+include_directories(
+  ${PROJECT_SOURCE_DIR}/epicalyx 
+  ${PROJECT_SOURCE_DIR}/epicalyx/include
+)
 
+# set up exceptions
 if (MSVC)
     add_compile_options(/EHsc)
 else()
@@ -29,33 +44,52 @@ else()
 endif()
 add_compile_options(-Wno-format-security)
 
+# project common include headers
+set(INCLUDE_HEADERS 
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Locatable.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Stream.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/TypeTraits.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Variant.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/TypeName.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Packs.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Stringify.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Format.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Is.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Scope.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Log.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Escape.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Cast.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/CustomAssert.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Containers.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Hash.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Algorithm.h 
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Exceptions.h
+)
+
+# config library with PCH for most subfolders
+add_library(
+  epicalyx-config
+  STATIC
+  epicalyx/config/Log.cpp
+  epicalyx/config/PCH.h
+)
+
+target_precompile_headers(
+  epicalyx-config
+  PUBLIC
+  epicalyx/config/PCH.h
+)
+
+# main executable
 add_executable(
         epicalyx
         main.cpp
-        epicalyx/include/Locatable.h
-        epicalyx/include/Stream.h
-        epicalyx/include/Variant.h
-        epicalyx/include/swl/variant.hpp
-        epicalyx/include/swl/variant_visit.hpp
-        epicalyx/include/swl/variant_detail.hpp
-        epicalyx/include/TypeTraits.h
-        epicalyx/include/TypeName.h
-        epicalyx/include/Packs.h
-        epicalyx/include/Stringify.h
-        epicalyx/include/Format.h
-        epicalyx/include/Is.h
-        epicalyx/include/Scope.h
-        epicalyx/include/Log.h
-        epicalyx/include/Log.cpp
-        epicalyx/include/Escape.h
-        epicalyx/include/Cast.h
-        epicalyx/include/CustomAssert.h
-        epicalyx/include/Containers.h
-        epicalyx/include/Hash.h
-        epicalyx/include/Algorithm.h 
-        epicalyx/include/Exceptions.h)
+        ${INCLUDE_HEADERS}
+)
 
+target_link_libraries(epicalyx epicalyx-config)
 
+# link subdirectories
 
 # add_compile_options(-fstack-protector)
 add_subdirectory(epicalyx/file)
@@ -63,19 +97,23 @@ add_subdirectory(epicalyx/tokenizer)
 add_subdirectory(epicalyx/types)
 add_subdirectory(epicalyx/ast)
 add_subdirectory(epicalyx/parser)
-add_subdirectory(epicalyx/calyx)
 add_subdirectory(epicalyx/cycle)
-add_subdirectory(epicalyx/ir_emitter)
-add_subdirectory(epicalyx/optimizer)
-add_subdirectory(epicalyx/regalloc)
 
 target_link_libraries(epicalyx File)
 target_link_libraries(epicalyx Tokenizer)
 target_link_libraries(epicalyx Types)
 target_link_libraries(epicalyx AST)
 target_link_libraries(epicalyx Parser)
-target_link_libraries(epicalyx Calyx)
 target_link_libraries(epicalyx Cycle)
+
+
+# uses Calyx I
+add_subdirectory(epicalyx/calyx)
+add_subdirectory(epicalyx/ir_emitter)
+add_subdirectory(epicalyx/optimizer)
+add_subdirectory(epicalyx/regalloc)
+
+target_link_libraries(epicalyx Calyx)
 target_link_libraries(epicalyx IREmitter)
 target_link_libraries(epicalyx Optimizer)
 target_link_libraries(epicalyx RegAlloc)

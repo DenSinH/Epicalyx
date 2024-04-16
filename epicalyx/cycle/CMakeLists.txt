@@ -19,4 +19,5 @@ target_include_directories(Cycle PUBLIC
         ${GRAPHVIZ_INCLUDE_DIR}/../
 )
 
+target_precompile_headers(Cycle REUSE_FROM epicalyx-config)
 target_link_libraries(Cycle PUBLIC ${GRAPHVIZ_CGRAPH_LIBRARY} ${GRAPHVIZ_GVC_LIBRARY})

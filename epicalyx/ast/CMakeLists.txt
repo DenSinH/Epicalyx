@@ -13,3 +13,4 @@ add_library(AST STATIC
 )
 
 set_target_properties(AST PROPERTIES LINKER_LANGUAGE CXX)
+target_precompile_headers(AST REUSE_FROM epicalyx-config)

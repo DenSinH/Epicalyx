@@ -18,12 +18,6 @@ void BasicBlock::push_back(AnyDirective&& value) {
   directives.push_back(std::move(value));
 }
 
-std::size_t BasicBlock::RemoveNoOps() {
-  return std::erase_if(directives, 
-    [](const auto& dir) -> bool { return IsType<calyx::NoOp>(dir); }
-  );
-}
-
 namespace detail {
 
 std::string TypeString(const Local::Type& type);

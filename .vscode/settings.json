@@ -1,5 +1,6 @@
 {
     "cmake.configureArgs": ["-Wno-dev"],
+    "cmake.parallelJobs": 0,
     "cmake.buildArgs": ["-j", "8"],
     "cmake.buildDirectory" : "${workspaceRoot}/build/${buildType}",
     "cmake.debugConfig": {
