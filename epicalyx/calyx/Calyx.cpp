@@ -90,13 +90,15 @@ void VisualizeProgram(const Program& program, const std::string& filename) {
               node->n(GetNodeID(func, select._default), "default");
             }
           },
+          [&](const UnconditionalBranch& branch) {
+            auto node = graph->n(id, stringify(branch));
+            node->n(GetNodeID(func, branch.dest));
+          },
           [&](const auto& dir) {
             auto node = graph->n(id, stringify(dir));
-            if constexpr (std::is_base_of_v<Branch, std::decay_t<decltype(dir)>>) {
-              const auto destinations = dir.Destinations();
-              for (const auto& dest : destinations) {
-                node->n(GetNodeID(func, dest));
-              }
+            if constexpr (cotyl::is_instantiation_of_v<BranchCompare, std::decay_t<decltype(dir)>>) {
+              node->n(GetNodeID(func, dir.tdest));
+              node->n(GetNodeID(func, dir.fdest));
             }
           }
         );

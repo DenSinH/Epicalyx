@@ -42,7 +42,7 @@ int main() {
 //   std::cout << sizeof(epi::calyx::AnyDirective) << std::endl;
 //   size_debugger<epi::detail::any_token_t>::debug();
 //   std::cout << sizeof(epi::AnyToken) << std::endl;
-//   std::cout << sizeof(epi::cotyl::CString) << " / "  << alignof(epi::cotyl::CString) << std::endl;
+//   std::cout << sizeof(std::shared_ptr<int>) << " / "  << alignof(epi::cotyl::CString) << std::endl;
 //   return 0;
 
   std::string file = "examples/emitting/optimizing.c";

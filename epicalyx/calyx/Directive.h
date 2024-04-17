@@ -32,7 +32,6 @@ struct Branch : Directive {
 
   Branch() = default;
 
-  virtual std::vector<block_label_t> Destinations() const = 0;
 };
 
 template<typename T>
@@ -158,9 +157,6 @@ struct UnconditionalBranch : Branch {
   }
 
   block_label_t dest;
-  std::vector<block_label_t> Destinations() const final {
-    return {dest};
-  }
   std::string ToString() const;
 };
 
@@ -183,9 +179,6 @@ struct BranchCompare : Branch {
   CmpType op;
   Operand<T> right;
 
-  std::vector<block_label_t> Destinations() const final {
-    return {tdest, fdest};
-  }
   std::string ToString() const;
 };
 
@@ -428,16 +421,6 @@ struct Select : Branch {
   var_index_t idx;
   block_label_t _default = 0;
   std::shared_ptr<table_t> table{std::make_shared<table_t>()};
-  
-  std::vector<block_label_t> Destinations() const final {
-    std::vector<block_label_t> result{};
-    result.reserve(table->size() + 1);
-    for (const auto& [val, block_idx] : *table) {
-      result.emplace_back(block_idx);
-    }
-    if (_default) result.emplace_back(_default);
-    return std::move(result);
-  }
   std::string ToString() const;
 };
 

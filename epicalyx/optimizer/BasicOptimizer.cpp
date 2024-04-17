@@ -62,13 +62,24 @@ bool BasicOptimizer::NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, func_po
     while (_reachable && pos.second < block.size()) {
       const auto& op = block.at(pos.second);
       op.visit<void>(
+        [&](const Select& select) {
+          for (const auto& [value, block_idx] : *select.table) {
+            register_branch(block_idx);
+          }
+          if (select._default) {
+            register_branch(select._default);
+          }
+          _reachable = false;
+        },
+        [&](const UnconditionalBranch& branch) {
+          register_branch(branch.dest);
+          _reachable = false;
+        },
         [&](const auto& dir) {
           using dir_t = std::decay_t<decltype(dir)>;
-          if constexpr(std::is_base_of_v<calyx::Branch, dir_t>) {
-            const auto destinations = dir.Destinations();
-            for (const auto& block_idx : destinations) {
-              register_branch(block_idx);
-            }
+          if constexpr(cotyl::is_instantiation_of_v<calyx::BranchCompare, dir_t>) {
+            register_branch(dir.tdest);
+            register_branch(dir.fdest);
             _reachable = false;
           }
           else if constexpr(cotyl::is_instantiation_of_v<calyx::Return, dir_t>) {
@@ -245,15 +256,29 @@ void BasicOptimizer::FlushOnBranch() {
   locals.clear();
 }
 
+
+void BasicOptimizer::RegisterBranchDestination(block_label_t dest) { 
+  new_block_graph.AddNodeIfNotExists(dest, nullptr);
+  new_block_graph.AddEdge(current_new_block_idx, dest);
+  todo.insert(dest);
+}
+
 template<typename T>
 requires (std::is_base_of_v<Branch, T>)
 void BasicOptimizer::DoBranch(T&& branch) {
   FlushOnBranch();
-  auto destinations = branch.Destinations();
-  for (const auto& dest : destinations) {
-    new_block_graph.AddNodeIfNotExists(dest, nullptr);
-    new_block_graph.AddEdge(current_new_block_idx, dest);
-    todo.insert(dest);
+  if constexpr(std::is_same_v<T, Select>) {
+    for (const auto& [value, block_idx] : *branch.table) {
+      RegisterBranchDestination(block_idx);
+    }
+    if (branch._default) RegisterBranchDestination(branch._default);
+  }
+  else if constexpr(std::is_same_v<T, UnconditionalBranch>) {
+    RegisterBranchDestination(branch.dest);
+  }
+  else {
+    RegisterBranchDestination(branch.tdest);
+    RegisterBranchDestination(branch.fdest);
   }
   
   Output(std::move(branch));

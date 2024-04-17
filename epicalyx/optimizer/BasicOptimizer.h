@@ -132,6 +132,8 @@ private:
   requires (std::is_base_of_v<calyx::Branch, T>)
   void DoBranch(T&& branch);
 
+  void RegisterBranchDestination(block_label_t dest);
+
   // Flush current aliased locals
   // to be executed on instructions that may invalidate
   // the local state (i.e. a pointer write/read or a call)
