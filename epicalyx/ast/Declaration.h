@@ -2,6 +2,7 @@
 
 #include "Node.h"
 #include "types/EpiCType.h"
+#include "CString.h"
 #include "Format.h"
 #include "Initializer.h"
 #include "NodeVisitor.h"
@@ -26,7 +27,7 @@ enum class StorageClass {
 
 struct DeclarationNode final : public DeclNode {
 
-  DeclarationNode(pType<> type, std::string name, StorageClass storage = StorageClass::Auto, std::optional<Initializer> value = {}) :
+  DeclarationNode(pType<> type, cotyl::CString&& name, StorageClass storage = StorageClass::Auto, std::optional<Initializer> value = {}) :
       name(std::move(name)),
       type(std::move(type)),
       storage(storage),
@@ -34,7 +35,7 @@ struct DeclarationNode final : public DeclNode {
 
   }
 
-  std::string name;
+  cotyl::CString name;
   pType<const CType> type;  // empty if abstract
   StorageClass storage;
   std::optional<Initializer> value;
@@ -47,10 +48,10 @@ struct DeclarationNode final : public DeclNode {
 
 struct FunctionDefinitionNode final : public DeclNode {
 
-  FunctionDefinitionNode(pType<const FunctionType> signature, std::string symbol, pNode<CompoundNode>&& body) ;
+  FunctionDefinitionNode(pType<const FunctionType> signature, cotyl::CString&& symbol, pNode<CompoundNode>&& body);
 
   pType<const FunctionType> signature;
-  const std::string symbol;
+  cotyl::CString symbol;
   pNode<CompoundNode> body;
 
   std::string ToString() const final;

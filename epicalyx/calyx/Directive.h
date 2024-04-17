@@ -289,12 +289,12 @@ template<typename T>
 requires (cotyl::pack_contains_v<T, calyx_memory_types>)
 struct LoadGlobal : Expr {
   using result_t = calyx_upcast_t<T>;
-  LoadGlobal(var_index_t idx, std::string symbol, i32 offset = 0) :
+  LoadGlobal(var_index_t idx, cotyl::CString&& symbol, i32 offset = 0) :
       Expr{idx}, symbol{std::move(symbol)}, offset{offset} {
 
   }
 
-  std::string symbol;
+  cotyl::CString symbol;
   i32 offset;  // struct fields
 
   std::string ToString() const;
@@ -302,12 +302,12 @@ struct LoadGlobal : Expr {
 
 struct LoadGlobalAddr : Expr {
   using result_t = Pointer;
-  LoadGlobalAddr(var_index_t idx, std::string symbol) :
+  LoadGlobalAddr(var_index_t idx, cotyl::CString&& symbol) :
           Expr{idx}, symbol{std::move(symbol)} {
 
   }
 
-  std::string symbol;
+  cotyl::CString symbol;
 
   std::string ToString() const;
 };
@@ -317,14 +317,14 @@ requires (cotyl::pack_contains_v<T, calyx_memory_types>)
 struct StoreGlobal : public Store<T> {
   using src_t = Store<T>::src_t;
 
-  StoreGlobal(std::string symbol, Operand<src_t> src, i32 offset = 0) :
+  StoreGlobal(cotyl::CString&& symbol, Operand<src_t> src, i32 offset = 0) :
       Store<T>{src},
       symbol{std::move(symbol)}, 
       offset{offset} {
 
   }
 
-  std::string symbol;
+  cotyl::CString symbol;
   i32 offset;  // struct fields
 
   std::string ToString() const;
@@ -410,13 +410,13 @@ requires (cotyl::pack_contains_v<T, calyx_return_types>)
 struct CallLabel : Directive {
   using result_t = T;
 
-  CallLabel(var_index_t idx, std::string label, arg_list_t args, arg_list_t var_args) :
+  CallLabel(var_index_t idx, cotyl::CString&& label, arg_list_t args, arg_list_t var_args) :
     Directive{}, idx{idx}, label{std::move(label)}, args{std::move(args)}, var_args{std::move(var_args)} {
 
   }
 
   var_index_t idx;
-  std::string label;
+  cotyl::CString label;
   arg_list_t args;
   arg_list_t var_args;
 

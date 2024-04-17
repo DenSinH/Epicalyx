@@ -15,7 +15,7 @@ struct BasicOptimizer {
   BasicOptimizer(calyx::Function&& function) : 
       old_function{std::move(function)},
       old_deps{FunctionDependencies::GetDependencies(old_function)},
-      new_function{old_function.symbol} {
+      new_function{std::move(old_function.symbol)} {
 
   }
 
@@ -48,8 +48,8 @@ private:
   }
 
   template<typename T, typename... Args>
-  func_pos_t OutputNew(Args... args) {
-    return Output(T{args...});
+  func_pos_t OutputNew(Args&&... args) {
+    return Output(T{std::forward<Args>(args)...});
   }
 
   template<typename T>
@@ -77,8 +77,8 @@ private:
   }
 
   template<typename T, typename... Args>
-  void EmitRepl(Args... args) {
-    auto repl = T(args...);
+  void EmitRepl(Args&&... args) {
+    auto repl = T(std::forward<Args>(args)...);
     Emit(repl);
   }
 

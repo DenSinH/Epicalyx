@@ -17,8 +17,8 @@ pExpr ConstParser::EPrimary() {
     [](const IdentifierToken& ident) -> pExpr { 
       throw cotyl::UnexpectedIdentifierException();
     },
-    [](const StringConstantToken& str) -> pExpr {
-      return std::make_unique<StringConstantNode>(str.value);
+    [](StringConstantToken& str) -> pExpr {
+      return std::make_unique<StringConstantNode>(std::move(str.value));
     },
     [&](const PunctuatorToken& punc) -> pExpr {
       // has to be (ternary), since in the BaseParser we do not expect assignment
@@ -45,17 +45,17 @@ pExpr ConstParser::EPrimary() {
 pExpr Parser::EPrimary() {
   auto current = in_stream.Get();
   return current.visit<pExpr>(
-    [&](const IdentifierToken& ident) -> pExpr { 
+    [&](IdentifierToken& ident) -> pExpr { 
       // identifier might be enum value
-      std::string name = ident.name;
+      auto& name = ident.name;
       if (enum_values.Has(name)) {
         // replace enum values with constants immediately
         return std::make_unique<NumericalConstantNode<enum_type>>(enum_values.Get(name));
       }
-      return std::make_unique<IdentifierNode>(ident.name);
+      return std::make_unique<IdentifierNode>(std::move(ident.name));
     },
-    [](const StringConstantToken& str) -> pExpr {
-      return std::make_unique<StringConstantNode>(str.value);
+    [](StringConstantToken& str) -> pExpr {
+      return std::make_unique<StringConstantNode>(std::move(str.value));
     },
     [&](const PunctuatorToken& punc) -> pExpr {
       // has to be (expression)
@@ -113,14 +113,14 @@ pExpr Parser::EPostfix() {
         // indirect member access
         in_stream.Skip();
         auto member = in_stream.Eat(TokenType::Identifier);
-        node = std::make_unique<MemberAccessNode>(std::move(node), false, member.get<IdentifierToken>().name);
+        node = std::make_unique<MemberAccessNode>(std::move(node), false, std::move(member.get<IdentifierToken>().name));
         break;
       }
       case TokenType::Dot: {
         // direct member access
         in_stream.Skip();
         auto member = in_stream.Eat(TokenType::Identifier);
-        node = std::make_unique<MemberAccessNode>(std::move(node), true, member.get<IdentifierToken>().name);
+        node = std::make_unique<MemberAccessNode>(std::move(node), true, std::move(member.get<IdentifierToken>().name));
         break;
       }
       case TokenType::Incr: {
@@ -355,7 +355,7 @@ pNode<InitializerList> Parser::EInitializerList() {
         if (in_stream.EatIf(TokenType::Dot)) {
           // .member
           in_stream.Expect(TokenType::Identifier);
-          designator.emplace_back(in_stream.Get().get<IdentifierToken>().name);
+          designator.emplace_back(std::move(in_stream.Get().get<IdentifierToken>().name));
           if (in_stream.EatIf(TokenType::Assign)) {
             list->Push(std::move(designator), EInitializer());
             break;

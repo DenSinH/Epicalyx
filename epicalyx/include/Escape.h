@@ -7,10 +7,10 @@
 
 namespace epi::cotyl {
 
-static std::string Escape(const std::string& in) {
+static std::string Escape(const char* in) {
   cotyl::StringStream result{};
-  for (const auto c : in) {
-    switch (c) {
+  for (auto c = in; *c; c++) {
+    switch (*c) {
       case '\n': result << "\\n"; break;
       case '\r': result << "\\r"; break;
       case '\t': result << "\\t"; break;
@@ -22,7 +22,7 @@ static std::string Escape(const std::string& in) {
       case '\f': result << "\\f"; break;
       case '\?': result << "\\?"; break;
       case '\v': result << "\\v"; break;
-      default: result << c; break;
+      default: result << *c; break;
     }
   }
   return result.finalize();

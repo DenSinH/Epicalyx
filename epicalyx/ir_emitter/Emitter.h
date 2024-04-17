@@ -31,22 +31,22 @@ struct Emitter {
   };
 
   template<typename T, typename... Args>
-  var_index_t EmitExpr(Var var, Args... args) {
+  var_index_t EmitExpr(Var var, Args&&... args) {
     if (!reachable) {
       return 0;
     }
     vars.emplace_back(var);
     auto expr_idx = ir_counter++;
-    Emit<T>(expr_idx, args...);
+    Emit<T>(expr_idx, std::forward<Args>(args)...);
     return expr_idx;
   }
 
   template<typename T, typename... Args>
-  T* Emit(Args... args) {
+  T* Emit(Args&&... args) {
     if (!reachable) {
       return nullptr;
     }
-    calyx::AnyDirective directive = T(args...);
+    calyx::AnyDirective directive = T(std::forward<Args>(args)...);
     if (calyx::IsBlockEnd(directive)) {
       reachable = false;
     }
@@ -91,8 +91,10 @@ struct Emitter {
     vars = {{Var::Type::I32}};
   }
 
-  void NewFunction(const std::string& symbol) {
-    SetFunction(program.functions.emplace(symbol, symbol).first->second);
+  void NewFunction(cotyl::CString&& symbol) {
+    auto func = calyx::Function{std::move(symbol)};
+    const auto& sym = func.symbol;
+    SetFunction(program.functions.emplace(sym, std::move(func)).first->second);
   }
 
 private:

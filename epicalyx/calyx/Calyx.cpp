@@ -38,9 +38,15 @@ size_t Function::Hash() const {
 
 size_t Program::Hash() const {
   size_t seed = functions.size();
-  cotyl::map<std::string, const Function&> sorted{functions.begin(), functions.end()};
-  for (const auto& [sym, function] : functions) {
-    calyx::hash_combine(seed, function.Hash());
+  
+  cotyl::map<std::string_view, const Function&> sorted{};
+//   sorted.reserve(functions.size());
+  for (const auto& [sym, func] : functions) {
+    sorted.emplace(sym.view(), func);
+  }
+
+  for (const auto& [sym, func] : sorted) {
+    calyx::hash_combine(seed, func.Hash());
   }
   return seed;
 }
@@ -50,10 +56,10 @@ void PrintProgram(const Program& program) {
   std::cout << std::endl << std::endl;
   std::cout << "-- program" << std::endl;
   for (const auto& [sym, func] : program.functions) {
-    std::cout << sym << std::endl;
+    std::cout << sym.c_str() << std::endl;
     for (const auto& [i, block] : func.blocks) {
       if (!block.empty()) {
-        std::cout << sym << ".L" << i << std::endl;
+        std::cout << sym.c_str() << ".L" << i << std::endl;
         for (const auto& op : block) {
           std::cout << "    " << stringify(op) << std::endl;
         }
@@ -98,7 +104,7 @@ void VisualizeProgram(const Program& program, const std::string& filename) {
     }
 
     auto fnode = graph->n((std::uintptr_t)&func);
-    fnode.title(symbol + "(*)");
+    fnode.title(symbol.str() + "(*)");
     fnode->n(GetNodeID(func, Function::Entry));
     for (const auto& [loc_idx, local] : func.locals) {
       std::string label;

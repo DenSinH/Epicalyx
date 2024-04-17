@@ -2,6 +2,7 @@
 
 #include "calyx/Calyx.h"
 #include "Scope.h"
+#include "CString.h"
 #include "Containers.h"
 
 #include <variant>
@@ -36,7 +37,7 @@ struct Interpreter {
   }
 
   // globals as raw data
-  cotyl::unordered_map<std::string, i64> globals{};
+  cotyl::unordered_map<cotyl::CString, i64> globals{};
   std::vector<std::vector<u8>> global_data{{}};
 
   // points to stack location of locals

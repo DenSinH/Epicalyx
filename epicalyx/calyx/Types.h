@@ -2,6 +2,7 @@
 
 #include "Default.h"
 #include "Packs.h"
+#include "CString.h"
 #include "Stringify.h"
 #include "CustomAssert.h"
 
@@ -28,7 +29,7 @@ struct program_pos_t {
 };
 
 struct label_offset_t {
-  std::string label;
+  cotyl::CString label;
   i64 offset;
 };
 

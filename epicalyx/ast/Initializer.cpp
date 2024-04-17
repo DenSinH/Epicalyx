@@ -17,8 +17,8 @@ std::string InitializerList::ToString() const {
   for (const auto& init : list) {
     repr << '\n';
     for (const auto& des : init.first) {
-      if (std::holds_alternative<std::string>(des)) {
-        repr << '.' << std::get<std::string>(des);
+      if (std::holds_alternative<cotyl::CString>(des)) {
+        repr << '.' << std::get<cotyl::CString>(des);
       }
       else {
         repr << '[' << std::to_string(std::get<i64>(des)) << ']';

@@ -42,21 +42,24 @@ struct ASTWalker : public ast::NodeVisitor {
   std::stack<block_label_t> continue_stack{};
   std::stack<calyx::Select*> select_stack{};
   // goto labels
-  cotyl::unordered_map<std::string, block_label_t> local_labels{};
+  cotyl::unordered_map<cotyl::CString, block_label_t> local_labels{};
 
-  cotyl::MapScope<std::string, LocalData> locals{};
-  cotyl::unordered_map<std::string, pType<const CType>> symbol_types{};
+  cotyl::MapScope<cotyl::CString, LocalData> locals{};
+  cotyl::unordered_map<cotyl::CString, pType<const CType>> symbol_types{};
   
   var_index_t current;
   Emitter& emitter;
 
-  void AddGlobal(const std::string& symbol, const pType<const CType>& type) {
+  void AddGlobal(const cotyl::CString& symbol, const pType<const CType>& type) {
+    if (symbol_types.contains(symbol)) {
+      throw cotyl::FormatExcept("Duplicate global symbol: %s", symbol.c_str());
+    }
     symbol_types.emplace(symbol, type);
   }
 
-  void NewFunction(const std::string& symbol, const pType<const CType>& type) {
-    emitter.NewFunction(symbol);
-    symbol_types.emplace(symbol, type);
+  void NewFunction(cotyl::CString&& symbol, const pType<const CType>& type) {
+    emitter.NewFunction(std::move(symbol));
+    symbol_types.emplace(emitter.current_function->symbol, type);
 
     // state = {};
     // break_stack = {};
@@ -73,15 +76,15 @@ struct ASTWalker : public ast::NodeVisitor {
 
   static calyx::Local::Type GetCalyxType(const pType<const CType>& type);
 
-  var_index_t AddLocal(const std::string& name, const pType<const CType>& type, std::optional<var_index_t> arg_index = {}) {
+  var_index_t AddLocal(cotyl::CString&& name, const pType<const CType>& type, std::optional<var_index_t> arg_index = {}) {
     auto c_idx = emitter.c_counter++;
     size_t size = type->Sizeof();
     auto& loc = emitter.current_function->locals.emplace(c_idx, calyx::Local{GetCalyxType(type), c_idx, size, std::move(arg_index)}).first->second;
-    locals.Set(name, LocalData{ &loc, type });
+    locals.Set(std::move(name), LocalData{ &loc, type });
     return c_idx;
   }
 
-  const pType<const CType>& GetSymbolType(const std::string& symbol) const {
+  const pType<const CType>& GetSymbolType(const cotyl::CString& symbol) const {
     if (locals.Has(symbol)) {
       return locals.Get(symbol).type;
     }

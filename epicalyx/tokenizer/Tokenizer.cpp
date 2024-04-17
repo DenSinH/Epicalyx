@@ -1,4 +1,5 @@
 #include "Tokenizer.h"
+#include "Token.h"
 #include "Default.h"
 #include "Identifier.h"
 #include "SStream.h"
@@ -11,6 +12,12 @@ namespace epi {
 
 extern const cotyl::unordered_map<const std::string, TokenType> Punctuators;
 extern const cotyl::unordered_map<const std::string, TokenType> Keywords;
+
+
+template<typename T, typename ...Args>
+AnyToken Tokenizer::Make(Args&&... args) {
+  return T(std::forward<Args>(args)...);
+}
 
 void Tokenizer::SkipBlanks() {
   in_stream.SkipWhile(std::isspace);
@@ -43,7 +50,7 @@ AnyToken Tokenizer::GetNew() {
       else if (in_stream.IsAfter(1, '\'')) {
         // prefixed char literal
         bool is_unsigned = in_stream.IsAfter(0, 'u', 'U');
-        std::string char_string = ReadString('\'');
+        auto char_string = ReadString('\'');
         u32 value = 0;
         for (auto k : char_string) {
           value <<= 8;
@@ -63,7 +70,7 @@ AnyToken Tokenizer::GetNew() {
       return Make<KeywordToken>(Keywords.at(identifier));
     }
     else {
-      return Make<IdentifierToken>(identifier);
+      return Make<IdentifierToken>(cotyl::CString{std::move(identifier)});
     }
   }
   else if (std::isdigit(c) || (c == '.' && in_stream.PredicateAfter(1, std::isdigit))) {
@@ -76,7 +83,7 @@ AnyToken Tokenizer::GetNew() {
   }
   else if (c == '\'') {
     // char literal
-    std::string char_string = ReadString('\'');
+    auto char_string = ReadString('\'');
     u32 value = 0;
     for (auto k : char_string) {
       value <<= 8;
@@ -124,7 +131,7 @@ static constexpr std::array<i32, 0x100> ASCIIHexToInt = {
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 };
 
-std::string Tokenizer::ReadString(const char delimiter) {
+cotyl::CString Tokenizer::ReadString(const char delimiter) {
   cotyl::StringStream str{};
 
   in_stream.Eat(delimiter);
@@ -177,7 +184,7 @@ std::string Tokenizer::ReadString(const char delimiter) {
     }
   }
 
-  return str.finalize();
+  return str.cfinalize();
 }
 
 AnyToken Tokenizer::ReadNumericalConstant() {

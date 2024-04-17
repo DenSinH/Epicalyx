@@ -18,11 +18,11 @@ void ConstParser::PrintLoc() const {
   in_stream.PrintLoc();
 }
 
-pType<const CType> ConstParser::ResolveIdentifierType(const std::string& name) const {
+pType<const CType> ConstParser::ResolveIdentifierType(const cotyl::CString& name) const {
   throw cotyl::UnexpectedIdentifierException();
 }
 
-pType<const CType> Parser::ResolveIdentifierType(const std::string& name) const {
+pType<const CType> Parser::ResolveIdentifierType(const cotyl::CString& name) const {
   if (enum_values.Has(name)) {
     return MakeType<ValueType<Parser::enum_type>>(
             enum_values.Get(name),
@@ -90,18 +90,18 @@ void Parser::Parse() {
 void Parser::Data() {
   std::cout << "-- struct / union defs" << std::endl;
   for (const auto& def : structdefs.Base()) {
-    std::cout << def.first << " : " << stringify(def.second) << std::endl;
+    std::cout << def.first.c_str() << " : " << stringify(def.second) << std::endl;
   }
   for (const auto& def : uniondefs.Base()) {
-    std::cout << def.first << " : " << stringify(def.second) << std::endl;
+    std::cout << def.first.c_str() << " : " << stringify(def.second) << std::endl;
   }
   std::cout << std::endl << "-- typedefs" << std::endl;
   for (const auto& def : typedefs.Base()) {
-    std::cout << def.first << " : " << stringify(def.second) << std::endl;
+    std::cout << def.first.c_str() << " : " << stringify(def.second) << std::endl;
   }
   std::cout << std::endl << "-- enum values" << std::endl;
   for (const auto& def : enum_values.Base()) {
-    std::cout << def.first << " : " << def.second << std::endl;
+    std::cout << def.first.c_str() << " : " << def.second << std::endl;
   }
 
   std::cout << std::endl << "-- declarations" << std::endl;

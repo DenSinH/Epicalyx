@@ -69,24 +69,24 @@ void Parser::DStaticAssert() {
   auto expr = Parser::EConstexpr();
   in_stream.Eat(TokenType::Comma);
   in_stream.Expect(TokenType::StringConstant);
-  auto str = in_stream.Get().get<StringConstantToken>().value;
+  auto str = std::move(in_stream.Get().get<StringConstantToken>().value);
   in_stream.EatSequence(TokenType::RParen, TokenType::SemiColon);
 
   if (!expr) {
-    throw cotyl::FormatExceptStr("Static assertion failed: %s", str);
+    throw cotyl::FormatExcept("Static assertion failed: %s", str.c_str());
   }
 }
 
 pType<> Parser::DEnum() {
   in_stream.Eat(TokenType::Enum);
-  std::string name;
+  cotyl::CString name;
   if (in_stream.IsAfter(0, TokenType::Identifier)) {
     // enum name
-    name = in_stream.Get().get<IdentifierToken>().name;
+    name = std::move(in_stream.Get().get<IdentifierToken>().name);
     if (!in_stream.EatIf(TokenType::LBrace)) {
       // check if enum was defined before
       if (!enums.Has(name)) {
-        throw cotyl::FormatExceptStr("Undefined enum %s", name);
+        throw cotyl::FormatExcept("Undefined enum %s", name.c_str());
       }
       return MakeType<ValueType<enum_type>>(CType::LValueNess::None);
     }
@@ -99,7 +99,7 @@ pType<> Parser::DEnum() {
   enum_type counter = 0;
   do {
     in_stream.Expect(TokenType::Identifier);
-    std::string constant = in_stream.Get().get<IdentifierToken>().name;
+    auto constant = std::move(in_stream.Get().get<IdentifierToken>().name);
     if (in_stream.EatIf(TokenType::Assign)) {
       // constant = value
       // update counter
@@ -120,7 +120,7 @@ pType<> Parser::DEnum() {
 
 pType<> Parser::DStruct() {
   pType<StructUnionType> type;
-  std::string name;
+  cotyl::CString name;
   bool is_struct = true;
   if (!in_stream.EatIf(TokenType::Struct)) {
     in_stream.Eat(TokenType::Union);
@@ -128,7 +128,7 @@ pType<> Parser::DStruct() {
   }
 
   if (in_stream.IsAfter(0, TokenType::Identifier)) {
-    name = in_stream.Get().get<IdentifierToken>().name;
+    name = std::move(in_stream.Get().get<IdentifierToken>().name);
     if (!in_stream.EatIf(TokenType::LBrace)) {
       if (is_struct) {
         return structdefs.Get(name)->Clone();
@@ -143,10 +143,10 @@ pType<> Parser::DStruct() {
   }
 
   if (is_struct) {
-    type = MakeType<StructType>(name, CType::LValueNess::Assignable);
+    type = MakeType<StructType>(std::move(name), CType::LValueNess::Assignable);
   }
   else {
-    type = MakeType<UnionType>(name, CType::LValueNess::Assignable);
+    type = MakeType<UnionType>(std::move(name), CType::LValueNess::Assignable);
   }
 
   while(!in_stream.EatIf(TokenType::RBrace)) {
@@ -165,18 +165,18 @@ pType<> Parser::DStruct() {
         if (in_stream.EatIf(TokenType::Colon)) {
           size = EConstexpr();
         }
-        type->AddField(decl->name, size, decl->type->Clone());
+        type->AddField(std::move(decl->name), size, decl->type->Clone());
       } while (in_stream.EatIf(TokenType::Comma));
       in_stream.Eat(TokenType::SemiColon);
     }
   }
 
-  if (!name.empty()) {
+  if (!type->name.empty()) {
     if (is_struct) {
-      structdefs.Set(name, type);
+      structdefs.Set(type->name, type);
     }
     else {
-      uniondefs.Set(name, type);
+      uniondefs.Set(type->name, type);
     }
   }
   return type;
@@ -393,7 +393,7 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
       }
 
       case TokenType::Identifier: {
-        std::string ident_name = static_cast<const IdentifierToken*>(current)->name;
+        const auto& ident_name = static_cast<const IdentifierToken*>(current)->name;
         if (typedefs.Has(ident_name)) {
           if (ctype) {
             throw std::runtime_error("Bad declaration");
@@ -460,8 +460,8 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
   return std::make_pair(ctype, storage ? storage.value() : StorageClass::None);
 }
 
-std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) {
-  std::string name;
+cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) {
+  cotyl::CString name;
   pType<PointerType> ctype;
 
   const Token* current;
@@ -512,7 +512,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
           case TokenType::LParen: {
             // ((direct-declarator))
             in_stream.Skip();
-            std::string _name = DDirectDeclaratorImpl(dest);
+            auto _name = DDirectDeclaratorImpl(dest);
             if (!name.empty() && !_name.empty() ) {
               throw cotyl::FormatExceptStr("Double name in declaration (%s and %s)", name, _name);
             }
@@ -524,7 +524,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
           }
           case TokenType::Asterisk: {
             // (*direct-declarator)
-            std::string _name = DDirectDeclaratorImpl(dest);
+            auto _name = DDirectDeclaratorImpl(dest);
             if (!name.empty() && !_name.empty() ) {
               throw cotyl::FormatExceptStr("Double name in declaration (%s and %s)", name, _name);
             }
@@ -536,7 +536,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
           }
           case TokenType::Identifier: {
             // (typedef name) or (name)
-            std::string ident_name = in_stream.Get().get<IdentifierToken>().name;
+            auto ident_name = std::move(in_stream.Get().get<IdentifierToken>().name);
             if (!typedefs.Has(ident_name)) {
               // if not typdef name: direct declarator name
               if (!name.empty()) {
@@ -558,7 +558,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
               }
 
               auto arg = DDeclarator(arg_specifier.first, StorageClass::Auto);
-              type->AddArg(arg->name, arg->type);
+              type->AddArg(std::move(arg->name), arg->type);
               if (in_stream.EatIf(TokenType::Comma)) {
                 if (in_stream.EatIf(TokenType::Ellipsis)) {
                   type->variadic = true;
@@ -580,7 +580,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
         if (!name.empty()) {
           throw std::runtime_error("Double name in declaration");
         }
-        name = in_stream.Get().get<IdentifierToken>().name;
+        name = std::move(in_stream.Get().get<IdentifierToken>().name);
         break;
       }
       case TokenType::LBracket: {
@@ -613,7 +613,7 @@ std::string Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) 
 }
 
 pNode<DeclarationNode> Parser::DDeclarator(pType<> ctype, StorageClass storage) {
-  std::string name;
+  cotyl::CString name;
   std::stack<pType<PointerType>> direct{};
 
   name = DDirectDeclaratorImpl(direct);
@@ -630,7 +630,7 @@ pNode<DeclarationNode> Parser::DDeclarator(pType<> ctype, StorageClass storage) 
     p->contained = ctype;
     ctype = std::move(ptr);
   }
-  return std::make_unique<DeclarationNode>(ctype, name, storage);
+  return std::make_unique<DeclarationNode>(ctype, std::move(name), storage);
 }
 
 void Parser::DInitDeclaratorList(std::vector<pNode<DeclarationNode>>& dest) {
@@ -684,7 +684,7 @@ pNode<FunctionDefinitionNode> Parser::ExternalDeclaration(std::vector<pNode<Decl
     pType<FunctionType> signature = std::static_pointer_cast<FunctionType>(decl->type->Clone());
     signature->lvalue = CType::LValueNess::None;
 
-    std::string symbol = decl->name;
+    auto symbol = std::move(decl->name);
     if (symbol.empty()) {
       throw std::runtime_error("Missing name in function declaration");
     }
@@ -701,7 +701,7 @@ pNode<FunctionDefinitionNode> Parser::ExternalDeclaration(std::vector<pNode<Decl
     function_return = nullptr;
     variables.PopLayer();
     in_stream.Eat(TokenType::RBrace);
-    return std::make_unique<FunctionDefinitionNode>(signature, symbol, std::move(body));
+    return std::make_unique<FunctionDefinitionNode>(signature, std::move(symbol), std::move(body));
   }
 
   // normal declaration

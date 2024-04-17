@@ -42,13 +42,10 @@ int main() {
   std::cout << sizeof(epi::calyx::AnyDirective) << std::endl;
   size_debugger<epi::detail::any_token_t>::debug();
   std::cout << sizeof(epi::AnyToken) << std::endl;
-  std::cout << sizeof(std::string) << std::endl;
-  std::cout << sizeof(const std::string) << std::endl;
-  std::cout << sizeof(std::string_view) << std::endl;
   return 0;
 
   std::string file = "examples/emitting/optimizing.c";
-  std::string rig_func_sym = "test";
+  auto rig_func_sym = epi::cotyl::CString("test");
   auto preprocessor = epi::Preprocessor(file);
   auto tokenizer = epi::Tokenizer(preprocessor);
   auto parser = epi::Parser(tokenizer);
@@ -106,7 +103,7 @@ int main() {
   std::cout << std::endl << std::endl;
   std::cout << "-- globals" << std::endl;
   for (const auto& [symbol, global] : program.globals) {
-    std::cout << symbol << " ";
+    std::cout << symbol.c_str() << " ";
     std::visit([](auto& glob) {
       using glob_t = std::decay_t<decltype(glob)>;
       if constexpr(std::is_same_v<glob_t, epi::calyx::Pointer>) {
@@ -114,10 +111,10 @@ int main() {
       }
       else if constexpr(std::is_same_v<glob_t, epi::label_offset_t>) {
         if (glob.offset) {
-          std::cout << glob.label << "+" << glob.offset << std::endl;
+          std::cout << glob.label.c_str() << "+" << glob.offset << std::endl;
         }
         else {
-          std::cout << glob.label << std::endl;
+          std::cout << glob.label.c_str() << std::endl;
         }
       }
       else {
@@ -127,7 +124,7 @@ int main() {
   }
 
   for (const auto& string : program.strings) {
-    std::cout << '"' << string << '"' << std::endl;
+    std::cout << '"' << string.c_str() << '"' << std::endl;
   }
 
   epi::calyx::VisualizeProgram(program, "output/program.pdf");
@@ -141,7 +138,7 @@ int main() {
     // extract globals from interpreter
     std::cout << "  -- globals" << std::endl;
     for (const auto& [glob, glob_idx] : interpreter.globals) {
-      std::cout << "  " << glob << " ";
+      std::cout << "  " << glob.c_str() << " ";
       std::visit([&](auto& pglob) {
         using glob_t = std::decay_t<decltype(pglob)>;
         glob_t data;
@@ -151,10 +148,10 @@ int main() {
         }
         else if constexpr(std::is_same_v<glob_t, epi::label_offset_t>) {
           if (data.offset) {
-            std::cout << data.label << "+" << data.offset << std::endl;
+            std::cout << data.label.c_str() << "+" << data.offset << std::endl;
           }
           else {
-            std::cout << data.label << std::endl;
+            std::cout << data.label.c_str() << std::endl;
           }
         }
         else {
@@ -174,7 +171,7 @@ int main() {
   }
 
   if (!program.functions.contains(rig_func_sym)) {
-    rig_func_sym = "main";
+    rig_func_sym = epi::cotyl::CString("main");
   }
   const auto& rig_func = program.functions.at(rig_func_sym);
   auto rig = epi::RIG::GenerateRIG(rig_func);

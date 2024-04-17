@@ -1,6 +1,8 @@
 #include "Token.h"
 #include "Containers.h"
 
+#include <string>
+
 
 namespace epi {
 
@@ -51,7 +53,7 @@ extern const cotyl::unordered_map<const std::string, TokenType> Keywords = {
         { "_Thread_local",  TokenType::ThreadLocal },
 };
 
-extern  const cotyl::unordered_map<const std::string, TokenType> Punctuators = {
+extern const cotyl::unordered_map<const std::string, TokenType> Punctuators = {
     { "[",   TokenType::LBracket },
     { "]",   TokenType::RBracket },
     { "(",   TokenType::LParen },

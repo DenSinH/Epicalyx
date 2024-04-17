@@ -4,6 +4,7 @@
 #include "Directive.h"
 #include "Containers.h"
 #include "Stringify.h"
+#include "CString.h"
 
 #include <memory>
 #include <string>
@@ -35,9 +36,9 @@ private:
 struct Function {
   static constexpr block_label_t Entry = 1;
 
-  Function(const std::string& symbol) : symbol{symbol} { }
+  Function(cotyl::CString&& symbol) : symbol{std::move(symbol)} { }
 
-  std::string symbol;
+  cotyl::CString symbol;
   // program code
   // block 0 is special
   cotyl::unordered_map<block_label_t, BasicBlock> blocks{};
@@ -49,13 +50,13 @@ struct Function {
 
 struct Program {
   // function symbols -> entrypoint block ID
-  cotyl::unordered_map<std::string, Function> functions{};
+  cotyl::unordered_map<cotyl::CString, Function> functions{};
 
   // string constants
-  std::vector<std::string> strings{};
+  std::vector<cotyl::CString> strings{};
 
   // global variable sizes
-  cotyl::unordered_map<std::string, global_t> globals{};
+  cotyl::unordered_map<cotyl::CString, global_t> globals{};
 
   size_t Hash() const;
 };

@@ -56,6 +56,24 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
     }
     base::scope.back().insert_or_assign(key, std::move(value));
   }
+  
+  void Set(K&& key, V&& value) {
+    if constexpr(!allow_multiple_assignment) {
+      if (HasTop(key)) {
+        throw cotyl::FormatExceptStr("Redefinition of %s", key);
+      }
+    }
+    base::scope.back().insert_or_assign(std::move(key), std::move(value));
+  }
+  
+  void Set(K&& key, const V& value) {
+    if constexpr(!allow_multiple_assignment) {
+      if (HasTop(key)) {
+        throw cotyl::FormatExceptStr("Redefinition of %s", key);
+      }
+    }
+    base::scope.back().insert_or_assign(std::move(key), value);
+  }
 
   bool Has(const K& key) const {
     for (auto s = base::scope.rbegin(); s != base::scope.rend(); s++) {

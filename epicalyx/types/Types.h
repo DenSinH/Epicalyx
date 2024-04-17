@@ -279,9 +279,9 @@ struct FunctionType : public PointerType {
   }
 
   struct Arg {
-    Arg(std::string name, pType<const CType> type) : name(std::move(name)), type(std::move(type)) { }
+    Arg(cotyl::CString&& name, pType<const CType> type) : name(std::move(name)), type(std::move(type)) { }
     std::string ToString() const;
-    const std::string name;
+    cotyl::CString name;
     pType<const CType> type;
   };
 
@@ -291,7 +291,7 @@ struct FunctionType : public PointerType {
   OVERRIDE_BASE_CASTABLE
   OVERRIDE_BASE_EQ
 
-  void AddArg(std::string name, const pType<const CType>& arg) {
+  void AddArg(cotyl::CString&& name, const pType<const CType>& arg) {
     auto _arg = arg->Clone();
     _arg->ForgetConstInfo();
     arg_types.emplace_back(std::move(name), _arg);  // constant info is nonsense for arguments
@@ -324,46 +324,46 @@ private:
 
 
 struct StructField {
-  StructField(std::string name, size_t size, const pType<>& contained) :
+  StructField(cotyl::CString&& name, size_t size, const pType<>& contained) :
           name(std::move(name)),
           size(size),
           type(contained->Clone()) {
 
   }
 
-  StructField(std::string name, const pType<>& contained) :
+  StructField(cotyl::CString&& name, const pType<>& contained) :
           name(std::move(name)),
           size(0),
           type(contained->Clone()) {
 
   }
 
-  const std::string name;
+  cotyl::CString name;
   const size_t size = 0;  // 0 means default size
   pType<> type;
 };
 
 
 struct StructUnionType : public CType {
-  StructUnionType(std::string name, LValueNess lvalue, u32 flags = 0) :
+  StructUnionType(cotyl::CString&& name, LValueNess lvalue, u32 flags = 0) :
           name(std::move(name)),
           CType(lvalue, flags) {
 
   }
 
-  const std::string name;
+  cotyl::CString name;
   std::vector<StructField> fields;  // empty if struct was only declared but never defined
 
-  void AddField(const std::string& _name, size_t size, const pType<>& contained) {
-    fields.emplace_back(_name, size, contained);
+  void AddField(cotyl::CString&& _name, size_t size, const pType<>& contained) {
+    fields.emplace_back(std::move(_name), size, contained);
   }
 
-  void AddField(const std::string& _name, const pType<>& contained) {
-    fields.emplace_back(_name, contained);
+  void AddField(cotyl::CString&& _name, const pType<>& contained) {
+    fields.emplace_back(std::move(_name), contained);
   }
 
   std::string ToString() const final;
-  pType<> MemberAccess(const std::string& member) const final;
+  pType<> MemberAccess(const cotyl::CString& member) const final;
 
   u64 Sizeof() const final;
   bool IsStructlike() const final { return true; }
@@ -392,7 +392,7 @@ protected:
 
 
 struct StructType : public StructUnionType {
-  StructType(std::string name, LValueNess lvalue, u32 flags = 0) :
+  StructType(cotyl::CString&& name, LValueNess lvalue, u32 flags = 0) :
           StructUnionType(std::move(name), lvalue, flags) {
 
   }
@@ -401,9 +401,9 @@ struct StructType : public StructUnionType {
   OVERRIDE_BASE_EQ
 
   pType<> Clone() const final {
-    auto clone = MakeType<StructType>(name, lvalue, qualifiers);
+    auto clone = MakeType<StructType>(cotyl::CString(name), lvalue, qualifiers);
     for (const auto& arg : fields) {
-      clone->AddField(arg.name, arg.size, arg.type->Clone());
+      clone->AddField(cotyl::CString(arg.name), arg.size, arg.type->Clone());
     }
     return clone;
   }
@@ -419,7 +419,7 @@ private:
 
 
 struct UnionType : public StructUnionType {
-  UnionType(std::string name, LValueNess lvalue, u32 flags = 0) :
+  UnionType(cotyl::CString&& name, LValueNess lvalue, u32 flags = 0) :
           StructUnionType(std::move(name), lvalue, flags) {
 
   }
@@ -428,9 +428,9 @@ struct UnionType : public StructUnionType {
   OVERRIDE_BASE_EQ
 
   pType<> Clone() const final {
-    auto clone = MakeType<UnionType>(name, lvalue, qualifiers);
+    auto clone = MakeType<UnionType>(cotyl::CString(name), lvalue, qualifiers);
     for (const auto& arg : fields) {
-      clone->AddField(arg.name, arg.size, arg.type->Clone());
+      clone->AddField(cotyl::CString(arg.name), arg.size, arg.type->Clone());
     }
     return clone;
   }

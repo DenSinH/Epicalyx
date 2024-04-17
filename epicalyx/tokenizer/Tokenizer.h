@@ -8,6 +8,14 @@
 
 namespace epi {
 
+struct AnyToken;
+
+namespace cotyl {
+
+struct CString;
+
+}
+
 class Tokenizer : public cotyl::Stream<AnyToken> {
 public:
 
@@ -27,11 +35,9 @@ protected:
 
 private:
   template<typename T, typename ...Args>
-  static AnyToken Make(Args... args) {
-    return T(args...);
-  }
+  static AnyToken Make(Args&&... args);
 
-  std::string ReadString(const char delimiter);
+  cotyl::CString ReadString(const char delimiter);
   AnyToken ReadNumericalConstant();
 };
 

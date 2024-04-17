@@ -75,7 +75,7 @@ void Interpreter::EmitProgram(const Program& program) {
     }, global);
   }
 
-  EnterFunction(&program.functions.at("main"));
+  EnterFunction(&program.functions.at(cotyl::CString("main")));
   returned.reset();
   while (!returned.has_value()) {
     const auto& directive = pos.func->blocks.at(pos.pos.first).at(pos.pos.second);
@@ -288,7 +288,7 @@ void Interpreter::Emit(const LoadGlobal<T>& op) {
 }
 
 void Interpreter::Emit(const LoadGlobalAddr& op) {
-  vars.Set(op.idx, MakePointer(label_offset_t{op.symbol, 0}));
+  vars.Set(op.idx, MakePointer(label_offset_t{cotyl::CString(op.symbol), 0}));
 }
 
 template<typename T>
@@ -670,7 +670,7 @@ void Interpreter::Emit(const AddToPointer<T>& op) {
   }
   else {
     auto pval = std::get<label_offset_t>(lptr);
-    result = MakePointer(label_offset_t{pval.label, pval.offset + (i64) op.stride * (i64) right});
+    result = MakePointer(label_offset_t{cotyl::CString(pval.label), pval.offset + (i64) op.stride * (i64) right});
   }
   vars.Set(op.idx, result);
 }

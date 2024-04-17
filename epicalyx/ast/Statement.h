@@ -88,16 +88,16 @@ struct ForNode : public StatNode {
 };
 
 struct LabelNode : public StatNode {
-  LabelNode(std::string name, pNode<StatNode> stat) :
+  LabelNode(cotyl::CString&& name, pNode<StatNode> stat) :
       name(std::move(name)),
       stat(std::move(stat)) {
 
   }
 
-  const std::string name;
+  cotyl::CString name;
   pNode<StatNode> stat;
 
-  std::string ToString() const final { return cotyl::FormatStr("%s: %s", name, stat); }
+  std::string ToString() const final { return cotyl::FormatStr("%s: %s", name.str(), stat); }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pNode<StatNode> SReduce(const Parser& parser) final;
 };
@@ -150,11 +150,11 @@ struct DefaultNode : public StatNode {
 
 struct GotoNode : public StatNode {
 
-  GotoNode(std::string label) : label(std::move(label)) { }
+  GotoNode(cotyl::CString&& label) : label(std::move(label)) { }
 
-  const std::string label;
+  cotyl::CString label;
 
-  std::string ToString() const final { return cotyl::FormatStr("goto %s;", label); }
+  std::string ToString() const final { return cotyl::Format("goto %s;", label.c_str()); }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 

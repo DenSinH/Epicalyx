@@ -2,6 +2,7 @@
 #include "RemoveUnused.h"
 #include "Is.h"
 #include "Containers.h"
+#include "CString.h"
 #include "CustomAssert.h"
 #include "TypeTraits.h"
 
@@ -706,7 +707,7 @@ void BasicOptimizer::Emit(const Call<T>& _op) {
 
   auto* fn_adglb = TryGetVarDirective<LoadGlobalAddr>(op.fn_idx);
   if (fn_adglb) {
-    EmitRepl<CallLabel<T>>(op.idx, fn_adglb->symbol, std::move(op.args), std::move(op.var_args));
+    EmitRepl<CallLabel<T>>(op.idx, cotyl::CString(fn_adglb->symbol), std::move(op.args), std::move(op.var_args));
     return;
   }
 

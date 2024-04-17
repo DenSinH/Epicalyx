@@ -43,7 +43,7 @@ void ProgramDependencies::VisualizeVars(const std::string& filename) {
 
 void ProgramDependencies::ParseProgram(const Program& program) {
   for (const auto& [symbol, func] : program.functions) {
-    func_deps.emplace(symbol, FunctionDependencies::GetDependencies(func));
+    func_deps.emplace(cotyl::CString(symbol), FunctionDependencies::GetDependencies(func));
   }
 }
 

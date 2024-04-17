@@ -7,7 +7,7 @@
 
 namespace epi::ast {
 
-FunctionDefinitionNode::FunctionDefinitionNode(pType<const FunctionType> signature, std::string symbol, pNode<CompoundNode>&& body) :
+FunctionDefinitionNode::FunctionDefinitionNode(pType<const FunctionType> signature, cotyl::CString&& symbol, pNode<CompoundNode>&& body) :
     signature(std::move(signature)),
     symbol(std::move(symbol)),
     body(std::move(body)) {
@@ -17,18 +17,18 @@ FunctionDefinitionNode::FunctionDefinitionNode(pType<const FunctionType> signatu
 std::string DeclarationNode::ToString() const {
   if (value.has_value()) {
     if (std::holds_alternative<pExpr>(value.value()))
-      return cotyl::FormatStr("%s %s = %s", type, name, std::get<pExpr>(value.value()));
+      return cotyl::FormatStr("%s %s = %s", type, name.str(), std::get<pExpr>(value.value()));
     else
-      return cotyl::FormatStr("%s %s = %s", type, name, std::get<pNode<InitializerList>>(value.value()));
+      return cotyl::FormatStr("%s %s = %s", type, name.str(), std::get<pNode<InitializerList>>(value.value()));
   }
   else if (!name.empty()) {
-    return cotyl::FormatStr("%s %s", type, name);
+    return cotyl::FormatStr("%s %s", type, name.str());
   }
   return stringify(type);
 }
 
 std::string FunctionDefinitionNode::ToString() const {
-  return cotyl::FormatStr("%s %s %s", signature, symbol, body);
+  return cotyl::FormatStr("%s %s %s", signature, symbol.str(), body);
 }
 
 void DeclarationNode::VerifyAndRecord(Parser& parser) {

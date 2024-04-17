@@ -18,6 +18,8 @@ namespace cotyl {
 template<typename T>
 struct Stream;
 
+struct CString;
+
 }
 
 struct AnyToken;
@@ -40,7 +42,7 @@ struct ConstParser : public cotyl::Locatable {
 
   cotyl::Stream<AnyToken>& in_stream;
 
-  virtual pType<const CType> ResolveIdentifierType(const std::string& name) const;
+  virtual pType<const CType> ResolveIdentifierType(const cotyl::CString& name) const;
 };
 
 }

@@ -4,6 +4,7 @@
 #include "Stringify.h"
 #include "Variant.h"
 #include "TokenType.h"
+#include "CString.h"
 
 #include <string>
 #include <utility>
@@ -40,13 +41,13 @@ struct KeywordToken final : public Token {
 STRINGIFY_METHOD(KeywordToken);
 
 struct IdentifierToken final : public Token {
-  explicit IdentifierToken(std::string  name) :
-    Token(TokenType::Identifier),
-    name(std::move(name)) {
+  explicit IdentifierToken(cotyl::CString&& name) :
+    Token{TokenType::Identifier},
+    name{std::move(name)} {
 
   }
 
-  const std::string name;
+  cotyl::CString name;
 };
 
 STRINGIFY_METHOD(IdentifierToken);
@@ -54,8 +55,8 @@ STRINGIFY_METHOD(IdentifierToken);
 template<typename T>
 struct NumericalConstantToken final : public Token {
   explicit NumericalConstantToken(T value) :
-      Token(TokenType::NumericConstant),
-      value(value) {
+      Token{TokenType::NumericConstant},
+      value{value} {
 
   }
 
@@ -66,13 +67,13 @@ template<typename T>
 STRINGIFY_METHOD(NumericalConstantToken<T>);
 
 struct StringConstantToken : public Token {
-  explicit StringConstantToken(const std::string value) :
-      Token(TokenType::StringConstant),
-      value(value) {
+  explicit StringConstantToken(cotyl::CString&& value) :
+      Token{TokenType::StringConstant},
+      value{std::move(value)} {
 
   }
 
-  const std::string value;
+  cotyl::CString value;
 };
 
 STRINGIFY_METHOD(StringConstantToken);

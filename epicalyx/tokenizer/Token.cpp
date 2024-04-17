@@ -21,7 +21,7 @@ STRINGIFY_METHOD(KeywordToken) {
 }
 
 STRINGIFY_METHOD(IdentifierToken) { 
-  return value.name; 
+  return std::string(value.name.str()); 
 }
 
 template<typename T>
@@ -30,7 +30,7 @@ STRINGIFY_METHOD(NumericalConstantToken<T>) {
 }
 
 STRINGIFY_METHOD(StringConstantToken) {
-  return cotyl::Format("\"%s\"", cotyl::Escape(value.value).c_str());
+  return cotyl::Format("\"%s\"", cotyl::Escape(value.value.c_str()).c_str());
 }
 
 STRINGIFY_METHOD(AnyToken) {

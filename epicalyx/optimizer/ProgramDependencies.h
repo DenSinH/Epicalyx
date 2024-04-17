@@ -34,7 +34,7 @@ struct FunctionDependencies {
     std::vector<var_index_t> aliased_by{};
   };
 
-  std::string symbol{};
+  cotyl::CString symbol{};
 
   Graph<block_label_t, const calyx::BasicBlock*, true> block_graph{};
   cotyl::unordered_map<var_index_t, Var> var_graph{};
@@ -42,7 +42,7 @@ struct FunctionDependencies {
 
   explicit FunctionDependencies() { }
 
-  FunctionDependencies(const std::string& symbol) : symbol{symbol} { 
+  FunctionDependencies(cotyl::CString&& symbol) : symbol{std::move(symbol)} { 
 
   }
   
@@ -102,7 +102,7 @@ private:
 
 struct ProgramDependencies {
 
-  cotyl::unordered_map<std::string, FunctionDependencies> func_deps{};
+  cotyl::unordered_map<cotyl::CString, FunctionDependencies> func_deps{};
 
   static ProgramDependencies GetDependencies(const calyx::Program& program) {
     auto deps = ProgramDependencies();

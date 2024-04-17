@@ -57,13 +57,17 @@ void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
 
     auto global_init_visitor = detail::GlobalInitializerVisitor();
     decl.type->Visit(global_init_visitor);
-    calyx::global_t& global = emitter.program.globals[decl.name] = global_init_visitor.result;
+    if (emitter.program.globals.contains(decl.name)) {
+      throw cotyl::FormatExcept("Duplicate global symbol: %s", decl.name.c_str());
+    }
+    auto it = emitter.program.globals.emplace(decl.name, global_init_visitor.result);
+    calyx::global_t& global = it.first->second;
 
     if (decl.value.has_value()) {
       if (std::holds_alternative<pExpr>(decl.value.value())) {
         auto& expr = std::get<pExpr>(decl.value.value());
 
-        calyx::Function initializer{"$init" + decl.name};
+        calyx::Function initializer{cotyl::CString("$init" + decl.name.str())};
         emitter.SetFunction(initializer);
 
         state.push({State::Read, {}});
@@ -83,7 +87,7 @@ void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
     }
   }
   else {
-    auto c_idx = AddLocal(decl.name, decl.type);
+    auto c_idx = AddLocal(cotyl::CString(decl.name), decl.type);
 
     if (decl.value.has_value()) {
       if (std::holds_alternative<pExpr>(decl.value.value())) {
@@ -92,7 +96,7 @@ void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
         state.pop();
         // current now holds the expression id that we want to assign with
         state.push({State::Assign, {.var = current}});
-        IdentifierNode(decl.name).Visit(*this);
+        IdentifierNode(std::move(decl.name)).Visit(*this);
         state.pop();
       }
       else {
@@ -104,14 +108,14 @@ void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
 }
 
 void ASTWalker::Visit(FunctionDefinitionNode& decl) {
-  NewFunction(decl.symbol, decl.signature);
+  NewFunction(std::move(decl.symbol), decl.signature);
 
   // same as normal compound statement besides arguments
   locals.NewLayer();
   for (int i = 0; i < decl.signature->arg_types.size(); i++) {
     // turn arguments into locals
     auto& arg = decl.signature->arg_types[i];
-    AddLocal(arg.name, arg.type, i);
+    AddLocal(cotyl::CString(arg.name), arg.type, i);
   }
 
   // locals layer
@@ -196,14 +200,14 @@ void ASTWalker::Visit(IdentifierNode& decl) {
     switch (state.top().first) {
       case State::Read: {
         if (type->IsArray()) {
-          current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, type->Deref()->Sizeof() }, decl.name);
+          current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, type->Deref()->Sizeof() }, std::move(decl.name));
         }
         else if (type->IsFunction()) {
-          auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {decl.name});
+          auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {std::move(decl.name)});
           type->Visit(visitor);
         }
         else {
-          auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalEmitter>(*this, {decl.name});
+          auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalEmitter>(*this, {std::move(decl.name)});
           type->Visit(visitor);
         }
         break;
@@ -211,14 +215,14 @@ void ASTWalker::Visit(IdentifierNode& decl) {
       case State::Assign: {
         const auto stored = state.top().second.var;
         auto visitor = detail::EmitterTypeVisitor<detail::StoreGlobalEmitter>(
-                *this, { decl.name, stored }
+                *this, { std::move(decl.name), stored }
         );
         type->Visit(visitor);
         current = stored;
         break;
       }
       case State::Address: {
-        auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {decl.name});
+        auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {std::move(decl.name)});
         type->Visit(visitor);
         break;
       }
@@ -843,8 +847,8 @@ void ASTWalker::Visit(BinopNode& expr) {
     case TokenType::LogicalOr: {
       if (state.top().first == State::Read) {
         // we create a "fake local" in order to do this
-        std::string name = "$logop" + std::to_string(emitter.c_counter);
-        auto c_idx = AddLocal(name, CType::MakeBool());
+        auto name = cotyl::CString("$logop" + std::to_string(emitter.c_counter));
+        auto c_idx = AddLocal(std::move(name), CType::MakeBool());
         
         // now basically add an if statement
         auto rhs_block = emitter.MakeBlock();
@@ -942,9 +946,9 @@ void ASTWalker::Visit(TernaryNode& expr) {
   
   if (state.top().first == State::Read) {
     // we create a "fake local" in order to do this
-    std::string name = "$tern" + std::to_string(emitter.c_counter);
+    auto name = cotyl::CString("$tern" + std::to_string(emitter.c_counter));
     auto type = expr.GetType();
-    auto c_idx = AddLocal(name, type);
+    auto c_idx = AddLocal(std::move(name), type);
 
     // now basically add an if statement
     auto true_block = emitter.MakeBlock();

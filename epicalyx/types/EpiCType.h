@@ -22,8 +22,8 @@ template<typename T = CType>
 using pType = std::shared_ptr<T>;
 
 template<typename T = CType, typename ...Args>
-pType<T> MakeType(Args ...args) {
-  return std::make_shared<T>(args...);
+pType<T> MakeType(Args&& ...args) {
+  return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
 #ifdef min
@@ -157,7 +157,7 @@ struct CType {
   pType<> Ge(const CType& other) const;
   pType<> Neq(const CType& other) const;
 
-  virtual pType<> MemberAccess(const std::string& member) const {
+  virtual pType<> MemberAccess(const cotyl::CString& member) const {
     throw std::runtime_error("Cannot access member of non-struct/union type");
   }
 

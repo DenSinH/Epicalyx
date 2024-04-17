@@ -6,6 +6,7 @@
 #include "types/EpiCType.h"
 #include "tokenizer/TokenType.h"
 #include "Escape.h"
+#include "CString.h"
 
 #include <string>
 #include <utility>
@@ -53,14 +54,14 @@ struct ConstTypeVisitor : public TypeVisitor {
 struct IdentifierNode final : public ExprNode {
   ~IdentifierNode() final = default;
 
-  IdentifierNode(std::string name) :
+  IdentifierNode(cotyl::CString&& name) :
       name(std::move(name)) {
 
   }
 
-  const std::string name;
+  cotyl::CString name;
 
-  std::string ToString() const final { return name; };
+  std::string ToString() const final { return name.str(); };
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pExpr EReduce(const Parser& parser) final { return nullptr; }
 
@@ -92,14 +93,14 @@ protected:
 struct StringConstantNode final : public ExprNode {
   ~StringConstantNode() final = default;
 
-  StringConstantNode(std::string value) :
+  StringConstantNode(cotyl::CString&& value) :
       value(std::move(value)) {
 
   }
 
-  const std::string value;
+  cotyl::CString value;
 
-  std::string ToString() const final { return cotyl::FormatStr("\"%s\"", cotyl::Escape(value)); }
+  std::string ToString() const final { return cotyl::Format("\"%s\"", cotyl::Escape(value.c_str()).c_str()); }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   pExpr EReduce(const Parser& parser) final { return nullptr; }
 
@@ -157,7 +158,7 @@ protected:
 struct MemberAccessNode final : public ExprNode {
   ~MemberAccessNode() final = default;
 
-  MemberAccessNode(pExpr&& left, bool direct, std::string member) :
+  MemberAccessNode(pExpr&& left, bool direct, cotyl::CString&& member) :
       left(std::move(left)),
       direct(direct),
       member(std::move(member)) {
@@ -166,7 +167,7 @@ struct MemberAccessNode final : public ExprNode {
 
   pExpr left;
   bool direct;
-  const std::string member;
+  cotyl::CString member;
 
   std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }

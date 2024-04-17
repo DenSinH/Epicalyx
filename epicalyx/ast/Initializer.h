@@ -16,7 +16,7 @@ namespace epi::ast {
 
 struct InitializerList;
 
-using Designator = std::variant<std::string, i64>;
+using Designator = std::variant<cotyl::CString, i64>;
 using DesignatorList = std::vector<Designator>;
 using Initializer = std::variant<pExpr, pNode<InitializerList>>;
 

@@ -126,7 +126,7 @@ bool FunctionType::EqualTypeImpl(const FunctionType& other) const {
 pType<> FunctionType::Clone() const {
   auto clone = MakeType<FunctionType>(contained, variadic, lvalue, qualifiers);
   for (const auto& arg : arg_types) {
-    clone->AddArg(arg.name, arg.type);
+    clone->AddArg(cotyl::CString(arg.name), arg.type);
   }
   return clone;
 }
@@ -383,13 +383,13 @@ pType<ValueType<i8>> CType::ConstOne() {
   return MakeType<ValueType<i8>>(1, LValueNess::None);
 }
 
-pType<> StructUnionType::MemberAccess(const std::string& member) const {
+pType<> StructUnionType::MemberAccess(const cotyl::CString& member) const {
   for (auto& field : fields) {
     if (field.name == member) {
       return field.type->Clone();
     }
   }
-  throw std::runtime_error("No field named " + member + " in " + ToString());
+  throw std::runtime_error("No field named " + member.str() + " in " + ToString());
 }
 
 #include "ValueTypeMethods.inl"
