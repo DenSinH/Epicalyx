@@ -180,6 +180,14 @@ struct Argument {
   };
 };
 
+// IR var idx and Argument
+using arg_list_t = std::vector<std::pair<var_index_t, Argument>>;
+
+struct ArgData {
+  arg_list_t args;
+  arg_list_t var_args;
+};
+
 using global_t = std::variant<i8, u8, i16, u16, i32, u32, i64, u64, float, double, Pointer, label_offset_t>;
 
 }

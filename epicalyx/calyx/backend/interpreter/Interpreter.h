@@ -48,7 +48,7 @@ struct Interpreter {
 
   program_counter_t pos{nullptr, {0, 0}};
   // link, return_to, args, var_args
-  std::stack<std::tuple<program_counter_t, var_index_t, calyx::arg_list_t, calyx::arg_list_t>> call_stack{};
+  std::stack<std::tuple<program_counter_t, var_index_t, const calyx::ArgData*>> call_stack{};
   std::optional<std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> returned = {};
 
   void EnterFunction(const calyx::Function* function);

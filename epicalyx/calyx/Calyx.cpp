@@ -83,7 +83,7 @@ void VisualizeProgram(const Program& program, const std::string& filename) {
         directive.visit<void>(
           [&](const Select& select) {
             auto node = graph->n(id, stringify(select));
-            for (auto [val, dest] : select.table) {
+            for (auto [val, dest] : *select.table) {
               node->n(GetNodeID(func, dest), std::to_string(val));
             }
             if (select._default) {

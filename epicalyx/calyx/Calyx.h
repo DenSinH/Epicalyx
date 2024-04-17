@@ -21,7 +21,8 @@ struct BasicBlock {
   auto end() { return directives.end(); }
   auto begin() const { return directives.begin(); }
   auto end() const { return directives.end(); }
-  auto back() const { return directives.back(); }
+  const AnyDirective& back() const { return directives.back(); }
+  AnyDirective& back() { return directives.back(); }
   bool empty() const { return directives.empty(); }
   const AnyDirective& at(std::size_t index) const { return directives.at(index); }
   AnyDirective& at(std::size_t index) { return directives.at(index); }

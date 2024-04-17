@@ -139,12 +139,12 @@ struct CastToEmitter {
 
 template<typename T>
 struct CallEmitter {
-  static var_index_t emit_value(ASTWalker& walker, var_index_t fn_idx, calyx::arg_list_t args, calyx::arg_list_t var_args) {
-    return walker.emitter.EmitExpr<calyx::Call<calyx::calyx_upcast_t<T>>>({calyx_var_type_v<calyx::calyx_upcast_t<T>> }, fn_idx, std::move(args), std::move(var_args));
+  static var_index_t emit_value(ASTWalker& walker, var_index_t fn_idx, calyx::ArgData args) {
+    return walker.emitter.EmitExpr<calyx::Call<calyx::calyx_upcast_t<T>>>({calyx_var_type_v<calyx::calyx_upcast_t<T>> }, fn_idx, std::move(args));
   }
 
-  static var_index_t emit_pointer(ASTWalker& walker, u64 stride, var_index_t fn_idx, calyx::arg_list_t args, calyx::arg_list_t var_args) {
-    return walker.emitter.EmitExpr<calyx::Call<calyx::Pointer>>({Emitter::Var::Type::Pointer, stride }, fn_idx, std::move(args), std::move(var_args));
+  static var_index_t emit_pointer(ASTWalker& walker, u64 stride, var_index_t fn_idx, calyx::ArgData args) {
+    return walker.emitter.EmitExpr<calyx::Call<calyx::Pointer>>({Emitter::Var::Type::Pointer, stride }, fn_idx, std::move(args));
   }
 };
 

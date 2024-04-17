@@ -353,8 +353,7 @@ void ASTWalker::Visit(FunctionCallNode& expr) {
   const auto fn = current;
   const auto* signature = cotyl::shared_ptr_cast<const FunctionType>(expr.left->GetType());
   const auto num_args = signature->arg_types.size();
-  calyx::arg_list_t args{};
-  calyx::arg_list_t var_args{};
+  calyx::ArgData args{};
 
   for (int i = 0; i < num_args; i++) {
     expr.args[i]->Visit(*this);
@@ -364,7 +363,7 @@ void ASTWalker::Visit(FunctionCallNode& expr) {
     auto arg_visitor = detail::ArgumentTypeVisitor(i, false);
     signature->arg_types[i].type->Visit(arg_visitor);
 
-    args.emplace_back(current, arg_visitor.result);
+    args.args.emplace_back(current, arg_visitor.result);
   }
 
   if (signature->variadic) {
@@ -374,15 +373,15 @@ void ASTWalker::Visit(FunctionCallNode& expr) {
       auto arg_visitor = detail::ArgumentTypeVisitor(i - num_args, true);
       expr.args[i]->GetType()->Visit(arg_visitor);
 
-      var_args.emplace_back(current, arg_visitor.result);
+      args.var_args.emplace_back(current, arg_visitor.result);
     }
   }
 
   if (signature->contained->IsVoid()) {
-    emitter.Emit<calyx::Call<void>>(var_index_t{0}, fn, std::move(args), std::move(var_args));
+    emitter.Emit<calyx::Call<void>>(var_index_t{0}, fn, std::move(args));
   }
   else {
-    auto visitor = detail::EmitterTypeVisitor<detail::CallEmitter>(*this, { fn, std::move(args), std::move(var_args) });
+    auto visitor = detail::EmitterTypeVisitor<detail::CallEmitter>(*this, { fn, std::move(args) });
     signature->contained->Visit(visitor);
 
     if (state.top().first == State::ConditionalBranch) {
@@ -1350,13 +1349,13 @@ void ASTWalker::Visit(SwitchNode& stat) {
 void ASTWalker::Visit(CaseNode& stat) {
   cotyl::Assert(!select_stack.empty(), "Invalid case statement");
   auto* select = select_stack.top();
-  cotyl::Assert(!select->table.contains(stat.expr), "Duplicate case statement");
+  cotyl::Assert(!select->table->contains(stat.expr), "Duplicate case statement");
 
   auto block = emitter.MakeBlock();
   // check for fallthrough and don't emit branch if there is no fallthrough
   emitter.Emit<calyx::UnconditionalBranch>(block);
 
-  select->table.emplace(stat.expr, block);
+  select->table->emplace(stat.expr, block);
 
   emitter.SelectBlock(block);
   stat.stat->Visit(*this);

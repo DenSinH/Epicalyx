@@ -11,7 +11,7 @@ namespace epi::cotyl {
 
 struct CString {
 
-  using size_type = u32;
+  using size_type = std::size_t;
 
   CString() : size_{0}, data{nullptr} { }
 

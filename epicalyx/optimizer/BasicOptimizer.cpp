@@ -698,16 +698,16 @@ template<typename T>
 void BasicOptimizer::Emit(const Call<T>& _op) {
   auto op = CopyDirective(_op);
   TryReplaceVar(op.fn_idx);
-  for (auto& [var_idx, arg] : op.args) {
+  for (auto& [var_idx, arg] : op.args->args) {
     TryReplaceVar(var_idx);
   }
-  for (auto& [var_idx, arg] : op.var_args) {
+  for (auto& [var_idx, arg] : op.args->var_args) {
     TryReplaceVar(var_idx);
   }
 
   auto* fn_adglb = TryGetVarDirective<LoadGlobalAddr>(op.fn_idx);
   if (fn_adglb) {
-    EmitRepl<CallLabel<T>>(op.idx, cotyl::CString(fn_adglb->symbol), std::move(op.args), std::move(op.var_args));
+    EmitRepl<CallLabel<T>>(op.idx, cotyl::CString(fn_adglb->symbol), std::move(*op.args));
     return;
   }
 
@@ -720,10 +720,10 @@ void BasicOptimizer::Emit(const Call<T>& _op) {
 template<typename T>
 void BasicOptimizer::Emit(const CallLabel<T>& _op) {
   auto op = CopyDirective(_op);
-  for (auto& [var_idx, arg] : op.args) {
+  for (auto& [var_idx, arg] : op.args->args) {
     TryReplaceVar(var_idx);
   }
-  for (auto& [var_idx, arg] : op.var_args) {
+  for (auto& [var_idx, arg] : op.args->var_args) {
     TryReplaceVar(var_idx);
   }
 
@@ -1115,8 +1115,8 @@ void BasicOptimizer::Emit(const Select& _op) {
 
   auto* val_imm = TryGetVarDirective<Imm<calyx_op_type(op)::src_t>>(op.idx);
   if (val_imm) {
-    if (op.table.contains(val_imm->value)) {
-      EmitRepl<UnconditionalBranch>(op.table.at(val_imm->value));
+    if (op.table->contains(val_imm->value)) {
+      EmitRepl<UnconditionalBranch>(op.table->at(val_imm->value));
       return;
     }
     else if (op._default) {
@@ -1128,7 +1128,7 @@ void BasicOptimizer::Emit(const Select& _op) {
     }
   }
 
-  for (auto& [val, block_idx] : op.table) {
+  for (auto& [val, block_idx] : *op.table) {
     ResolveBranchIndirection(block_idx);
   }
   if (op._default) {

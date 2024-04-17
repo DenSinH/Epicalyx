@@ -12,9 +12,6 @@
 
 namespace epi::calyx {
 
-// IR var idx and Argument
-using arg_list_t = std::vector<std::pair<var_index_t, Argument>>;
-
 struct Directive {
 
   Directive() = default;
@@ -198,13 +195,13 @@ struct AddToPointer : Expr {
   using result_t = Pointer;
   using offset_t = T;
 
-  AddToPointer(var_index_t idx, Operand<Pointer> ptr, u64 stride, Operand<T> right) :
-      Expr{idx}, ptr{ptr}, stride{stride}, right{right} {
+  AddToPointer(var_index_t idx, Operand<Pointer> ptr, u32 stride, Operand<T> right) :
+      Expr{idx}, stride{stride}, ptr{ptr}, right{right} {
 
   }
 
+  u32 stride;
   Operand<Pointer> ptr;
-  u64 stride;
   Operand<offset_t> right;
 
   std::string ToString() const;
@@ -290,12 +287,12 @@ requires (cotyl::pack_contains_v<T, calyx_memory_types>)
 struct LoadGlobal : Expr {
   using result_t = calyx_upcast_t<T>;
   LoadGlobal(var_index_t idx, cotyl::CString&& symbol, i32 offset = 0) :
-      Expr{idx}, symbol{std::move(symbol)}, offset{offset} {
+      Expr{idx}, offset{offset}, symbol{std::move(symbol)} {
 
   }
 
-  cotyl::CString symbol;
   i32 offset;  // struct fields
+  cotyl::CString symbol;
 
   std::string ToString() const;
 };
@@ -319,7 +316,7 @@ struct StoreGlobal : public Store<T> {
 
   StoreGlobal(cotyl::CString&& symbol, Operand<src_t> src, i32 offset = 0) :
       Store<T>{src},
-      symbol{std::move(symbol)}, 
+      symbol{std::move(symbol)},
       offset{offset} {
 
   }
@@ -392,15 +389,19 @@ requires (cotyl::pack_contains_v<T, calyx_return_types>)
 struct Call : Directive {
   using result_t = T;
 
-  Call(var_index_t idx, var_index_t fn_idx, arg_list_t args, arg_list_t var_args) :
-      Directive{}, idx{idx}, fn_idx{fn_idx}, args{std::move(args)}, var_args{std::move(var_args)} {
+  Call(var_index_t idx, var_index_t fn_idx, ArgData&& args) :
+      Directive{}, idx{idx}, fn_idx{fn_idx}, args{std::make_unique<ArgData>(std::move(args))} {
+
+  }
+
+  Call(const Call& other) :
+      Call{other.idx, other.fn_idx, ArgData{*other.args}} {
 
   }
 
   var_index_t idx;
   var_index_t fn_idx;
-  arg_list_t args;
-  arg_list_t var_args;
+  std::unique_ptr<ArgData> args;
 
   std::string ToString() const;
 };
@@ -410,33 +411,45 @@ requires (cotyl::pack_contains_v<T, calyx_return_types>)
 struct CallLabel : Directive {
   using result_t = T;
 
-  CallLabel(var_index_t idx, cotyl::CString&& label, arg_list_t args, arg_list_t var_args) :
-    Directive{}, idx{idx}, label{std::move(label)}, args{std::move(args)}, var_args{std::move(var_args)} {
+  CallLabel(var_index_t idx, cotyl::CString&& label, ArgData&& args) :
+    Directive{}, idx{idx}, label{std::move(label)}, args{std::make_unique<ArgData>(std::move(args))} {
+
+  }
+
+  CallLabel(const CallLabel& other) :
+    CallLabel{other.idx, cotyl::CString(other.label), ArgData{*other.args}} {
 
   }
 
   var_index_t idx;
   cotyl::CString label;
-  arg_list_t args;
-  arg_list_t var_args;
+  std::unique_ptr<ArgData> args;
 
   std::string ToString() const;
 };
 
 struct Select : Branch {
   using src_t = i64;
+  using table_t = cotyl::unordered_map<i64, block_label_t>;
 
   Select(var_index_t idx) : Branch{}, idx{idx} { }
+  Select(const Select& other) :
+      Branch{}, 
+      idx{other.idx}, 
+      _default{other._default},
+      table{std::make_unique<table_t>(*other.table)} {
 
-  // var is ALWAYS i64
+  }
+
+  // var is ALWAYS an i64
   var_index_t idx;
-  cotyl::unordered_map<i64, block_label_t> table{};
   block_label_t _default = 0;
+  std::unique_ptr<table_t> table{std::make_unique<table_t>()};
   
   std::vector<block_label_t> Destinations() const final {
     std::vector<block_label_t> result{};
-    result.reserve(table.size() + 1);
-    for (const auto& [val, block_idx] : table) {
+    result.reserve(table->size() + 1);
+    for (const auto& [val, block_idx] : *table) {
       result.emplace_back(block_idx);
     }
     if (_default) result.emplace_back(_default);

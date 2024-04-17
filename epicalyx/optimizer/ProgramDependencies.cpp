@@ -134,10 +134,10 @@ void FunctionDependencies::Emit(const Call<T>& op) {
     var_graph.at(op.idx).is_call_result = true;
   }
 
-  for (const auto& [var_idx, arg] : op.args) {
+  for (const auto& [var_idx, arg] : op.args->args) {
     cotyl::get_default(var_graph, var_idx).reads.push_back(pos);
   }
-  for (const auto& [var_idx, arg] : op.var_args) {
+  for (const auto& [var_idx, arg] : op.args->var_args) {
     cotyl::get_default(var_graph, var_idx).reads.push_back(pos);
   }
 }
@@ -148,10 +148,10 @@ void FunctionDependencies::Emit(const CallLabel<T>& op) {
     cotyl::get_default(var_graph, op.idx).created = pos;
     var_graph.at(op.idx).is_call_result = true;
   }
-  for (const auto& [var_idx, arg] : op.args) {
+  for (const auto& [var_idx, arg] : op.args->args) {
     cotyl::get_default(var_graph, var_idx).reads.push_back(pos);
   }
-  for (const auto& [var_idx, arg] : op.var_args) {
+  for (const auto& [var_idx, arg] : op.args->var_args) {
     cotyl::get_default(var_graph, var_idx).reads.push_back(pos);
   }
 }
@@ -229,7 +229,7 @@ void FunctionDependencies::Emit(const BranchCompare<T>& op) {
 
 void FunctionDependencies::Emit(const Select& op) {
   cotyl::get_default(var_graph, op.idx).reads.push_back(pos);
-  for (const auto& [value, block_idx] : op.table) {
+  for (const auto& [value, block_idx] : *op.table) {
     block_graph.AddEdge(pos.first, block_idx);
   }
   if (op._default) {

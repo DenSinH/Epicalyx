@@ -348,21 +348,21 @@ requires (cotyl::pack_contains_v<T, calyx_return_types>)
 std::string Call<T>::ToString() const {
 
   if constexpr(std::is_same_v<T, void>) {
-    if (!var_args.empty()) {
-      return cotyl::FormatStr("call  [void]v%s(%s, ... %s)", fn_idx, make_args_list(args), make_args_list(var_args));
+    if (!args->var_args.empty()) {
+      return cotyl::FormatStr("call  [void]v%s(%s, ... %s)", fn_idx, make_args_list(args->args), make_args_list(args->var_args));
     }
     else {
-      return cotyl::FormatStr("call  [void]v%s(%s)", fn_idx, make_args_list(args));
+      return cotyl::FormatStr("call  [void]v%s(%s)", fn_idx, make_args_list(args->args));
     }
   }
   else {
-    if (!var_args.empty()) {
+    if (!args->var_args.empty()) {
       return cotyl::FormatStr("call  v%s <- [%s]v%s(%s, ... %s)",
-                              idx, detail::type_string<T>::value, fn_idx, make_args_list(args), make_args_list(var_args)
+                              idx, detail::type_string<T>::value, fn_idx, make_args_list(args->args), make_args_list(args->var_args)
       );
     }
     else {
-      return cotyl::FormatStr("call  v%s <- [%s]v%s(%s)", idx, detail::type_string<T>::value, fn_idx, make_args_list(args));
+      return cotyl::FormatStr("call  v%s <- [%s]v%s(%s)", idx, detail::type_string<T>::value, fn_idx, make_args_list(args->args));
     }
   }
 }
@@ -372,21 +372,21 @@ requires (cotyl::pack_contains_v<T, calyx_return_types>)
 std::string CallLabel<T>::ToString() const {
 
   if constexpr(std::is_same_v<T, void>) {
-    if (!var_args.empty()) {
-      return cotyl::FormatStr("call  [void]%s(%s, ... %s)", label, make_args_list(args), make_args_list(var_args));
+    if (!args->var_args.empty()) {
+      return cotyl::FormatStr("call  [void]%s(%s, ... %s)", label, make_args_list(args->args), make_args_list(args->var_args));
     }
     else {
-      return cotyl::FormatStr("call  [void]%s(%s)", label, make_args_list(args));
+      return cotyl::FormatStr("call  [void]%s(%s)", label, make_args_list(args->args));
     }
   }
   else {
-    if (!var_args.empty()) {
+    if (!args->var_args.empty()) {
       return cotyl::FormatStr("call  v%s <- [%s]%s(%s, ... %s)",
-                              idx, detail::type_string<T>::value, label, make_args_list(args), make_args_list(var_args)
+                              idx, detail::type_string<T>::value, label, make_args_list(args->args), make_args_list(args->var_args)
       );
     }
     else {
-      return cotyl::FormatStr("call  v%s <- [%s]%s(%s)", idx, detail::type_string<T>::value, label, make_args_list(args));
+      return cotyl::FormatStr("call  v%s <- [%s]%s(%s)", idx, detail::type_string<T>::value, label, make_args_list(args->args));
     }
   }
 }

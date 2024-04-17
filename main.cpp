@@ -23,26 +23,27 @@
 #define catch_e catch (std::runtime_error& e)
 #endif
 
-#include "TypeName.h"
-#include "tokenizer/Token.h"
+// #include "TypeName.h"
+// #include "tokenizer/Token.h"
 
-template<typename T>
-struct size_debugger;
+// template<typename T>
+// struct size_debugger;
 
-template<typename P, typename... Ts>
-struct size_debugger<epi::cotyl::Variant<P, Ts...>> {
-  static void debug() {
-    ((std::cout << epi::cotyl::type_name<Ts>() << ": " << sizeof(Ts) << std::endl), ...);
-  }
-};
+// template<typename P, typename... Ts>
+// struct size_debugger<epi::cotyl::Variant<P, Ts...>> {
+//   static void debug() {
+//     ((std::cout << epi::cotyl::type_name<Ts>() << ": " << sizeof(Ts) << " / "  << alignof(Ts) << std::endl), ...);
+//   }
+// };
 
 
 int main() {
-  size_debugger<epi::calyx::detail::any_directive_t>::debug();
-  std::cout << sizeof(epi::calyx::AnyDirective) << std::endl;
-  size_debugger<epi::detail::any_token_t>::debug();
-  std::cout << sizeof(epi::AnyToken) << std::endl;
-  return 0;
+//   size_debugger<epi::calyx::detail::any_directive_t>::debug();
+//   std::cout << sizeof(epi::calyx::AnyDirective) << std::endl;
+//   size_debugger<epi::detail::any_token_t>::debug();
+//   std::cout << sizeof(epi::AnyToken) << std::endl;
+//   std::cout << sizeof(epi::cotyl::CString) << " / "  << alignof(epi::cotyl::CString) << std::endl;
+//   return 0;
 
   std::string file = "examples/emitting/optimizing.c";
   auto rig_func_sym = epi::cotyl::CString("test");

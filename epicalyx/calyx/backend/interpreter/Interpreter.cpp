@@ -15,7 +15,8 @@ namespace epi::calyx {
 using ::epi::stringify;
 
 void Interpreter::InterpretGlobalInitializer(global_t& dest, Function&& func) {
-  call_stack.emplace(program_counter_t{nullptr, {0, 0}}, -1, arg_list_t{}, arg_list_t{});
+  calyx::ArgData no_args{};
+  call_stack.emplace(program_counter_t{nullptr, {0, 0}}, -1, &no_args);
   EnterFunction(&func);
 
   while (pos.pos.first) {
@@ -97,64 +98,64 @@ void Interpreter::EmitProgram(const Program& program) {
 }
 
 void Interpreter::LoadArg(const calyx::Local& loc) {
-  auto [_, __, args, ___] = call_stack.top();
+  auto& [_, __, args] = call_stack.top();
 
   // locals have already been allocated on function entry
   const auto stack_loc = locals.Get(loc.idx).first;
   const auto arg_idx = loc.arg_idx.value();
   switch (loc.type) {
     case Local::Type::I8: {
-      i32 value = std::get<i32>(vars.Get(args[arg_idx].first));
+      i32 value = std::get<i32>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U8: {
-      u32 value = std::get<u32>(vars.Get(args[arg_idx].first));
+      u32 value = std::get<u32>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::I16: {
-      i32 value = std::get<i32>(vars.Get(args[arg_idx].first));
+      i32 value = std::get<i32>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U16: {
-      u32 value = std::get<u32>(vars.Get(args[arg_idx].first));
+      u32 value = std::get<u32>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::I32: {
-      i32 value = std::get<i32>(vars.Get(args[arg_idx].first));
+      i32 value = std::get<i32>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U32: {
-      u32 value = std::get<u32>(vars.Get(args[arg_idx].first));
+      u32 value = std::get<u32>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::I64: {
-      i64 value = std::get<i64>(vars.Get(args[arg_idx].first));
+      i64 value = std::get<i64>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U64: {
-      u64 value = std::get<u64>(vars.Get(args[arg_idx].first));
+      u64 value = std::get<u64>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::Float: {
-      float value = std::get<float>(vars.Get(args[arg_idx].first));
+      float value = std::get<float>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::Double: {
-      double value = std::get<double>(vars.Get(args[arg_idx].first));
+      double value = std::get<double>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::Pointer: {
-      Pointer value = std::get<Pointer>(vars.Get(args[arg_idx].first));
+      Pointer value = std::get<Pointer>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
@@ -364,7 +365,7 @@ void Interpreter::Emit(const StoreToPointer<T>& op) {
 
 template<typename T>
 void Interpreter::Emit(const Call<T>& op) {
-  call_stack.emplace(pos, op.idx, op.args, op.var_args);
+  call_stack.emplace(pos, op.idx, op.args.get());
   auto pointer = ReadPointer(std::get<Pointer>(vars.Get(op.fn_idx)).value);
   const Function* func;
   if (std::holds_alternative<i64>(pointer)) {
@@ -382,7 +383,7 @@ void Interpreter::Emit(const Call<T>& op) {
 
 template<typename T>
 void Interpreter::Emit(const CallLabel<T>& op) {
-  call_stack.emplace(pos, op.idx, op.args, op.var_args);
+  call_stack.emplace(pos, op.idx, op.args.get());
   EnterFunction(&program.functions.at(op.label));
 }
 
@@ -411,7 +412,7 @@ void Interpreter::Emit(const Return<T>& op) {
       }
     }
     else {
-      auto [_pos, return_to, _, __] = call_stack.top();
+      auto [_pos, return_to, _] = call_stack.top();
       call_stack.pop();
       pos = _pos;
       if constexpr(!std::is_same_v<T, void>) {
@@ -636,9 +637,9 @@ void Interpreter::Emit(const BranchCompare<T>& op) {
 void Interpreter::Emit(const Select& op) {
   cotyl::Assert(vars.HasTop(op.idx));
   auto val = std::get<calyx_op_type(op)::src_t>(vars.Get(op.idx));
-  cotyl::Assert(op._default || op.table.contains(val), "Jump table does not contain value");
-  if (op.table.contains(val)) {
-    pos.pos.first  = op.table.at(val);
+  cotyl::Assert(op._default || op.table->contains(val), "Jump table does not contain value");
+  if (op.table->contains(val)) {
+    pos.pos.first  = op.table->at(val);
   }
   else {
     pos.pos.first = op._default;
