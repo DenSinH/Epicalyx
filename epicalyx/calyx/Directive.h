@@ -390,18 +390,13 @@ struct Call : Directive {
   using result_t = T;
 
   Call(var_index_t idx, var_index_t fn_idx, ArgData&& args) :
-      Directive{}, idx{idx}, fn_idx{fn_idx}, args{std::make_unique<ArgData>(std::move(args))} {
-
-  }
-
-  Call(const Call& other) :
-      Call{other.idx, other.fn_idx, ArgData{*other.args}} {
+      Directive{}, idx{idx}, fn_idx{fn_idx}, args{std::make_shared<ArgData>(std::move(args))} {
 
   }
 
   var_index_t idx;
   var_index_t fn_idx;
-  std::unique_ptr<ArgData> args;
+  std::shared_ptr<ArgData> args;
 
   std::string ToString() const;
 };
@@ -412,18 +407,13 @@ struct CallLabel : Directive {
   using result_t = T;
 
   CallLabel(var_index_t idx, cotyl::CString&& label, ArgData&& args) :
-    Directive{}, idx{idx}, label{std::move(label)}, args{std::make_unique<ArgData>(std::move(args))} {
-
-  }
-
-  CallLabel(const CallLabel& other) :
-    CallLabel{other.idx, cotyl::CString(other.label), ArgData{*other.args}} {
+    Directive{}, idx{idx}, label{std::move(label)}, args{std::make_shared<ArgData>(std::move(args))} {
 
   }
 
   var_index_t idx;
   cotyl::CString label;
-  std::unique_ptr<ArgData> args;
+  std::shared_ptr<ArgData> args;
 
   std::string ToString() const;
 };
@@ -433,18 +423,11 @@ struct Select : Branch {
   using table_t = cotyl::unordered_map<i64, block_label_t>;
 
   Select(var_index_t idx) : Branch{}, idx{idx} { }
-  Select(const Select& other) :
-      Branch{}, 
-      idx{other.idx}, 
-      _default{other._default},
-      table{std::make_unique<table_t>(*other.table)} {
-
-  }
 
   // var is ALWAYS an i64
   var_index_t idx;
   block_label_t _default = 0;
-  std::unique_ptr<table_t> table{std::make_unique<table_t>()};
+  std::shared_ptr<table_t> table{std::make_shared<table_t>()};
   
   std::vector<block_label_t> Destinations() const final {
     std::vector<block_label_t> result{};
