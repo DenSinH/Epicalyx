@@ -1,0 +1,1 @@
+ClangBuildAnalyzer --start ../build/Debug

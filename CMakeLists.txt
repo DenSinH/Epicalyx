@@ -122,6 +122,12 @@ target_link_libraries(epicalyx RegAlloc)
 
 target_precompile_headers(epicalyx REUSE_FROM CalyxHeaders)
 
+add_custom_target(graphviz ALL
+    COMMAND ${CMAKE_COMMAND} "--graphviz=epicalyx.dot" .
+    COMMAND dot -Tpdf epicalyx.dot -o epicalyx.pdf
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_graphviz"
+)
+
 # we are not using any boost libraries that need compiling
 # if(${Boost_FOUND})
 #     target_link_libraries(epicalyx ${Boost_LIBRARY})

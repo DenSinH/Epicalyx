@@ -1,7 +1,6 @@
 #include "Statement.h"
 #include "Declaration.h"
-#include "parser/Parser.h"
-
+namespace epi { struct Parser; }
 #include "Cast.h"
 
 #include "SStream.h"

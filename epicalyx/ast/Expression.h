@@ -2,7 +2,7 @@
 
 #include "Node.h"
 #include "NodeVisitor.h"
-#include "Initializer.h"
+namespace epi::ast { struct InitializerList; }
 #include "types/EpiCType.h"
 #include "tokenizer/TokenType.h"
 #include "Escape.h"

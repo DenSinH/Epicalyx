@@ -1,7 +1,7 @@
 #include "Initializer.h"
 #include "Expression.h"
 #include "types/Types.h"
-#include "parser/Parser.h"
+namespace epi { struct Parser; }
 #include "Log.h"
 #include "Exceptions.h"
 #include "SStream.h"
@@ -59,9 +59,7 @@ void ValidInitializerListVisitor::VisitScalar(const CType& type) {
     return;
   }
   if (list.list.size() > 1) {
-    Log::Warn("Excess elements in initializer list") << [&]{
-      parser.PrintLoc();
-    };
+    Log::Warn("Excess elements in initializer list");
   }
   if (!list.list[0].first.empty()) {
     throw std::runtime_error("Bad initializer list: no declarators expected");

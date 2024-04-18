@@ -9,7 +9,7 @@
  * */
 
 #include "Locatable.h"
-#include "ast/Initializer.h"
+#include "ast/Node.h"
 
 namespace epi {
 

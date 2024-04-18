@@ -1,5 +1,7 @@
 #include "Expression.h"
-#include "parser/Parser.h"
+#include "parser/ConstParser.h"
+namespace epi { struct Parser; }
+#include "Initializer.h"
 #include "types/Types.h"
 #include "SStream.h"
 
