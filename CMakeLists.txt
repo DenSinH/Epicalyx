@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.29)
+cmake_minimum_required(VERSION 3.28)
 project(epicalyx)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -39,7 +39,7 @@ else()
     add_compile_options(-fexceptions)
     if(CMAKE_BUILD_TYPE MATCHES Debug)
         # message(STATUS "Adding time trace for compilation")
-        # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -ftime-trace")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -ftime-trace")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1")
     endif()
 endif()
@@ -71,7 +71,7 @@ set(INCLUDE_HEADERS
 add_library(
   epicalyx-config
   STATIC
-  epicalyx/config/Log.cpp
+  epicalyx/config/Fake.cpp
   epicalyx/config/PCH.h
 )
 
@@ -85,6 +85,7 @@ target_precompile_headers(
 add_executable(
         epicalyx
         main.cpp
+        epicalyx/config/Log.cpp
         ${INCLUDE_HEADERS}
 )
 
@@ -118,6 +119,8 @@ target_link_libraries(epicalyx Calyx)
 target_link_libraries(epicalyx IREmitter)
 target_link_libraries(epicalyx Optimizer)
 target_link_libraries(epicalyx RegAlloc)
+
+target_precompile_headers(epicalyx REUSE_FROM CalyxHeaders)
 
 # we are not using any boost libraries that need compiling
 # if(${Boost_FOUND})

@@ -59,6 +59,6 @@ template <typename T, typename... Ts>
 struct pack_contains<T, pack<Ts...>> : std::disjunction<std::is_same<T, Ts>...> {};
 
 template <typename T, typename Pack>
-constexpr bool pack_contains_v = pack_contains<T, Pack>::value;
+static constexpr bool pack_contains_v = pack_contains<T, Pack>::value;
 
 }

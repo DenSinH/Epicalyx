@@ -56,9 +56,7 @@ struct Emitter {
 
   block_label_t MakeBlock() {
     // block 0 is special
-    block_label_t id = current_function->blocks.size() + 1;
-    current_function->blocks.emplace(id, calyx::BasicBlock{});
-    return id;
+    return current_function->AddBlock().first;
   }
 
   void SelectBlock(block_label_t id) {

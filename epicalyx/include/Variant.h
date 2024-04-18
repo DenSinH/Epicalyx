@@ -12,14 +12,19 @@ template<typename Parent, typename... Ts>
 requires (std::is_base_of_v<Parent, Ts> && ...)
 struct Variant {
 
+  // to speed up compilation time for large variants
+  ~Variant();
+
   template<typename T>
   requires (std::is_same_v<T, Ts> || ...)
   static constexpr std::size_t type_index_v = (std::size_t)swl::variant<Ts...>::template index_of<T>;
 
   template<typename T>
+  requires (std::is_same_v<T, Ts> || ...)
   Variant(T&& value) : value{std::move(value)} { }
 
   template<typename T>
+  requires (std::is_same_v<T, Ts> || ...)
   Variant(const T& value) : value{value} { }
 
   template<typename T, typename... Args>

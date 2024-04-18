@@ -5,6 +5,12 @@
 
 
 namespace epi {
+
+namespace cotyl {
+
+template<> detail::any_token_t::~Variant() = default;
+
+}
   
 extern const cotyl::unordered_map<TokenType, std::string> TokenNames;
 

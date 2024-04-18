@@ -1,9 +1,9 @@
 #include "ASTWalker.h"
 #include "Emitter.h"
 
-#include "calyx/Calyx.h"
-#include "calyx/backend/interpreter/Interpreter.h"
 #include "types/Types.h"
+#include "calyx/Calyx.h"
+#include "calyx/Utils.h"
 #include "ast/Declaration.h"
 #include "ast/Statement.h"
 #include "ast/Expression.h"
@@ -77,8 +77,7 @@ void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
         auto global_block_return_visitor = detail::EmitterTypeVisitor<detail::ReturnEmitter>(*this, { current });
         decl.type->Visit(global_block_return_visitor);
 
-        calyx::Interpreter interpreter = {emitter.program};
-        interpreter.InterpretGlobalInitializer(global, std::move(initializer));
+        calyx::InterpretGlobalInitializer(global, std::move(initializer));
       }
       else {
         // todo: handle initializer list

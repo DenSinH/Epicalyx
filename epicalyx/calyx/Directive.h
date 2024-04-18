@@ -8,11 +8,14 @@
 
 #include <bit>
 #include <vector>
+#include <span>
 
 
 namespace epi::calyx {
 
 struct Directive {
+  static constexpr std::nullptr_t operands = nullptr;
+  static constexpr std::nullptr_t vars = nullptr;
 
   Directive() = default;
 
@@ -260,9 +263,8 @@ struct LoadLocalAddr : Expr {
 template<typename T>
 requires (cotyl::pack_contains_v<T, calyx_memory_types>)
 struct StoreLocal : public Store<T> {
-  using src_t = Store<T>::src_t;
 
-  StoreLocal(var_index_t loc_idx, Operand<src_t> src, i32 offset = 0) :
+  StoreLocal(var_index_t loc_idx, Operand<typename StoreLocal::src_t> src, i32 offset = 0) :
       Store<T>{src}, 
       loc_idx{loc_idx}, 
       offset{offset} {
@@ -305,9 +307,8 @@ struct LoadGlobalAddr : Expr {
 template<typename T>
 requires (cotyl::pack_contains_v<T, calyx_memory_types>)
 struct StoreGlobal : public Store<T> {
-  using src_t = Store<T>::src_t;
 
-  StoreGlobal(cotyl::CString&& symbol, Operand<src_t> src, i32 offset = 0) :
+  StoreGlobal(cotyl::CString&& symbol, Operand<typename StoreGlobal::src_t> src, i32 offset = 0) :
       Store<T>{src},
       symbol{std::move(symbol)},
       offset{offset} {
@@ -340,9 +341,8 @@ struct LoadFromPointer : Expr {
 template<typename T>
 requires (cotyl::pack_contains_v<T, calyx_memory_types>)
 struct StoreToPointer : public Store<T> {
-  using src_t = Store<T>::src_t;
 
-  StoreToPointer(var_index_t ptr_idx, Operand<src_t> src, i32 offset = 0) :
+  StoreToPointer(var_index_t ptr_idx, Operand<typename StoreToPointer::src_t> src, i32 offset = 0) :
       Store<T>{src}, 
       ptr_idx{ptr_idx}, 
       offset{offset} {
@@ -465,15 +465,19 @@ using expr_pack = cotyl::flatten_pack<
   cotyl::map_types_t<detail::cast_to<Pointer>::type, calyx_arithmetic_ptr_types>
 >;
 
+using store_pack = cotyl::flatten_pack<
+  cotyl::map_types_t<StoreLocal, calyx_memory_types>,
+  cotyl::map_types_t<StoreGlobal, calyx_memory_types>,
+  cotyl::map_types_t<StoreToPointer, calyx_memory_types>
+>;
+
 using directive_pack = cotyl::flatten_pack<
   NoOp,
   expr_pack,
   UnconditionalBranch,
   cotyl::map_types_t<BranchCompare, calyx_arithmetic_ptr_types>,
   Select,
-  cotyl::map_types_t<StoreLocal, calyx_memory_types>,
-  cotyl::map_types_t<StoreGlobal, calyx_memory_types>,
-  cotyl::map_types_t<StoreToPointer, calyx_memory_types>,
+  store_pack,
   cotyl::map_types_t<Call, calyx_return_types>,
   cotyl::map_types_t<CallLabel, calyx_return_types>,
   cotyl::map_types_t<Return, calyx_return_types>
@@ -502,6 +506,16 @@ struct AnyDirective : detail::any_directive_t {
 };
 
 STRINGIFY_METHOD(AnyDirective);
+
+template<typename T>
+static constexpr bool is_directive_v = std::is_base_of_v<Directive, T>;
+template<typename T>
+requires (std::is_base_of_v<Directive, T>)
+static constexpr bool is_expr_v = std::is_base_of_v<Expr, T>;
+template<typename T>
+requires (std::is_base_of_v<Directive, T>)
+static constexpr bool is_store_v = cotyl::pack_contains_v<T, detail::store_pack>;
+
 
 bool IsBlockEnd(const AnyDirective& dir);
 

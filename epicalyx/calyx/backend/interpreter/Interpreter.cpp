@@ -23,41 +23,33 @@ void Interpreter::InterpretGlobalInitializer(global_t& dest, Function&& func) {
     auto& directive = pos.func->blocks.at(pos.pos.first).at(pos.pos.second);
     pos.pos.second++;
     Emit(directive);
+    // calls CANNOT happen
+    cotyl::Assert(!called, "Call invalid in global ininitializer");
   }
 
   std::visit([&](auto& var) {
     using var_t = std::decay_t<decltype(var)>;
 
-    std::visit([&](auto& glob) {
-      using glob_t = std::decay_t<decltype(glob)>;
-
-      if constexpr(std::is_same_v<var_t, Pointer>) {
-        auto pval = ReadPointer(var.value);
-        if (std::holds_alternative<label_offset_t>(pval)) {
-          dest = std::get<label_offset_t>(pval);
-        }
-        else {
-          dest = Pointer{std::get<i64>(pval)};
-        }
+    if constexpr(std::is_same_v<var_t, Pointer>) {
+      auto pval = ReadPointer(var.value);
+      if (std::holds_alternative<label_offset_t>(pval)) {
+        dest = std::get<label_offset_t>(pval);
       }
       else {
-        if constexpr(std::is_same_v<calyx_upcast_t<glob_t>, var_t>) {
-          glob = var;
-        }
-        else cotyl::Assert(false);
+        dest = Pointer{std::get<i64>(pval)};
       }
-    }, dest);
+    }
+    else {
+      dest = var;
+    }
   }, vars.Get(-1));
-
-  vars.Reset();
-  locals.Reset();
 }
 
 void Interpreter::Emit(const AnyDirective& dir) {
   dir.visit<void>([&](const auto& d) { Emit(d); });
 }
 
-void Interpreter::EmitProgram(const Program& program) {
+void Interpreter::Interpret(const Program& program) {
   for (const auto& [symbol, global] : program.globals) {
     auto index = global_data.size();
     globals.emplace(symbol, index);
@@ -82,6 +74,10 @@ void Interpreter::EmitProgram(const Program& program) {
     const auto& directive = pos.func->blocks.at(pos.pos.first).at(pos.pos.second);
     pos.pos.second++;
     Emit(directive);
+    if (called.has_value()) {  
+      EnterFunction(&program.functions.at(std::move(called.value())));
+      called.reset();
+    } 
   }
 
   std::visit([&](auto& var) {
@@ -374,7 +370,7 @@ void Interpreter::Emit(const Call<T>& op) {
   }
   else {
     auto pval = std::get<label_offset_t>(pointer);
-    func = &program.functions.at(pval.label);
+    called = cotyl::CString(pval.label);
     cotyl::Assert(pval.offset == 0, "Cannot jump to offset label in call");
   }
 
@@ -384,7 +380,7 @@ void Interpreter::Emit(const Call<T>& op) {
 template<typename T>
 void Interpreter::Emit(const CallLabel<T>& op) {
   call_stack.emplace(pos, op.idx, op.args.get());
-  EnterFunction(&program.functions.at(op.label));
+  called = cotyl::CString(op.label);
 }
 
 template<typename T>

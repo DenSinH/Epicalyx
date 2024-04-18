@@ -16,6 +16,8 @@ namespace epi::calyx {
 
 struct BasicBlock {
 
+  ~BasicBlock();
+
   std::size_t size() const { return directives.size(); }
   auto begin() { return directives.begin(); }
   auto end() { return directives.end(); }
@@ -26,7 +28,7 @@ struct BasicBlock {
   bool empty() const { return directives.empty(); }
   const AnyDirective& at(std::size_t index) const { return directives.at(index); }
   AnyDirective& at(std::size_t index) { return directives.at(index); }
-  void reserve(std::size_t size) { directives.reserve(size); }
+  void reserve(std::size_t size); 
   void push_back(AnyDirective&& value);
 
 private:
@@ -47,6 +49,7 @@ struct Function {
   cotyl::unordered_map<var_index_t, Local> locals{};  
   
   size_t Hash() const;
+  std::pair<block_label_t, BasicBlock&> AddBlock(block_label_t block_idx = 0);
 };
 
 struct Program {

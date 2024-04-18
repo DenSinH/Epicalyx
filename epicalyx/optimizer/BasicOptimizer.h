@@ -35,52 +35,34 @@ private:
   bool reachable;
 
   template<typename T> 
-  T CopyDirective(const T& directive) {
-    return directive;
-  }
+  requires (calyx::is_directive_v<T>)
+  T CopyDirective(const T& directive);
+
+  func_pos_t OutputAnyUnsafe(calyx::AnyDirective&& dir);
 
   template<typename T>
-  func_pos_t Output(T&& directive) {
-    cotyl::Assert(reachable);
-    const u64 in_block = current_block->size();
-    current_block->push_back(T{std::move(directive)});
-    return std::make_pair(current_new_block_idx, in_block);
-  }
+  requires (calyx::is_directive_v<T>)
+  func_pos_t Output(T&& directive);
 
   template<typename T, typename... Args>
-  func_pos_t OutputNew(Args&&... args) {
-    return Output(T{std::forward<Args>(args)...});
-  }
+  requires (calyx::is_directive_v<T>)
+  func_pos_t OutputNew(Args&&... args);
 
   template<typename T>
-  func_pos_t OutputCopy(const T& op) {
-    return OutputNew<T>(op);
-  }
+  requires (calyx::is_directive_v<T>)
+  func_pos_t OutputCopy(const T& op);
 
   template<typename T, typename... Args>
-  void OutputExprNew(var_index_t idx, const Args&... args) {
-    vars_found.emplace(idx, OutputNew<T>(idx, args...));
-  }
+  requires (calyx::is_expr_v<T>)
+  void OutputExprNew(var_index_t idx, const Args&... args);
 
   template<typename T>
-  requires (std::is_base_of_v<calyx::Expr, T>)
-  void OutputExpr(T&& expr) {
-    // expr will be moved before reading the idx on the return
-    const auto idx = expr.idx;
-    vars_found.emplace(idx, Output(std::move(expr)));
-  }
-
-  template<typename T>
-  requires (std::is_base_of_v<calyx::Expr, T>)
-  void OutputExprCopy(const T& expr) {
-    vars_found.emplace(expr.idx, OutputCopy(expr));
-  }
+  requires (calyx::is_expr_v<T>)
+  void OutputExpr(T&& expr);
 
   template<typename T, typename... Args>
-  void EmitRepl(Args&&... args) {
-    auto repl = T(std::forward<Args>(args)...);
-    Emit(repl);
-  }
+  requires (calyx::is_directive_v<T>)
+  void EmitRepl(Args&&... args);
 
   cotyl::unordered_map<block_label_t, func_pos_t> block_links{};
   Graph<block_label_t, const calyx::BasicBlock*, true> new_block_graph{};
@@ -95,9 +77,6 @@ private:
   // based on a predicate
   template<typename T, class F>
   bool FindExprResultReplacement(T& op, F predicate);
-
-  // resolve branch indirections to single-branch blocks
-  void ResolveBranchIndirection(block_label_t& dest) const;
 
   // resolve block links from old block labels to new block labels
   void ResolveBlockLinks(block_label_t& dest) const;
@@ -132,7 +111,9 @@ private:
   requires (std::is_base_of_v<calyx::Branch, T>)
   void DoBranch(T&& branch);
 
-  void RegisterBranchDestination(block_label_t dest);
+  // resolve branch indirections to single-branch blocks
+  void ResolveBranchIndirection(block_label_t& dest) const;
+  void RegisterBranchDestination(block_label_t& dest);
 
   // Flush current aliased locals
   // to be executed on instructions that may invalidate
@@ -180,49 +161,52 @@ private:
   // find common ancestor for 2 nodes such that all paths to these nodes go through that ancestor
   block_label_t CommonBlockAncestor(block_label_t first, block_label_t second) const;
   
-  void Emit(const calyx::AnyDirective& dir);
-  void Emit(const calyx::AnyExpr& expr);
+  void EmitDirective(const calyx::AnyDirective& dir);
+  void EmitExpr(const calyx::AnyExpr& expr);
 
 private:
-  void Emit(const calyx::NoOp& op) { }
+  template<typename T>
+  requires (calyx::is_directive_v<T>)
+  void EmitGeneric(T&& op);
+  void Emit(calyx::NoOp&& op) { }
   template<typename To, typename From>
-  void Emit(const calyx::Cast<To, From>& op);
+  void Emit(calyx::Cast<To, From>&& op);
   template<typename T>
-  void Emit(const calyx::LoadLocal<T>& op);
-  void Emit(const calyx::LoadLocalAddr& op);
+  void Emit(calyx::LoadLocal<T>&& op);
+  void Emit(calyx::LoadLocalAddr&& op);
   template<typename T>
-  void Emit(const calyx::StoreLocal<T>& op);
+  void Emit(calyx::StoreLocal<T>&& op);
   template<typename T>
-  void Emit(const calyx::LoadGlobal<T>& op);
-  void Emit(const calyx::LoadGlobalAddr& op);
+  void Emit(calyx::LoadGlobal<T>&& op);
+  void Emit(calyx::LoadGlobalAddr&& op);
   template<typename T>
-  void Emit(const calyx::StoreGlobal<T>& op);
+  void Emit(calyx::StoreGlobal<T>&& op);
   template<typename T>
-  void Emit(const calyx::LoadFromPointer<T>& op);
+  void Emit(calyx::LoadFromPointer<T>&& op);
   template<typename T>
-  void Emit(const calyx::StoreToPointer<T>& op);
+  void Emit(calyx::StoreToPointer<T>&& op);
   template<typename T>
-  void Emit(const calyx::AddToPointer<T>& op);
+  void Emit(calyx::AddToPointer<T>&& op);
   template<typename T>
-  void Emit(const calyx::Call<T>& op);
+  void Emit(calyx::Call<T>&& op);
   template<typename T>
-  void Emit(const calyx::CallLabel<T>& op);
+  void Emit(calyx::CallLabel<T>&& op);
   template<typename T>
-  void Emit(const calyx::Return<T>& op);
+  void Emit(calyx::Return<T>&& op);
   template<typename T>
-  void Emit(const calyx::Imm<T>& op);
+  void Emit(calyx::Imm<T>&& op);
   template<typename T>
-  void Emit(const calyx::Unop<T>& op);
+  void Emit(calyx::Unop<T>&& op);
   template<typename T>
-  void Emit(const calyx::Binop<T>& op);
+  void Emit(calyx::Binop<T>&& op);
   template<typename T>
-  void Emit(const calyx::Shift<T>& op);
+  void Emit(calyx::Shift<T>&& op);
   template<typename T>
-  void Emit(const calyx::Compare<T>& op);
+  void Emit(calyx::Compare<T>&& op);
   template<typename T>
-  void Emit(const calyx::BranchCompare<T>& op);
-  void Emit(const calyx::UnconditionalBranch& op);
-  void Emit(const calyx::Select& op);
+  void Emit(calyx::BranchCompare<T>&& op);
+  void Emit(calyx::UnconditionalBranch&& op);
+  void Emit(calyx::Select&& op);
 };
 
 }

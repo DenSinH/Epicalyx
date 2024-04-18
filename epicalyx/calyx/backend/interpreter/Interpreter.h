@@ -15,16 +15,16 @@ namespace epi::calyx {
 struct Interpreter {
   using program_counter_t = program_pos_t;
 
-  Interpreter(const Program& program) : program(program) {
+  void InterpretGlobalInitializer(global_t& dest, Function&& func);
+  void Interpret(const calyx::Program& program);
 
-  }
+  // globals as raw data
+  cotyl::unordered_map<cotyl::CString, i64> globals{};
+  std::vector<std::vector<u8>> global_data{{}};
 
-  const Program& program;
-
+private:
   std::vector<u8> stack{};
   std::vector<std::variant<i64, label_offset_t>> pointer_values{};
-
-  void InterpretGlobalInitializer(global_t& dest, Function&& func);
 
   calyx::Pointer MakePointer(std::variant<i64, label_offset_t> value) {
     const auto idx = pointer_values.size();
@@ -36,10 +36,6 @@ struct Interpreter {
     return pointer_values.at(idx);
   }
 
-  // globals as raw data
-  cotyl::unordered_map<cotyl::CString, i64> globals{};
-  std::vector<std::vector<u8>> global_data{{}};
-
   // points to stack location of locals
   cotyl::MapScope<var_index_t, std::pair<i64, u64>> locals{};
 
@@ -47,16 +43,15 @@ struct Interpreter {
   cotyl::MapScope<var_index_t, std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>, true> vars{};
 
   program_counter_t pos{nullptr, {0, 0}};
+  std::optional<cotyl::CString> called{};
   // link, return_to, args, var_args
   std::stack<std::tuple<program_counter_t, var_index_t, const calyx::ArgData*>> call_stack{};
   std::optional<std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> returned = {};
 
   void EnterFunction(const calyx::Function* function);
   void LoadArg(const calyx::Local& loc);
-  void EmitProgram(const calyx::Program& program);
   void Emit(const calyx::AnyDirective& dir);
 
-private:
   void Emit(const calyx::NoOp& op) { }
   template<typename To, typename From>
   void Emit(const calyx::Cast<To, From>& op);

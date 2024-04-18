@@ -131,10 +131,10 @@ int main() {
   epi::calyx::VisualizeProgram(program, "output/program.pdf");
 
   try {
-    auto interpreter = epi::calyx::Interpreter(program);
+    epi::calyx::Interpreter interpreter{};
     std::cout << std::endl << std::endl;
     std::cout << "-- interpreted" << std::endl;
-    interpreter.EmitProgram(program);
+    interpreter.Interpret(program);
 
     // extract globals from interpreter
     std::cout << "  -- globals" << std::endl;

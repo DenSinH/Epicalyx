@@ -5,4 +5,4 @@ add_library(IREmitter STATIC
         ASTWalker.h
 )
 
-target_precompile_headers(IREmitter REUSE_FROM Calyx)
+target_precompile_headers(IREmitter REUSE_FROM CalyxHeaders)

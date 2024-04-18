@@ -2,6 +2,13 @@
 #include "Format.h"
 
 
+namespace epi::cotyl {
+
+template<> calyx::detail::any_expr_t::~Variant() = default;
+template<> calyx::detail::any_directive_t::~Variant() = default;
+
+}
+
 namespace epi::calyx {
 
 

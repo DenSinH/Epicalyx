@@ -41,10 +41,7 @@ struct FunctionDependencies {
   cotyl::unordered_map<var_index_t, LocalData> local_graph{};
 
   explicit FunctionDependencies() { }
-
-  FunctionDependencies(cotyl::CString&& symbol) : symbol{std::move(symbol)} { 
-
-  }
+  FunctionDependencies(cotyl::CString&& symbol) : symbol{std::move(symbol)} { }
   
   static FunctionDependencies GetDependencies(const calyx::Function& function) {
     auto deps = FunctionDependencies();

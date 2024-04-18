@@ -14,8 +14,24 @@
 
 namespace epi::calyx {
 
+BasicBlock::~BasicBlock() = default;
+
 void BasicBlock::push_back(AnyDirective&& value) {
   directives.push_back(std::move(value));
+}
+
+void BasicBlock::reserve(std::size_t size) { 
+  directives.reserve(size); 
+}
+
+std::pair<block_label_t, BasicBlock&> Function::AddBlock(block_label_t block_idx) {
+  if (!block_idx) {
+    // block 0 is special
+    block_idx = blocks.size() + 1;
+  }
+  auto inserted = blocks.insert({block_idx, {}});
+  cotyl::Assert(inserted.second, "Block already exists!");
+  return {block_idx, inserted.first->second};
 }
 
 namespace detail {

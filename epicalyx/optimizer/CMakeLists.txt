@@ -6,4 +6,4 @@ add_library(Optimizer STATIC
         RemoveUnused.cpp
         RemoveUnused.h)
 
-target_precompile_headers(Optimizer REUSE_FROM Calyx)
+target_precompile_headers(Optimizer REUSE_FROM CalyxHeaders)
