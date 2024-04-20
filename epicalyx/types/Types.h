@@ -1,452 +1,227 @@
 #pragma once
 
-#include "EpiCType.h"
+#include "BaseType.h"
+#include "Variant.h"
+#include "Packs.h"
 
 #include <type_traits>
 #include <optional>
 
-#include "TypeUtils.h"
+namespace epi::type {
 
-namespace epi {
-
-#define OVERRIDE_BINOP_HANDLER(handler, type) BINOP_HANDLER(handler, type) final
-#define OVERRIDE_BINOP_HANDLER_NOIMPL(handler, type) OVERRIDE_BINOP_HANDLER(handler, type);
-#define OVERRIDE_BINOP(handler) BINOP_HANDLER(handler, CType) final { return other.R ## handler(*this); }
-#define OVERRIDE_UNOP(_operator) pType<> _operator() const final;
-#define OVERRIDE_BASE_CASTABLE pType<> DoCast(const CType& other) const final { return other.CastTo(*this); }
-#define OVERRIDE_BASE_EQ bool EqualType(const CType& other) const final { return other.EqualTypeImpl(*this); }
-#define OVERRIDE_BASE_CASTABLE_NOFINAL pType<> DoCast(const CType& other) const override { return other.CastTo(*this); }
-#define OVERRIDE_BASE_EQ_NOFINAL bool EqualType(const CType& other) const override { return other.EqualTypeImpl(*this); }
+using nested_type_t = std::shared_ptr<AnyType>;
 
 
-struct VoidType final : public CType {
-  VoidType(u32 flags = 0) :
-          CType(LValueNess::None, flags) {
+struct VoidType final : BaseType {
+  VoidType(u8 flags = 0) : BaseType{LValueNess::None, flags} { }
 
-  }
+  u64 Sizeof() const final;
 
-  OVERRIDE_BASE_EQ
-
-  bool IsVoid() const final { return true; }
-  bool IsComplete() const final { return false; }
-  pType<> DoCast(const CType& other) const final { return MakeType<VoidType>(); }
-  void Visit(TypeVisitor& v) const final { v.Visit(*this); }
-
-  std::string ToString() const final { return "void"; };
-
-protected:
-  bool EqualTypeImpl(const VoidType& other) const final { return true; }
-  pType<> Clone() const final { return MakeType<VoidType>(qualifiers); }
+  std::string ToString() const final;
+  AnyType CommonTypeImpl(const AnyType& other) const final;
 };
+
+
+struct AnyValueType : BaseType {
+  using BaseType::BaseType;
+};
+
+
+using value_type_pack = cotyl::pack<
+  i8, u8, 
+  i16, u16,
+  i32, u32, 
+  i64, u64,
+  float, double
+>;
 
 
 template<typename T>
-struct ValueType final : public CType {
-  explicit ValueType(LValueNess lvalue, u32 flags = 0) :
-          CType(lvalue, flags),
-          value() {
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+struct ValueType final : AnyValueType {
+  using type_t = T;
 
-  }
+  ValueType(LValueNess lvalue, u8 flags = 0) : 
+      AnyValueType{lvalue, flags}, value{} { }
 
-  explicit ValueType(T value, LValueNess lvalue, u32 flags = 0) :
-          CType(lvalue, flags),
-          value(value) {
+  ValueType(T value, LValueNess lvalue, u8 flags = 0) : 
+      AnyValueType{lvalue, flags}, value{value} { }
 
-  }
-
-  explicit ValueType(std::optional<T> value, LValueNess lvalue, u32 flags = 0) :
-          CType(lvalue, flags),
-          value(value) {
-
-  }
+  ValueType(std::optional<T> value, LValueNess lvalue, u8 flags = 0) :
+      AnyValueType{lvalue, flags}, value{value} { }
 
   std::optional<T> value;
 
-  OVERRIDE_BASE_CASTABLE
-  OVERRIDE_BASE_EQ
-
   constexpr T Get() const { return value.value(); }
   constexpr bool HasValue() const { return value.has_value(); }
-  bool IsConstexpr() const final { return HasValue(); }
-  bool HasTruthiness() const final { return true; }
-  bool IsIntegral() const final { return std::is_integral_v<T>; }
-  bool IsSigned() const final {
-    if constexpr(std::is_integral_v<T>) {
-      return std::is_signed_v<T>;
-    }
-    throw std::runtime_error("Type is not integral");
-  }
-  void Visit(TypeVisitor& v) const final { v.Visit(*this); }
+  // bool IsConstexpr() const final { return HasValue(); }
+  // bool HasTruthiness() const final { return true; }
+  // bool IsIntegral() const final { return std::is_integral_v<T>; }
+  // bool IsSigned() const final {
+  //   if constexpr(std::is_integral_v<T>) {
+  //     return std::is_signed_v<T>;
+  //   }
+  //   throw std::runtime_error("Type is not integral");
+  // }
 
-  bool GetBoolValue() const final {
-    if (HasValue()) {
-      return Get() != 0;
-    }
-    throw std::runtime_error("Bool value requested from non-constant Get");
-  }
-
-  std::string ToString() const final {
-    if (!HasValue()) {
-      return type_string_v<T>;
-    }
-    return cotyl::FormatStr("%s:%s", type_string_v<T>, Get());
-  }
-
-  pType<> Clone() const final {
-    if (HasValue()) {
-      return MakeType<ValueType<T>>(Get(), lvalue, qualifiers);
-    }
-    return MakeType<ValueType<T>>(lvalue, qualifiers);
-  }
-
-  OVERRIDE_BINOP(Add)
-  OVERRIDE_BINOP(Sub)
-  OVERRIDE_BINOP(Mul);
-  OVERRIDE_BINOP(Div);
-  OVERRIDE_BINOP(Mod);
-  OVERRIDE_BINOP(Xor);
-
-  OVERRIDE_BINOP(BinAnd);
-  OVERRIDE_BINOP(BinOr);
-  OVERRIDE_BINOP(LShift);
-  OVERRIDE_BINOP(RShift);
-
-  OVERRIDE_BINOP(Lt);
-  OVERRIDE_BINOP(Eq);
-
-  OVERRIDE_UNOP(Pos);
-  OVERRIDE_UNOP(Neg);
-  OVERRIDE_UNOP(BinNot);
-
-  OVERRIDE_BINOP(CommonType);
-  u64 Sizeof() const final { return sizeof(T); }
-
-  i64 ConstIntVal() const final {
-    if constexpr(!std::is_integral_v<T>) {
-      throw std::runtime_error("Floating point type is not an integral value");
-    }
-    else {
-      if constexpr (std::is_unsigned_v<T>) {
-        return (std::make_signed_t<T>)Get();
-      }
-      return Get();
-    }
-  }
-
-  void ForgetConstInfo() final { value.reset(); }
-
-private:
-  // perform BinOp on other in reverse: so this.ValueTypeRBinOp<std::plus> <==> other + this
-  template<typename L, template<typename t> class _handler, typename common_t = std::common_type_t<L, T>>
-  pType<> ValueTypeRBinOp(const ValueType<L>& other) const;
-
-  template<typename L, template<typename t> class _handler, typename common_t = std::common_type_t<L, T>>
-  pType<> ValueTypeRBoolBinOp(const ValueType<L>& other) const;
-
-  NUMERIC_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RAdd)
-  OVERRIDE_BINOP_HANDLER(RAdd, PointerType);
-  NUMERIC_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RSub)
-  OVERRIDE_BINOP_HANDLER(RSub, PointerType);
-
-  NUMERIC_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RMul)
-  NUMERIC_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RDiv)
-  INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RMod)
-
-  INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RLShift)
-  INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RRShift)
-
-  INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RXor)
-  INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RBinAnd)
-  INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RBinOr)
-
-  NUMERIC_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RLt)
-  OVERRIDE_BINOP_HANDLER(RLt, PointerType);
-  NUMERIC_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, REq)
-  OVERRIDE_BINOP_HANDLER(REq, PointerType);
-
-  NUMERIC_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RCommonType)
-  OVERRIDE_BINOP_HANDLER(RCommonType, PointerType);
-
-private:
-  pType<> CastTo(const ValueType<u8>& other) const final  { return MakeType<ValueType<u8>>(value, LValueNess::None, other.qualifiers); }
-  pType<> CastTo(const ValueType<i8>& other) const final  { return MakeType<ValueType<i8>>(value, LValueNess::None, other.qualifiers); }
-  pType<> CastTo(const ValueType<u16>& other) const final { return MakeType<ValueType<u16>>(value, LValueNess::None, other.qualifiers); }
-  pType<> CastTo(const ValueType<i16>& other) const final { return MakeType<ValueType<i16>>(value, LValueNess::None, other.qualifiers); }
-  pType<> CastTo(const ValueType<u32>& other) const final { return MakeType<ValueType<u32>>(value, LValueNess::None, other.qualifiers); }
-  pType<> CastTo(const ValueType<i32>& other) const final { return MakeType<ValueType<i32>>(value, LValueNess::None, other.qualifiers); }
-  pType<> CastTo(const ValueType<u64>& other) const final { return MakeType<ValueType<u64>>(value, LValueNess::None, other.qualifiers); }
-  pType<> CastTo(const ValueType<i64>& other) const final { return MakeType<ValueType<i64>>(value, LValueNess::None, other.qualifiers); }
-  pType<> CastTo(const ValueType<float>& other) const final { return MakeType<ValueType<float>>(value, LValueNess::None, other.qualifiers); }
-  pType<> CastTo(const ValueType<double>& other) const final { return MakeType<ValueType<double>>(value, LValueNess::None, other.qualifiers); }
-  pType<> CastTo(const PointerType& other) const final;
-
-  bool EqualTypeImpl(const ValueType<T>& other) const final { return true; }
-};
-
-
-struct PointerType : public CType {
-  PointerType(const pType<>& contained, LValueNess lvalue, u32 flags = 0) :
-      CType(lvalue, flags),
-      contained(contained ? contained->Clone() : nullptr) {
-
-  }
-
-  pType<> contained;
-
-  OVERRIDE_BASE_CASTABLE_NOFINAL
-  OVERRIDE_BASE_EQ_NOFINAL
-
-  std::string ToString() const override { return cotyl::FormatStr("(%s)*", contained); }
-  bool HasTruthiness() const final { return true; }
-
-  OVERRIDE_BINOP(Add)
-  OVERRIDE_BINOP(Sub)
-  OVERRIDE_BINOP(Lt)
-  OVERRIDE_BINOP(Eq)
-  pType<> Deref() const override;
-
-  OVERRIDE_BINOP(CommonType)
-  u64 Sizeof() const override { return sizeof(u64); }
-  bool IsPointer() const final { return true; }
-
-  pType<> Clone() const override {
-    return MakeType<PointerType>(contained ? contained->Clone() : nullptr, lvalue, qualifiers);
-  }
-  void Visit(TypeVisitor& v) const override { v.Visit(*this); }
-
-private:
-  void ForgetConstInfo() override { if (contained) contained->ForgetConstInfo(); }
-
-  INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RAdd)
-  // we cannot do `int - ptr_type`, so we must not override this
-  OVERRIDE_BINOP_HANDLER(RSub, PointerType);
-  OVERRIDE_BINOP_HANDLER(RLt, PointerType);
-  INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RLt)
-  OVERRIDE_BINOP_HANDLER(REq, PointerType);
-  INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, REq)
-  INTEGRAL_TYPE_SIGNATURES(OVERRIDE_BINOP_HANDLER_NOIMPL, RCommonType)
-
-  pType<> CastTo(const PointerType& other) const override { return other.Clone(); }
-  pType<> CastTo(const ValueType<i8>& other) const override { return other.Clone(); }
-  pType<> CastTo(const ValueType<u8>& other) const override { return other.Clone(); }
-  pType<> CastTo(const ValueType<i16>& other) const override { return other.Clone(); }
-  pType<> CastTo(const ValueType<u16>& other) const override { return other.Clone(); }
-  pType<> CastTo(const ValueType<i32>& other) const override { return other.Clone(); }
-  pType<> CastTo(const ValueType<u32>& other) const override { return other.Clone(); }
-  pType<> CastTo(const ValueType<i64>& other) const override { return other.Clone(); }
-  pType<> CastTo(const ValueType<u64>& other) const override { return other.Clone(); }
-
-  bool EqualTypeImpl(const PointerType& other) const override {
-    return (*contained).EqualType(*other.contained);
-  }
-};
-
-
-struct ArrayType : public PointerType {
-  ArrayType(const pType<>& contained, size_t size, u32 flags = 0) :
-          PointerType(contained, LValueNess::LValue, flags),
-          size(size) {
-
-  }
-
-  size_t size;
-
-  bool IsArray() const final { return true; }
-  u64 Sizeof() const final { return size * contained->Sizeof(); }
-
-  std::string ToString() const override {
-    return cotyl::FormatStr("(%s)[%s]", contained, size);
-  }
-
-  pType<> Clone() const override {
-    return MakeType<ArrayType>(contained, size, qualifiers);
-  }
-  void Visit(TypeVisitor& v) const final { v.Visit(*this); }
-};
-
-struct FunctionType : public PointerType {
-  FunctionType(
-          const pType<>& return_type,
-          bool variadic,
-          LValueNess lvalue,
-          u32 flags = 0
-  ) :
-          PointerType(return_type, lvalue, flags),
-          variadic(variadic) {
-
-    if (contained) contained->ForgetConstInfo();
-    // functions are assignable if they are variables, but not if they are global symbols
-  }
-
-  struct Arg {
-    Arg(cotyl::CString&& name, pType<const CType> type) : name(std::move(name)), type(std::move(type)) { }
-    std::string ToString() const;
-    cotyl::CString name;
-    pType<const CType> type;
-  };
-
-  bool variadic;
-  std::vector<Arg> arg_types;
-
-  OVERRIDE_BASE_CASTABLE
-  OVERRIDE_BASE_EQ
-
-  void AddArg(cotyl::CString&& name, const pType<const CType>& arg) {
-    auto _arg = arg->Clone();
-    _arg->ForgetConstInfo();
-    arg_types.emplace_back(std::move(name), _arg);  // constant info is nonsense for arguments
-  }
+  // bool GetBoolValue() const final {
+  //   if (HasValue()) { return Get() != 0; }
+  //   throw std::runtime_error("Bool value requested from non-constant Get");
+  // }
 
   std::string ToString() const final;
-  bool IsFunction() const final { return true; }
-  pType<> Clone() const final;
-  void Visit(TypeVisitor& v) const final { v.Visit(*this); }
+  
+  AnyType Add(const AnyType& other) const final;
+  AnyType Sub(const AnyType& other) const final;
+  AnyType Mul(const AnyType& other) const final;
+  AnyType Div(const AnyType& other) const final;
+  AnyType Mod(const AnyType& other) const final;
+  AnyType Xor(const AnyType& other) const final;
+  AnyType BinAnd(const AnyType& other) const final;
+  AnyType BinOr(const AnyType& other) const final;
 
-  OVERRIDE_UNOP(Deref)
+  AnyType Lt(const AnyType& other) const final;
+  AnyType Eq(const AnyType& other) const final;
+  AnyType LShift(const AnyType& other) const final;
+  AnyType RShift(const AnyType& other) const final;
 
-  pType<> FunctionCall(const std::vector<pType<const CType>>& args) const final;
+  AnyType Pos() const;
+  AnyType Neg() const;
+  AnyType BinNot() const;
 
-private:
-  pType<> CastTo(const FunctionType& other) const final { return other.Clone(); }
-  pType<> CastTo(const PointerType& other) const final { return other.Clone(); }
-  pType<> CastTo(const ValueType<i8>& other) const final { return other.Clone(); }
-  pType<> CastTo(const ValueType<u8>& other) const final { return other.Clone(); }
-  pType<> CastTo(const ValueType<i16>& other) const final { return other.Clone(); }
-  pType<> CastTo(const ValueType<u16>& other) const final { return other.Clone(); }
-  pType<> CastTo(const ValueType<i32>& other) const final { return other.Clone(); }
-  pType<> CastTo(const ValueType<u32>& other) const final { return other.Clone(); }
-  pType<> CastTo(const ValueType<i64>& other) const final { return other.Clone(); }
-  pType<> CastTo(const ValueType<u64>& other) const final { return other.Clone(); }
+  u64 Sizeof() const final { return sizeof(T); }
 
-  bool EqualTypeImpl(const PointerType& other) const final { return false; }
-  bool EqualTypeImpl(const FunctionType& other) const final;
+  // i64 ConstIntVal() const final {
+  //   if constexpr(!std::is_integral_v<T>) {
+  //     throw std::runtime_error("Floating point type is not an integral value");
+  //   }
+  //   else {
+  //     if constexpr (std::is_unsigned_v<T>) {
+  //       return (std::make_signed_t<T>)Get();
+  //     }
+  //     return Get();
+  //   }
+  // }
+  AnyType CommonTypeImpl(const AnyType& other) const final;
+  void ForgetConstInfo() final { value.reset(); }
+};
+
+
+struct PointerType final : BaseType {
+  
+  PointerType(nested_type_t&& contained, LValueNess lvalue, std::size_t size = 0, u8 flags = 0) :
+      BaseType{lvalue, flags}, contained{std::move(contained)}, size{size} { }
+
+  nested_type_t contained;
+
+  // size == 0 ==> "normal" pointer
+  std::size_t size;
+
+  std::string ToString() const final;  //  { return cotyl::FormatStr("(%s)*", contained); }
+  // bool HasTruthiness() const final { return true; }
+
+  AnyType Add(const AnyType& other) const final;
+  AnyType Sub(const AnyType& other) const final;
+  AnyType Lt(const AnyType& other) const final;
+  AnyType Eq(const AnyType& other) const final;
+  AnyType Deref() const final;
+
+  u64 Sizeof() const final;
+
+  void ForgetConstInfo() final;
+  AnyType CommonTypeImpl(const AnyType& other) const final;
+};
+
+struct FunctionType final : BaseType {
+  FunctionType(
+    nested_type_t&& return_type, bool variadic, LValueNess lvalue, u8 flags = 0
+  ) : BaseType{lvalue, flags}, return_type{std::move(return_type)}, variadic{variadic} {}
+
+  struct Arg {
+    Arg(cotyl::CString&& name, nested_type_t&& type) : 
+        name{std::move(name)}, type{std::move(type)} { }
+
+    std::string ToString() const;
+    cotyl::CString name;
+    nested_type_t type;
+  };
+
+  nested_type_t return_type;
+  std::vector<Arg> arg_types;
+  bool variadic;
+
+  AnyType Deref() const final;
+
+  void AddArg(cotyl::CString&& name, nested_type_t&& arg);
+  u64 Sizeof() const final { return sizeof(u64); }
+
+  std::string ToString() const final;
+  AnyType FunctionCall(const std::vector<AnyType>& args) const final;
+  
+  bool TypeEqualImpl(const FunctionType& other) const;
+  AnyType CommonTypeImpl(const AnyType& other) const final;
 };
 
 
 struct StructField {
-  StructField(cotyl::CString&& name, size_t size, const pType<>& contained) :
-          name(std::move(name)),
-          size(size),
-          type(contained->Clone()) {
+  StructField(cotyl::CString&& name, size_t size, nested_type_t&& contained);
+      // name{std::move(name)}, size{size}, type{std::move(type)} { }
 
-  }
-
-  StructField(cotyl::CString&& name, const pType<>& contained) :
-          name(std::move(name)),
-          size(0),
-          type(contained->Clone()) {
-
-  }
+  StructField(cotyl::CString&& name, nested_type_t&& contained) :
+      StructField{std::move(name), 0, std::move(contained)} { }
 
   cotyl::CString name;
-  const size_t size = 0;  // 0 means default size
-  pType<> type;
+  std::size_t size = 0;  // 0 means default size
+  nested_type_t type;
 };
 
 
-struct StructUnionType : public CType {
-  StructUnionType(cotyl::CString&& name, LValueNess lvalue, u32 flags = 0) :
-          name(std::move(name)),
-          CType(lvalue, flags) {
-
-  }
+struct StructUnionType : BaseType {
+  StructUnionType(cotyl::CString&& name, LValueNess lvalue, u8 flags = 0) :
+      name{std::move(name)}, BaseType{lvalue, flags} { }
 
   cotyl::CString name;
   std::vector<StructField> fields;  // empty if struct was only declared but never defined
 
-  void AddField(cotyl::CString&& _name, size_t size, const pType<>& contained) {
-    fields.emplace_back(std::move(_name), size, contained);
+  template<typename... Args>
+  void AddField(Args&&... args) {
+    fields.emplace_back(std::move(args)...);
   }
 
-  void AddField(cotyl::CString&& _name, const pType<>& contained) {
-    fields.emplace_back(std::move(_name), contained);
-  }
+  AnyType MemberAccess(const cotyl::CString& member) const final;
 
-  std::string ToString() const final;
-  pType<> MemberAccess(const cotyl::CString& member) const final;
+  // pType<> CastToImpl(const StructUnionType& other) const {
+  //   if (_EqualTypeImpl(other)) {
+  //     return other.Clone();
+  //   }
+  //   throw std::runtime_error("Bad struct or union cast");
+  // }
+  // bool _EqualTypeImpl(const StructUnionType& other) const;
+
+  void ForgetConstInfo() final; 
+  AnyType CommonTypeImpl(const AnyType& other) const final;
+  bool TypeEqualImpl(const StructUnionType& other) const;
+
+protected:
+  std::string BodyString() const;
+};
+
+
+struct StructType final : StructUnionType {
+  StructType(cotyl::CString&& name, LValueNess lvalue, u8 flags = 0) :
+      StructUnionType{std::move(name), lvalue, flags} { }
 
   u64 Sizeof() const final;
-  bool IsStructlike() const final { return true; }
-
-protected:
-  virtual std::string BaseString() const = 0;
-  pType<> CastToImpl(const StructUnionType& other) const {
-    if (_EqualTypeImpl(other)) {
-      return other.Clone();
-    }
-    throw std::runtime_error("Bad struct or union cast");
-  }
-
-  bool _EqualTypeImpl(const StructUnionType& other) const;
-
-  bool IsComplete() const final {
-    return !fields.empty();
-  }
-
-  void ForgetConstInfo() final {
-    for (auto& field : fields) {
-      field.type->ForgetConstInfo();
-    }
-  }
+  std::string ToString() const final;
 };
 
 
-struct StructType : public StructUnionType {
-  StructType(cotyl::CString&& name, LValueNess lvalue, u32 flags = 0) :
-          StructUnionType(std::move(name), lvalue, flags) {
+struct UnionType final : StructUnionType {
+  UnionType(cotyl::CString&& name, LValueNess lvalue, u8 flags = 0) :
+      StructUnionType{std::move(name), lvalue, flags} { }
 
-  }
-
-  OVERRIDE_BASE_CASTABLE
-  OVERRIDE_BASE_EQ
-
-  pType<> Clone() const final {
-    auto clone = MakeType<StructType>(cotyl::CString(name), lvalue, qualifiers);
-    for (const auto& arg : fields) {
-      clone->AddField(cotyl::CString(arg.name), arg.size, arg.type->Clone());
-    }
-    return clone;
-  }
-  void Visit(TypeVisitor& v) const final { v.Visit(*this); }
-
-protected:
-  std::string BaseString() const final { return "struct"; }
-
-private:
-  pType<> CastTo(const StructType& other) const final { return CastToImpl(other); }
-  bool EqualTypeImpl(const StructType& other) const final { return _EqualTypeImpl(other); }
+  u64 Sizeof() const final;
+  std::string ToString() const final;
 };
-
-
-struct UnionType : public StructUnionType {
-  UnionType(cotyl::CString&& name, LValueNess lvalue, u32 flags = 0) :
-          StructUnionType(std::move(name), lvalue, flags) {
-
-  }
-
-  OVERRIDE_BASE_CASTABLE
-  OVERRIDE_BASE_EQ
-
-  pType<> Clone() const final {
-    auto clone = MakeType<UnionType>(cotyl::CString(name), lvalue, qualifiers);
-    for (const auto& arg : fields) {
-      clone->AddField(cotyl::CString(arg.name), arg.size, arg.type->Clone());
-    }
-    return clone;
-  }
-  void Visit(TypeVisitor& v) const final { v.Visit(*this); }
-
-protected:
-  std::string BaseString() const final { return "struct"; }
-
-private:
-  pType<> CastTo(const UnionType& other) const final { return CastToImpl(other); }
-  bool EqualTypeImpl(const UnionType& other) const final { return _EqualTypeImpl(other); }
-};
-
-template<typename T>
-pType<> ValueType<T>::CastTo(const PointerType& other) const { 
-  return other.Clone();
-}
 
 }

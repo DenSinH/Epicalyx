@@ -1,19 +1,444 @@
 #include "Types.h"
+#include "AnyType.h"
+#include "TypeTraits.h"
+#include "TypeUtils.h"
+#include "Stringify.h"
 #include "Log.h"
 #include "SStream.h"
 
 #include <functional>
 #include <utility>
+#include <tuple>
 
-namespace epi {
 
-std::string StructUnionType::ToString() const {
-  cotyl::StringStream repr{};
-  repr << BaseString();
-  if (!name.empty()) {
-    repr << ' ' << name;
+namespace epi::type {
+  
+template<typename T1, typename T2>
+using common_type_t = std::common_type_t<T1, T2>;
+
+using ::epi::stringify;
+
+[[noreturn]] static void InvalidOperands(const BaseType* ths, const std::string& op, const AnyType& other) {
+  throw cotyl::FormatExceptStr(
+    "Invalid operands for %s: %s and %s",
+    op, *ths, other
+  );
+}
+
+static AnyType MakeBool(BaseType::LValueNess lvalue, u8 flags = 0) {
+  return ValueType<i32>(lvalue, flags);
+}
+
+static AnyType MakeBool(bool value, BaseType::LValueNess lvalue, u8 flags = 0) {
+  return ValueType<i32>(value ? 1 : 0, lvalue, flags);
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+ * VOID TYPES
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+AnyType VoidType::CommonTypeImpl(const AnyType& other) const {
+  throw std::runtime_error("Cannot determine common type of incomplete type");
+}
+
+u64 VoidType::Sizeof() const { 
+  throw std::runtime_error("Cannot determine size of incomplete type");
+}
+
+std::string VoidType::ToString() const { 
+  return "void"; 
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+ * VALUE TYPES
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+template<template<typename S> class handler, typename T, typename R>
+AnyType BinopHelper(const ValueType<T>& one,  const ValueType<R>& other) {
+  using common_t = common_type_t<T, R>;
+  if (one.value.has_value() && other.value.has_value()) {
+    handler<common_t> h;
+    auto return_val = h(one.value.value(), other.value.value());
+    using return_t = std::conditional_t<std::is_same_v<decltype(return_val), bool>, i32, decltype(return_val)>;
+    return ValueType<return_t>(return_val, BaseType::LValueNess::None);
   }
-  repr << " {";
+  return ValueType<common_t>(BaseType::LValueNess::None);
+}
+
+template<template<typename S> class handler, typename T>
+AnyType NonAdditiveBinopHelper(const ValueType<T>& one, const char* op_str, const AnyType& other) {
+  auto result = other.visit<AnyType>(
+    [&](const auto& other) -> AnyType {
+      using other_t = std::decay_t<decltype(other)>;
+      if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>)
+        return BinopHelper<handler>(one, other);
+      else
+        InvalidOperands(&one, op_str, other);
+    }
+  );
+  result->lvalue = BaseType::LValueNess::None;
+  return std::move(result);
+}
+
+template<template<typename S> class handler, typename T>
+AnyType IntegralBinopHelper(const ValueType<T>& one, const char* op_str, const AnyType& other) {
+  if constexpr(!std::is_integral_v<T>) {
+    InvalidOperands(&one, op_str, other);
+  }
+  else {
+    auto result = other.visit<AnyType>(
+      [&](const auto& other) -> AnyType {
+        using other_t = std::decay_t<decltype(other)>;
+        if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>)
+          if constexpr(std::is_integral_v<typename other_t::type_t>)
+            return BinopHelper<handler>(one, other);
+          else 
+            InvalidOperands(&one, op_str, other);
+        else
+          InvalidOperands(&one, op_str, other);
+      }
+    );
+    result->lvalue = BaseType::LValueNess::None;
+    return std::move(result);
+  }
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::Add(const AnyType& other) const {
+  auto result = other.visit<AnyType>(
+    [](const PointerType& pointer) -> AnyType { 
+      PointerType result = pointer;
+      result.size = 0;           // lose array status
+      result.ForgetConstInfo();  // forget constant info
+      return result;
+    },
+    [&](const auto& other) -> AnyType {
+      using other_t = std::decay_t<decltype(other)>;
+      if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>)
+        return BinopHelper<std::plus>(*this, other);
+      else
+        InvalidOperands(this, "+", other);
+    }
+  );
+  result->lvalue = BaseType::LValueNess::None;
+  return std::move(result);
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::Sub(const AnyType& other) const {
+  return NonAdditiveBinopHelper<std::minus>(*this, "-", other);
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::Mul(const AnyType& other) const {
+  return NonAdditiveBinopHelper<std::multiplies>(*this, "*", other);
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::Div(const AnyType& other) const {
+  return NonAdditiveBinopHelper<std::divides>(*this, "/", other);
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::Mod(const AnyType& other) const {
+  return IntegralBinopHelper<std::modulus>(*this, "%", other);
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::Xor(const AnyType& other) const {
+  return IntegralBinopHelper<std::bit_xor>(*this, "%", other);
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::BinAnd(const AnyType& other) const {
+  return IntegralBinopHelper<std::bit_and>(*this, "&", other);
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::BinOr(const AnyType& other) const {
+  return IntegralBinopHelper<std::bit_or>(*this, "|", other);
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::Lt(const AnyType& other) const {
+  return NonAdditiveBinopHelper<std::less>(*this, "<", other);
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::Eq(const AnyType& other) const {
+  return NonAdditiveBinopHelper<std::equal_to>(*this, "==", other);
+}
+
+template<typename T> struct lshift { T operator()(const T& l, const T& r) const { return l < r; }};
+template<typename T> struct rshift { T operator()(const T& l, const T& r) const { return l == r; }};
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::LShift(const AnyType& other) const {
+  return IntegralBinopHelper<lshift>(*this, "<<", other);
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::RShift(const AnyType& other) const {
+  return IntegralBinopHelper<rshift>(*this, ">>", other);
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::Pos() const {
+  auto result = *this;
+  result.lvalue = LValueNess::None;
+  return result;
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::Neg() const {
+  if (value.has_value()) {
+    return ValueType<T>{(T)-value.value(), LValueNess::None, 0};
+  }
+  return ValueType<T>{LValueNess::None, 0};
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::BinNot() const {
+  if constexpr(!std::is_integral_v<T>) {
+    throw std::runtime_error("Binary operation on non-integral type");
+  }
+  else {
+    if (value.has_value()) {
+      return ValueType<T>{(T)~value.value(), LValueNess::None, 0};
+    }
+    return ValueType<T>{LValueNess::None, 0};
+  }
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+AnyType ValueType<T>::CommonTypeImpl(const AnyType& other) const {
+    auto result = other.visit<AnyType>(
+    [](const PointerType& pointer) -> AnyType { return pointer; },
+    [&](const auto& other) -> AnyType {
+      using other_t = std::decay_t<decltype(other)>;
+      if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>)
+        return ValueType<common_type_t<T, typename other_t::type_t>>{LValueNess::None};
+      else
+        InvalidOperands(this, "operation", other);
+    }
+  );
+  result->lvalue = BaseType::LValueNess::None;
+  return std::move(result);
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+std::string ValueType<T>::ToString() const {
+  if (!HasValue()) { return type_string_v<T>; }
+  return cotyl::FormatStr("%s:%s", type_string_v<T>, Get());
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+ * POINTER TYPES
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+AnyType PointerType::Add(const AnyType& other) const {
+  return other.visit<AnyType>(
+    [&](const PointerType& other) -> AnyType { 
+      InvalidOperands(this, "+", other);
+    },
+    [&](const auto& other) {
+      return other.Add(*this);
+    }
+  );
+}
+
+AnyType PointerType::Sub(const AnyType& other) const {
+  return other.visit<AnyType>(
+    [&](const PointerType& other) -> AnyType {
+      if (contained->TypeEquals(*other.contained)) {
+        return ValueType<u64>{LValueNess::None, 0};
+      }
+      InvalidOperands(this, "-", other);
+    },
+    [&](const auto& other) -> AnyType {
+      InvalidOperands(this, "-", other);
+    }
+  );
+}
+
+AnyType PointerType::Lt(const AnyType& other) const {
+  return other.visit<AnyType>(
+    [&](const PointerType& other) {
+      if (!contained->TypeEquals(*other.contained)) {
+        InvalidOperands(this, "<", other); 
+      }
+      return MakeBool(LValueNess::None);
+    },
+    [&](const AnyValueType& other) {
+      return MakeBool(LValueNess::None);
+    },
+    [&](const auto&) -> AnyType { InvalidOperands(this, "<", other); }
+  );
+}
+
+AnyType PointerType::Eq(const AnyType& other) const {
+  return other.visit<AnyType>(
+    [&](const PointerType& other) {
+      if (contained->holds_alternative<VoidType>()) {
+        // allowed
+        return MakeBool(LValueNess::None);
+      }
+      if (!contained->TypeEquals(*other.contained)) {
+        InvalidOperands(this, "<", other); 
+      }
+      return MakeBool(LValueNess::None);
+    },
+    [&](const AnyValueType& other) {
+      return MakeBool(LValueNess::None);
+    },
+    [&](const auto&) -> AnyType { InvalidOperands(this, "<", other); }
+  );
+}
+
+AnyType PointerType::Deref() const {
+  return *contained;
+}
+
+AnyType PointerType::CommonTypeImpl(const AnyType& other) const {
+  return other.visit<AnyType>(
+    [&](const auto& other) -> AnyType {
+      using other_t = std::decay_t<decltype(other)>;
+      if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>) {
+        if constexpr(std::is_integral_v<typename other_t::type_t>) {
+          return *this;
+        }
+      }
+      InvalidOperands(this, "operation", other);
+    }
+  );
+}
+
+u64 PointerType::Sizeof() const {
+  if (size == 0) return sizeof(u64);
+  return size * sizeof(u64);
+}
+
+std::string PointerType::ToString() const {
+  if (size == 0) {
+    return cotyl::FormatStr("(%s)*", contained);
+  }
+  else {
+    return cotyl::FormatStr("(%s)[%s]", contained, size);
+  }
+}
+
+void PointerType::ForgetConstInfo() {
+  if (contained) (*contained)->ForgetConstInfo();
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+ * FUNCTION TYPES
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+void FunctionType::AddArg(cotyl::CString&& name, nested_type_t&& arg) {
+  // constant info is nonsense for arguments
+  (*arg)->ForgetConstInfo();
+  arg_types.emplace_back(std::move(name), std::move(arg));
+}
+
+AnyType FunctionType::Deref() const { 
+  // dereferencing a function pointer returns the function pointer itself
+  return *this; 
+}
+
+bool FunctionType::TypeEqualImpl(const FunctionType& other) const {
+  if (!return_type->TypeEquals(*other.return_type)) {
+    return false;
+  }
+  if (arg_types.size() != other.arg_types.size()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < arg_types.size(); i++) {
+    if (!arg_types[i].type->TypeEquals(*other.arg_types[i].type)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+AnyType FunctionType::FunctionCall(const std::vector<AnyType>& args) const {
+  if (args.size() != arg_types.size()) {
+    if (!variadic || args.size() < arg_types.size()) {
+      throw std::runtime_error("Not enough arguments for function call");
+    }
+  }
+
+  for (int i = 0; i < arg_types.size(); i++) {
+    // try to cast
+    (*arg_types[i].type).Cast(args[i]);
+  }
+  return *return_type;
+}
+
+std::string FunctionType::Arg::ToString() const {
+  if (name.empty()) {
+    return stringify(type);
+  }
+  return cotyl::FormatStr("%s %s", type, name);
+}
+
+std::string FunctionType::ToString() const {
+  cotyl::StringStream repr{};
+  std::string formatted = cotyl::FormatStr("(%s)(", return_type ? stringify(return_type) : "%%");
+  repr << formatted;
+  repr << cotyl::Join(", ", arg_types);
+  if (variadic) {
+    repr << ", ...";
+  }
+  repr << ')';
+  return repr.finalize();
+}
+
+AnyType FunctionType::CommonTypeImpl(const AnyType& other) const {
+  return other.visit<AnyType>(
+    [&](const auto& other) -> AnyType {
+      using other_t = std::decay_t<decltype(other)>;
+      if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>) {
+        if constexpr(std::is_integral_v<typename other_t::type_t>) {
+          return *this;
+        }
+      }
+      InvalidOperands(this, "operation", other);
+    }
+  );
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+ * STRUCT TYPES
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+void StructUnionType::ForgetConstInfo() {
+  for (auto& field : fields) {
+    (*field.type)->ForgetConstInfo();
+  }
+}
+
+std::string StructUnionType::BodyString() const {
+  cotyl::StringStream repr{};
+  if (!name.empty()) {
+    repr << name;
+  }
+  repr << "{";
 
   for (const auto& field : fields) {
     repr << "\n  " << stringify(field.type) << ' ' << field.name;
@@ -26,32 +451,41 @@ std::string StructUnionType::ToString() const {
   return repr.finalize();
 }
 
-u64 StructUnionType::Sizeof() const {
+std::string StructType::ToString() const {
+  return "struct " + BodyString();
+}
+
+std::string UnionType::ToString() const {
+  return "union " + BodyString();
+}
+
+u64 StructType::Sizeof() const {
   // todo: different for union
-  if (!IsComplete()) {
-    CType::Sizeof();
-    return 0;
+  if (fields.empty()) {
+    throw std::runtime_error("Cannot get size of incomplete struct definition");
   }
+
   u64 value = 0;
   for (const auto& field : fields) {
-    u64 align = field.type->Alignof();
+    u64 align = (*field.type)->Alignof();
 
     // padding
     if (value & (align - 1)) {
       value += align - (value & (align - 1));
     }
-    value += field.type->Sizeof();
+    value += (*field.type)->Sizeof();
   }
   return value;
 }
 
 
-bool StructUnionType::_EqualTypeImpl(const StructUnionType& other) const {
+bool StructUnionType::TypeEqualImpl(const StructUnionType& other) const {
   if (fields.size() != other.fields.size()) {
     return false;
   }
 
-  if (!IsComplete()) {
+  // incomplete type
+  if (fields.empty()) {
     return false;
   }
 
@@ -64,7 +498,10 @@ bool StructUnionType::_EqualTypeImpl(const StructUnionType& other) const {
     if (this_field.size != other_field.size) {
       return false;
     }
-    if (!(*this_field.type).EqualType(*other_field.type)) {
+    if (!(*this_field.type).TypeEquals(*other_field.type)) {
+      return false;
+    }
+    if ((*this_field.type)->qualifiers != (*other_field.type)->qualifiers) {
       return false;
     }
   }
@@ -72,337 +509,15 @@ bool StructUnionType::_EqualTypeImpl(const StructUnionType& other) const {
   return true;
 }
 
-std::string FunctionType::Arg::ToString() const {
-  if (name.empty()) {
-    return stringify(type);
-  }
-  return cotyl::FormatStr("%s %s", type, name);
-}
+// force instantiation of all directives
+template<typename...>
+struct TypeInstantiator;
 
-std::string FunctionType::ToString() const {
-  cotyl::StringStream repr{};
-  std::string formatted = cotyl::FormatStr("(%s)(", contained ? stringify(contained) : "%%");
-  repr << formatted;
-  repr << cotyl::Join(", ", arg_types);
-  if (variadic) {
-    repr << ", ...";
-  }
-  repr << ')';
-  return repr.finalize();
-}
+template<typename P, typename... Ts>
+struct TypeInstantiator<cotyl::Variant<P, Ts...>> {
+  std::tuple<Ts...> instantiated;
+};
 
-pType<> FunctionType::FunctionCall(const std::vector<pType<const CType>>& args) const {
-  if (args.size() != arg_types.size()) {
-    if (!variadic || args.size() < arg_types.size()) {
-      throw std::runtime_error("Not enough arguments for function call");
-    }
-  }
-
-  for (int i = 0; i < arg_types.size(); i++) {
-    if (!arg_types[i].type->Cast(*args[i])) {
-      throw std::runtime_error("Cannot cast argument type");
-    }
-  }
-  return contained->Clone();
-}
-
-bool FunctionType::EqualTypeImpl(const FunctionType& other) const {
-  if (!(*contained).EqualType(*other.contained)) {
-    return false;
-  }
-  if (arg_types.size() != other.arg_types.size()) {
-    return false;
-  }
-
-  for (size_t i = 0; i < arg_types.size(); i++) {
-    if (!(arg_types[i].type->EqualType(*other.arg_types[i].type))) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-pType<> FunctionType::Clone() const {
-  auto clone = MakeType<FunctionType>(contained, variadic, lvalue, qualifiers);
-  for (const auto& arg : arg_types) {
-    clone->AddArg(cotyl::CString(arg.name), arg.type);
-  }
-  return clone;
-}
-
-UNOP_HANDLER(PointerType::Deref) {
-  return contained->Clone();
-}
-
-UNOP_HANDLER(FunctionType::Deref) {
-  // dereferencing a function pointer returns the function pointer itself
-  return Clone();
-}
-
-BINOP_HANDLER(PointerType::RSub, PointerType) {
-  if ((*this).EqualType(other)) {
-    return MakeType<ValueType<u64>>(LValueNess::None, 0);
-  }
-  throw std::runtime_error("Cannot subtract pointers of non-compatible types");
-}
-
-BINOP_HANDLER(PointerType::RAdd, ValueType<i8>) {
-  auto same_type = Clone();
-  same_type->ForgetConstInfo();
-  same_type->lvalue = LValueNess::None;
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RAdd, ValueType<u8>) {
-  auto same_type = Clone();
-  same_type->ForgetConstInfo();
-  same_type->lvalue = LValueNess::None;
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RAdd, ValueType<u16>) {
-  auto same_type = Clone();
-  same_type->ForgetConstInfo();
-  same_type->lvalue = LValueNess::None;
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RAdd, ValueType<i16>) {
-  auto same_type = Clone();
-  same_type->ForgetConstInfo();
-  same_type->lvalue = LValueNess::None;
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RAdd, ValueType<u32>) {
-  auto same_type = Clone();
-  same_type->ForgetConstInfo();
-  same_type->lvalue = LValueNess::None;
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RAdd, ValueType<i32>) {
-  auto same_type = Clone();
-  same_type->ForgetConstInfo();
-  same_type->lvalue = LValueNess::None;
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RAdd, ValueType<u64>) {
-  auto same_type = Clone();
-  same_type->ForgetConstInfo();
-  same_type->lvalue = LValueNess::None;
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RAdd, ValueType<i64>) {
-  auto same_type = Clone();
-  same_type->ForgetConstInfo();
-  same_type->lvalue = LValueNess::None;
-  return same_type;
-}
-
-BINOP_HANDLER(PointerType::RLt, PointerType) {
-  if ((*this).EqualType(other)) {
-    return MakeBool();
-  }
-  throw std::runtime_error("Cannot compare pointers of non-compatible types");
-}
-
-BINOP_HANDLER(PointerType::RLt, ValueType<i8>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::RLt, ValueType<u8>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::RLt, ValueType<u16>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::RLt, ValueType<i16>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::RLt, ValueType<u32>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::RLt, ValueType<i32>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::RLt, ValueType<u64>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::RLt, ValueType<i64>) { return MakeBool(); }
-
-BINOP_HANDLER(PointerType::REq, PointerType) {
-  if ((*this).EqualType(other)) {
-    return MakeBool();
-  } else if (contained->EqualType(VoidType())) {
-    // also allowed
-    return MakeBool();
-  } else if (other.contained->EqualType(VoidType())) {
-    // also allowed
-    return MakeBool();
-  }
-  throw std::runtime_error("Cannot compare pointers of non-compatible types");
-}
-
-BINOP_HANDLER(PointerType::REq, ValueType<i8>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::REq, ValueType<u8>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::REq, ValueType<u16>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::REq, ValueType<i16>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::REq, ValueType<u32>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::REq, ValueType<i32>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::REq, ValueType<u64>) { return MakeBool(); }
-BINOP_HANDLER(PointerType::REq, ValueType<i64>) { return MakeBool(); }
-
-BINOP_HANDLER(PointerType::RCommonType, ValueType<i8>) { return Clone(); }
-BINOP_HANDLER(PointerType::RCommonType, ValueType<u8>) { return Clone(); }
-BINOP_HANDLER(PointerType::RCommonType, ValueType<u16>) { return Clone(); }
-BINOP_HANDLER(PointerType::RCommonType, ValueType<i16>) { return Clone(); }
-BINOP_HANDLER(PointerType::RCommonType, ValueType<u32>) { return Clone(); }
-BINOP_HANDLER(PointerType::RCommonType, ValueType<i32>) { return Clone(); }
-BINOP_HANDLER(PointerType::RCommonType, ValueType<u64>) { return Clone(); }
-BINOP_HANDLER(PointerType::RCommonType, ValueType<i64>) { return Clone(); }
-
-pType<> CType::Cast(const CType& other) const {
-  u32 flagdiff = other.qualifiers & ~other.qualifiers;
-  if (flagdiff & Qualifier::Const) {
-    Log::Warn("Casting drops 'const' qualifier");
-  }
-  if (flagdiff & Qualifier::Volatile) {
-    Log::Warn("Casting drops 'volatile' qualifier");
-  }
-  // todo: restrict/thread local
-  auto cast = DoCast(other);
-  cast->lvalue = LValueNess::None;
-  return cast;
-}
-
-pType<ValueType<i32>> CType::MakeBool(bool value) {
-  // make bool with value
-  return MakeType<ValueType<i32>>(value, LValueNess::None, 0);
-}
-
-pType<ValueType<i32>> CType::MakeBool() {
-  // make bool without value
-  return MakeType<ValueType<i32>>(LValueNess::None, 0);
-}
-
-pType<ValueType<i32>> CType::TruthinessAsCType() const {
-  if (IsConstexpr()) {
-    return MakeType<ValueType<i32>>(GetBoolValue() ? 1 : 0, LValueNess::None, 0);
-  }
-  return MakeBool();
-}
-
-pType<ValueType<i32>> CType::LogAnd(const CType& other) const {
-  auto l = this->TruthinessAsCType();
-  auto r = other.TruthinessAsCType();
-  if (l->HasValue()) {
-    if (!l->Get()) {
-      return MakeBool(false);
-    }
-    else if (r->HasValue() && r->Get()) {
-      return MakeBool(true);
-    }
-  }
-  if (r->HasValue()) {
-    if (!r->Get()) {
-      return MakeBool(false);
-    }
-  }
-  return MakeBool();
-}
-
-pType<ValueType<i32>> CType::LogOr(const CType& other) const {
-  auto l = this->TruthinessAsCType();
-  auto r = other.TruthinessAsCType();
-  if (l->HasValue()) {
-    if (l->Get()) {
-      return MakeBool(true);
-    }
-    else if (r->HasValue() && !r->Get()) {
-      return MakeBool(false);
-    }
-  }
-  if (r->HasValue()) {
-    if (r->Get()) {
-      return MakeBool(true);
-    }
-  }
-  return MakeBool();
-}
-
-pType<ValueType<i32>> CType::LogNot() const {
-  auto bool_val = TruthinessAsCType();
-  if (bool_val->HasValue()) {
-    return MakeBool(!bool_val->Get());
-  }
-  return MakeBool();
-}
-
-pType<> CType::LLogAnd(const CType& other) const { return LogAnd(other); }
-pType<> CType::LLogOr(const CType& other) const { return LogAnd(other); }
-pType<> CType::LLogNot() const { return LogNot(); }
-
-UNOP_HANDLER(CType::Ref) {
-  // only for lvalues
-  // not an lvalue after
-  if (lvalue == LValueNess::None) {
-    throw std::runtime_error("Cannot get reference to non-lvalue expression");
-  }
-  return MakeType<PointerType>(Clone(), LValueNess::None);
-}
-
-pType<> CType::ArrayAccess(const CType& other) const {
-  return Add(other)->Deref();
-}
-
-UNOP_HANDLER(CType::Incr) {
-  if (!IsAssignable()) {
-    throw std::runtime_error("Cannot increment non-assignable expression");
-  }
-  return Add(*ConstOne());
-}
-
-UNOP_HANDLER(CType::Decr) {
-  if (!IsAssignable()) {
-    throw std::runtime_error("Cannot decrement non-assignable expression");
-  }
-  return Sub(*ConstOne());
-}
-
-pType<> CType::Gt(const CType& other) const {
-  return Le(other)->LogNot();  // !(<=)
-}
-
-pType<> CType::Le(const CType& other) const {
-  auto lt = this->Lt(other);
-  auto eq = this->Eq(other);
-  return lt->LogOr(*eq);  // < || ==
-}
-
-pType<> CType::Ge(const CType& other) const {
-  auto gt = this->Gt(other);
-  auto eq = this->Eq(other);
-  return gt->LogOr(*eq);  // > || ==
-}
-
-pType<> CType::Neq(const CType& other) const {
-  auto eq = this->Eq(other);
-  return eq->LogNot();   // !( == )
-}
-
-pType<ValueType<i8>> CType::ConstOne() {
-  return MakeType<ValueType<i8>>(1, LValueNess::None);
-}
-
-pType<> StructUnionType::MemberAccess(const cotyl::CString& member) const {
-  for (auto& field : fields) {
-    if (field.name == member) {
-      return field.type->Clone();
-    }
-  }
-  throw std::runtime_error("No field named " + member.str() + " in " + ToString());
-}
-
-#include "ValueTypeMethods.inl"
-
-template struct ValueType<i8>;
-template struct ValueType<u8>;
-template struct ValueType<i16>;
-template struct ValueType<u16>;
-template struct ValueType<i32>;
-template struct ValueType<u32>;
-template struct ValueType<i64>;
-template struct ValueType<u64>;
-template struct ValueType<float>;
-template struct ValueType<double>;
+template struct TypeInstantiator<detail::any_type_t>;
 
 }

@@ -1,5 +1,10 @@
 add_library(Types STATIC
-        Types.h Types.cpp EpiCType.h)
+        BaseType.h
+        BaseType.cpp
+        Types.h 
+        Types.cpp
+        AnyType.h
+        AnyType.cpp)
 
 set_target_properties(Types PROPERTIES LINKER_LANGUAGE CXX)
 target_precompile_headers(Types REUSE_FROM epicalyx-config)

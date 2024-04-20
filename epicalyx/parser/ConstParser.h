@@ -42,7 +42,7 @@ struct ConstParser : public cotyl::Locatable {
 
   cotyl::Stream<AnyToken>& in_stream;
 
-  virtual pType<const CType> ResolveIdentifierType(const cotyl::CString& name) const;
+  virtual type::AnyType ResolveIdentifierType(const cotyl::CString& name) const;
 };
 
 }

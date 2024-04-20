@@ -8,25 +8,6 @@ namespace epi { struct Parser; }
 
 namespace epi::ast {
 
-
-template<typename T>
-void ConstTypeVisitor::VisitValueType(const ValueType<T>& type) {
-  if (type.HasValue()) {
-    reduced = std::make_unique<NumericalConstantNode<T>>(type.Get());
-  }
-}
-
-void ConstTypeVisitor::Visit(const ValueType<i8>& type) { VisitValueType(type); }
-void ConstTypeVisitor::Visit(const ValueType<u8>& type) { VisitValueType(type); }
-void ConstTypeVisitor::Visit(const ValueType<i16>& type) { VisitValueType(type); }
-void ConstTypeVisitor::Visit(const ValueType<u16>& type) { VisitValueType(type); }
-void ConstTypeVisitor::Visit(const ValueType<i32>& type) { VisitValueType(type); }
-void ConstTypeVisitor::Visit(const ValueType<u32>& type) { VisitValueType(type); }
-void ConstTypeVisitor::Visit(const ValueType<i64>& type) { VisitValueType(type); }
-void ConstTypeVisitor::Visit(const ValueType<u64>& type) { VisitValueType(type); }
-void ConstTypeVisitor::Visit(const ValueType<float>& type) { VisitValueType(type); }
-void ConstTypeVisitor::Visit(const ValueType<double>& type) { VisitValueType(type); }
-
 std::string FunctionCallNode::ToString() const {
   cotyl::StringStream result{};
   result << stringify(left) << '(';
@@ -47,203 +28,232 @@ std::string MemberAccessNode::ToString() const {
   return cotyl::FormatStr("(%s)->%s", left, member);
 }
 
-pType<const CType> IdentifierNode::SemanticAnalysisImpl(const ConstParser& parser) const {
-  return parser.ResolveIdentifierType(name);
+StringConstantNode::StringConstantNode(cotyl::CString&& value) :
+    ExprNode{type::PointerType{
+      std::make_shared<type::AnyType>(
+        type::ValueType<i8>(type::BaseType::LValueNess::LValue, type::BaseType::Qualifier::Const)
+      ),
+      type::BaseType::LValueNess::LValue,
+      type::BaseType::Qualifier::Const
+    }}, 
+    value(std::move(value)) { 
+
 }
 
-template<typename T>
-pType<const CType> NumericalConstantNode<T>::SemanticAnalysisImpl(const ConstParser&) const {
-  return MakeType<ValueType<T>>(
-          value, CType::LValueNess::None, CType::Qualifier::Const
-  );
+ArrayAccessNode::ArrayAccessNode(pExpr&& left, pExpr&& right) :
+    ExprNode{left->type->ArrayAccess(right->type)},
+    left(std::move(left)),
+    right(std::move(right)) {
+
 }
 
-pType<const CType> StringConstantNode::SemanticAnalysisImpl(const ConstParser&) const {
-  return MakeType<PointerType>(
-          MakeType<ValueType<i8>>(CType::LValueNess::Assignable, CType::Qualifier::Const),
-          CType::LValueNess::None,
-          CType::Qualifier::Const
-  );
+FunctionCallNode::FunctionCallNode(pExpr&& left, std::vector<pExpr>&& args) :
+    ExprNode{left->type->FunctionCall(
+      [&] {
+        std::vector<type::AnyType> call_args{};
+        call_args.reserve(args.size());
+        for (const auto& arg : args) {
+          call_args.push_back(arg->type);
+        }
+        return call_args;
+      }()
+    )},
+    left(std::move(left)),
+    args{std::move(args)} {
+
 }
 
-pType<const CType> ArrayAccessNode::SemanticAnalysisImpl(const ConstParser& parser) const {
-  return left->SemanticAnalysis(parser)->ArrayAccess(*right->SemanticAnalysis(parser));
+MemberAccessNode::MemberAccessNode(pExpr&& left, bool direct, cotyl::CString&& member) :
+    ExprNode{direct ? left->type->MemberAccess(member) : left->type->Deref()->MemberAccess(member)},
+    left(std::move(left)),
+    direct(direct),
+    member(std::move(member)) {
+
 }
 
-pType<const CType> FunctionCallNode::SemanticAnalysisImpl(const ConstParser& parser) const {
-  std::vector<pType<const CType>> call_args{};
-  for (const auto& arg : args) {
-    call_args.push_back(arg->SemanticAnalysis(parser));
-  }
-  return left->SemanticAnalysis(parser)->FunctionCall(call_args);
+TypeInitializerNode::TypeInitializerNode(type::AnyType&& type, pNode<InitializerList>&& list) :
+    ExprNode{std::move(type)},
+    list{std::move(list)} {
+  throw std::runtime_error("not reimplemented");
+  // auto visitor = ValidInitializerListVisitor(*list);
+  // type->Visit(visitor);
 }
 
-pType<const CType> MemberAccessNode::SemanticAnalysisImpl(const ConstParser& parser) const {
-  if (direct) {
-    return left->SemanticAnalysis(parser)->MemberAccess(member);
-  }
-  return left->SemanticAnalysis(parser)->Deref()->MemberAccess(member);
+PostFixNode::PostFixNode(TokenType op, pExpr&& left) :
+    ExprNode{left->type},
+    op{op},
+    left{std::move(left)} {
+  // semantic analysis, postfix incr/decr type must store proper value
+  op == TokenType::Incr ? left->type->Incr() : left->type->Decr();
+  type->ForgetConstInfo();
 }
 
-pType<const CType> TypeInitializerNode::SemanticAnalysisImpl(const ConstParser& parser) const {
-  auto visitor = ValidInitializerListVisitor(parser, *list);
-  type->Visit(visitor);
-  return type;
-}
-
-pType<const CType> PostFixNode::SemanticAnalysisImpl(const ConstParser& parser) const {
-  switch (op) {
-    case TokenType::Incr: return left->SemanticAnalysis(parser)->Incr();
-    case TokenType::Decr: return left->SemanticAnalysis(parser)->Decr();
-    default:
-      throw cotyl::FormatExceptStr("Bad AST (PostFixNode: %s)", op);
-  }
-}
-
-pType<const CType> UnopNode::SemanticAnalysisImpl(const ConstParser& parser) const {
-  switch (op) {
-    case TokenType::Incr: return left->SemanticAnalysis(parser)->Incr();
-    case TokenType::Decr: return left->SemanticAnalysis(parser)->Decr();
-    case TokenType::Ampersand: return left->SemanticAnalysis(parser)->Ref();
-    case TokenType::Asterisk: return left->SemanticAnalysis(parser)->Deref();
-    case TokenType::Plus: return left->SemanticAnalysis(parser)->Pos();
-    case TokenType::Minus: return left->SemanticAnalysis(parser)->Neg();
-    case TokenType::Tilde: return left->SemanticAnalysis(parser)->BinNot();
-    case TokenType::Exclamation: return left->SemanticAnalysis(parser)->LogNot();
-    default:
-      throw cotyl::FormatExceptStr("Bad AST (UnopNode: %s)", op);
-  }
-}
-
-pType<const CType> CastNode::SemanticAnalysisImpl(const ConstParser& parser) const {
-  return type->Cast(*expr->SemanticAnalysis(parser));
-}
-
-pType<const CType> BinopNode::SemanticAnalysisImpl(const ConstParser& parser) const {
-  switch (op) {
-    case TokenType::Asterisk: return left->SemanticAnalysis(parser)->Mul(*right->SemanticAnalysis(parser));
-    case TokenType::Div: return left->SemanticAnalysis(parser)->Div(*right->SemanticAnalysis(parser));
-    case TokenType::Mod: return left->SemanticAnalysis(parser)->Mod(*right->SemanticAnalysis(parser));
-    case TokenType::Plus: return left->SemanticAnalysis(parser)->Add(*right->SemanticAnalysis(parser));
-    case TokenType::Minus: return left->SemanticAnalysis(parser)->Sub(*right->SemanticAnalysis(parser));
-    case TokenType::LShift: return left->SemanticAnalysis(parser)->LShift(*right->SemanticAnalysis(parser));
-    case TokenType::RShift: return left->SemanticAnalysis(parser)->RShift(*right->SemanticAnalysis(parser));
-    case TokenType::Equal: return left->SemanticAnalysis(parser)->Eq(*right->SemanticAnalysis(parser));
-    case TokenType::NotEqual: return left->SemanticAnalysis(parser)->Neq(*right->SemanticAnalysis(parser));
-    case TokenType::Less: return left->SemanticAnalysis(parser)->Lt(*right->SemanticAnalysis(parser));
-    case TokenType::LessEqual: return left->SemanticAnalysis(parser)->Le(*right->SemanticAnalysis(parser));
-    case TokenType::Greater: return left->SemanticAnalysis(parser)->Gt(*right->SemanticAnalysis(parser));
-    case TokenType::GreaterEqual: return left->SemanticAnalysis(parser)->Ge(*right->SemanticAnalysis(parser));
-    case TokenType::Ampersand: return left->SemanticAnalysis(parser)->BinAnd(*right->SemanticAnalysis(parser));
-    case TokenType::BinOr: return left->SemanticAnalysis(parser)->BinOr(*right->SemanticAnalysis(parser));
-    case TokenType::BinXor: return left->SemanticAnalysis(parser)->Xor(*right->SemanticAnalysis(parser));
-    case TokenType::LogicalAnd: return left->SemanticAnalysis(parser)->LogAnd(*right->SemanticAnalysis(parser));
-    case TokenType::LogicalOr: return left->SemanticAnalysis(parser)->LogOr(*right->SemanticAnalysis(parser));
-    default:
-      throw cotyl::FormatExceptStr("Bad AST (BinopNode: %s)", op);
-  }
-}
-
-pType<const CType> TernaryNode::SemanticAnalysisImpl(const ConstParser& parser) const {
-  auto cond_t = cond->SemanticAnalysis(parser);
-  auto true_t = _true->SemanticAnalysis(parser);
-  auto false_t = _false->SemanticAnalysis(parser);
-
-  // todo: type conversions for constexpr
-  if (cond_t->IsConstexpr()) {
-    if (cond_t->ConstIntVal()) {
-      return true_t;
-    }
-    return false_t;
-  }
-
-  return true_t->CommonType(*false_t);
-}
-
-pType<const CType> AssignmentNode::SemanticAnalysisImpl(const ConstParser& parser) const {
-  auto left_t = left->SemanticAnalysis(parser);
-  if (!left_t->IsAssignable()) {
-    throw std::runtime_error("Cannot assign to expression");
-  }
-  auto right_t = right->SemanticAnalysis(parser);
-
-  switch (op) {
-    case TokenType::IMul: return left_t->Mul(*right_t);
-    case TokenType::IDiv: return left_t->Div(*right_t);
-    case TokenType::IMod: return left_t->Mod(*right_t);
-    case TokenType::IPlus: return left_t->Add(*right_t);
-    case TokenType::IMinus: return left_t->Sub(*right_t);
-    case TokenType::ILShift: return left_t->LShift(*right_t);
-    case TokenType::IRShift: return left_t->RShift(*right_t);
-    case TokenType::IAnd: return left_t->BinAnd(*right_t);
-    case TokenType::IOr: return left_t->BinOr(*right_t);
-    case TokenType::IXor: return left_t->Xor(*right_t);
-    case TokenType::Assign: {
-      if (!left_t->Cast(*right_t)) {
-        throw std::runtime_error("Cannot assign value to type");
+UnopNode::UnopNode(TokenType op, pExpr&& left) :
+    ExprNode{[&] {
+      switch (op) {
+        case TokenType::Incr: return left->type->Incr();
+        case TokenType::Decr: return left->type->Decr();
+        case TokenType::Ampersand: return left->type->Ref();
+        case TokenType::Asterisk: return left->type->Deref();
+        case TokenType::Plus: return left->type->Pos();
+        case TokenType::Minus: return left->type->Neg();
+        case TokenType::Tilde: return left->type->BinNot();
+        case TokenType::Exclamation: return left->type->LogNot();
+        default:
+          throw cotyl::FormatExceptStr("Bad AST (UnopNode: %s)", op);
       }
-      return left_t;
-    }
-    default:
-      throw cotyl::FormatExceptStr("Bad AST (assign: %s)", op);
-  }
+    }()},
+    op(op),
+    left(std::move(left)) {
+
 }
 
-pExpr MemberAccessNode::EReduce(const Parser& parser) {
-  auto n_left = left->EReduce(parser);
+CastNode::CastNode(type::AnyType&& type, pExpr&& expr) :
+    ExprNode{type.Cast(expr->type)},
+    expr{std::move(expr)} {
+
+}
+
+BinopNode::BinopNode(pExpr&& left, TokenType op, pExpr&& right) :
+    ExprNode{[&] {
+    switch (op) {
+        case TokenType::Asterisk: return left->type->Mul(right->type);
+        case TokenType::Div: return left->type->Div(right->type);
+        case TokenType::Mod: return left->type->Mod(right->type);
+        case TokenType::Plus: return left->type->Add(right->type);
+        case TokenType::Minus: return left->type->Sub(right->type);
+        case TokenType::LShift: return left->type->LShift(right->type);
+        case TokenType::RShift: return left->type->RShift(right->type);
+        case TokenType::Equal: return left->type->Eq(right->type);
+        case TokenType::NotEqual: return left->type->Neq(right->type);
+        case TokenType::Less: return left->type->Lt(right->type);
+        case TokenType::LessEqual: return left->type->Le(right->type);
+        case TokenType::Greater: return left->type->Gt(right->type);
+        case TokenType::GreaterEqual: return left->type->Ge(right->type);
+        case TokenType::Ampersand: return left->type->BinAnd(right->type);
+        case TokenType::BinOr: return left->type->BinOr(right->type);
+        case TokenType::BinXor: return left->type->Xor(right->type);
+        case TokenType::LogicalAnd: return left->type->LogAnd(right->type);
+        case TokenType::LogicalOr: return left->type->LogOr(right->type);
+        default:
+          throw cotyl::FormatExceptStr("Bad AST (BinopNode: %s)", op);
+      }
+    }()},
+    left(std::move(left)),
+    op(op),
+    right(std::move(right)) {
+
+}
+
+TernaryNode::TernaryNode(pExpr&& cond, pExpr&& _true, pExpr&& _false) :
+    ExprNode{[&] {
+      const auto& cond_t = cond->type;
+      const auto& true_t = _true->type;
+      const auto& false_t = _false->type;
+      auto common_t = true_t.CommonType(false_t);
+
+      // todo: type conversions for constexpr
+      if (cond_t.IsConstexpr()) {
+        if (cond_t.ConstIntVal()) {
+          return common_t.Cast(true_t);
+        }
+        return common_t.Cast(false_t);
+      }
+
+      return common_t;
+    }()},
+    cond(std::move(cond)),
+    _true(std::move(_true)),
+    _false(std::move(_false)) {
+
+}
+
+AssignmentNode::AssignmentNode(pExpr&& left, TokenType op, pExpr&& right) :
+    ExprNode{left->type.Cast([&] {
+      const auto& left_t = left->type;
+      if (!left_t->IsAssignable()) {
+        throw std::runtime_error("Cannot assign to expression");
+      }
+      const auto& right_t = right->type;
+
+      switch (op) {
+        case TokenType::IMul: return left_t->Mul(right_t);
+        case TokenType::IDiv: return left_t->Div(right_t);
+        case TokenType::IMod: return left_t->Mod(right_t);
+        case TokenType::IPlus: return left_t->Add(right_t);
+        case TokenType::IMinus: return left_t->Sub(right_t);
+        case TokenType::ILShift: return left_t->LShift(right_t);
+        case TokenType::IRShift: return left_t->RShift(right_t);
+        case TokenType::IAnd: return left_t->BinAnd(right_t);
+        case TokenType::IOr: return left_t->BinOr(right_t);
+        case TokenType::IXor: return left_t->Xor(right_t);
+        case TokenType::Assign: return right_t;
+        default:
+          throw cotyl::FormatExceptStr("Bad AST (assign: %s)", op);
+      }
+    }())},
+    left(std::move(left)),
+    op(op),
+    right(std::move(right)) {
+
+}
+
+pExpr MemberAccessNode::EReduce() {
+  auto n_left = left->EReduce();
   if (n_left) left = std::move(n_left);
   // todo: constant struct lookup
   return nullptr;
 }
 
-pExpr ArrayAccessNode::EReduce(const Parser& parser) {
-  auto n_left = left->EReduce(parser);
+pExpr ArrayAccessNode::EReduce() {
+  auto n_left = left->EReduce();
   if (n_left) left = std::move(n_left);
-  auto n_right = right->EReduce(parser);
+  auto n_right = right->EReduce();
   if (n_right) right = std::move(n_right);
   // todo: constant array lookup
   return nullptr;
 }
 
-pExpr FunctionCallNode::EReduce(const Parser& parser) {
-  auto n_left = left->EReduce(parser);
+pExpr FunctionCallNode::EReduce() {
+  auto n_left = left->EReduce();
   if (n_left) left = std::move(n_left);
 
   for (auto& arg : args) {
-    auto n_arg = arg->EReduce(parser);
+    auto n_arg = arg->EReduce();
     if (n_arg) arg = std::move(n_arg);
   }
   // todo: consteval functions
   return nullptr;
 }
 
-pExpr TypeInitializerNode::EReduce(const Parser& parser) {
-  return ReduceInitializerListVisitor(parser, *list).Reduce(*type);
+pExpr TypeInitializerNode::EReduce() {
+  throw std::runtime_error("not reimplemented");
+  // return ReduceInitializerListVisitor(parser, *list).Reduce(*type);
 }
 
-pExpr BinopNode::EReduce(const Parser& parser) {
-  auto n_left = left->EReduce(parser);
+pExpr BinopNode::EReduce() {
+  auto n_left = left->EReduce();
   if (n_left) left = std::move(n_left);
-  auto n_right = right->EReduce(parser);
+  auto n_right = right->EReduce();
   if (n_right) right = std::move(n_right);
-  return ExprNode::EReduce(parser);
+  return ExprNode::EReduce();
 }
 
-pExpr TernaryNode::EReduce(const Parser& parser) {
-  auto n_cond = cond->EReduce(parser);
+pExpr TernaryNode::EReduce() {
+  auto n_cond = cond->EReduce();
   if (n_cond) cond = std::move(n_cond);
-  auto n_true = _true->EReduce(parser);
+  auto n_true = _true->EReduce();
   if (n_true) _true = std::move(n_true);
-  auto n_false = _false->EReduce(parser);
+  auto n_false = _false->EReduce();
   if (n_false) _false = std::move(n_false);
 
-  return ExprNode::EReduce(parser);
+  return ExprNode::EReduce();
 }
 
-pExpr AssignmentNode::EReduce(const Parser& parser) {
-  auto n_left = left->EReduce(parser);
+pExpr AssignmentNode::EReduce() {
+  auto n_left = left->EReduce();
   if (n_left) left = std::move(n_left);
-  auto n_right = right->EReduce(parser);
+  auto n_right = right->EReduce();
   if (n_right) right = std::move(n_right);
   // AssignmentNode may never be replaced
   return nullptr;

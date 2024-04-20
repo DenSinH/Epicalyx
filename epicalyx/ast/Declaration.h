@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Node.h"
-#include "types/EpiCType.h"
+#include "types/AnyType.h"
 #include "CString.h"
 #include "Format.h"
 #include "Initializer.h"
@@ -25,37 +25,32 @@ enum class StorageClass {
   Auto,
 };
 
-struct DeclarationNode final : public DeclNode {
+struct DeclarationNode final : DeclNode {
 
-  DeclarationNode(pType<> type, cotyl::CString&& name, StorageClass storage = StorageClass::Auto, std::optional<Initializer> value = {}) :
-      name(std::move(name)),
-      type(std::move(type)),
-      storage(storage),
-      value(std::move(value)) {
-
-  }
-
+  DeclarationNode(type::AnyType&& type, cotyl::CString&& name, StorageClass storage = StorageClass::Auto, std::optional<Initializer> value = {});
+  
   cotyl::CString name;
-  pType<const CType> type;  // empty if abstract
+  type::AnyType type;  // void if abstract
   StorageClass storage;
   std::optional<Initializer> value;
 
   std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  void VerifyAndRecord(Parser& parser) override;
-  void DReduce(const Parser &parser);
+  // todo: move this to parser
+  // void VerifyAndRecord(Parser& parser) override;
+  pNode<> Reduce();
 };
 
-struct FunctionDefinitionNode final : public DeclNode {
+struct FunctionDefinitionNode final : DeclNode {
 
-  FunctionDefinitionNode(pType<const FunctionType> signature, cotyl::CString&& symbol, pNode<CompoundNode>&& body);
+  FunctionDefinitionNode(type::AnyType&& signature, cotyl::CString&& symbol, pNode<CompoundNode>&& body);
 
-  pType<const FunctionType> signature;
+  type::AnyType&& signature;
   cotyl::CString symbol;
   pNode<CompoundNode> body;
 
   std::string ToString() const final;
-  void VerifyAndRecord(Parser& parser) final;
+  // void VerifyAndRecord(Parser& parser) final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 

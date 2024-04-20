@@ -3,7 +3,7 @@
 #include "ConstParser.h"
 #include "Scope.h"
 #include "Containers.h"
-#include "types/EpiCType.h"
+#include "types/BaseType.h"
 #include "ast/Initializer.h"
 
 #include <stack>

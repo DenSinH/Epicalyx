@@ -2,15 +2,10 @@
 
 #include "Default.h"
 #include "CustomAssert.h"
-#include "types/EpiCType.h"
+#include "types/AnyType.h"
 
 #include <memory>
 #include <string>
-
-namespace epi {
-struct ConstParser;
-struct Parser;
-}
 
 namespace epi::ast {
 using ::epi::stringify;
@@ -62,52 +57,30 @@ struct Node {
   virtual ~Node() = default;
 
   virtual std::string ToString() const = 0;
-  virtual pNode<> Reduce(const Parser& parser) = 0;
-  virtual bool IsDeclarationNode() const { return false; }
-  virtual bool IsStatement() const { return false; }
-
+  virtual pNode<> Reduce() { return nullptr; };
   virtual void Visit(NodeVisitor& visitor) = 0;
 };
 
 struct DeclNode : public Node {
 
-  bool IsDeclarationNode() const final { return true; }
-  virtual void VerifyAndRecord(Parser& parser) = 0;
 
-  pNode<> Reduce(const Parser& parser) override { return nullptr; };
 };
 
 struct StatNode : public Node {
 
-  bool IsStatement() const final { return true; }
-
-  pNode<> Reduce(const Parser& parser) override { return SReduce(parser); }
-  virtual pNode<StatNode> SReduce(const Parser& parser) { return nullptr; }
 };
 
 struct ExprNode : public StatNode {
-  pType<const CType> type = nullptr;
+  type::AnyType type;
 
-  const pType<const CType>& GetType() const {
-    cotyl::Assert(type != nullptr, "Semantic analysis has to be performed before type can be acquired");
-    return type;
-  }
+  ExprNode(type::AnyType type) : type{std::move(type)} { }
 
-  pType<const CType> SemanticAnalysis(const ConstParser& parser) {
-    type = SemanticAnalysisImpl(parser);
-    return type;
-  }
-
-protected:
-  virtual pType<const CType> SemanticAnalysisImpl(const ConstParser&) const = 0;
-
+  virtual pExpr EReduce() { return nullptr; };
+  
+  pNode<> Reduce() final;
 public:
-  bool IsConstexpr() const { return GetType()->IsConstexpr(); }
-  i64 ConstEval() const { return GetType()->ConstIntVal(); }
-
-  pNode<> Reduce(const Parser& parser) override { return EReduce(parser); }
-  virtual pExpr EReduce(const Parser& parser);
-  pNode<StatNode> SReduce(const Parser& parser) final { return EReduce(parser); }
+  bool IsConstexpr() const { return type.IsConstexpr(); }
+  i64 ConstEval() const { return type.ConstIntVal(); }
 };
 
 }

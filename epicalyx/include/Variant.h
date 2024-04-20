@@ -11,13 +11,14 @@ namespace epi::cotyl {
 template<typename Parent, typename... Ts>
 requires (std::is_base_of_v<Parent, Ts> && ...)
 struct Variant {
-
-  // to speed up compilation time for large variants
-  ~Variant();
-
   template<typename T>
   requires (std::is_same_v<T, Ts> || ...)
   static constexpr std::size_t type_index_v = (std::size_t)swl::variant<Ts...>::template index_of<T>;
+
+  // to speed up compilation time for large variants
+  ~Variant();
+  Variant(const Variant& other) = default;
+  Variant(Variant&& other) = default;
 
   template<typename T>
   requires (std::is_same_v<T, Ts> || ...)
@@ -89,7 +90,6 @@ struct Variant {
   }
 
 private:
-
   // for simple visitor pattern
   template<class... Args>
   struct overloaded : Args... { using Args::operator()...; };
