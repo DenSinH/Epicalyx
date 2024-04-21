@@ -30,7 +30,9 @@ struct ConstParser : public cotyl::Locatable {
   ConstParser(cotyl::Stream<AnyToken>& in_stream) : in_stream{in_stream} { }
 
   void PrintLoc() const final;
+  i64 EConstexpr();
 
+protected:
   virtual ast::pExpr EPrimary();
   virtual ast::pExpr ECast();
   template<ast::pExpr (ConstParser::*SubNode)(), enum TokenType... types>
@@ -38,7 +40,6 @@ struct ConstParser : public cotyl::Locatable {
   ast::pExpr EBinop();
   ast::pExpr ETernary();
   virtual ast::pExpr EAssignment();
-  i64 EConstexpr();
 
   cotyl::Stream<AnyToken>& in_stream;
 };

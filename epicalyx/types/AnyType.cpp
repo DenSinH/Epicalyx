@@ -43,6 +43,7 @@ AnyType AnyType::CommonType(const AnyType& other) const {
     return (*this)->CommonTypeImpl(other);
   }
   AnyType result = *this;
+  result->ForgetConstInfo();
   result->lvalue = BaseType::LValueNess::None;
   return result;
 }

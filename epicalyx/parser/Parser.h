@@ -25,15 +25,20 @@ struct Parser final : public ConstParser {
 
   using enum_type = i32;
 
+  ast::pExpr EExpression();
+
+  // needs to be available publicly for shorthand binop parsing
+  ast::pExpr ECast() final;
+private:
   ast::pExpr EPrimary() final;
   ast::pExpr EPostfix();
   ast::pExpr EUnary();
-  type::AnyType ETypeName();
-  ast::pExpr ECast() final;
   ast::pExpr EAssignment() final;
-  ast::pExpr EExpression();
+
+  type::AnyType ETypeName();
   ast::Initializer EInitializer();
   ast::InitializerList EInitializerList();
+
   type::AnyType ResolveIdentifierType(const cotyl::CString& name) const;
   void EExpressionList(cotyl::vector<ast::pExpr>& dest);
 

@@ -2,13 +2,18 @@
 
 #include "Stream.h"
 #include "tokenizer/Token.h"
-#include "ast/Expression.h"
 #include "ast/Statement.h"
 #include "ast/Declaration.h"
 
 namespace epi {
   
 using namespace ast;
+
+static pStat StatOrReduced(pStat&& stat) {
+  auto reduced = stat->Reduce();
+  if (reduced) return std::move(reduced);
+  return std::move(stat);
+}
 
 pNode<StatNode> Parser::SStatement() {
   switch (in_stream.ForcePeek()->type) {
@@ -22,20 +27,18 @@ pNode<StatNode> Parser::SStatement() {
       in_stream.Eat(TokenType::Colon);
 
       // validation
+      if (case_scope.HasTop(expr)) {
+        throw std::runtime_error("Duplicate case value");
+      }
       case_scope.Add(expr);
 
       auto case_stat = std::make_unique<CaseNode>(expr, SStatement());
-
-      auto reduced = case_stat->Reduce();
-      if (reduced) return reduced;
       return case_stat;
     }
     case TokenType::Default: {
       in_stream.EatSequence(TokenType::Default, TokenType::Colon);
       auto def_stat = std::make_unique<DefaultNode>(SStatement());
 
-      auto reduced = def_stat->Reduce();
-      if (reduced) return reduced;
       return def_stat;
     }
     case TokenType::Switch: {
@@ -46,8 +49,6 @@ pNode<StatNode> Parser::SStatement() {
       auto stat = case_scope << [&]{ return SStatement(); };
       auto switch_stat = std::make_unique<SwitchNode>(std::move(expr), std::move(stat));
 
-      auto reduced = switch_stat->Reduce();
-      if (reduced) return reduced;
       return switch_stat;
     }
     case TokenType::If: {
@@ -64,9 +65,7 @@ pNode<StatNode> Parser::SStatement() {
 
       auto if_stat = std::make_unique<IfNode>(std::move(cond), std::move(stat), SStatement());
 
-      auto reduced = if_stat->Reduce();
-      if (reduced) return reduced;
-      return if_stat;
+      return StatOrReduced(std::move(if_stat));
     }
     case TokenType::While: {
       in_stream.EatSequence(TokenType::While, TokenType::LParen);
@@ -78,9 +77,7 @@ pNode<StatNode> Parser::SStatement() {
       loop_scope.pop_back();
       auto while_stat = std::make_unique<WhileNode>(std::move(cond), std::move(stat));
 
-      auto reduced = while_stat->Reduce();
-      if (reduced) return reduced;
-      return while_stat;
+      return StatOrReduced(std::move(while_stat));
     }
     case TokenType::Do: {
       in_stream.Skip();
@@ -95,10 +92,7 @@ pNode<StatNode> Parser::SStatement() {
       in_stream.EatSequence(TokenType::RParen, TokenType::SemiColon);
       auto dowhile_stat = std::make_unique<DoWhileNode>(std::move(stat), std::move(cond));
 
-      auto reduced = dowhile_stat->Reduce();
-      if (reduced) return reduced;
-      return dowhile_stat;
-
+      return StatOrReduced(std::move(dowhile_stat));
     }
     case TokenType::For: {
       in_stream.EatSequence(TokenType::For, TokenType::LParen);
@@ -138,11 +132,8 @@ pNode<StatNode> Parser::SStatement() {
           std::move(stat)
       );
 
-      auto reduced = for_stat->Reduce();
       PopScope();
-
-      if (reduced) return reduced;
-      return for_stat;
+      return StatOrReduced(std::move(for_stat));
     }
     case TokenType::Goto: {
       in_stream.Skip();
@@ -185,8 +176,6 @@ pNode<StatNode> Parser::SStatement() {
       function_return->Cast(expr->type);
 
       auto ret_stat = std::make_unique<ReturnNode>(std::move(expr));
-      auto reduced = ret_stat->Reduce();
-      if (reduced) return reduced;
       return ret_stat;
     }
     case TokenType::LBrace: {
