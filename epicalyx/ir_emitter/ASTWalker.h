@@ -1,11 +1,11 @@
 #pragma once
 
 #include "ast/NodeVisitor.h"
+#include "types/AnyType.h"
 #include "calyx/Calyx.h"
 #include "Emitter.h"
 #include "Scope.h"
 
-#include <stack>
 #include <stack>
 
 namespace epi {
@@ -34,7 +34,7 @@ struct ASTWalker : public ast::NodeVisitor {
 
   struct LocalData {
     calyx::Local* loc;
-    pType<const CType> type;
+    type::AnyType type;
   };
 
   std::stack<std::pair<State, StateData>> state{};
@@ -45,19 +45,19 @@ struct ASTWalker : public ast::NodeVisitor {
   cotyl::unordered_map<cotyl::CString, block_label_t> local_labels{};
 
   cotyl::MapScope<cotyl::CString, LocalData> locals{};
-  cotyl::unordered_map<cotyl::CString, pType<const CType>> symbol_types{};
+  cotyl::unordered_map<cotyl::CString, type::AnyType> symbol_types{};
   
   var_index_t current;
   Emitter& emitter;
 
-  void AddGlobal(const cotyl::CString& symbol, const pType<const CType>& type) {
+  void AddGlobal(const cotyl::CString& symbol, const type::AnyType& type) {
     if (symbol_types.contains(symbol)) {
       throw cotyl::FormatExcept("Duplicate global symbol: %s", symbol.c_str());
     }
     symbol_types.emplace(symbol, type);
   }
 
-  void NewFunction(cotyl::CString&& symbol, const pType<const CType>& type) {
+  void NewFunction(cotyl::CString&& symbol, const type::AnyType& type) {
     emitter.NewFunction(std::move(symbol));
     symbol_types.emplace(emitter.current_function->symbol, type);
 
@@ -74,9 +74,9 @@ struct ASTWalker : public ast::NodeVisitor {
     cotyl::Assert(locals.Depth() == 1, "Local scope is not empty after function");
   }
 
-  static calyx::Local::Type GetCalyxType(const pType<const CType>& type);
+  static calyx::Local::Type GetCalyxType(const type::AnyType& type);
 
-  var_index_t AddLocal(cotyl::CString&& name, const pType<const CType>& type, std::optional<var_index_t> arg_index = {}) {
+  var_index_t AddLocal(cotyl::CString&& name, const type::AnyType& type, std::optional<var_index_t> arg_index = {}) {
     auto c_idx = emitter.c_counter++;
     size_t size = type->Sizeof();
     auto& loc = emitter.current_function->locals.emplace(c_idx, calyx::Local{GetCalyxType(type), c_idx, size, std::move(arg_index)}).first->second;
@@ -84,7 +84,7 @@ struct ASTWalker : public ast::NodeVisitor {
     return c_idx;
   }
 
-  const pType<const CType>& GetSymbolType(const cotyl::CString& symbol) const {
+  const type::AnyType& GetSymbolType(const cotyl::CString& symbol) const {
     if (locals.Has(symbol)) {
       return locals.Get(symbol).type;
     }

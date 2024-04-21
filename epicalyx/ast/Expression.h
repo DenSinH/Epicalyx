@@ -5,10 +5,10 @@
 #include "Initializer.h"
 #include "tokenizer/TokenType.h"
 #include "CString.h"
+#include "Vector.h"
 
 #include <string>
 #include <utility>
-#include "Vector.h"
 
 
 namespace epi::ast {

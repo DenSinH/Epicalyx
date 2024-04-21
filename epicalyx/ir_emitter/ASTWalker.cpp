@@ -13,41 +13,17 @@
 #include "Exceptions.h"
 #include "CustomAssert.h"
 
-#include "Helpers.inl"
+// #include "Helpers.inl"
 
 
 namespace epi {
 
-namespace detail {
-  
-struct CalyxLocalTypeVisitor : TypeVisitor {
-  calyx::Local::Type local_type;
 
-  void Visit(const VoidType& type) final { throw std::runtime_error("Incomplete type"); }
-  void Visit(const ValueType<i8>& type) final { local_type = calyx::Local::Type::I8; }
-  void Visit(const ValueType<u8>& type) final { local_type = calyx::Local::Type::U8; }
-  void Visit(const ValueType<i16>& type) final { local_type = calyx::Local::Type::I16; }
-  void Visit(const ValueType<u16>& type) final { local_type = calyx::Local::Type::U16; }
-  void Visit(const ValueType<i32>& type) final { local_type = calyx::Local::Type::I32; }
-  void Visit(const ValueType<u32>& type) final { local_type = calyx::Local::Type::U32; }
-  void Visit(const ValueType<i64>& type) final { local_type = calyx::Local::Type::I64; }
-  void Visit(const ValueType<u64>& type) final { local_type = calyx::Local::Type::U64; }
-  void Visit(const ValueType<float>& type) final { local_type = calyx::Local::Type::Float; }
-  void Visit(const ValueType<double>& type) final { local_type = calyx::Local::Type::Double; }
-  void Visit(const PointerType& type) final { local_type = calyx::Local::Type::Pointer; }
-  void Visit(const ArrayType& type) final { local_type = calyx::Local::Type::Pointer; }
-  void Visit(const FunctionType& type) final { local_type = calyx::Local::Type::Pointer; }
-  void Visit(const StructType& type) final { local_type = calyx::Local::Type::Struct; }
-  void Visit(const UnionType& type) final { local_type = calyx::Local::Type::Struct; }
-};
-
-}
-
-calyx::Local::Type ASTWalker::GetCalyxType(const pType<const CType>& type) {
-  detail::CalyxLocalTypeVisitor visitor{};
-  type->Visit(visitor);
-  return visitor.local_type;
-}
+// calyx::Local::Type ASTWalker::GetCalyxType(const pType<const CType>& type) {
+//   detail::CalyxLocalTypeVisitor visitor{};
+//   type->Visit(visitor);
+//   return visitor.local_type;
+// }
 
 
 void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {

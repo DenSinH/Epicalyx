@@ -1,11 +1,11 @@
 #pragma once
 
 #include "calyx/Calyx.h"
-#include "ast/Node.h"
+#include "ast/NodeFwd.h"
 #include "Containers.h"
 #include "TypeTraits.h"
-
 #include "Vector.h"
+
 
 namespace epi {
 

@@ -1,5 +1,6 @@
 #include "Emitter.h"
 #include "ASTWalker.h"
+#include "ast/Node.h"
 
 
 namespace epi {

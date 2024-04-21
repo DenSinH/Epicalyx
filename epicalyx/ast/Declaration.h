@@ -3,7 +3,6 @@
 #include "Node.h"
 #include "types/AnyType.h"
 #include "CString.h"
-#include "Format.h"
 #include "Initializer.h"
 #include "NodeVisitor.h"
 
