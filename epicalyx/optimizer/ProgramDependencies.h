@@ -4,7 +4,7 @@
 #include "Containers.h"
 #include "cycle/Graph.h"
 
-#include <vector>
+#include "Vector.h"
 #include <optional>
 
 
@@ -18,7 +18,7 @@ struct FunctionDependencies {
     // variables depend on at most 2 others through a binop
     cotyl::static_vector<var_index_t, 2> deps{};
     bool is_call_result = false;
-    std::vector<func_pos_t> reads{};
+    cotyl::vector<func_pos_t> reads{};
     func_pos_t function_result = {0, 0};
 
     // local aliases (i.e. v12 = &c1)
@@ -27,11 +27,11 @@ struct FunctionDependencies {
   };
 
   struct LocalData {
-    std::vector<func_pos_t> writes{};
-    std::vector<func_pos_t> reads{};
+    cotyl::vector<func_pos_t> writes{};
+    cotyl::vector<func_pos_t> reads{};
     bool needs_address = false;
 
-    std::vector<var_index_t> aliased_by{};
+    cotyl::vector<var_index_t> aliased_by{};
   };
 
   cotyl::CString symbol{};

@@ -1,12 +1,82 @@
 #include "Expression.h"
-#include "parser/ConstParser.h"
 namespace epi { struct Parser; }
 #include "Initializer.h"
 #include "types/Types.h"
 #include "SStream.h"
+#include "Escape.h"
 
 
 namespace epi::ast {
+
+  
+IdentifierNode::IdentifierNode(cotyl::CString&& name, type::AnyType&& type) :
+    ExprNode{std::move(type)}, name(std::move(name)) { 
+
+}
+
+std::string IdentifierNode::ToString() const { 
+  return name.str(); 
+};
+
+
+template<typename T>
+NumericalConstantNode<T>::NumericalConstantNode(T value) :
+    ExprNode{type::ValueType<T>{
+      value, type::BaseType::LValueNess::None, type::BaseType::Qualifier::Const
+    }}, value(value) { 
+
+}
+
+template<typename T>
+std::string NumericalConstantNode<T>::ToString() const { 
+  return std::to_string(value); 
+};
+
+
+StringConstantNode::StringConstantNode(cotyl::CString&& value) :
+    ExprNode{type::PointerType{
+      std::make_shared<type::AnyType>(
+        type::ValueType<i8>(type::BaseType::LValueNess::LValue, type::BaseType::Qualifier::Const)
+      ),
+      type::BaseType::LValueNess::LValue,
+      type::BaseType::Qualifier::Const
+    }}, 
+    value(std::move(value)) { 
+
+}
+
+std::string StringConstantNode::ToString() const { 
+  return cotyl::Format("\"%s\"", cotyl::Escape(value.c_str()).c_str()); 
+}
+
+
+ArrayAccessNode::ArrayAccessNode(pExpr&& left, pExpr&& right) :
+    ExprNode{left->type->ArrayAccess(right->type)},
+    left(std::move(left)),
+    right(std::move(right)) {
+
+}
+
+std::string ArrayAccessNode::ToString() const { 
+  return cotyl::FormatStr("(%s)[%s]", left, right); 
+}
+
+
+FunctionCallNode::FunctionCallNode(pExpr&& left, cotyl::vector<pExpr>&& args) :
+    ExprNode{left->type->FunctionCall(
+      [&] {
+        cotyl::vector<type::AnyType> call_args{};
+        call_args.reserve(args.size());
+        for (const auto& arg : args) {
+          call_args.push_back(arg->type);
+        }
+        return call_args;
+      }()
+    )},
+    left(std::move(left)),
+    args{std::move(args)} {
+
+}
 
 std::string FunctionCallNode::ToString() const {
   cotyl::StringStream result{};
@@ -21,47 +91,6 @@ std::string FunctionCallNode::ToString() const {
   return result.finalize();
 }
 
-std::string MemberAccessNode::ToString() const {
-  if (direct) {
-    return cotyl::FormatStr("(%s).%s", left, member);
-  }
-  return cotyl::FormatStr("(%s)->%s", left, member);
-}
-
-StringConstantNode::StringConstantNode(cotyl::CString&& value) :
-    ExprNode{type::PointerType{
-      std::make_shared<type::AnyType>(
-        type::ValueType<i8>(type::BaseType::LValueNess::LValue, type::BaseType::Qualifier::Const)
-      ),
-      type::BaseType::LValueNess::LValue,
-      type::BaseType::Qualifier::Const
-    }}, 
-    value(std::move(value)) { 
-
-}
-
-ArrayAccessNode::ArrayAccessNode(pExpr&& left, pExpr&& right) :
-    ExprNode{left->type->ArrayAccess(right->type)},
-    left(std::move(left)),
-    right(std::move(right)) {
-
-}
-
-FunctionCallNode::FunctionCallNode(pExpr&& left, std::vector<pExpr>&& args) :
-    ExprNode{left->type->FunctionCall(
-      [&] {
-        std::vector<type::AnyType> call_args{};
-        call_args.reserve(args.size());
-        for (const auto& arg : args) {
-          call_args.push_back(arg->type);
-        }
-        return call_args;
-      }()
-    )},
-    left(std::move(left)),
-    args{std::move(args)} {
-
-}
 
 MemberAccessNode::MemberAccessNode(pExpr&& left, bool direct, cotyl::CString&& member) :
     ExprNode{direct ? left->type->MemberAccess(member) : left->type->Deref()->MemberAccess(member)},
@@ -71,12 +100,22 @@ MemberAccessNode::MemberAccessNode(pExpr&& left, bool direct, cotyl::CString&& m
 
 }
 
-TypeInitializerNode::TypeInitializerNode(type::AnyType&& type, pNode<InitializerList>&& list) :
+std::string MemberAccessNode::ToString() const {
+  if (direct) {
+    return cotyl::FormatStr("(%s).%s", left, member);
+  }
+  return cotyl::FormatStr("(%s)->%s", left, member);
+}
+
+
+TypeInitializerNode::TypeInitializerNode(type::AnyType&& type, InitializerList&& list) :
     ExprNode{std::move(type)},
     list{std::move(list)} {
-  throw std::runtime_error("not reimplemented");
-  // auto visitor = ValidInitializerListVisitor(*list);
-  // type->Visit(visitor);
+  list.ValidateAndReduce(type);
+}
+
+std::string TypeInitializerNode::ToString() const { 
+  return cotyl::FormatStr("(%s)%s", type, list); 
 }
 
 PostFixNode::PostFixNode(TokenType op, pExpr&& left) :
@@ -87,6 +126,11 @@ PostFixNode::PostFixNode(TokenType op, pExpr&& left) :
   op == TokenType::Incr ? left->type->Incr() : left->type->Decr();
   type->ForgetConstInfo();
 }
+
+std::string PostFixNode::ToString() const { 
+  return cotyl::FormatStr("(%s)%s", left, op); 
+}
+
 
 UnopNode::UnopNode(TokenType op, pExpr&& left) :
     ExprNode{[&] {
@@ -108,11 +152,21 @@ UnopNode::UnopNode(TokenType op, pExpr&& left) :
 
 }
 
+std::string UnopNode::ToString() const { 
+  return cotyl::FormatStr("%s(%s)", op, left); 
+}
+
+
 CastNode::CastNode(type::AnyType&& type, pExpr&& expr) :
     ExprNode{type.Cast(expr->type)},
     expr{std::move(expr)} {
 
 }
+
+std::string CastNode::ToString() const { 
+  return cotyl::FormatStr("(%s)(%s)", type, expr); 
+}
+
 
 BinopNode::BinopNode(pExpr&& left, TokenType op, pExpr&& right) :
     ExprNode{[&] {
@@ -145,6 +199,11 @@ BinopNode::BinopNode(pExpr&& left, TokenType op, pExpr&& right) :
 
 }
 
+std::string BinopNode::ToString() const {
+  return cotyl::FormatStr("(%s) %s (%s)", left, op, right);
+}
+
+
 TernaryNode::TernaryNode(pExpr&& cond, pExpr&& _true, pExpr&& _false) :
     ExprNode{[&] {
       const auto& cond_t = cond->type;
@@ -154,7 +213,7 @@ TernaryNode::TernaryNode(pExpr&& cond, pExpr&& _true, pExpr&& _false) :
 
       // todo: type conversions for constexpr
       if (cond_t.IsConstexpr()) {
-        if (cond_t.ConstIntVal()) {
+        if (cond_t.ConstBoolVal()) {
           return common_t.Cast(true_t);
         }
         return common_t.Cast(false_t);
@@ -167,6 +226,11 @@ TernaryNode::TernaryNode(pExpr&& cond, pExpr&& _true, pExpr&& _false) :
     _false(std::move(_false)) {
 
 }
+
+std::string TernaryNode::ToString() const {
+  return cotyl::FormatStr("(%s) ? (%s) : (%s)", cond, stringify(_true), _false);
+}
+
 
 AssignmentNode::AssignmentNode(pExpr&& left, TokenType op, pExpr&& right) :
     ExprNode{left->type.Cast([&] {
@@ -198,66 +262,10 @@ AssignmentNode::AssignmentNode(pExpr&& left, TokenType op, pExpr&& right) :
 
 }
 
-pExpr MemberAccessNode::EReduce() {
-  auto n_left = left->EReduce();
-  if (n_left) left = std::move(n_left);
-  // todo: constant struct lookup
-  return nullptr;
+std::string AssignmentNode::ToString() const {
+  return cotyl::FormatStr("%s %s (%s)", left, op, right);
 }
 
-pExpr ArrayAccessNode::EReduce() {
-  auto n_left = left->EReduce();
-  if (n_left) left = std::move(n_left);
-  auto n_right = right->EReduce();
-  if (n_right) right = std::move(n_right);
-  // todo: constant array lookup
-  return nullptr;
-}
-
-pExpr FunctionCallNode::EReduce() {
-  auto n_left = left->EReduce();
-  if (n_left) left = std::move(n_left);
-
-  for (auto& arg : args) {
-    auto n_arg = arg->EReduce();
-    if (n_arg) arg = std::move(n_arg);
-  }
-  // todo: consteval functions
-  return nullptr;
-}
-
-pExpr TypeInitializerNode::EReduce() {
-  throw std::runtime_error("not reimplemented");
-  // return ReduceInitializerListVisitor(parser, *list).Reduce(*type);
-}
-
-pExpr BinopNode::EReduce() {
-  auto n_left = left->EReduce();
-  if (n_left) left = std::move(n_left);
-  auto n_right = right->EReduce();
-  if (n_right) right = std::move(n_right);
-  return ExprNode::EReduce();
-}
-
-pExpr TernaryNode::EReduce() {
-  auto n_cond = cond->EReduce();
-  if (n_cond) cond = std::move(n_cond);
-  auto n_true = _true->EReduce();
-  if (n_true) _true = std::move(n_true);
-  auto n_false = _false->EReduce();
-  if (n_false) _false = std::move(n_false);
-
-  return ExprNode::EReduce();
-}
-
-pExpr AssignmentNode::EReduce() {
-  auto n_left = left->EReduce();
-  if (n_left) left = std::move(n_left);
-  auto n_right = right->EReduce();
-  if (n_right) right = std::move(n_right);
-  // AssignmentNode may never be replaced
-  return nullptr;
-}
 
 template struct NumericalConstantNode<i8>;
 template struct NumericalConstantNode<u8>;

@@ -8,7 +8,7 @@ Emitter::Emitter() {
 
 }
 
-void Emitter::MakeProgram(std::vector<ast::pNode<ast::DeclNode>>& ast) {
+void Emitter::MakeProgram(cotyl::vector<ast::pNode<ast::DeclNode>>& ast) {
   auto walker = ASTWalker(*this);
   for (auto& decl : ast) {
     decl->Visit(walker);

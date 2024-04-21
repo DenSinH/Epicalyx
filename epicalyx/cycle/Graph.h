@@ -125,8 +125,8 @@ public:
 
 // topsort only makes sense for directed graphs
 template<typename I, typename T>
-std::vector<I> TopSort(const Graph<I, T, true>& graph, bool acyclic) {
-  std::vector<I> result{};
+cotyl::vector<I> TopSort(const Graph<I, T, true>& graph, bool acyclic) {
+  cotyl::vector<I> result{};
   result.reserve(graph.size());
   cotyl::unordered_set<I> todo{};
   cotyl::flat_set<I> candidates{};
@@ -202,8 +202,8 @@ std::vector<I> TopSort(const Graph<I, T, true>& graph, bool acyclic) {
 }
 
 template<typename I, typename T>
-std::vector<std::vector<I>> LayeredTopSort(const Graph<I, T, true>& graph, bool acyclic) {
-  std::vector<std::vector<I>> result{};
+cotyl::vector<cotyl::vector<I>> LayeredTopSort(const Graph<I, T, true>& graph, bool acyclic) {
+  cotyl::vector<cotyl::vector<I>> result{};
   cotyl::unordered_set<I> todo{};
   cotyl::flat_set<I> candidates{};
 
@@ -286,9 +286,9 @@ std::vector<std::vector<I>> LayeredTopSort(const Graph<I, T, true>& graph, bool 
 
 // "ordered" upward closure only makes sense for directed graphs
 template<typename I, typename T>
-std::vector<I> OrderedUpwardClosure(const Graph<I, T, true>& graph, I base) {
+cotyl::vector<I> OrderedUpwardClosure(const Graph<I, T, true>& graph, I base) {
   cotyl::unordered_set<I> closure_found{base};
-  std::vector<I> closure{};
+  cotyl::vector<I> closure{};
   closure.push_back(base);
   cotyl::unordered_set<I> search{base};
 

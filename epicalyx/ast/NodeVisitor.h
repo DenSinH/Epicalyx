@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Node.h"
+#include "NodeFwd.h"
 
 
 namespace epi::ast {

@@ -63,6 +63,7 @@ set(INCLUDE_HEADERS
   ${PROJECT_SOURCE_DIR}/epicalyx/include/Cast.h
   ${PROJECT_SOURCE_DIR}/epicalyx/include/CustomAssert.h
   ${PROJECT_SOURCE_DIR}/epicalyx/include/Containers.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Vector.h
   ${PROJECT_SOURCE_DIR}/epicalyx/include/Hash.h
   ${PROJECT_SOURCE_DIR}/epicalyx/include/Exceptions.h
 )

@@ -517,7 +517,7 @@ void Preprocessor::PreprocessorDirective() {
 
     if (!IsEOS() && NextCharacter() == '(') {
       // functional macro
-      std::vector<std::string> arguments = {};
+      cotyl::vector<std::string> arguments = {};
       bool variadic = false;
       SkipNextCharacterSimple();  // skip ( character
 
@@ -606,7 +606,7 @@ void Preprocessor::ReplaceNewlines(std::string& value) {
 }
 
 Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
-  const std::vector<std::string>& args,
+  const cotyl::vector<std::string>& args,
   bool variadic,
   const std::string& value
 ) {
@@ -735,7 +735,7 @@ void Preprocessor::PushMacro(const std::string& name, const Definition& definiti
 
   if (definition.arguments.has_value()) {
     const auto& arguments = definition.arguments.value();
-    std::vector<std::string> arg_values{};
+    cotyl::vector<std::string> arg_values{};
     std::string va_args{};
 
     // when parsing macro usage, newlines can be skipped just fine

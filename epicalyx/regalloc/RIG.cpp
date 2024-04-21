@@ -18,7 +18,7 @@ RIG RIG::GenerateRIG(const Function& function) {
   struct InstrLiveliness {
     std::optional<GeneralizedVar> def{};
     // may be more than 2 uses in CALL
-    std::vector<GeneralizedVar> use{};
+    cotyl::vector<GeneralizedVar> use{};
   };
   
   struct Liveliness {
@@ -32,7 +32,7 @@ RIG RIG::GenerateRIG(const Function& function) {
     // and will never reset "in".
 
     // definitions and uses at an instruction level
-    std::vector<InstrLiveliness> single{};
+    cotyl::vector<InstrLiveliness> single{};
   };
   
   // initialize empty nodes
@@ -223,7 +223,7 @@ void RIG::Visualize(const std::string& filename) const {
       }
       return cotyl::Format("v%d", gvar.idx);
     },
-    [](auto idx, auto gvar) -> std::vector<std::string> { return {}; }
+    [](auto idx, auto gvar) -> cotyl::vector<std::string> { return {}; }
   );
 
   vgraph.square_nodes = false;

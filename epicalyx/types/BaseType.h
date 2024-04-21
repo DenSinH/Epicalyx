@@ -3,11 +3,10 @@
 #include <string>
 
 #include "Default.h"
+#include "TypeFwd.h"
 
 
 namespace epi::type {
-
-struct AnyType;
 
 struct BaseType {
 
@@ -64,7 +63,7 @@ struct BaseType {
   AnyType Neq(const AnyType& other) const;
 
   virtual AnyType MemberAccess(const cotyl::CString& member) const;
-  virtual AnyType FunctionCall(const std::vector<AnyType>& args) const;
+  virtual AnyType FunctionCall(const cotyl::vector<AnyType>& args) const;
 
   virtual AnyType Deref() const;
   AnyType ArrayAccess(const AnyType& other) const;

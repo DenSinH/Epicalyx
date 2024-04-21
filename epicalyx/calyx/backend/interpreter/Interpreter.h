@@ -20,11 +20,11 @@ struct Interpreter {
 
   // globals as raw data
   cotyl::unordered_map<cotyl::CString, i64> globals{};
-  std::vector<std::vector<u8>> global_data{{}};
+  cotyl::vector<cotyl::vector<u8>> global_data{{}};
 
 private:
-  std::vector<u8> stack{};
-  std::vector<std::variant<i64, label_offset_t>> pointer_values{};
+  cotyl::vector<u8> stack{};
+  cotyl::vector<std::variant<i64, label_offset_t>> pointer_values{};
 
   calyx::Pointer MakePointer(std::variant<i64, label_offset_t> value) {
     const auto idx = pointer_values.size();

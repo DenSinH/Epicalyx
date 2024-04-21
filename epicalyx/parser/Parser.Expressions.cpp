@@ -323,7 +323,7 @@ i64 ConstParser::EConstexpr() {
   return expr->ConstEval();
 }
 
-void Parser::EExpressionList(std::vector<pExpr>& dest) {
+void Parser::EExpressionList(cotyl::vector<pExpr>& dest) {
   do {
     dest.emplace_back(EExpression());
   } while (in_stream.EatIf(TokenType::Comma));

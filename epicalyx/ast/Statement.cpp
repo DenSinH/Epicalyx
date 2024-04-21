@@ -1,4 +1,6 @@
 #include "Statement.h"
+#include "Node.h"
+#include "Format.h"
 #include "Declaration.h"
 namespace epi { struct Parser; }
 #include "Cast.h"
@@ -9,16 +11,10 @@ namespace epi { struct Parser; }
 
 namespace epi::ast {
 
-ForNode::ForNode(std::vector<pNode<DeclarationNode>>&& decls,
-         std::vector<pExpr>&& inits,
-         pExpr&& cond,
-         std::vector<pExpr>&& updates,
-         pNode<>&& stat) :
-      decls(std::move(decls)),
-      inits(std::move(inits)),
-      cond(std::move(cond)),
-      updates(std::move(updates)),
-      stat(std::move(stat)) {
+IfNode::IfNode(pExpr&& cond, pStat&& stat, pStat&& _else) :
+    cond(std::move(cond)),
+    stat(std::move(stat)),
+    _else(std::move(_else)) {
 
 }
 
@@ -29,19 +25,75 @@ std::string IfNode::ToString() const {
   return cotyl::FormatStr("if (%s) %s", cond, stat);
 }
 
+pStat IfNode::Reduce() {
+  if (cond->IsConstexpr()) {
+    if (cond->type.ConstBoolVal()) {
+      return std::move(stat);
+    }
+    else if (_else) {
+      return std::move(_else);
+    }
+    else {
+      return std::make_unique<EmptyNode>();
+    }
+  }
+  return nullptr;
+}
+
+
+WhileNode::WhileNode(pExpr&& cond, pStat&& stat) :
+    cond(std::move(cond)),
+    stat(std::move(stat)) {
+
+}
+
+pStat WhileNode::Reduce() {
+  if (cond->IsConstexpr()) {
+    if (!cond->type.ConstBoolVal()) {
+      return std::make_unique<EmptyNode>();
+    }
+  }
+  return nullptr;
+}
+
 std::string WhileNode::ToString() const {
   return cotyl::FormatStr("while (%s) %s", cond, stat);
+}
+
+
+DoWhileNode::DoWhileNode(pStat&& stat, pExpr&& cond) :
+    stat(std::move(stat)),
+    cond(std::move(cond)) {
+
 }
 
 std::string DoWhileNode::ToString() const {
   return cotyl::FormatStr("do %s while (%s);", stat, cond);
 }
 
-std::string ReturnNode::ToString() const {
-  if (expr) {
-    return cotyl::FormatStr("return %s;", expr);
+pStat DoWhileNode::Reduce() {
+  if (cond->IsConstexpr()) {
+    if (!cond->type.ConstBoolVal()) {
+      // execute once
+      return std::move(stat);
+    }
   }
-  return "return;";
+  return nullptr;
+}
+
+
+ForNode::ForNode(
+  cotyl::vector<pNode<DeclarationNode>>&& decls,
+  cotyl::vector<pExpr>&& inits,
+  pExpr&& cond,
+  cotyl::vector<pExpr>&& updates,
+  pStat&& stat
+) : decls{std::move(decls)},
+    inits{std::move(inits)},
+    cond{std::move(cond)},
+    updates{std::move(updates)},
+    stat{std::move(stat)} {
+
 }
 
 std::string ForNode::ToString() const {
@@ -58,8 +110,93 @@ std::string ForNode::ToString() const {
   return result.finalize();
 }
 
+pStat ForNode::Reduce() {
+  if (cond->IsConstexpr()) {
+    if (!cond->ConstEval()) {
+      return std::make_unique<EmptyNode>();
+    }
+  }
+  return nullptr;
+}
+
+
+LabelNode::LabelNode(cotyl::CString&& name, pStat stat) :
+    name(std::move(name)),
+    stat(std::move(stat)) {
+
+}
+
+std::string LabelNode::ToString() const { 
+  return cotyl::FormatStr("%s: %s", name.str(), stat); 
+}
+
+
+SwitchNode::SwitchNode(pExpr&& expr, pStat&& stat) :
+        expr(std::move(expr)),
+        stat(std::move(stat)) {
+
+}
+
 std::string SwitchNode::ToString() const {
   return cotyl::FormatStr("switch (%s) %s", expr, stat);
+}
+
+
+CaseNode::CaseNode(i64 expr, pStat&& stat) :
+    expr(expr),
+    stat(std::move(stat)) {
+
+}
+
+std::string CaseNode::ToString() const { 
+  return cotyl::FormatStr("case %s: %s", expr, stat); 
+}
+
+
+DefaultNode::DefaultNode(pStat&& stat) :
+    stat(std::move(stat)) {
+
+}
+
+std::string DefaultNode::ToString() const {
+  return cotyl::FormatStr("default: %s", stat); 
+}
+
+GotoNode::GotoNode(cotyl::CString&& label) : 
+    label(std::move(label)) {
+
+}
+
+std::string GotoNode::ToString() const { 
+  return cotyl::Format("goto %s;", label.c_str()); 
+}
+
+
+ReturnNode::ReturnNode(pExpr expr) : 
+    expr(std::move(expr)) {
+
+}
+
+std::string ReturnNode::ToString() const {
+  if (expr) {
+    return cotyl::FormatStr("return %s;", expr);
+  }
+  return "return;";
+}
+
+
+std::string BreakNode::ToString() const { 
+  return "break;"; 
+}
+
+
+std::string ContinueNode::ToString() const { 
+  return "continue;"; 
+}
+
+
+void CompoundNode::AddNode(pNode<Node>&& stat) {
+  if (stat) stats.push_back(std::move(stat));
 }
 
 std::string CompoundNode::ToString() const {
@@ -72,129 +209,6 @@ std::string CompoundNode::ToString() const {
   }
   std::string result = std::regex_replace(repr.finalize(), std::regex("\n"), "\n  ");
   return result + "\n}";
-}
-
-pNode<> IfNode::Reduce() {
-  auto n_cond = cond->Reduce();
-  if (n_cond) cond = std::move(cond);
-  auto n_stat = stat->Reduce();
-  if (n_stat) stat = std::move(stat);
-  if (_else) {
-    auto n_else = _else->Reduce();
-    if (n_else) _else = std::move(_else);
-  }
-
-  if (cond->IsConstexpr()) {
-    if (cond->type.ConstBoolVal()) {
-      return std::move(stat);
-    }
-    else if (_else) {
-      return std::move(_else);
-    }
-    else {
-      return std::make_unique<EmptyNode>();
-    }
-  }
-  return nullptr;
-}
-
-pNode<> WhileNode::Reduce() {
-  auto n_cond = cond->Reduce();
-  if (n_cond) cond = std::move(n_cond);
-  auto n_stat = stat->Reduce();
-  if (n_stat) stat = std::move(n_stat);
-
-  if (cond->IsConstexpr()) {
-    if (!cond->type.ConstBoolVal()) {
-      return std::make_unique<EmptyNode>();
-    }
-  }
-  return nullptr;
-}
-
-pNode<> DoWhileNode::Reduce() {
-  auto n_cond = cond->Reduce();
-  if (n_cond) cond = std::move(n_cond);
-  auto n_stat = stat->Reduce();
-  if (n_stat) stat = std::move(n_stat);
-
-  if (cond->IsConstexpr()) {
-    if (!cond->type.ConstBoolVal()) {
-      return stat;
-    }
-  }
-  return nullptr;
-}
-
-pNode<> ForNode::Reduce() {
-  for (auto& decl : decls) {
-    decl->Reduce();
-  }
-  for (auto& init : inits) {
-    auto n_init = init->Reduce();
-    if (n_init) init = std::move(n_init);
-  }
-  auto n_cond = cond->Reduce();
-  if (n_cond) cond = std::move(n_cond);
-
-  for (auto& update : updates) {
-    auto n_update = update->Reduce();
-    if (n_update) update = std::move(n_update);
-  }
-
-  auto n_stat = stat->Reduce();
-  if (n_stat) stat = std::move(n_stat);
-
-  if (cond->IsConstexpr()) {
-    if (!cond->GetType()->GetBoolValue()) {
-      return std::make_unique<EmptyNode>();
-    }
-  }
-  return nullptr;
-}
-
-pNode<> SwitchNode::Reduce() {
-  auto n_expr = expr->Reduce();
-  if (n_expr) expr = std::move(n_expr);
-  auto n_stat = stat->Reduce();
-  if (n_stat) stat = std::move(n_stat);
-  return nullptr;
-}
-
-pNode<> LabelNode::Reduce() {
-  auto n_stat = stat->Reduce();
-  if (n_stat) stat = std::move(n_stat);
-  return nullptr;
-}
-
-pNode<> CaseNode::Reduce() {
-  auto n_stat = stat->Reduce();
-  if (n_stat) stat = std::move(n_stat);
-  return nullptr;
-}
-
-pNode<> DefaultNode::Reduce() {
-  auto n_stat = stat->Reduce();
-  if (n_stat) stat = std::move(n_stat);
-  return nullptr;
-}
-
-pNode<> ReturnNode::Reduce() {
-  auto n_expr = expr->Reduce();
-  if (n_expr) expr = std::move(n_expr);
-  return nullptr;
-}
-
-pNode<> CompoundNode::Reduce() {
-  // reduced when added
-  for (auto& node : stats) {
-    if (node->IsStatement()) {
-      auto n_stat = cotyl::unique_ptr_cast<StatNode>(node)->Reduce();
-      if (n_stat) node = std::move(n_stat);
-    }
-    // don't do anything for DeclarationNodes
-  }
-  return nullptr;
 }
 
 }

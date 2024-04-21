@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BaseType.h"
+#include "TypeFwd.h"
 #include "Variant.h"
 #include "Packs.h"
 
@@ -27,15 +28,6 @@ struct AnyValueType : BaseType {
 };
 
 
-using value_type_pack = cotyl::pack<
-  i8, u8, 
-  i16, u16,
-  i32, u32, 
-  i64, u64,
-  float, double
->;
-
-
 template<typename T>
 requires (cotyl::pack_contains_v<T, value_type_pack>)
 struct ValueType final : AnyValueType {
@@ -54,20 +46,6 @@ struct ValueType final : AnyValueType {
 
   constexpr T Get() const { return value.value(); }
   constexpr bool HasValue() const { return value.has_value(); }
-  // bool IsConstexpr() const final { return HasValue(); }
-  // bool HasTruthiness() const final { return true; }
-  // bool IsIntegral() const final { return std::is_integral_v<T>; }
-  // bool IsSigned() const final {
-  //   if constexpr(std::is_integral_v<T>) {
-  //     return std::is_signed_v<T>;
-  //   }
-  //   throw std::runtime_error("Type is not integral");
-  // }
-
-  // bool GetBoolValue() const final {
-  //   if (HasValue()) { return Get() != 0; }
-  //   throw std::runtime_error("Bool value requested from non-constant Get");
-  // }
 
   std::string ToString() const final;
   
@@ -90,18 +68,6 @@ struct ValueType final : AnyValueType {
   AnyType BinNot() const;
 
   u64 Sizeof() const final { return sizeof(T); }
-
-  // i64 ConstIntVal() const final {
-  //   if constexpr(!std::is_integral_v<T>) {
-  //     throw std::runtime_error("Floating point type is not an integral value");
-  //   }
-  //   else {
-  //     if constexpr (std::is_unsigned_v<T>) {
-  //       return (std::make_signed_t<T>)Get();
-  //     }
-  //     return Get();
-  //   }
-  // }
   AnyType CommonTypeImpl(const AnyType& other) const final;
   void ForgetConstInfo() final { value.reset(); }
 };
@@ -147,7 +113,7 @@ struct FunctionType final : BaseType {
   };
 
   nested_type_t return_type;
-  std::vector<Arg> arg_types;
+  cotyl::vector<Arg> arg_types;
   bool variadic;
 
   AnyType Deref() const final;
@@ -156,7 +122,7 @@ struct FunctionType final : BaseType {
   u64 Sizeof() const final { return sizeof(u64); }
 
   std::string ToString() const final;
-  AnyType FunctionCall(const std::vector<AnyType>& args) const final;
+  AnyType FunctionCall(const cotyl::vector<AnyType>& args) const final;
   
   bool TypeEqualImpl(const FunctionType& other) const;
   AnyType CommonTypeImpl(const AnyType& other) const final;
@@ -181,7 +147,7 @@ struct StructUnionType : BaseType {
       name{std::move(name)}, BaseType{lvalue, flags} { }
 
   cotyl::CString name;
-  std::vector<StructField> fields;  // empty if struct was only declared but never defined
+  cotyl::vector<StructField> fields;  // empty if struct was only declared but never defined
 
   template<typename... Args>
   void AddField(Args&&... args) {

@@ -181,7 +181,7 @@ struct Argument {
 };
 
 // IR var idx and Argument
-using arg_list_t = std::vector<std::pair<var_index_t, Argument>>;
+using arg_list_t = cotyl::vector<std::pair<var_index_t, Argument>>;
 
 struct ArgData {
   arg_list_t args;

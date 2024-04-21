@@ -38,7 +38,6 @@ struct DeclarationNode final : DeclNode {
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
   // todo: move this to parser
   // void VerifyAndRecord(Parser& parser) override;
-  pNode<> Reduce();
 };
 
 struct FunctionDefinitionNode final : DeclNode {

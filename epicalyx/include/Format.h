@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <memory>
 #include <string>
-#include <vector>
+#include "Vector.h"
 
 
 namespace epi::cotyl {
@@ -39,7 +39,7 @@ std::runtime_error FormatExceptStr(const std::string& format, const Args& ... ar
 }
 
 template<typename T>
-std::string Join(const std::string& delimiter, const std::vector<T>& values) {
+std::string Join(const std::string& delimiter, const cotyl::vector<T>& values) {
   if (values.empty()) return "";
 
   cotyl::StringStream result{};

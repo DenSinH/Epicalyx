@@ -633,7 +633,7 @@ pNode<DeclarationNode> Parser::DDeclarator(pType<> ctype, StorageClass storage) 
   return std::make_unique<DeclarationNode>(ctype, std::move(name), storage);
 }
 
-void Parser::DInitDeclaratorList(std::vector<pNode<DeclarationNode>>& dest) {
+void Parser::DInitDeclaratorList(cotyl::vector<pNode<DeclarationNode>>& dest) {
   auto ctype = DSpecifier();
 
   do {
@@ -668,7 +668,7 @@ void Parser::DInitDeclaratorList(std::vector<pNode<DeclarationNode>>& dest) {
   } while (in_stream.EatIf(TokenType::Comma));
 }
 
-pNode<FunctionDefinitionNode> Parser::ExternalDeclaration(std::vector<pNode<DeclarationNode>>& dest) {
+pNode<FunctionDefinitionNode> Parser::ExternalDeclaration(cotyl::vector<pNode<DeclarationNode>>& dest) {
   if (in_stream.IsAfter(0, TokenType::StaticAssert)) {
     DStaticAssert();
     return nullptr;

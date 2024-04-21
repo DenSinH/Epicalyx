@@ -4,7 +4,7 @@
 #include "Containers.h"
 #include "Graph.h"
 
-#include <vector>
+#include "Vector.h"
 
 
 namespace epi::cycle {
@@ -26,14 +26,14 @@ private:
 
   struct VisualNode {
     VisualNode(u64 id) : id(id) { }
-    VisualNode(u64 id, const std::string& title, std::vector<std::string>&& body) : 
+    VisualNode(u64 id, const std::string& title, cotyl::vector<std::string>&& body) : 
         id(id), title{title}, body{std::move(body)} { }
 
     u64 id;
     void* agnode = nullptr;
     bool selected = false;
     std::string title{};
-    std::vector<std::string> body{};
+    cotyl::vector<std::string> body{};
     cotyl::unordered_map<u64, cotyl::unordered_set<std::string>> outputs{};
   };
 

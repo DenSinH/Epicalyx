@@ -60,7 +60,7 @@ AnyType BaseType::Neq(const AnyType& other) const {
 
 
 AnyType BaseType::MemberAccess(const cotyl::CString& member) const { InvalidOperand(this, "."); }
-AnyType BaseType::FunctionCall(const std::vector<AnyType>& args) const { InvalidOperand(this, "()"); }
+AnyType BaseType::FunctionCall(const cotyl::vector<AnyType>& args) const { InvalidOperand(this, "()"); }
 
 AnyType BaseType::Deref() const { InvalidOperand(this, "*"); };
 AnyType BaseType::ArrayAccess(const AnyType& other) const { InvalidOperand(this, "[]"); };

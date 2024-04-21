@@ -2,6 +2,7 @@ add_library(AST STATIC
         Expression.h
         Expression.cpp
         Node.h
+        NodeFwd.h
         Declaration.h
         Statement.cpp
         Statement.h

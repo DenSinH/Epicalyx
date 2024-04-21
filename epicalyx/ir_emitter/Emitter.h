@@ -5,7 +5,7 @@
 #include "Containers.h"
 #include "TypeTraits.h"
 
-#include <vector>
+#include "Vector.h"
 
 namespace epi {
 
@@ -65,7 +65,7 @@ struct Emitter {
     current_block = id;
   }
 
-  void MakeProgram(std::vector<ast::pNode<ast::DeclNode>>& ast);
+  void MakeProgram(cotyl::vector<ast::pNode<ast::DeclNode>>& ast);
 
   // 0 are special IDs
   var_index_t ir_counter = 1;  // ir vars
@@ -74,7 +74,7 @@ struct Emitter {
   calyx::Function* current_function = nullptr;
   block_label_t current_block = 0;
 
-  std::vector<Var> vars;
+  cotyl::vector<Var> vars;
   calyx::Program program{};
 
   void SetFunction(calyx::Function& func) {

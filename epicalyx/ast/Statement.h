@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Node.h"
-#include "Format.h"
 #include "NodeVisitor.h"
 
 
@@ -16,182 +15,146 @@ struct EmptyNode final : StatNode {
 
 struct IfNode final : StatNode {
 
-  IfNode(pExpr&& cond, pNode<StatNode>&& stat, pNode<StatNode>&& _else = nullptr) :
-      cond(std::move(cond)),
-      stat(std::move(stat)),
-      _else(std::move(_else)) {
-
-  }
+  IfNode(pExpr&& cond, pStat&& stat, pStat&& _else = nullptr);
 
   pExpr cond;
-  pNode<StatNode> stat;
-  pNode<StatNode> _else;
+  pStat stat;
+  pStat _else;
 
   std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pNode<> Reduce() final;
+  pStat Reduce() final;
 };
 
 struct WhileNode final : StatNode {
 
-  WhileNode(pExpr&& cond, pNode<StatNode>&& stat) :
-      cond(std::move(cond)),
-      stat(std::move(stat)) {
-
-  }
+  WhileNode(pExpr&& cond, pStat&& stat);
 
   pExpr cond;
-  pNode<StatNode> stat;
+  pStat stat;
 
   std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pNode<> Reduce() final;
+  pStat Reduce() final;
 };
 
 struct DoWhileNode final : StatNode {
 
-  DoWhileNode(pNode<StatNode>&& stat, pExpr&& cond) :
-      stat(std::move(stat)),
-      cond(std::move(cond)) {
+  DoWhileNode(pStat&& stat, pExpr&& cond);
 
-  }
-
-  pNode<StatNode> stat;
+  pStat stat;
   pExpr cond;
 
   std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pNode<> Reduce() final;
+  pStat Reduce() final;
 };
 
 struct ForNode final : StatNode {
 
   ForNode(
-      std::vector<pNode<DeclarationNode>>&& decls,
-      std::vector<pExpr>&& inits,
+      cotyl::vector<pNode<DeclarationNode>>&& decls,
+      cotyl::vector<pExpr>&& inits,
       pExpr&& cond,
-      std::vector<pExpr>&& updates,
-      pNode<StatNode>&& stat
+      cotyl::vector<pExpr>&& updates,
+      pStat&& stat
   );
 
 
-  std::vector<pNode<DeclarationNode>> decls{};
-  std::vector<pExpr> inits{};
+  cotyl::vector<pNode<DeclarationNode>> decls{};
+  cotyl::vector<pExpr> inits{};
   pExpr cond;
-  std::vector<pExpr> updates{};
-  pNode<StatNode> stat;
+  cotyl::vector<pExpr> updates{};
+  pStat stat;
 
   std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pNode<> Reduce() final;
+  pStat Reduce() final;
 };
 
 struct LabelNode final : StatNode {
-  LabelNode(cotyl::CString&& name, pNode<StatNode> stat) :
-      name(std::move(name)),
-      stat(std::move(stat)) {
 
-  }
+  LabelNode(cotyl::CString&& name, pStat stat);
 
   cotyl::CString name;
-  pNode<StatNode> stat;
+  pStat stat;
 
-  std::string ToString() const final { return cotyl::FormatStr("%s: %s", name.str(), stat); }
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pNode<> Reduce() final;
 };
 
 
 struct SwitchNode final : StatNode {
 
-  SwitchNode(pExpr&& expr, pNode<StatNode>&& stat) :
-          expr(std::move(expr)),
-          stat(std::move(stat)) {
-
-  }
+  SwitchNode(pExpr&& expr, pStat&& stat);
 
   pExpr expr;
-  pNode<StatNode> stat;
+  pStat stat;
 
   std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pNode<> Reduce() final;
 };
 
 struct CaseNode final : StatNode {
 
-  CaseNode(i64 expr, pNode<StatNode>&& stat) :
-      expr(expr),
-      stat(std::move(stat)) {
-
-  }
+  CaseNode(i64 expr, pStat&& stat);
 
   i64 expr;
-  pNode<StatNode> stat;
+  pStat stat;
 
-  std::string ToString() const final { return cotyl::FormatStr("case %s: %s", expr, stat); }
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pNode<> Reduce() final;
 };
 
 struct DefaultNode final : StatNode {
-  DefaultNode(pNode<StatNode>&& stat) :
-      stat(std::move(stat)) {
 
-  }
+  DefaultNode(pStat&& stat);
 
-  pNode<StatNode> stat;
+  pStat stat;
 
-  std::string ToString() const final { return cotyl::FormatStr("default: %s", stat); }
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pNode<> Reduce() final;
 };
 
 struct GotoNode final : StatNode {
 
-  GotoNode(cotyl::CString&& label) : label(std::move(label)) { }
+  GotoNode(cotyl::CString&& label);
 
   cotyl::CString label;
 
-  std::string ToString() const final { return cotyl::Format("goto %s;", label.c_str()); }
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 
 struct ReturnNode final : StatNode {
 
-  ReturnNode(pExpr expr = nullptr) : expr(std::move(expr)) {
-
-  }
+  ReturnNode(pExpr expr = nullptr);
 
   pExpr expr;
 
   std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pNode<> Reduce() final;
 };
 
 struct BreakNode final : StatNode {
 
-  std::string ToString() const final { return "break;"; }
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 
 struct ContinueNode final : StatNode {
 
-  std::string ToString() const final { return "continue;"; }
+  std::string ToString() const;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 
 struct CompoundNode final : StatNode {
 
-  void AddNode(pNode<Node>&& stat) {
-    if (stat) stats.push_back(std::move(stat));
-  }
+  void AddNode(pNode<Node>&& stat);
 
-  std::vector<pNode<Node>> stats{};
+  cotyl::vector<pNode<Node>> stats{};
   std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pNode<> Reduce() final;
 };
 
 }

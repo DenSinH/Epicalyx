@@ -3,7 +3,7 @@
 #include "Containers.h"
 #include "Format.h"
 
-#include <vector>
+#include "Vector.h"
 #include <stdexcept>
 
 namespace epi::cotyl {
@@ -27,7 +27,7 @@ struct Scope {
   }
 
 protected:
-  std::vector<U> scope{{}};
+  cotyl::vector<U> scope{{}};
 };
 
 template<typename K, typename V, bool allow_multiple_assignment = false>
@@ -136,8 +136,8 @@ struct SetScope : public Scope<cotyl::unordered_set<K>> {
 
 
 template<typename K>
-struct VecScope : public Scope<std::vector<K>> {
-  using base = Scope<std::vector<K>>;
+struct VecScope : public Scope<cotyl::vector<K>> {
+  using base = Scope<cotyl::vector<K>>;
 
   void Push(const K& key) {
     base::scope.back().push_back(key);

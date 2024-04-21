@@ -35,7 +35,7 @@ struct Parser final : public ConstParser {
   ast::Initializer EInitializer();
   ast::pNode<ast::InitializerList> EInitializerList();
   pType<const CType> ResolveIdentifierType(const cotyl::CString& name) const final;
-  void EExpressionList(std::vector<ast::pExpr>& dest);
+  void EExpressionList(cotyl::vector<ast::pExpr>& dest);
 
   void DStaticAssert();
   std::pair<pType<>, ast::StorageClass> DSpecifier();
@@ -43,13 +43,13 @@ struct Parser final : public ConstParser {
   pType<> DStruct();
   cotyl::CString DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest);
   ast::pNode<ast::DeclarationNode> DDeclarator(pType<> ctype, ast::StorageClass storage);
-  void DInitDeclaratorList(std::vector<ast::pNode<ast::DeclarationNode>>& dest);
+  void DInitDeclaratorList(cotyl::vector<ast::pNode<ast::DeclarationNode>>& dest);
   bool IsDeclarationSpecifier(int after = 0);
 
   ast::pNode<ast::StatNode> SStatement();
   ast::pNode<ast::CompoundNode> SCompound();
 
-  ast::pNode<ast::FunctionDefinitionNode> ExternalDeclaration(std::vector<ast::pNode<ast::DeclarationNode>>& dest);
+  ast::pNode<ast::FunctionDefinitionNode> ExternalDeclaration(cotyl::vector<ast::pNode<ast::DeclarationNode>>& dest);
 
   void PushScope();
   void PopScope();
@@ -76,7 +76,7 @@ struct Parser final : public ConstParser {
   cotyl::MapScope<cotyl::CString, pType<const CType>> variables{};
 
   // external results
-  std::vector<ast::pNode<ast::DeclNode>> declarations{};
+  cotyl::vector<ast::pNode<ast::DeclNode>> declarations{};
 };
 
 }

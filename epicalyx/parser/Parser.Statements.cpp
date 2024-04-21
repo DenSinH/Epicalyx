@@ -129,12 +129,12 @@ pNode<StatNode> Parser::SStatement() {
 
       // new scope for for loop declarations
       PushScope();
-      std::vector<pNode<DeclarationNode>> decl_list;
+      cotyl::vector<pNode<DeclarationNode>> decl_list;
       if (IsDeclarationSpecifier()) {
         DInitDeclaratorList(decl_list);
       }
 
-      std::vector<pExpr> init{};
+      cotyl::vector<pExpr> init{};
       if (!in_stream.IsAfter(0, TokenType::SemiColon)) {
         EExpressionList(init);
       }
@@ -143,7 +143,7 @@ pNode<StatNode> Parser::SStatement() {
       if (!in_stream.IsAfter(0, TokenType::SemiColon)) {
         cond = EExpression();
       }
-      std::vector<pExpr> update{};
+      cotyl::vector<pExpr> update{};
       in_stream.Eat(TokenType::SemiColon);
       if (!in_stream.IsAfter(0, TokenType::RParen)) {
         EExpressionList(update);
@@ -237,7 +237,7 @@ pNode<StatNode> Parser::SStatement() {
       if (IsDeclarationSpecifier()) {
         throw std::runtime_error("Unexpected declaration");
       }
-      std::vector<pExpr> exprlist;
+      cotyl::vector<pExpr> exprlist;
       EExpressionList(exprlist);
       if (exprlist.size() == 1) {
         return std::move(exprlist[0]);
@@ -260,7 +260,7 @@ pNode<CompoundNode> Parser::SCompound() {
       DStaticAssert();
     }
     else if (IsDeclarationSpecifier()) {
-      std::vector<pNode<DeclarationNode>> decl_list;
+      cotyl::vector<pNode<DeclarationNode>> decl_list;
       DInitDeclaratorList(decl_list);
       in_stream.Eat(TokenType::SemiColon);
       for (auto& decl : decl_list) {

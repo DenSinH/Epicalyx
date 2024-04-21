@@ -6,15 +6,15 @@
 
 namespace epi::ast {
 
-DeclarationNode::DeclarationNode(type::AnyType&& type, cotyl::CString&& name, StorageClass storage = StorageClass::Auto, std::optional<Initializer> value = {}) :
-    name{std::move(name)}, type{std::move(type)}, storage{storage}, value{std::move(value)} { }
+DeclarationNode::DeclarationNode(type::AnyType&& type, cotyl::CString&& name, StorageClass storage, std::optional<Initializer> value) :
+    name{std::move(name)}, type{std::move(type)}, storage{storage}, value{std::move(value)} {
 
-pNode<> DeclarationNode::Reduce() {
-  if (value.has_value()) {
-    auto& init = value.value();
-    init.Reduce();
-  }
-  return nullptr;
+  throw std::runtime_error("not reimplemented");
+  // used to be in Reduce()
+  // if (value.has_value()) {
+  //   auto& init = value.value();
+  //   init.Reduce();
+  // }
 }
 
 std::string DeclarationNode::ToString() const {

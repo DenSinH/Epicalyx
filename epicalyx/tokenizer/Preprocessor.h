@@ -38,26 +38,26 @@ private:
   };
 
   struct Definition {
-    using value_t = std::vector<std::variant<std::string, i32>>;
+    using value_t = cotyl::vector<std::variant<std::string, i32>>;
     struct Arguments {
       size_t count;
       bool variadic;
     };
 
-    Definition(const std::vector<std::string>& args, bool variadic, const std::string& val) :
+    Definition(const cotyl::vector<std::string>& args, bool variadic, const std::string& val) :
         arguments{Arguments{args.size(), variadic}},
         value{Parse(args, variadic, val)} { }
 
     Definition(std::string&& value) : arguments{}, value{std::move(value)} { }
 
-    static value_t Parse(const std::vector<std::string>& args, bool variadic, const std::string& value);
+    static value_t Parse(const cotyl::vector<std::string>& args, bool variadic, const std::string& value);
 
     value_t value;
     std::optional<Arguments> arguments{};
   };
 
   struct MacroStream final : public cotyl::Stream<char> {
-    MacroStream(const std::string& name, const Definition& def, std::vector<std::string>&& arguments, std::string&& va_args) :
+    MacroStream(const std::string& name, const Definition& def, cotyl::vector<std::string>&& arguments, std::string&& va_args) :
         name{name}, 
         def{def}, 
         arguments{std::move(arguments)},
@@ -80,7 +80,7 @@ private:
 
     std::string name;
     const Definition& def; // value
-    std::vector<std::string> arguments{};  // argument values
+    cotyl::vector<std::string> arguments{};  // argument values
     std::string va_args{};
 
     bool eos = false;

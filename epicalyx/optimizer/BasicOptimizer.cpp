@@ -342,7 +342,7 @@ void BasicOptimizer::DoBranch(T&& branch) {
 }
 
 void BasicOptimizer::FlushAliasedLocals() {
-  std::vector<var_index_t> removed{};
+  cotyl::vector<var_index_t> removed{};
   auto& initial_values = local_initial_values[current_new_block_idx];
   for (auto& [loc_idx, local] : locals) {
     if (old_deps.local_graph.at(loc_idx).aliased_by.empty()) {

@@ -8,7 +8,7 @@
 
 #include <memory>
 #include <string>
-#include <vector>
+#include "Vector.h"
 #include <variant>
 #include <optional>
 
@@ -32,7 +32,7 @@ struct BasicBlock {
   void push_back(AnyDirective&& value);
 
 private:
-  std::vector<AnyDirective> directives{};
+  cotyl::vector<AnyDirective> directives{};
 };
 
 
@@ -57,7 +57,7 @@ struct Program {
   cotyl::unordered_map<cotyl::CString, Function> functions{};
 
   // string constants
-  std::vector<cotyl::CString> strings{};
+  cotyl::vector<cotyl::CString> strings{};
 
   // global variable sizes
   cotyl::unordered_map<cotyl::CString, global_t> globals{};

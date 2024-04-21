@@ -53,7 +53,7 @@ using small_vector = boost::container::small_vector<T, N>;
 #include <map>
 #include <unordered_set>
 #include <unordered_map>
-#include <vector>
+#include "Vector.h"
 
 namespace epi::cotyl {
 
@@ -70,7 +70,7 @@ using flat_set = std::unordered_set<T>;
 template<typename K, typename V>
 using flat_map = std::unordered_map<K, V>;
 template<typename T, std::size_t N>
-using small_vector = std::vector<T>;
+using small_vector = cotyl::vector<T>;
 
 }
 

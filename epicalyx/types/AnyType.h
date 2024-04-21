@@ -2,9 +2,9 @@
 
 #include "Types.h"
 #include "Stringify.h"
+#include "Vector.h"
 
 #include <memory>
-#include <vector>
 
 namespace epi::type {
 

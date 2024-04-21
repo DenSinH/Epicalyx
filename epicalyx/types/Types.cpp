@@ -377,7 +377,7 @@ bool FunctionType::TypeEqualImpl(const FunctionType& other) const {
   return true;
 }
 
-AnyType FunctionType::FunctionCall(const std::vector<AnyType>& args) const {
+AnyType FunctionType::FunctionCall(const cotyl::vector<AnyType>& args) const {
   if (args.size() != arg_types.size()) {
     if (!variadic || args.size() < arg_types.size()) {
       throw std::runtime_error("Not enough arguments for function call");

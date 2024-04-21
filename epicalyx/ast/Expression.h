@@ -2,15 +2,13 @@
 
 #include "Node.h"
 #include "NodeVisitor.h"
-namespace epi::ast { struct InitializerList; }
-#include "types/BaseType.h"
+#include "Initializer.h"
 #include "tokenizer/TokenType.h"
-#include "Escape.h"
 #include "CString.h"
 
 #include <string>
 #include <utility>
-#include <vector>
+#include "Vector.h"
 
 
 namespace epi::ast {
@@ -22,12 +20,11 @@ namespace epi::ast {
 struct IdentifierNode final : ExprNode {
   ~IdentifierNode() final = default;
 
-  IdentifierNode(cotyl::CString&& name, type::AnyType&& type) :
-      ExprNode{std::move(type)}, name(std::move(name)) { }
+  IdentifierNode(cotyl::CString&& name, type::AnyType&& type);
 
   cotyl::CString name;
 
-  std::string ToString() const final { return name.str(); };
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 
@@ -36,14 +33,11 @@ template<typename T>
 struct NumericalConstantNode final : ExprNode {
   ~NumericalConstantNode() final = default;
 
-  NumericalConstantNode(T value) :
-      ExprNode{type::ValueType<T>{
-        value, type::BaseType::LValueNess::None, type::BaseType::Qualifier::Const
-      }}, value(value) { }
+  NumericalConstantNode(T value);
 
   const T value;
 
-  std::string ToString() const final { return std::to_string(value); };
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 
@@ -55,7 +49,7 @@ struct StringConstantNode final : ExprNode {
 
   cotyl::CString value;
 
-  std::string ToString() const final { return cotyl::Format("\"%s\"", cotyl::Escape(value.c_str()).c_str()); }
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 
@@ -69,23 +63,21 @@ struct ArrayAccessNode final : ExprNode {
 
   pExpr left, right;
 
-  std::string ToString() const final { return cotyl::FormatStr("(%s)[%s]", left, right); }
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pExpr EReduce() final;
 };
 
 
 struct FunctionCallNode final : ExprNode {
   ~FunctionCallNode() final = default;
 
-  FunctionCallNode(pExpr&& left, std::vector<pExpr>&& args);
+  FunctionCallNode(pExpr&& left, cotyl::vector<pExpr>&& args);
 
   pExpr left;
-  std::vector<pExpr> args{};
+  cotyl::vector<pExpr> args{};
 
   std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pExpr EReduce() final;
 };
 
 
@@ -100,19 +92,17 @@ struct MemberAccessNode final : ExprNode {
 
   std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pExpr EReduce() final;
 };
 
 
 struct TypeInitializerNode : ExprNode {
 
-  TypeInitializerNode(type::AnyType&& type, pNode<InitializerList>&& list);
+  TypeInitializerNode(type::AnyType&& type, InitializerList&& list);
 
-  pNode<InitializerList> list;
+  InitializerList list;
 
-  std::string ToString() const final { return cotyl::FormatStr("(%s)%s", type, list); }
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pExpr EReduce() final;
 };
 
 
@@ -124,9 +114,8 @@ struct PostFixNode final : ExprNode {
   pExpr left;
   TokenType op;
 
-  std::string ToString() const final { return cotyl::FormatStr("(%s)%s", left, op); }
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  // EReduce is just the constant node from the PostFixNode operation (will always be nullptr)
 };
 
 
@@ -138,9 +127,8 @@ struct UnopNode final : ExprNode {
   pExpr left;
   TokenType op;
 
-  std::string ToString() const final { return cotyl::FormatStr("%s(%s)", op, left); }
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  // EReduce is just the constant node from the unary operation
 };
 
 
@@ -151,9 +139,8 @@ struct CastNode final : ExprNode {
 
   pExpr expr;
 
-  std::string ToString() const final { return cotyl::FormatStr("(%s)(%s)", type, expr); }
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  // EReduce is just the constant node from the cast
 };
 
 
@@ -166,11 +153,8 @@ struct BinopNode final : ExprNode {
   TokenType op;
   pExpr right;
 
-  std::string ToString() const final {
-    return cotyl::FormatStr("(%s) %s (%s)", left, op, right);
-  }
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pExpr EReduce() final;
 };
 
 
@@ -183,11 +167,8 @@ struct TernaryNode final : ExprNode {
   pExpr _true;
   pExpr _false;
 
-  std::string ToString() const final {
-    return cotyl::FormatStr("(%s) ? (%s) : (%s)", cond, stringify(_true), _false);
-  }
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pExpr EReduce() final;
 };
 
 
@@ -200,11 +181,8 @@ struct AssignmentNode final : ExprNode {
   const TokenType op;
   pExpr right;
 
-  std::string ToString() const final {
-    return cotyl::FormatStr("%s %s (%s)", left, op, right);
-  }
+  std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  pExpr EReduce() final;
 };
 
 }
