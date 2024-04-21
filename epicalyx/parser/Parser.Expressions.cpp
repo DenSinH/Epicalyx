@@ -52,7 +52,11 @@ pExpr Parser::EPrimary() {
         // replace enum values with constants immediately
         return std::make_unique<NumericalConstantNode<enum_type>>(enum_values.Get(name));
       }
-      return std::make_unique<IdentifierNode>(std::move(ident.name));
+      auto type = ResolveIdentifierType(ident.name);
+      return std::make_unique<IdentifierNode>(
+        std::move(ident.name),
+        std::move(type)
+      );
     },
     [](StringConstantToken& str) -> pExpr {
       return std::make_unique<StringConstantNode>(std::move(str.value));
@@ -97,16 +101,16 @@ pExpr Parser::EPostfix() {
       }
       case TokenType::LParen: {
         // function call
-        auto func = std::make_unique<FunctionCallNode>(std::move(node));
+        cotyl::vector<pExpr> args{};
         in_stream.Skip();
         while (!in_stream.IsAfter(0, TokenType::RParen)) {
-          func->AddArg(EAssignment());
+          args.push_back(EAssignment());
           if (!in_stream.IsAfter(0, TokenType::RParen)) {
             in_stream.Eat(TokenType::Comma);
           }
         }
         in_stream.Eat(TokenType::RParen);
-        node = std::move(func);
+        node = std::make_unique<FunctionCallNode>(std::move(node), std::move(args));
         break;
       }
       case TokenType::Arrow: {
@@ -167,7 +171,7 @@ pExpr Parser::EUnary() {
         in_stream.Eat(TokenType::RParen);
         return std::make_unique<NumericalConstantNode<u64>>(type_name->Sizeof());
       }
-      return std::make_unique<NumericalConstantNode<u64>>(EExpression()->SemanticAnalysis(*this)->Sizeof());
+      return std::make_unique<NumericalConstantNode<u64>>(EExpression()->type->Sizeof());
     }
     case TokenType::Alignof: {
       // _Alignof(type-name)
@@ -182,7 +186,7 @@ pExpr Parser::EUnary() {
   }
 }
 
-pType<const CType> Parser::ETypeName() {
+type::AnyType Parser::ETypeName() {
   auto ctype = DSpecifier();
 
   if (ctype.second != StorageClass::None) {
@@ -193,7 +197,7 @@ pType<const CType> Parser::ETypeName() {
   if (!decl->name.empty()) {
     throw std::runtime_error("Name not allowed in type name");
   }
-  return decl->type;
+  return std::move(decl->type);
 }
 
 pExpr ConstParser::ECast() {
@@ -212,13 +216,13 @@ pExpr Parser::ECast() {
 
       if (in_stream.EatIf(TokenType::LBrace)) {
         // type initializer
-        pNode<InitializerList> list = EInitializerList();
+        InitializerList list = EInitializerList();
         in_stream.Eat(TokenType::RBrace);
-        return std::make_unique<TypeInitializerNode>(type_name, std::move(list));
+        return std::make_unique<TypeInitializerNode>(std::move(type_name), std::move(list));
       }
       else {
         // regular cast expression
-        return std::make_unique<CastNode>(type_name, ECast());
+        return std::make_unique<CastNode>(std::move(type_name), ECast());
       }
     }
   }
@@ -260,15 +264,15 @@ pExpr ConstParser::ETernary() {
     auto _false = ETernary();
 
     // insert casts if true or false do not have the same type
-    auto true_t = _true->SemanticAnalysis(*this);
-    auto false_t = _false->SemanticAnalysis(*this);
-    auto common_t = true_t->CommonType(*false_t);
+    const auto& true_t = _true->type;
+    const auto& false_t = _false->type;
+    auto common_t = true_t.CommonType(false_t);
 
-    if (!true_t->EqualType(*common_t)) {
-      _true = std::make_unique<CastNode>(common_t, std::move(_true));
+    if (!true_t.TypeEquals(common_t)) {
+      _true = std::make_unique<CastNode>(type::AnyType(common_t), std::move(_true));
     }
-    if (!false_t->EqualType(*common_t)) {
-      _false = std::make_unique<CastNode>(common_t, std::move(_false));
+    if (!false_t.TypeEquals(common_t)) {
+      _false = std::make_unique<CastNode>(std::move(common_t), std::move(_false));
     }
     return std::make_unique<TernaryNode>(std::move(left), std::move(_true), std::move(_false));
   }
@@ -313,13 +317,11 @@ pExpr Parser::EAssignment() {
 pExpr Parser::EExpression() {
   // todo: commas
   auto expr = EAssignment();
-  expr->SemanticAnalysis(*this);
   return std::move(expr);
 }
 
 i64 ConstParser::EConstexpr() {
   auto expr = ETernary();
-  expr->SemanticAnalysis(*this);
   return expr->ConstEval();
 }
 
@@ -334,18 +336,17 @@ Initializer Parser::EInitializer() {
     // initializer list
     auto value = EInitializerList();
     in_stream.Eat(TokenType::RBrace);
-    return value;
+    return {std::move(value)};
   }
   else {
     // assignment expression
     auto expr = EAssignment();
-    expr->SemanticAnalysis(*this);
-    return std::move(expr);
+    return {std::move(expr)};
   }
 }
 
-pNode<InitializerList> Parser::EInitializerList() {
-  pNode<InitializerList> list = std::make_unique<InitializerList>();
+InitializerList Parser::EInitializerList() {
+  InitializerList list{};
 
   while (!in_stream.IsAfter(0, TokenType::RBrace)) {
     DesignatorList designator{};
@@ -357,7 +358,7 @@ pNode<InitializerList> Parser::EInitializerList() {
           in_stream.Expect(TokenType::Identifier);
           designator.emplace_back(std::move(in_stream.Get().get<IdentifierToken>().name));
           if (in_stream.EatIf(TokenType::Assign)) {
-            list->Push(std::move(designator), EInitializer());
+            list.Push(std::move(designator), EInitializer());
             break;
           }
         }
@@ -367,14 +368,14 @@ pNode<InitializerList> Parser::EInitializerList() {
           designator.emplace_back(EConstexpr());
           in_stream.Eat(TokenType::RBracket);
           if (in_stream.EatIf(TokenType::Assign)) {
-            list->Push(std::move(designator), EInitializer());
+            list.Push(std::move(designator), EInitializer());
             break;
           }
         }
       }
     }
     else {
-      list->Push({}, EInitializer());
+      list.Push({}, EInitializer());
     }
 
     if (!in_stream.EatIf(TokenType::Comma)) {

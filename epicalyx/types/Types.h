@@ -10,7 +10,7 @@
 
 namespace epi::type {
 
-using nested_type_t = std::shared_ptr<AnyType>;
+using nested_type_t = std::shared_ptr<const AnyType>;
 
 
 struct VoidType final : BaseType {
@@ -42,7 +42,7 @@ struct ValueType final : AnyValueType {
   ValueType(std::optional<T> value, LValueNess lvalue, u8 flags = 0) :
       AnyValueType{lvalue, flags}, value{value} { }
 
-  std::optional<T> value;
+  mutable std::optional<T> value;
 
   constexpr T Get() const { return value.value(); }
   constexpr bool HasValue() const { return value.has_value(); }
@@ -69,16 +69,31 @@ struct ValueType final : AnyValueType {
 
   u64 Sizeof() const final { return sizeof(T); }
   AnyType CommonTypeImpl(const AnyType& other) const final;
-  void ForgetConstInfo() final { value.reset(); }
+  void ForgetConstInfo() const final { value.reset(); }
 };
 
 
-struct PointerType final : BaseType {
-  
-  PointerType(nested_type_t&& contained, LValueNess lvalue, std::size_t size = 0, u8 flags = 0) :
-      BaseType{lvalue, flags}, contained{std::move(contained)}, size{size} { }
+struct AnyPointerType : BaseType {
+  virtual ~AnyPointerType() = default;
+
+  AnyPointerType(nested_type_t&& contained, LValueNess lvalue, u8 flags = 0) :
+      BaseType{lvalue, flags}, contained{std::move(contained)} {
+
+  } 
 
   nested_type_t contained;
+  virtual AnyType ToAny() = 0;
+};
+
+struct PointerType final : AnyPointerType {
+  
+  PointerType(nested_type_t&& contained, LValueNess lvalue, u8 flags = 0, std::size_t size = 0) :
+      AnyPointerType{std::move(contained), lvalue, flags}, size{size} { }
+
+  static PointerType ArrayType(nested_type_t&& contained, std::size_t size, u8 flags = 0) {
+    return PointerType{std::move(contained), LValueNess::LValue, flags, size};
+  }
+
 
   // size == 0 ==> "normal" pointer
   std::size_t size;
@@ -94,14 +109,15 @@ struct PointerType final : BaseType {
 
   u64 Sizeof() const final;
 
-  void ForgetConstInfo() final;
+  void ForgetConstInfo() const final;
   AnyType CommonTypeImpl(const AnyType& other) const final;
+  AnyType ToAny() final;
 };
 
-struct FunctionType final : BaseType {
+struct FunctionType final : AnyPointerType {
   FunctionType(
     nested_type_t&& return_type, bool variadic, LValueNess lvalue, u8 flags = 0
-  ) : BaseType{lvalue, flags}, return_type{std::move(return_type)}, variadic{variadic} {}
+  ) : AnyPointerType{std::move(return_type), lvalue, flags}, variadic{variadic} {}
 
   struct Arg {
     Arg(cotyl::CString&& name, nested_type_t&& type) : 
@@ -112,7 +128,6 @@ struct FunctionType final : BaseType {
     nested_type_t type;
   };
 
-  nested_type_t return_type;
   cotyl::vector<Arg> arg_types;
   bool variadic;
 
@@ -126,6 +141,7 @@ struct FunctionType final : BaseType {
   
   bool TypeEqualImpl(const FunctionType& other) const;
   AnyType CommonTypeImpl(const AnyType& other) const final;
+  AnyType ToAny() final;
 };
 
 
@@ -143,17 +159,19 @@ struct StructField {
 
 
 struct StructUnionType : BaseType {
-  StructUnionType(cotyl::CString&& name, LValueNess lvalue, u8 flags = 0) :
-      name{std::move(name)}, BaseType{lvalue, flags} { }
+  StructUnionType(
+    cotyl::CString&& name,
+    cotyl::vector<StructField>&& fields,
+    LValueNess lvalue, 
+    u8 flags = 0
+  ) : BaseType{lvalue, flags}, 
+      name{std::move(name)}, 
+      fields{std::move(fields)} { 
+
+  }
 
   cotyl::CString name;
   cotyl::vector<StructField> fields;  // empty if struct was only declared but never defined
-
-  template<typename... Args>
-  void AddField(Args&&... args) {
-    fields.emplace_back(std::move(args)...);
-  }
-
   AnyType MemberAccess(const cotyl::CString& member) const final;
 
   // pType<> CastToImpl(const StructUnionType& other) const {
@@ -164,7 +182,7 @@ struct StructUnionType : BaseType {
   // }
   // bool _EqualTypeImpl(const StructUnionType& other) const;
 
-  void ForgetConstInfo() final; 
+  void ForgetConstInfo() const final; 
   AnyType CommonTypeImpl(const AnyType& other) const final;
   bool TypeEqualImpl(const StructUnionType& other) const;
 
@@ -174,8 +192,17 @@ protected:
 
 
 struct StructType final : StructUnionType {
-  StructType(cotyl::CString&& name, LValueNess lvalue, u8 flags = 0) :
-      StructUnionType{std::move(name), lvalue, flags} { }
+  StructType(
+    cotyl::CString&& name,
+    cotyl::vector<StructField>&& fields,
+    LValueNess lvalue, 
+    u8 flags = 0
+  ) : StructUnionType{
+      std::move(name), 
+      std::move(fields), 
+      lvalue, 
+      flags
+  } { }
 
   u64 Sizeof() const final;
   std::string ToString() const final;
@@ -183,8 +210,17 @@ struct StructType final : StructUnionType {
 
 
 struct UnionType final : StructUnionType {
-  UnionType(cotyl::CString&& name, LValueNess lvalue, u8 flags = 0) :
-      StructUnionType{std::move(name), lvalue, flags} { }
+  UnionType(
+    cotyl::CString&& name,
+    cotyl::vector<StructField>&& fields,
+    LValueNess lvalue, 
+    u8 flags = 0
+  ) : StructUnionType{
+      std::move(name), 
+      std::move(fields), 
+      lvalue, 
+      flags
+  } { }
 
   u64 Sizeof() const final;
   std::string ToString() const final;

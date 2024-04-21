@@ -36,8 +36,6 @@ struct DeclarationNode final : DeclNode {
 
   std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
-  // todo: move this to parser
-  // void VerifyAndRecord(Parser& parser) override;
 };
 
 struct FunctionDefinitionNode final : DeclNode {
@@ -49,7 +47,6 @@ struct FunctionDefinitionNode final : DeclNode {
   pNode<CompoundNode> body;
 
   std::string ToString() const final;
-  // void VerifyAndRecord(Parser& parser) final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 

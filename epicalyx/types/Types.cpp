@@ -342,8 +342,12 @@ std::string PointerType::ToString() const {
   }
 }
 
-void PointerType::ForgetConstInfo() {
+void PointerType::ForgetConstInfo() const {
   if (contained) (*contained)->ForgetConstInfo();
+}
+
+AnyType PointerType::ToAny() {
+  return *this;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
@@ -361,7 +365,7 @@ AnyType FunctionType::Deref() const {
 }
 
 bool FunctionType::TypeEqualImpl(const FunctionType& other) const {
-  if (!return_type->TypeEquals(*other.return_type)) {
+  if (!contained->TypeEquals(*other.contained)) {
     return false;
   }
   if (arg_types.size() != other.arg_types.size()) {
@@ -388,7 +392,7 @@ AnyType FunctionType::FunctionCall(const cotyl::vector<AnyType>& args) const {
     // try to cast
     (*arg_types[i].type).Cast(args[i]);
   }
-  return *return_type;
+  return *contained;
 }
 
 std::string FunctionType::Arg::ToString() const {
@@ -400,7 +404,7 @@ std::string FunctionType::Arg::ToString() const {
 
 std::string FunctionType::ToString() const {
   cotyl::StringStream repr{};
-  std::string formatted = cotyl::FormatStr("(%s)(", return_type ? stringify(return_type) : "%%");
+  std::string formatted = cotyl::FormatStr("(%s)(", contained ? stringify(contained) : "%%");
   repr << formatted;
   repr << cotyl::Join(", ", arg_types);
   if (variadic) {
@@ -424,10 +428,14 @@ AnyType FunctionType::CommonTypeImpl(const AnyType& other) const {
   );
 }
 
+AnyType FunctionType::ToAny() {
+  return *this;
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * STRUCT TYPES
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-void StructUnionType::ForgetConstInfo() {
+void StructUnionType::ForgetConstInfo() const {
   for (auto& field : fields) {
     (*field.type)->ForgetConstInfo();
   }

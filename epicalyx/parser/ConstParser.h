@@ -41,8 +41,6 @@ struct ConstParser : public cotyl::Locatable {
   i64 EConstexpr();
 
   cotyl::Stream<AnyToken>& in_stream;
-
-  virtual type::AnyType ResolveIdentifierType(const cotyl::CString& name) const;
 };
 
 }

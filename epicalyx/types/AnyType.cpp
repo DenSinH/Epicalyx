@@ -20,8 +20,20 @@ AnyType AnyType::Cast(const AnyType& other) const {
     Log::Warn("Casting drops 'volatile' qualifier");
   }
 
-  // todo: const propagation
   AnyType result = *this;
+  result.visit<void>(
+    [&](auto& dest) {
+      if constexpr(cotyl::is_instantiation_of_v<ValueType, std::decay_t<decltype(dest)>>) {
+        other.visit<void>(
+          [&](const auto& src) {
+            if constexpr(cotyl::is_instantiation_of_v<ValueType, std::decay_t<decltype(src)>>) {
+              dest.value = src.value;
+            }
+          }
+        );
+      }
+    }
+  );
   result->lvalue = BaseType::LValueNess::None;
   return result;
 }

@@ -32,6 +32,8 @@ struct ExprNode : public StatNode {
 
   ExprNode(type::AnyType type) : type{std::move(type)} { }
   
+  bool IsSwitchable() const;
+  bool HasTruthiness() const;
   bool IsConstexpr() const { return type.IsConstexpr(); }
   bool ConstEval() const { return type.ConstBoolVal(); }
   i64 ConstIntVal() const { return type.ConstIntVal(); }

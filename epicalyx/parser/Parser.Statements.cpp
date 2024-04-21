@@ -2,6 +2,7 @@
 
 #include "Stream.h"
 #include "tokenizer/Token.h"
+#include "ast/Expression.h"
 #include "ast/Statement.h"
 #include "ast/Declaration.h"
 
@@ -25,7 +26,7 @@ pNode<StatNode> Parser::SStatement() {
 
       auto case_stat = std::make_unique<CaseNode>(expr, SStatement());
 
-      auto reduced = case_stat->SReduce(*this);
+      auto reduced = case_stat->Reduce();
       if (reduced) return reduced;
       return case_stat;
     }
@@ -33,7 +34,7 @@ pNode<StatNode> Parser::SStatement() {
       in_stream.EatSequence(TokenType::Default, TokenType::Colon);
       auto def_stat = std::make_unique<DefaultNode>(SStatement());
 
-      auto reduced = def_stat->SReduce(*this);
+      auto reduced = def_stat->Reduce();
       if (reduced) return reduced;
       return def_stat;
     }
@@ -42,17 +43,10 @@ pNode<StatNode> Parser::SStatement() {
       auto expr = EExpression();
       in_stream.Eat(TokenType::RParen);
 
-      // validation
-      auto expr_t = expr->SemanticAnalysis(*this);
-      if (!expr_t->IsIntegral()) {
-        throw std::runtime_error("Expression is not an integral expression");
-      }
-
       auto stat = case_scope << [&]{ return SStatement(); };
-
       auto switch_stat = std::make_unique<SwitchNode>(std::move(expr), std::move(stat));
 
-      auto reduced = switch_stat->SReduce(*this);
+      auto reduced = switch_stat->Reduce();
       if (reduced) return reduced;
       return switch_stat;
     }
@@ -62,12 +56,6 @@ pNode<StatNode> Parser::SStatement() {
       auto cond = EExpression();
       in_stream.Eat(TokenType::RParen);
 
-      // validation
-      auto cond_t = cond->SemanticAnalysis(*this);
-      if (!cond_t->HasTruthiness()) {
-        throw std::runtime_error("Condition has no truthiness");
-      }
-
       auto stat = SStatement();
       if (!in_stream.IsAfter(0, TokenType::Else)) {
         return std::make_unique<IfNode>(std::move(cond), std::move(stat));
@@ -76,7 +64,7 @@ pNode<StatNode> Parser::SStatement() {
 
       auto if_stat = std::make_unique<IfNode>(std::move(cond), std::move(stat), SStatement());
 
-      auto reduced = if_stat->SReduce(*this);
+      auto reduced = if_stat->Reduce();
       if (reduced) return reduced;
       return if_stat;
     }
@@ -84,19 +72,13 @@ pNode<StatNode> Parser::SStatement() {
       in_stream.EatSequence(TokenType::While, TokenType::LParen);
       auto cond = EExpression();
 
-      // validation
-      auto cond_t = cond->SemanticAnalysis(*this);
-      if (!cond_t->HasTruthiness()) {
-        throw std::runtime_error("Condition has no truthiness");
-      }
-
       in_stream.Eat(TokenType::RParen);
       loop_scope.push_back(Loop::While);
       auto stat = SStatement();
       loop_scope.pop_back();
       auto while_stat = std::make_unique<WhileNode>(std::move(cond), std::move(stat));
 
-      auto reduced = while_stat->SReduce(*this);
+      auto reduced = while_stat->Reduce();
       if (reduced) return reduced;
       return while_stat;
     }
@@ -110,16 +92,10 @@ pNode<StatNode> Parser::SStatement() {
       in_stream.EatSequence(TokenType::While, TokenType::LParen);
       auto cond = EExpression();
 
-      // validation
-      auto cond_t = cond->SemanticAnalysis(*this);
-      if (!cond_t->HasTruthiness()) {
-        throw std::runtime_error("Condition has no truthiness");
-      }
-
       in_stream.EatSequence(TokenType::RParen, TokenType::SemiColon);
       auto dowhile_stat = std::make_unique<DoWhileNode>(std::move(stat), std::move(cond));
 
-      auto reduced = dowhile_stat->SReduce(*this);
+      auto reduced = dowhile_stat->Reduce();
       if (reduced) return reduced;
       return dowhile_stat;
 
@@ -162,7 +138,7 @@ pNode<StatNode> Parser::SStatement() {
           std::move(stat)
       );
 
-      auto reduced = for_stat->SReduce(*this);
+      auto reduced = for_stat->Reduce();
       PopScope();
 
       if (reduced) return reduced;
@@ -206,10 +182,10 @@ pNode<StatNode> Parser::SStatement() {
       in_stream.Eat(TokenType::SemiColon);
 
       // check function return type
-      function_return->Cast(*expr->GetType());
+      function_return->Cast(expr->type);
 
       auto ret_stat = std::make_unique<ReturnNode>(std::move(expr));
-      auto reduced = ret_stat->SReduce(*this);
+      auto reduced = ret_stat->Reduce();
       if (reduced) return reduced;
       return ret_stat;
     }
@@ -244,7 +220,6 @@ pNode<StatNode> Parser::SStatement() {
       }
       auto compound = std::make_unique<CompoundNode>();
       for (auto& expr : exprlist) {
-        expr->SemanticAnalysis(*this);  // validates expression
         compound->AddNode(std::move(expr));
       }
       return std::move(compound);
@@ -264,8 +239,8 @@ pNode<CompoundNode> Parser::SCompound() {
       DInitDeclaratorList(decl_list);
       in_stream.Eat(TokenType::SemiColon);
       for (auto& decl : decl_list) {
+        throw std::runtime_error("Not reimplemented");
 //        decl->VerifyAndRecord(*this);
-        decl->DReduce(*this);
         compound->AddNode(std::move(decl));
       }
     }

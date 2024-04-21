@@ -81,7 +81,7 @@ struct BaseType {
   virtual AnyType CommonTypeImpl(const AnyType& other) const = 0;
 
   // forget info on contained value (for example, adding an int to a pointer)
-  virtual void ForgetConstInfo() { }
+  virtual void ForgetConstInfo() const { }
 };
 
 }

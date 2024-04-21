@@ -2,7 +2,7 @@
 #include "Is.h"
 #include "Stream.h"
 #include "tokenizer/Token.h"
-#include "types/Types.h"
+#include "types/AnyType.h"
 #include "ast/Declaration.h"
 #include "ast/Statement.h"
 
@@ -77,7 +77,7 @@ void Parser::DStaticAssert() {
   }
 }
 
-pType<> Parser::DEnum() {
+type::AnyType Parser::DEnum() {
   in_stream.Eat(TokenType::Enum);
   cotyl::CString name;
   if (in_stream.IsAfter(0, TokenType::Identifier)) {
@@ -88,7 +88,7 @@ pType<> Parser::DEnum() {
       if (!enums.Has(name)) {
         throw cotyl::FormatExcept("Undefined enum %s", name.c_str());
       }
-      return MakeType<ValueType<enum_type>>(CType::LValueNess::None);
+      return type::ValueType<enum_type>(type::BaseType::LValueNess::None);
     }
   }
   else {
@@ -106,7 +106,7 @@ pType<> Parser::DEnum() {
       counter = EConstexpr();
     }
     enum_values.Set(constant, counter++);
-    variables.Set(constant, MakeType<ValueType<enum_type>>(counter, CType::LValueNess::None, CType::Qualifier::Const));
+    variables.Set(constant, type::ValueType<enum_type>(counter, type::BaseType::LValueNess::None, type::BaseType::Qualifier::Const));
     if (!in_stream.EatIf(TokenType::Comma)) {
       // no comma: expect end of enum declaration
       in_stream.Eat(TokenType::RBrace);
@@ -115,11 +115,10 @@ pType<> Parser::DEnum() {
   } while(!in_stream.EatIf(TokenType::RBrace));
 
   enums.Add(name);
-  return MakeType<ValueType<enum_type>>(CType::LValueNess::None);
+  return type::ValueType<enum_type>(type::BaseType::LValueNess::None);
 }
 
-pType<> Parser::DStruct() {
-  pType<StructUnionType> type;
+type::AnyType Parser::DStruct() {
   cotyl::CString name;
   bool is_struct = true;
   if (!in_stream.EatIf(TokenType::Struct)) {
@@ -131,10 +130,10 @@ pType<> Parser::DStruct() {
     name = std::move(in_stream.Get().get<IdentifierToken>().name);
     if (!in_stream.EatIf(TokenType::LBrace)) {
       if (is_struct) {
-        return structdefs.Get(name)->Clone();
+        return structdefs.Get(name);
       }
       else {
-        return uniondefs.Get(name)->Clone();
+        return uniondefs.Get(name);
       }
     }
   }
@@ -142,13 +141,7 @@ pType<> Parser::DStruct() {
     in_stream.Eat(TokenType::LBrace);
   }
 
-  if (is_struct) {
-    type = MakeType<StructType>(std::move(name), CType::LValueNess::Assignable);
-  }
-  else {
-    type = MakeType<UnionType>(std::move(name), CType::LValueNess::Assignable);
-  }
-
+  cotyl::vector<type::StructField> fields{};
   while(!in_stream.EatIf(TokenType::RBrace)) {
     if (in_stream.IsAfter(0, TokenType::StaticAssert)) {
       DStaticAssert();
@@ -165,30 +158,39 @@ pType<> Parser::DStruct() {
         if (in_stream.EatIf(TokenType::Colon)) {
           size = EConstexpr();
         }
-        type->AddField(std::move(decl->name), size, decl->type->Clone());
+        fields.emplace_back(std::move(decl->name), size, std::make_unique<type::AnyType>(std::move(decl->type)));
       } while (in_stream.EatIf(TokenType::Comma));
       in_stream.Eat(TokenType::SemiColon);
     }
   }
 
-  if (!type->name.empty()) {
-    if (is_struct) {
-      structdefs.Set(type->name, type);
-    }
-    else {
-      uniondefs.Set(type->name, type);
-    }
+  if (is_struct) {
+    auto result_type = type::StructType{
+      std::move(name),
+      std::move(fields),
+      type::BaseType::LValueNess::Assignable
+    };
+    if (!result_type.name.empty()) structdefs.Set(result_type.name, result_type);
+    return result_type;
   }
-  return type;
+  else {
+    auto result_type = type::UnionType{
+      std::move(name),
+      std::move(fields),
+      type::BaseType::LValueNess::Assignable
+    };
+    if (!result_type.name.empty()) uniondefs.Set(result_type.name, result_type);
+    return result_type;
+  }
 }
 
-std::pair<pType<>, StorageClass> Parser::DSpecifier() {
+std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
   std::optional<StorageClass> storage{};
   enum class Type {
     Void, Char, Short, Long, LongLong, Int, ShortInt, LongInt, LongLongInt, Float, Double
   };
 
-  pType<> ctype;
+  std::optional<type::AnyType> ctype;
 
   std::optional<Type> type{};
   std::optional<int> sign{};
@@ -209,7 +211,7 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
   };
 
   auto assert_no_ctype = [&ctype]() {
-    if (ctype) {
+    if (ctype.has_value()) {
       throw std::runtime_error("Double type in declaration");
     }
   };
@@ -323,14 +325,14 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
         assert_no_type();
         assert_no_sign();
         assert_no_ctype();
-        ctype = DStruct();
+        ctype.emplace(DStruct());
         break;
       }
       case TokenType::Enum: {
         assert_no_type();
         assert_no_sign();
         assert_no_ctype();
-        ctype = DEnum();
+        ctype.emplace(DEnum());
         break;
       }
 
@@ -367,15 +369,15 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
         break;
       }
 
-      case TokenType::Const:    in_stream.Skip(); qualifiers |= CType::Qualifier::Const; break;
-      case TokenType::Restrict: in_stream.Skip(); qualifiers |= CType::Qualifier::Restrict; break;
-      case TokenType::Volatile: in_stream.Skip(); qualifiers |= CType::Qualifier::Volatile; break;
+      case TokenType::Const:    in_stream.Skip(); qualifiers |= type::BaseType::Qualifier::Const; break;
+      case TokenType::Restrict: in_stream.Skip(); qualifiers |= type::BaseType::Qualifier::Restrict; break;
+      case TokenType::Volatile: in_stream.Skip(); qualifiers |= type::BaseType::Qualifier::Volatile; break;
       case TokenType::Atomic: {
         in_stream.Skip();
         if (in_stream.IsAfter(1, TokenType::LParen)) {
           throw cotyl::UnimplementedException("_Atomic");
         }
-        qualifiers |= CType::Qualifier::Atomic;
+        qualifiers |= type::BaseType::Qualifier::Atomic;
         break;
       }
 
@@ -399,7 +401,7 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
             throw std::runtime_error("Bad declaration");
           }
           in_stream.Skip();
-          ctype = typedefs.Get(ident_name)->Clone();
+          ctype.emplace(typedefs.Get(ident_name));
         }
         else {
           // otherwise: name is detected in declarator, was not a specifier
@@ -423,15 +425,15 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
     _sign = sign.value();
   }
 
-  auto make = [=]<typename T>() -> pType<> {
-    if (_sign == -1) return MakeType<ValueType<T>>(CType::LValueNess::Assignable, qualifiers);
-    return MakeType<ValueType<std::make_unsigned_t<T>>>(CType::LValueNess::Assignable, qualifiers);
+  auto make = [=]<typename T>() -> type::AnyType {
+    if (_sign == -1) return type::ValueType<T>(type::BaseType::LValueNess::Assignable, qualifiers);
+    return type::ValueType<std::make_unsigned_t<T>>(type::BaseType::LValueNess::Assignable, qualifiers);
   };
 
   if (!type.has_value()) {
     if (!ctype) {
       // ctype might have been set by a typedef name
-      ctype = make.operator()<i32>();
+      ctype.emplace(make.operator()<i32>());
     }
   }
   else {
@@ -442,27 +444,27 @@ std::pair<pType<>, StorageClass> Parser::DSpecifier() {
 
     switch (type.value()) {
       case Type::Int: case Type::LongInt: case Type::Long:
-        ctype = make.operator()<i32>(); break;
+        ctype.emplace(make.operator()<i32>()); break;
       case Type::Short: case Type::ShortInt:
-        ctype = make.operator()<i16>(); break;
+        ctype.emplace(make.operator()<i16>()); break;
       case Type::LongLong: case Type::LongLongInt:
-        ctype = make.operator()<i64>(); break;
+        ctype.emplace(make.operator()<i64>()); break;
       case Type::Char:
-        ctype = make.operator()<i8>(); break;
+        ctype.emplace(make.operator()<i8>()); break;
       case Type::Void:
-        ctype = MakeType<VoidType>(qualifiers); break;
+        ctype.emplace(type::VoidType(qualifiers)); break;
       case Type::Float:
-        ctype = MakeType<ValueType<float>>(CType::LValueNess::Assignable, qualifiers); break;
+        ctype.emplace(type::ValueType<float>(type::BaseType::LValueNess::Assignable, qualifiers)); break;
       case Type::Double:
-        ctype = MakeType<ValueType<double>>(CType::LValueNess::Assignable, qualifiers); break;
+        ctype.emplace(type::ValueType<double>(type::BaseType::LValueNess::Assignable, qualifiers)); break;
     }
   }
-  return std::make_pair(ctype, storage ? storage.value() : StorageClass::None);
+  return std::make_pair(ctype.value(), storage ? storage.value() : StorageClass::None);
 }
 
-cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& dest) {
+cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<std::unique_ptr<type::AnyPointerType>>& dest) {
   cotyl::CString name;
-  pType<PointerType> ctype;
+  std::stack<std::unique_ptr<type::AnyPointerType>> layer{};
 
   const Token* current;
   while (true) {
@@ -475,16 +477,16 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& des
         u32 ptr_qualifiers = 0;
         while (in_stream.IsAfter(0, TokenType::Const, TokenType::Restrict, TokenType::Volatile, TokenType::Atomic)) {
           switch (in_stream.Get()->type) {
-            case TokenType::Const: ptr_qualifiers |= CType::Qualifier::Const; break;
-            case TokenType::Restrict: ptr_qualifiers |= CType::Qualifier::Restrict; break;
-            case TokenType::Volatile: ptr_qualifiers |= CType::Qualifier::Volatile; break;
-            case TokenType::Atomic: ptr_qualifiers |= CType::Qualifier::Atomic; break;
+            case TokenType::Const: ptr_qualifiers |= type::BaseType::Qualifier::Const; break;
+            case TokenType::Restrict: ptr_qualifiers |= type::BaseType::Qualifier::Restrict; break;
+            case TokenType::Volatile: ptr_qualifiers |= type::BaseType::Qualifier::Volatile; break;
+            case TokenType::Atomic: ptr_qualifiers |= type::BaseType::Qualifier::Atomic; break;
             default:
               // [[unreachable]]
               break;
           }
         }
-        ctype = MakeType<PointerType>(std::move(ctype), CType::LValueNess::Assignable, ptr_qualifiers);
+        layer.push(std::make_unique<type::PointerType>(nullptr, type::BaseType::LValueNess::Assignable, ptr_qualifiers));
         break;
       }
       case TokenType::LParen: {
@@ -505,7 +507,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& des
           }
           case TokenType::RParen: {
             // function()
-            ctype = MakeType<FunctionType>(std::move(ctype), false, CType::LValueNess::Assignable);
+            layer.push(std::make_unique<type::FunctionType>(nullptr, false, type::BaseType::LValueNess::Assignable));
             in_stream.Skip();
             break;
           }
@@ -550,18 +552,19 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& des
           default: {
             function_call:
             // has to be a function declaration with at least one parameter
-            auto type = MakeType<FunctionType>(std::move(ctype), false, CType::LValueNess::Assignable);
+            auto typ = std::make_unique<type::FunctionType>(nullptr, false, type::BaseType::LValueNess::Assignable);
+
             do {
               auto arg_specifier = DSpecifier();
               if (arg_specifier.second != StorageClass::None) {
                 throw std::runtime_error("Bad storage specifier on function argument");
               }
 
-              auto arg = DDeclarator(arg_specifier.first, StorageClass::Auto);
-              type->AddArg(std::move(arg->name), arg->type);
+              auto arg = DDeclarator(std::move(arg_specifier.first), StorageClass::Auto);
+              typ->AddArg(std::move(arg->name), std::make_shared<type::AnyType>(std::move(arg->type)));
               if (in_stream.EatIf(TokenType::Comma)) {
                 if (in_stream.EatIf(TokenType::Ellipsis)) {
-                  type->variadic = true;
+                  typ->variadic = true;
                   in_stream.Eat(TokenType::RParen);
                   break;
                 }
@@ -571,7 +574,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& des
                 break;
               }
             } while (true);
-            ctype = type;
+            layer.push(std::move(typ));
           }
         }
         break;
@@ -597,14 +600,15 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& des
           }
         }
         in_stream.Eat(TokenType::RBracket);
-        ctype = MakeType<ArrayType>(std::move(ctype), size);
+        layer.push(std::make_unique<type::PointerType>(type::PointerType::ArrayType(nullptr, size)));
         break;
       }
       default: {
-        if (ctype) {
-          // ctype might be empty
+        while (!layer.empty()) {
+          // declarator might be empty
           // for example: int (a) = 0;
-          dest.push(std::move(ctype));
+          dest.push(std::move(layer.top()));
+          layer.pop();
         }
         return name;
       }
@@ -612,32 +616,29 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<pType<PointerType>>& des
   }
 }
 
-pNode<DeclarationNode> Parser::DDeclarator(pType<> ctype, StorageClass storage) {
-  cotyl::CString name;
-  std::stack<pType<PointerType>> direct{};
-
-  name = DDirectDeclaratorImpl(direct);
-  while (!direct.empty()) {
-    // weird reverse-nested declarators...
-    pType<PointerType> ptr = direct.top();
-    direct.pop();
-
-    // might already contain nested type
-    pType<PointerType> p = ptr;
-    while (p->contained) {
-      p = std::dynamic_pointer_cast<PointerType>(p->contained);
-    }
-    p->contained = ctype;
-    ctype = std::move(ptr);
+static type::AnyType UnwindDirectDeclarators(type::AnyType&& ctype, std::stack<std::unique_ptr<type::AnyPointerType>>& direct) {
+  if (direct.empty()) {
+    return std::move(ctype);
   }
-  return std::make_unique<DeclarationNode>(ctype, std::move(name), storage);
+  auto top = std::move(direct.top());
+  direct.pop();
+  top->contained = std::make_unique<type::AnyType>(std::move(ctype));
+  return UnwindDirectDeclarators(top->ToAny(), direct);
+}
+
+pNode<DeclarationNode> Parser::DDeclarator(type::AnyType ctype, StorageClass storage) {
+  std::stack<std::unique_ptr<type::AnyPointerType>> direct{};
+
+  cotyl::CString name = DDirectDeclaratorImpl(direct);
+  auto apparent_type = UnwindDirectDeclarators(std::move(ctype), direct);
+  return std::make_unique<DeclarationNode>(std::move(apparent_type), std::move(name), storage);
 }
 
 void Parser::DInitDeclaratorList(cotyl::vector<pNode<DeclarationNode>>& dest) {
   auto ctype = DSpecifier();
 
   do {
-    auto decl = DDeclarator(ctype.first, ctype.second);
+    auto decl = DDeclarator(std::move(ctype.first), ctype.second);
     if (decl->storage == StorageClass::Typedef) {
       // store typedef names
       if (decl->name.empty()) {
@@ -646,7 +647,8 @@ void Parser::DInitDeclaratorList(cotyl::vector<pNode<DeclarationNode>>& dest) {
       typedefs.Set(decl->name, decl->type);
     }
     else {
-      decl->VerifyAndRecord(*this);
+      throw std::runtime_error("Not reimplemented");
+      // decl->VerifyAndRecord(*this);
       if (in_stream.EatIf(TokenType::Assign)) {
         // type var = <expression> or {initializer list}
         if (decl->name.empty()) {
@@ -678,11 +680,11 @@ pNode<FunctionDefinitionNode> Parser::ExternalDeclaration(cotyl::vector<pNode<De
 
   // signature { body }
   if (in_stream.EatIf(TokenType::LBrace)) {
-    if (!decl->type->IsFunction()) {
+    if (!decl->type.holds_alternative<type::FunctionType>()) {
       throw std::runtime_error("Unexpected compound statement after external declaration");
     }
-    pType<FunctionType> signature = std::static_pointer_cast<FunctionType>(decl->type->Clone());
-    signature->lvalue = CType::LValueNess::None;
+    type::FunctionType signature = std::move(decl->type.get<type::FunctionType>());
+    signature.lvalue = type::BaseType::LValueNess::None;
 
     auto symbol = std::move(decl->name);
     if (symbol.empty()) {
@@ -690,18 +692,22 @@ pNode<FunctionDefinitionNode> Parser::ExternalDeclaration(cotyl::vector<pNode<De
     }
 
     variables.NewLayer();
-    for (const auto& arg : signature->arg_types) {
+    for (const auto& arg : signature.arg_types) {
       if (arg.name.empty()) {
         throw std::runtime_error("Nameless argument in function definition");
       }
-      variables.Set(arg.name, arg.type);
+      variables.Set(arg.name, *arg.type);
     }
-    function_return = signature->contained;
+    
+    cotyl::Assert(!function_return);
+    function_return = signature.contained.get();
     auto body = SCompound();
     function_return = nullptr;
     variables.PopLayer();
     in_stream.Eat(TokenType::RBrace);
-    return std::make_unique<FunctionDefinitionNode>(signature, std::move(symbol), std::move(body));
+    return std::make_unique<FunctionDefinitionNode>(
+      std::move(signature), std::move(symbol), std::move(body)
+    );
   }
 
   // normal declaration

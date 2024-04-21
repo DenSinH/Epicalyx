@@ -11,11 +11,24 @@ namespace epi { struct Parser; }
 
 namespace epi::ast {
 
+static void CheckTruthiness(const pExpr& expr) {
+  if (!expr->HasTruthiness()) {
+    throw cotyl::FormatExceptStr("Condition %s has no truthiness", expr);
+  }
+}
+
+static void CheckSwitchable(const pExpr& expr) {
+  if (!expr->IsSwitchable()) {
+    throw cotyl::FormatExceptStr("Condition %s cannot be used for switch / case statements", expr);
+  }
+}
+
+
 IfNode::IfNode(pExpr&& cond, pStat&& stat, pStat&& _else) :
     cond(std::move(cond)),
     stat(std::move(stat)),
     _else(std::move(_else)) {
-
+  CheckTruthiness(cond);
 }
 
 std::string IfNode::ToString() const {
@@ -44,7 +57,7 @@ pStat IfNode::Reduce() {
 WhileNode::WhileNode(pExpr&& cond, pStat&& stat) :
     cond(std::move(cond)),
     stat(std::move(stat)) {
-
+  CheckTruthiness(cond);
 }
 
 pStat WhileNode::Reduce() {
@@ -64,7 +77,7 @@ std::string WhileNode::ToString() const {
 DoWhileNode::DoWhileNode(pStat&& stat, pExpr&& cond) :
     stat(std::move(stat)),
     cond(std::move(cond)) {
-
+  CheckTruthiness(cond);
 }
 
 std::string DoWhileNode::ToString() const {
@@ -93,7 +106,7 @@ ForNode::ForNode(
     cond{std::move(cond)},
     updates{std::move(updates)},
     stat{std::move(stat)} {
-
+  CheckTruthiness(cond);
 }
 
 std::string ForNode::ToString() const {
@@ -134,7 +147,7 @@ std::string LabelNode::ToString() const {
 SwitchNode::SwitchNode(pExpr&& expr, pStat&& stat) :
         expr(std::move(expr)),
         stat(std::move(stat)) {
-
+  CheckSwitchable(expr);
 }
 
 std::string SwitchNode::ToString() const {

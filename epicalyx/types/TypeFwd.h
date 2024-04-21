@@ -20,6 +20,7 @@ struct VoidType;
 template<typename T>
 requires (cotyl::pack_contains_v<T, value_type_pack>)
 struct ValueType;
+struct AnyPointerType;
 struct PointerType;
 struct FunctionType;
 struct StructType;

@@ -18,16 +18,12 @@ void ConstParser::PrintLoc() const {
   in_stream.PrintLoc();
 }
 
-pType<const CType> ConstParser::ResolveIdentifierType(const cotyl::CString& name) const {
-  throw cotyl::UnexpectedIdentifierException();
-}
-
-pType<const CType> Parser::ResolveIdentifierType(const cotyl::CString& name) const {
+type::AnyType Parser::ResolveIdentifierType(const cotyl::CString& name) const {
   if (enum_values.Has(name)) {
-    return MakeType<ValueType<Parser::enum_type>>(
+    return type::ValueType<Parser::enum_type>(
             enum_values.Get(name),
-            CType::LValueNess::None,
-            CType::Qualifier::Const
+            type::BaseType::LValueNess::None,
+            type::BaseType::Qualifier::Const
     );
   }
   else if (variables.Has(name)) {
@@ -66,7 +62,8 @@ void Parser::Parse() {
     }
 
     if (function) {
-      function->VerifyAndRecord(*this);
+      throw std::runtime_error("Not reimplemented");
+      // function->VerifyAndRecord(*this);
       if (!decls.empty()) {
         throw std::runtime_error("Bad parsing: unexpected declaration");
       }
@@ -74,7 +71,8 @@ void Parser::Parse() {
     }
     else {
       for (auto& decl : decls) {
-        decl->VerifyAndRecord(*this);
+        throw std::runtime_error("Not reimplemented");
+        // decl->VerifyAndRecord(*this);
         declarations.emplace_back(std::move(decl));
       }
     }

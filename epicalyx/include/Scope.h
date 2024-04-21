@@ -44,8 +44,11 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
       if (HasTop(key)) {
         throw cotyl::FormatExceptStr("Redefinition of %s", key);
       }
+      base::scope.back().emplace(key, value);
     }
-    base::scope.back().insert_or_assign(key, value);
+    else {
+      base::scope.back().insert_or_assign(key, value);
+    }
   }
   
   void Set(const K& key, V&& value) {
@@ -53,8 +56,11 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
       if (HasTop(key)) {
         throw cotyl::FormatExceptStr("Redefinition of %s", key);
       }
+      base::scope.back().emplace(key, std::move(value));
     }
-    base::scope.back().insert_or_assign(key, std::move(value));
+    else {
+      base::scope.back().insert_or_assign(key, std::move(value));
+    }
   }
   
   void Set(K&& key, V&& value) {
@@ -62,8 +68,11 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
       if (HasTop(key)) {
         throw cotyl::FormatExceptStr("Redefinition of %s", key);
       }
+      base::scope.back().emplace(std::move(key), std::move(value));
     }
-    base::scope.back().insert_or_assign(std::move(key), std::move(value));
+    else {
+      base::scope.back().insert_or_assign(std::move(key), std::move(value));
+    }
   }
   
   void Set(K&& key, const V& value) {
@@ -71,8 +80,11 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
       if (HasTop(key)) {
         throw cotyl::FormatExceptStr("Redefinition of %s", key);
       }
+      base::scope.back().emplace(std::move(key), value);
     }
-    base::scope.back().insert_or_assign(std::move(key), value);
+    else {
+      base::scope.back().insert_or_assign(std::move(key), value);
+    }
   }
 
   bool Has(const K& key) const {

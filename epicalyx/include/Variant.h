@@ -89,7 +89,7 @@ struct Variant {
     return swl::visit(overloaded{args...}, value);
   }
 
-private:
+protected:
   // for simple visitor pattern
   template<class... Args>
   struct overloaded : Args... { using Args::operator()...; };
