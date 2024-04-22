@@ -2,9 +2,11 @@
 
 #include "Containers.h"
 #include "Format.h"
-
 #include "Vector.h"
+
 #include <stdexcept>
+#include <ranges>
+#include <vector>
 
 namespace epi::cotyl {
 
@@ -27,7 +29,7 @@ struct Scope {
   }
 
 protected:
-  cotyl::vector<U> scope{{}};
+  std::vector<U> scope{{}};
 };
 
 template<typename K, typename V, bool allow_multiple_assignment = false>
@@ -88,8 +90,8 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
   }
 
   bool Has(const K& key) const {
-    for (auto s = base::scope.rbegin(); s != base::scope.rend(); s++) {
-      if (s->contains(key)) {
+    for (const auto& s : std::ranges::reverse_view(base::scope)) {
+      if (s.contains(key)) {
         return true;
       }
     }
@@ -100,19 +102,19 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
     return base::scope.back().contains(key);
   }
 
-  V& Get(const K& key) {
-    for (auto s = base::scope.rbegin(); s != base::scope.rend(); s++) {
-      if (s->contains(key)) {
-        return s->at(key);
-      }
-    }
-    throw cotyl::FormatExceptStr("Invalid scope access: %s", key);
-  }
+//   V& Get(const K& key) {
+//     for (const auto& s : std::ranges::reverse_view(base::scope)) {
+//       if (s.contains(key)) {
+//         return s.at(key);
+//       }
+//     }
+//     throw cotyl::FormatExceptStr("Invalid scope access: %s", key);
+//   }
 
   const V& Get(const K& key) const {
-    for (auto s = base::scope.rbegin(); s != base::scope.rend(); s++) {
-      if (s->contains(key)) {
-        return s->at(key);
+    for (const auto& s : std::ranges::reverse_view(base::scope)) {
+      if (s.contains(key)) {
+        return s.at(key);
       }
     }
     throw cotyl::FormatExceptStr("Invalid scope access: %s", key);
@@ -132,8 +134,8 @@ struct SetScope : public Scope<cotyl::unordered_set<K>> {
   }
 
   bool Has(const K& key) const {
-    for (auto s = base::scope.rbegin(); s != base::scope.rend(); s++) {
-      if (s->contains(key)) {
+    for (const auto& s : std::ranges::reverse_view(base::scope)) {
+      if (s.contains(key)) {
         return true;
       }
     }

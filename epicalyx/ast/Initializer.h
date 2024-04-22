@@ -22,7 +22,7 @@ struct InitializerList {
 
   void ValidateAndReduce(const type::AnyType& type);
 
-  cotyl::vector<std::pair<DesignatorList, Initializer>> list;
+  cotyl::vector<std::pair<DesignatorList, Initializer>> list{};
 
   std::string ToString() const;
 private:

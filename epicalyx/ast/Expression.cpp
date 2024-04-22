@@ -111,7 +111,7 @@ std::string MemberAccessNode::ToString() const {
 TypeInitializerNode::TypeInitializerNode(type::AnyType&& type, InitializerList&& list) :
     ExprNode{std::move(type)},
     list{std::move(list)} {
-  list.ValidateAndReduce(type);
+  this->list.ValidateAndReduce(type);
 }
 
 std::string TypeInitializerNode::ToString() const { 

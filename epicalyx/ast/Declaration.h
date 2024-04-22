@@ -26,7 +26,7 @@ enum class StorageClass {
 
 struct DeclarationNode final : DeclNode {
 
-  DeclarationNode(type::AnyType&& type, cotyl::CString&& name, StorageClass storage = StorageClass::Auto, std::optional<Initializer> value = {});
+  DeclarationNode(type::AnyType&& type, cotyl::CString&& name, StorageClass storage = StorageClass::Auto, std::optional<Initializer>&& value = {});
   
   cotyl::CString name;
   type::AnyType type;  // void if abstract
@@ -41,7 +41,7 @@ struct FunctionDefinitionNode final : DeclNode {
 
   FunctionDefinitionNode(type::FunctionType&& signature, cotyl::CString&& symbol, pNode<CompoundNode>&& body);
 
-  type::FunctionType&& signature;
+  type::FunctionType signature;
   cotyl::CString symbol;
   pNode<CompoundNode> body;
 

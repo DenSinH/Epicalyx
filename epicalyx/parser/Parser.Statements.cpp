@@ -202,7 +202,7 @@ pNode<StatNode> Parser::SStatement() {
       if (IsDeclarationSpecifier()) {
         throw std::runtime_error("Unexpected declaration");
       }
-      cotyl::vector<pExpr> exprlist;
+      cotyl::vector<pExpr> exprlist{};
       EExpressionList(exprlist);
       if (exprlist.size() == 1) {
         return std::move(exprlist[0]);
@@ -224,12 +224,11 @@ pNode<CompoundNode> Parser::SCompound() {
       DStaticAssert();
     }
     else if (IsDeclarationSpecifier()) {
-      cotyl::vector<pNode<DeclarationNode>> decl_list;
+      cotyl::vector<pNode<DeclarationNode>> decl_list{};
       DInitDeclaratorList(decl_list);
       in_stream.Eat(TokenType::SemiColon);
       for (auto& decl : decl_list) {
-        throw std::runtime_error("Not reimplemented");
-//        decl->VerifyAndRecord(*this);
+        RecordDeclaration(*decl);
         compound->AddNode(std::move(decl));
       }
     }

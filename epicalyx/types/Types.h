@@ -82,7 +82,6 @@ struct AnyPointerType : BaseType {
   } 
 
   nested_type_t contained;
-  virtual AnyType ToAny() = 0;
 };
 
 struct PointerType final : AnyPointerType {
@@ -112,7 +111,6 @@ struct PointerType final : AnyPointerType {
 
   void ForgetConstInfo() const final;
   AnyType CommonTypeImpl(const AnyType& other) const final;
-  AnyType ToAny() final;
 };
 
 struct FunctionType final : AnyPointerType {
@@ -129,8 +127,8 @@ struct FunctionType final : AnyPointerType {
     nested_type_t type;
   };
 
-  cotyl::vector<Arg> arg_types;
-  bool variadic;
+  cotyl::vector<Arg> arg_types{};
+  bool variadic = false;
 
   AnyType Deref() const final;
 
@@ -142,7 +140,6 @@ struct FunctionType final : AnyPointerType {
   
   bool TypeEqualImpl(const FunctionType& other) const;
   AnyType CommonTypeImpl(const AnyType& other) const final;
-  AnyType ToAny() final;
 };
 
 
@@ -169,7 +166,7 @@ struct StructUnionType : BaseType {
   }
 
   cotyl::CString name;
-  cotyl::vector<StructField> fields;  // empty if struct was only declared but never defined
+  cotyl::vector<StructField> fields{};  // empty if struct was only declared but never defined
   AnyType MemberAccess(const cotyl::CString& member) const final;
 
   // pType<> CastToImpl(const StructUnionType& other) const {

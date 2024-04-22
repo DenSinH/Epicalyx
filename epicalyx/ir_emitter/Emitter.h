@@ -74,7 +74,7 @@ struct Emitter {
   calyx::Function* current_function = nullptr;
   block_label_t current_block = 0;
 
-  cotyl::vector<Var> vars;
+  cotyl::vector<Var> vars{};
   calyx::Program program{};
 
   void SetFunction(calyx::Function& func) {

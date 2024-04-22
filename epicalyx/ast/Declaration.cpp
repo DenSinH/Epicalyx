@@ -6,15 +6,12 @@
 
 namespace epi::ast {
 
-DeclarationNode::DeclarationNode(type::AnyType&& type, cotyl::CString&& name, StorageClass storage, std::optional<Initializer> value) :
+DeclarationNode::DeclarationNode(type::AnyType&& type, cotyl::CString&& name, StorageClass storage, std::optional<Initializer>&& value) :
     name{std::move(name)}, type{std::move(type)}, storage{storage}, value{std::move(value)} {
-
-  throw std::runtime_error("not reimplemented");
-  // used to be in Reduce()
-  // if (value.has_value()) {
-  //   auto& init = value.value();
-  //   init.Reduce();
-  // }
+  if (value.has_value()) {
+    auto& init = this->value.value();
+    init.ValidateAndReduce(type);
+  }
 }
 
 std::string DeclarationNode::ToString() const {
@@ -28,47 +25,12 @@ std::string DeclarationNode::ToString() const {
 }
 
 FunctionDefinitionNode::FunctionDefinitionNode(type::FunctionType&& signature, cotyl::CString&& symbol, pNode<CompoundNode>&& body) :
-    signature{std::move(signature)}, symbol{std::move(symbol)}, body{std::move(body)} { }
+    signature{std::move(signature)}, symbol{std::move(symbol)}, body{std::move(body)} { 
+
+}
 
 std::string FunctionDefinitionNode::ToString() const {
   return cotyl::FormatStr("%s %s %s", signature, symbol.str(), body);
 }
-
-// void DeclarationNode::VerifyAndRecord(Parser& parser) {
-//   if (!name.empty()) {
-//     // todo: check enum/struct/typdef
-//     if (parser.variables.HasTop(name)) {
-//       // gets the first scoped value (which will be the top one)
-//       if (!parser.variables.Get(name)->EqualType(*type)) {
-//         throw cotyl::FormatExceptStr("Redefinition of symbol %s", name);
-//       }
-//     }
-//     else {
-//       parser.variables.Set(name, type);
-//     }
-//   }
-
-//   if (value.has_value()) {
-//     const auto& val = value.value();
-//     if (holds_alternative<pExpr>(val)) {
-//       type->Cast(*std::get<pExpr>(val)->GetType());
-//     }
-//     else {
-//       auto visitor = ValidInitializerListVisitor(parser, *std::get<pNode<InitializerList>>(val));
-//       type->Visit(visitor);
-//     }
-//   }
-// }
-
-// void FunctionDefinitionNode::VerifyAndRecord(Parser& parser) {
-//   if (parser.variables.Has(symbol)) {
-//     if (!parser.variables.Get(symbol)->EqualType(*signature)) {
-//       throw cotyl::FormatExceptStr("Redefinition of function: %s", symbol);
-//     }
-//   }
-//   else {
-//     parser.variables.Set(symbol, signature);
-//   }
-// }
 
 }

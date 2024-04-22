@@ -54,7 +54,7 @@ void Parser::PopScope() {
 
 void Parser::Parse() {
   while (!in_stream.EOS()) {
-    cotyl::vector<pNode<DeclarationNode>> decls;
+    cotyl::vector<pNode<DeclarationNode>> decls{};
     auto function = ExternalDeclaration(decls);
 
     if (variables.Depth() != 1) [[unlikely]] {
@@ -62,8 +62,7 @@ void Parser::Parse() {
     }
 
     if (function) {
-      throw std::runtime_error("Not reimplemented");
-      // function->VerifyAndRecord(*this);
+      RecordDeclaration(*function);
       if (!decls.empty()) {
         throw std::runtime_error("Bad parsing: unexpected declaration");
       }
@@ -71,8 +70,7 @@ void Parser::Parse() {
     }
     else {
       for (auto& decl : decls) {
-        throw std::runtime_error("Not reimplemented");
-        // decl->VerifyAndRecord(*this);
+        RecordDeclaration(*decl);
         declarations.emplace_back(std::move(decl));
       }
     }

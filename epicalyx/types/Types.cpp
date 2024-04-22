@@ -352,10 +352,6 @@ void PointerType::ForgetConstInfo() const {
   if (contained) (*contained)->ForgetConstInfo();
 }
 
-AnyType PointerType::ToAny() {
-  return *this;
-}
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * FUNCTION TYPES
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -434,16 +430,12 @@ AnyType FunctionType::CommonTypeImpl(const AnyType& other) const {
   );
 }
 
-AnyType FunctionType::ToAny() {
-  return *this;
-}
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * STRUCT TYPES
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 StructField::StructField(cotyl::CString&& name, size_t size, nested_type_t&& contained) :
-    name{std::move(name)}, size{size}, type{std::move(type)} { }
+    name{std::move(name)}, size{size}, type{std::move(contained)} { }
 
 StructField::StructField(cotyl::CString&& name, nested_type_t&& contained) :
     StructField{std::move(name), 0, std::move(contained)} { }

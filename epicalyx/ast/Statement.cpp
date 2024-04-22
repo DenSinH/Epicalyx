@@ -14,7 +14,7 @@ IfNode::IfNode(pExpr&& cond, pStat&& stat, pStat&& _else) :
     cond(std::move(cond)),
     stat(std::move(stat)),
     _else(std::move(_else)) {
-  cond->VerifyTruthiness();
+  this->cond->VerifyTruthiness();
 }
 
 std::string IfNode::ToString() const {
@@ -43,7 +43,7 @@ pStat IfNode::Reduce() {
 WhileNode::WhileNode(pExpr&& cond, pStat&& stat) :
     cond(std::move(cond)),
     stat(std::move(stat)) {
-  cond->VerifyTruthiness();
+  this->cond->VerifyTruthiness();
 }
 
 pStat WhileNode::Reduce() {
@@ -63,7 +63,7 @@ std::string WhileNode::ToString() const {
 DoWhileNode::DoWhileNode(pStat&& stat, pExpr&& cond) :
     stat(std::move(stat)),
     cond(std::move(cond)) {
-  cond->VerifyTruthiness();
+  this->cond->VerifyTruthiness();
 }
 
 std::string DoWhileNode::ToString() const {
@@ -92,7 +92,7 @@ ForNode::ForNode(
     cond{std::move(cond)},
     updates{std::move(updates)},
     stat{std::move(stat)} {
-  cond->VerifyTruthiness();
+  this->cond->VerifyTruthiness();
 }
 
 std::string ForNode::ToString() const {
@@ -133,7 +133,7 @@ std::string LabelNode::ToString() const {
 SwitchNode::SwitchNode(pExpr&& expr, pStat&& stat) :
         expr(std::move(expr)),
         stat(std::move(stat)) {
-  expr->VerifySwitchable();
+  this->expr->VerifySwitchable();
 }
 
 std::string SwitchNode::ToString() const {

@@ -5,6 +5,7 @@
 #include "Containers.h"
 #include "types/TypeFwd.h"
 #include "ast/Initializer.h"
+#include "Variant.h"
 
 #include <stack>
 
@@ -35,7 +36,13 @@ struct Parser final : public ConstParser {
   void Data();
 
   cotyl::vector<ast::pNode<ast::DeclNode>> declarations{};
-  
+
+  // needed public for unwinding function
+  using any_pointer_t = cotyl::Variant<
+    type::AnyPointerType,
+    type::PointerType,
+    type::FunctionType
+  >;
 private:
   ast::pExpr EPrimary() final;
   ast::pExpr EPostfix();
@@ -53,10 +60,12 @@ private:
   std::pair<type::AnyType, ast::StorageClass> DSpecifier();
   type::AnyType DEnum();
   type::AnyType DStruct();
-  cotyl::CString DDirectDeclaratorImpl(std::stack<std::unique_ptr<type::AnyPointerType>>& dest);
+  cotyl::CString DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest);
   ast::pNode<ast::DeclarationNode> DDeclarator(type::AnyType ctype, ast::StorageClass storage);
   void DInitDeclaratorList(cotyl::vector<ast::pNode<ast::DeclarationNode>>& dest);
   bool IsDeclarationSpecifier(int after = 0);
+  void RecordDeclaration(const ast::DeclarationNode& decl);
+  void RecordDeclaration(const ast::FunctionDefinitionNode& decl);
 
   ast::pNode<ast::StatNode> SStatement();
   ast::pNode<ast::CompoundNode> SCompound();

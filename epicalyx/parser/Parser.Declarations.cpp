@@ -64,6 +64,34 @@ bool Parser::IsDeclarationSpecifier(int after) {
   }
 }
 
+void Parser::RecordDeclaration(const ast::DeclarationNode& decl) {
+  if (!decl.name.empty()) {
+    // todo: check enum/struct/typdef
+    if (variables.HasTop(decl.name)) {
+      // gets the first scoped value (which will be the top one)
+      const auto& existing = variables.Get(decl.name);
+      if (!existing.TypeEquals(decl.type) || existing->qualifiers != decl.type->qualifiers) {
+        throw cotyl::FormatExceptStr("Redefinition of symbol %s", decl.name);
+      }
+    }
+    else {
+      variables.Set(decl.name, decl.type);
+    }
+  }
+}
+
+void Parser::RecordDeclaration(const ast::FunctionDefinitionNode& decl) {
+  if (variables.Has(decl.symbol)) {
+    const auto& existing = variables.Get(decl.symbol);
+    if (!existing.TypeEquals(decl.signature) || existing->qualifiers != decl.signature.qualifiers) {
+      throw cotyl::FormatExceptStr("Redefinition of symbol %s", decl.symbol);
+    }
+  }
+  else {
+    variables.Set(decl.symbol, decl.signature);
+  }
+}
+
 void Parser::DStaticAssert() {
   in_stream.EatSequence(TokenType::StaticAssert, TokenType::LParen);
   auto expr = Parser::EConstexpr();
@@ -462,9 +490,11 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
   return std::make_pair(ctype.value(), storage ? storage.value() : StorageClass::None);
 }
 
-cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<std::unique_ptr<type::AnyPointerType>>& dest) {
+template<> Parser::any_pointer_t::~Variant() = default;
+
+cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
   cotyl::CString name;
-  std::stack<std::unique_ptr<type::AnyPointerType>> layer{};
+  std::stack<any_pointer_t> layer{};
 
   const Token* current;
   while (true) {
@@ -474,7 +504,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<std::unique_ptr<type::An
       case TokenType::Asterisk: {
         // pointer with qualifiers
         in_stream.Skip();
-        u32 ptr_qualifiers = 0;
+        u8 ptr_qualifiers = 0;
         while (in_stream.IsAfter(0, TokenType::Const, TokenType::Restrict, TokenType::Volatile, TokenType::Atomic)) {
           switch (in_stream.Get()->type) {
             case TokenType::Const: ptr_qualifiers |= type::BaseType::Qualifier::Const; break;
@@ -486,7 +516,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<std::unique_ptr<type::An
               break;
           }
         }
-        layer.push(std::make_unique<type::PointerType>(nullptr, type::BaseType::LValueNess::Assignable, ptr_qualifiers));
+        layer.push(type::PointerType{nullptr, type::BaseType::LValueNess::Assignable, ptr_qualifiers});
         break;
       }
       case TokenType::LParen: {
@@ -507,7 +537,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<std::unique_ptr<type::An
           }
           case TokenType::RParen: {
             // function()
-            layer.push(std::make_unique<type::FunctionType>(nullptr, false, type::BaseType::LValueNess::Assignable));
+            layer.push(type::FunctionType{nullptr, false, type::BaseType::LValueNess::Assignable});
             in_stream.Skip();
             break;
           }
@@ -552,7 +582,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<std::unique_ptr<type::An
           default: {
             function_call:
             // has to be a function declaration with at least one parameter
-            auto typ = std::make_unique<type::FunctionType>(nullptr, false, type::BaseType::LValueNess::Assignable);
+            auto typ = type::FunctionType{nullptr, false, type::BaseType::LValueNess::Assignable};
 
             do {
               auto arg_specifier = DSpecifier();
@@ -561,10 +591,10 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<std::unique_ptr<type::An
               }
 
               auto arg = DDeclarator(std::move(arg_specifier.first), StorageClass::Auto);
-              typ->AddArg(std::move(arg->name), std::make_shared<type::AnyType>(std::move(arg->type)));
+              typ.AddArg(std::move(arg->name), std::make_shared<type::AnyType>(std::move(arg->type)));
               if (in_stream.EatIf(TokenType::Comma)) {
                 if (in_stream.EatIf(TokenType::Ellipsis)) {
-                  typ->variadic = true;
+                  typ.variadic = true;
                   in_stream.Eat(TokenType::RParen);
                   break;
                 }
@@ -600,7 +630,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<std::unique_ptr<type::An
           }
         }
         in_stream.Eat(TokenType::RBracket);
-        layer.push(std::make_unique<type::PointerType>(type::PointerType::ArrayType(nullptr, size)));
+        layer.push(type::PointerType{type::PointerType::ArrayType(nullptr, size)});
         break;
       }
       default: {
@@ -616,18 +646,23 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<std::unique_ptr<type::An
   }
 }
 
-static type::AnyType UnwindDirectDeclarators(type::AnyType&& ctype, std::stack<std::unique_ptr<type::AnyPointerType>>& direct) {
+static type::AnyType UnwindDirectDeclarators(type::AnyType&& ctype, std::stack<Parser::any_pointer_t>& direct) {
   if (direct.empty()) {
     return std::move(ctype);
   }
   auto top = std::move(direct.top());
   direct.pop();
   top->contained = std::make_unique<type::AnyType>(std::move(ctype));
-  return UnwindDirectDeclarators(top->ToAny(), direct);
+  
+  return top.visit<type::AnyType>(
+    [&](auto&& ptr) {
+      return UnwindDirectDeclarators(std::move(ptr), direct);
+    }
+  );
 }
 
 pNode<DeclarationNode> Parser::DDeclarator(type::AnyType ctype, StorageClass storage) {
-  std::stack<std::unique_ptr<type::AnyPointerType>> direct{};
+  std::stack<any_pointer_t> direct{};
 
   cotyl::CString name = DDirectDeclaratorImpl(direct);
   auto apparent_type = UnwindDirectDeclarators(std::move(ctype), direct);
@@ -647,8 +682,7 @@ void Parser::DInitDeclaratorList(cotyl::vector<pNode<DeclarationNode>>& dest) {
       typedefs.Set(decl->name, decl->type);
     }
     else {
-      throw std::runtime_error("Not reimplemented");
-      // decl->VerifyAndRecord(*this);
+      RecordDeclaration(*decl);
       if (in_stream.EatIf(TokenType::Assign)) {
         // type var = <expression> or {initializer list}
         if (decl->name.empty()) {

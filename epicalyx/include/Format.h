@@ -2,11 +2,12 @@
 
 #include "SStream.h"
 #include "Stringify.h"
+#include "Vector.h"
 
 #include <stdexcept>
 #include <memory>
 #include <string>
-#include "Vector.h"
+#include <vector>
 
 
 namespace epi::cotyl {
@@ -38,8 +39,8 @@ std::runtime_error FormatExceptStr(const std::string& format, const Args& ... ar
   return std::runtime_error(FormatStr(format, args...));
 }
 
-template<typename T>
-std::string Join(const std::string& delimiter, const cotyl::vector<T>& values) {
+template<typename C>
+std::string Join(const std::string& delimiter, const C& values) {
   if (values.empty()) return "";
 
   cotyl::StringStream result{};
