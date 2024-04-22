@@ -12,6 +12,24 @@ namespace epi {
 
 using namespace ast;
 
+static pExpr ExprOrReduced(pExpr&& expr) {
+  pExpr reduced = expr->type.visit<pExpr>(
+    [](const auto& value) -> pExpr {
+      using value_t = decltype_t(value);
+      if constexpr(cotyl::is_instantiation_of_v<type::ValueType, value_t>) {
+        if (value.value.has_value()) {
+          return std::make_unique<NumericalConstantNode<typename value_t::type_t>>(
+            value.value.value()
+          );
+        }
+      }
+      return nullptr;
+    }
+  );
+  if (reduced) return std::move(reduced);
+  return std::move(expr);
+}
+
 pExpr ConstParser::EPrimary() {
   auto current = in_stream.Get();
   return current.visit<pExpr>(
@@ -29,7 +47,7 @@ pExpr ConstParser::EPrimary() {
       }
       auto expr = ETernary();
       in_stream.Eat(TokenType::RParen);
-      return expr;
+      return ExprOrReduced(std::move(expr));
     },
     [](const KeywordToken& keyw) -> pExpr {
       throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", keyw);
@@ -71,7 +89,7 @@ pExpr Parser::EPrimary() {
       // todo: is (expression), but the list part makes no sense
       auto expr = EExpression();
       in_stream.Eat(TokenType::RParen);
-      return expr;
+      return ExprOrReduced(std::move(expr));
     },
     [](const KeywordToken& keyw) -> pExpr {
       throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", keyw);
@@ -141,10 +159,10 @@ pExpr Parser::EPostfix() {
         break;
       }
       default:
-        return node;
+        return ExprOrReduced(std::move(node));
     }
   }
-  return node;
+  return ExprOrReduced(std::move(node));
 }
 
 pExpr Parser::EUnary() {
@@ -161,7 +179,8 @@ pExpr Parser::EUnary() {
     {
       in_stream.Skip();
       auto right = ECast();
-      return std::make_unique<UnopNode>(type, std::move(right));
+      auto expr = std::make_unique<UnopNode>(type, std::move(right));
+      return ExprOrReduced(std::move(expr));
     }
     case TokenType::Sizeof: {
       // sizeof(expr) / sizeof(type-name)
@@ -219,11 +238,13 @@ pExpr Parser::ECast() {
         // type initializer
         InitializerList list = EInitializerList();
         in_stream.Eat(TokenType::RBrace);
+        // this can never be reduced
         return std::make_unique<TypeInitializerNode>(std::move(type_name), std::move(list));
       }
       else {
         // regular cast expression
-        return std::make_unique<CastNode>(std::move(type_name), ECast());
+        auto expr = std::make_unique<CastNode>(std::move(type_name), ECast());
+        return ExprOrReduced(std::move(expr));
       }
     }
   }
@@ -238,7 +259,7 @@ pExpr ConstParser::EBinopImpl() {
     auto type = in_stream.Get()->type;
     node = std::make_unique<BinopNode>(std::move(node), type, (this->*SubNode)());
   }
-  return node;
+  return ExprOrReduced(std::move(node));
 }
 
 constexpr auto EMul = &ConstParser::EBinopImpl<&ConstParser::ECast, TokenType::Asterisk, TokenType::Div, TokenType::Mod>;
@@ -275,9 +296,10 @@ pExpr ConstParser::ETernary() {
     if (!false_t.TypeEquals(common_t)) {
       _false = std::make_unique<CastNode>(std::move(common_t), std::move(_false));
     }
-    return std::make_unique<TernaryNode>(std::move(left), std::move(_true), std::move(_false));
+    auto expr = std::make_unique<TernaryNode>(std::move(left), std::move(_true), std::move(_false));
+    return ExprOrReduced(std::move(expr));
   }
-  return left;
+  return ExprOrReduced(std::move(left));
 }
 
 pExpr ConstParser::EAssignment() {
@@ -306,19 +328,20 @@ pExpr Parser::EAssignment() {
       case TokenType::IXor: {
         in_stream.Skip();
         auto right = EAssignment();
+        // assignments can never be reduced
         return std::make_unique<AssignmentNode>(std::move(left), type, std::move(right));
       }
       default:
         break;
     }
   }
-  return left;
+  return ExprOrReduced(std::move(left));
 }
 
 pExpr Parser::EExpression() {
   // todo: commas
   auto expr = EAssignment();
-  return std::move(expr);
+  return ExprOrReduced(std::move(expr));
 }
 
 i64 ConstParser::EConstexpr() {
@@ -342,7 +365,7 @@ Initializer Parser::EInitializer() {
   else {
     // assignment expression
     auto expr = EAssignment();
-    return {std::move(expr)};
+    return {std::move(ExprOrReduced(std::move(expr)))};
   }
 }
 
