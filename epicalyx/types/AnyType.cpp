@@ -1,6 +1,13 @@
 #include "AnyType.h"
+#include "Decltype.h"
 #include "Log.h"
 
+
+namespace epi::cotyl {
+
+template<> type::detail::any_type_t::~Variant() = default;
+
+}
 
 namespace epi::type {
 
@@ -23,10 +30,10 @@ AnyType AnyType::Cast(const AnyType& other) const {
   AnyType result = *this;
   result.visit<void>(
     [&](auto& dest) {
-      if constexpr(cotyl::is_instantiation_of_v<ValueType, std::decay_t<decltype(dest)>>) {
+      if constexpr(cotyl::is_instantiation_of_v<ValueType, decltype_t(dest)>) {
         other.visit<void>(
           [&](const auto& src) {
-            if constexpr(cotyl::is_instantiation_of_v<ValueType, std::decay_t<decltype(src)>>) {
+          if constexpr(cotyl::is_instantiation_of_v<ValueType, decltype_t(src)>) {
               dest.value = src.value;
             }
           }
@@ -69,6 +76,12 @@ bool AnyType::TypeEquals(const AnyType& other) const {
     // true by default for value / void types
     [&](const auto&) -> bool { return true; }
   );
+}
+
+STRINGIFY_METHOD(AnyType) {
+  return value.visit<std::string>([](const auto& dir) -> std::string { 
+    return dir.ToString(); 
+  });
 }
 
 }

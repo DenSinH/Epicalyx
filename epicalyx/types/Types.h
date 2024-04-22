@@ -148,10 +148,7 @@ struct FunctionType final : AnyPointerType {
 
 struct StructField {
   StructField(cotyl::CString&& name, size_t size, nested_type_t&& contained);
-      // name{std::move(name)}, size{size}, type{std::move(type)} { }
-
-  StructField(cotyl::CString&& name, nested_type_t&& contained) :
-      StructField{std::move(name), 0, std::move(contained)} { }
+  StructField(cotyl::CString&& name, nested_type_t&& contained);
 
   cotyl::CString name;
   std::size_t size = 0;  // 0 means default size

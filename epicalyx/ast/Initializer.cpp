@@ -6,6 +6,7 @@
 #include "Log.h"
 #include "Exceptions.h"
 #include "SStream.h"
+#include "Decltype.h"
 
 #include <regex>
 
@@ -57,8 +58,8 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
         }
       },
       [&](const auto& val) { 
-        using value_t = std::decay_t<decltype(val)>;
-        static_assert(std::is_same_v<value_t, type::FunctionType> || cotyl::is_instantiation_of_v(type::ValueType, value_t));
+        using value_t = decltype_t(val);
+        static_assert(std::is_same_v<value_t, type::FunctionType> || cotyl::is_instantiation_of_v<type::ValueType, value_t>);
         if (list.list.empty()) {
           if constexpr(cotyl::is_instantiation_of_v<type::ValueType, value_t>) {
             value = std::make_unique<NumericalConstantNode<typename value_t::type_t>>(0);
@@ -95,8 +96,8 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
       },
       [&](const auto& val) {
         // function type, value type
-        using value_t = std::decay_t<decltype(val)>;
-        static_assert(std::is_same_v<value_t, type::FunctionType> || cotyl::is_instantiation_of_v(type::ValueType, value_t));
+        using value_t = decltype_t(val);
+        static_assert(std::is_same_v<value_t, type::FunctionType> || cotyl::is_instantiation_of_v<type::ValueType, value_t>);
         if (!type.TypeEquals(has)) {
           throw cotyl::FormatExceptStr("Cannot cast type %s to %s in initializer", has, type);
         }
@@ -144,8 +145,9 @@ void InitializerList::ValidateAndReduce(const type::AnyType& type) {
         // not implemented
       }
     },
-    [&](const auto& val) { 
-      static_assert(std::is_same_v<value_t, type::FunctionType> || cotyl::is_instantiation_of_v(type::ValueType, value_t));
+    [&](const auto& val) {
+      using value_t = decltype_t(val);
+      static_assert(std::is_same_v<value_t, type::FunctionType> || cotyl::is_instantiation_of_v<type::ValueType, value_t>);
       ValidateAndReduceScalarType(type);
     }
   );

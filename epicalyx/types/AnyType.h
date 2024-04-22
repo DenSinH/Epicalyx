@@ -33,10 +33,6 @@ using any_type_t = cotyl::Variant<BaseType,
 struct AnyType : detail::any_type_t {
   using detail::any_type_t::any_type_t;
 
-  bool IsConstexpr() const;
-  i64 ConstIntVal() const;
-  bool ConstBoolVal() const;
-
   // type.Cast(other) = (type)(other)
   // Cast "other" to "this" type
   AnyType Cast(const AnyType& other) const;

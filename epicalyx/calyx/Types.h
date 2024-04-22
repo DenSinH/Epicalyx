@@ -5,6 +5,7 @@
 #include "CString.h"
 #include "Stringify.h"
 #include "CustomAssert.h"
+#include "Decltype.h"
 
 #include <variant>
 #include <string>
@@ -79,7 +80,7 @@ template<> struct calyx_upcast<u16> { using type = i32; };
 template<typename T>
 using calyx_upcast_t = typename calyx_upcast<T>::type;
 
-#define calyx_op_type(op) typename std::decay_t<decltype(op)>
+#define calyx_op_type(op) typename decltype_t(op)
 
 template<typename T>
 requires (is_calyx_type_v<T>)

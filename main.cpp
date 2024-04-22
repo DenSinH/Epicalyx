@@ -9,6 +9,7 @@
 #include "parser/Parser.h"
 #include "regalloc/RIG.h"
 #include "regalloc/regspaces/Example.h"
+#include "Decltype.h"
 
 
 #include "Log.h"
@@ -106,7 +107,7 @@ int main() {
   for (const auto& [symbol, global] : program.globals) {
     std::cout << symbol.c_str() << " ";
     std::visit([](auto& glob) {
-      using glob_t = std::decay_t<decltype(glob)>;
+      using glob_t = decltype_t(glob);
       if constexpr(std::is_same_v<glob_t, epi::calyx::Pointer>) {
         std::cout << "%p" << std::hex << glob.value << std::endl;
       }
@@ -141,7 +142,7 @@ int main() {
     for (const auto& [glob, glob_idx] : interpreter.globals) {
       std::cout << "  " << glob.c_str() << " ";
       std::visit([&](auto& pglob) {
-        using glob_t = std::decay_t<decltype(pglob)>;
+        using glob_t = decltype_t(pglob);
         glob_t data;
         std::memcpy(&data, interpreter.global_data[glob_idx].data(), sizeof(glob_t));
         if constexpr(std::is_same_v<glob_t, epi::calyx::Pointer>) {

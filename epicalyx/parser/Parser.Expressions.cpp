@@ -5,6 +5,7 @@
 #include "tokenizer/Token.h"
 #include "ast/Expression.h"
 #include "ast/Declaration.h"
+#include "Decltype.h"
 
 
 namespace epi {
@@ -34,10 +35,10 @@ pExpr ConstParser::EPrimary() {
       throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", keyw);
     },
     [](const auto& num) -> pExpr {
-      using tok_t = std::decay_t<decltype(num)>;
+      using tok_t = decltype_t(num);
       static_assert(cotyl::is_instantiation_of_v<NumericalConstantToken, tok_t>);
       auto val = num.value;
-      return std::make_unique<NumericalConstantNode<decltype(val)>>(val);
+      return std::make_unique<NumericalConstantNode<decltype_t(val)>>(val);
     }
   );
 }
@@ -76,10 +77,10 @@ pExpr Parser::EPrimary() {
       throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", keyw);
     },
     [](const auto& num) -> pExpr {
-      using tok_t = std::decay_t<decltype(num)>;
+      using tok_t = decltype_t(num);
       static_assert(cotyl::is_instantiation_of_v<NumericalConstantToken, tok_t>);
       auto val = num.value;
-      return std::make_unique<NumericalConstantNode<decltype(val)>>(val);
+      return std::make_unique<NumericalConstantNode<decltype_t(val)>>(val);
     }
   );
 }
@@ -322,7 +323,7 @@ pExpr Parser::EExpression() {
 
 i64 ConstParser::EConstexpr() {
   auto expr = ETernary();
-  return expr->ConstEval();
+  return expr->ConstIntVal();
 }
 
 void Parser::EExpressionList(cotyl::vector<pExpr>& dest) {

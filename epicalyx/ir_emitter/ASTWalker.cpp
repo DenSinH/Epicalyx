@@ -21,12 +21,6 @@ namespace epi {
 
 using namespace ast;
 
-// calyx::Local::Type ASTWalker::GetCalyxType(const pType<const CType>& type) {
-//   detail::CalyxLocalTypeVisitor visitor{};
-//   type->Visit(visitor);
-//   return visitor.local_type;
-// }
-
 
 void ASTWalker::Visit(epi::DeclarationNode& decl) {
   if (locals.Depth() == 1) {

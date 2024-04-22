@@ -2,7 +2,6 @@
 #include "Node.h"
 #include "Format.h"
 #include "Declaration.h"
-namespace epi { struct Parser; }
 #include "Cast.h"
 
 #include "SStream.h"
@@ -11,24 +10,11 @@ namespace epi { struct Parser; }
 
 namespace epi::ast {
 
-static void CheckTruthiness(const pExpr& expr) {
-  if (!expr->HasTruthiness()) {
-    throw cotyl::FormatExceptStr("Condition %s has no truthiness", expr);
-  }
-}
-
-static void CheckSwitchable(const pExpr& expr) {
-  if (!expr->IsSwitchable()) {
-    throw cotyl::FormatExceptStr("Condition %s cannot be used for switch / case statements", expr);
-  }
-}
-
-
 IfNode::IfNode(pExpr&& cond, pStat&& stat, pStat&& _else) :
     cond(std::move(cond)),
     stat(std::move(stat)),
     _else(std::move(_else)) {
-  CheckTruthiness(cond);
+  cond->VerifyTruthiness();
 }
 
 std::string IfNode::ToString() const {
@@ -40,7 +26,7 @@ std::string IfNode::ToString() const {
 
 pStat IfNode::Reduce() {
   if (cond->IsConstexpr()) {
-    if (cond->type.ConstBoolVal()) {
+    if (cond->ConstBoolVal()) {
       return std::move(stat);
     }
     else if (_else) {
@@ -57,12 +43,12 @@ pStat IfNode::Reduce() {
 WhileNode::WhileNode(pExpr&& cond, pStat&& stat) :
     cond(std::move(cond)),
     stat(std::move(stat)) {
-  CheckTruthiness(cond);
+  cond->VerifyTruthiness();
 }
 
 pStat WhileNode::Reduce() {
   if (cond->IsConstexpr()) {
-    if (!cond->type.ConstBoolVal()) {
+    if (!cond->ConstBoolVal()) {
       return std::make_unique<EmptyNode>();
     }
   }
@@ -77,7 +63,7 @@ std::string WhileNode::ToString() const {
 DoWhileNode::DoWhileNode(pStat&& stat, pExpr&& cond) :
     stat(std::move(stat)),
     cond(std::move(cond)) {
-  CheckTruthiness(cond);
+  cond->VerifyTruthiness();
 }
 
 std::string DoWhileNode::ToString() const {
@@ -86,7 +72,7 @@ std::string DoWhileNode::ToString() const {
 
 pStat DoWhileNode::Reduce() {
   if (cond->IsConstexpr()) {
-    if (!cond->type.ConstBoolVal()) {
+    if (!cond->ConstBoolVal()) {
       // execute once
       return std::move(stat);
     }
@@ -106,7 +92,7 @@ ForNode::ForNode(
     cond{std::move(cond)},
     updates{std::move(updates)},
     stat{std::move(stat)} {
-  CheckTruthiness(cond);
+  cond->VerifyTruthiness();
 }
 
 std::string ForNode::ToString() const {
@@ -125,7 +111,7 @@ std::string ForNode::ToString() const {
 
 pStat ForNode::Reduce() {
   if (cond->IsConstexpr()) {
-    if (!cond->ConstEval()) {
+    if (!cond->ConstBoolVal()) {
       return std::make_unique<EmptyNode>();
     }
   }
@@ -147,7 +133,7 @@ std::string LabelNode::ToString() const {
 SwitchNode::SwitchNode(pExpr&& expr, pStat&& stat) :
         expr(std::move(expr)),
         stat(std::move(stat)) {
-  CheckSwitchable(expr);
+  expr->VerifySwitchable();
 }
 
 std::string SwitchNode::ToString() const {

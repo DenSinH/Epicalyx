@@ -1,4 +1,5 @@
 #include "Default.h"
+#include "Decltype.h"
 
 namespace epi {
 
@@ -65,7 +66,7 @@ struct EmitterTypeVisitor {
         throw cotyl::UnimplementedException();
       },
       [&](const auto& value) {
-        using value_t = std::decay_t<decltype(value)>;
+        using value_t = decltype_t(value);
         static_assert(cotyl::is_instantiation_of_v<type::ValueType, value_t>);
         VisitValueImpl<typename value_t::type_t>();
       }

@@ -3,6 +3,7 @@
 #include "Exceptions.h"
 #include "Stringify.h"
 #include "Format.h"
+#include "Decltype.h"
 
 #include <stdexcept>
 #include <iostream>
@@ -28,7 +29,7 @@ void Interpreter::InterpretGlobalInitializer(global_t& dest, Function&& func) {
   }
 
   std::visit([&](auto& var) {
-    using var_t = std::decay_t<decltype(var)>;
+    using var_t = decltype_t(var);
 
     if constexpr(std::is_same_v<var_t, Pointer>) {
       auto pval = ReadPointer(var.value);
@@ -54,7 +55,7 @@ void Interpreter::Interpret(const Program& program) {
     auto index = global_data.size();
     globals.emplace(symbol, index);
     std::visit([&](auto& glob) {
-      using glob_t = std::decay_t<decltype(glob)>;
+      using glob_t = decltype_t(glob);
 
       if constexpr(std::is_same_v<glob_t, label_offset_t>) {
         Pointer ptr = MakePointer(glob);
@@ -81,10 +82,10 @@ void Interpreter::Interpret(const Program& program) {
   }
 
   std::visit([&](auto& var) {
-    if constexpr(std::is_same_v<decltype(var), Pointer&>) {
+    if constexpr(std::is_same_v<decltype_t(var), Pointer>) {
       std::cout << "return pointer" << std::endl;
     }
-    else if constexpr(std::is_same_v<decltype(var), Struct&>) {
+    else if constexpr(std::is_same_v<decltype_t(var), Struct>) {
       std::cout << "return struct" << std::endl;
     }
     else {

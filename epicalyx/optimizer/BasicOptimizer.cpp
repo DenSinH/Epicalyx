@@ -5,6 +5,7 @@
 #include "CString.h"
 #include "CustomAssert.h"
 #include "TypeTraits.h"
+#include "Decltype.h"
 
 
 namespace epi {
@@ -129,7 +130,7 @@ bool BasicOptimizer::NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, func_po
           _reachable = false;
         },
         [&](const auto& dir) {
-          using dir_t = std::decay_t<decltype(dir)>;
+          using dir_t = decltype_t(dir);
           if constexpr(cotyl::is_instantiation_of_v<calyx::BranchCompare, dir_t>) {
             register_branch(dir.tdest);
             register_branch(dir.fdest);
@@ -396,7 +397,7 @@ template<typename T, class F>
 bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
   for (const auto& [var_idx, loc] : vars_found) {
     auto& directive = new_function.blocks.at(loc.first).at(loc.second);
-    if (IsType<std::decay_t<T>>(directive)) {
+    if (IsType<cotyl::base_t<T>>(directive)) {
       auto candidate_block = loc.first;
       // todo: make generic, call on new_block_graph
       auto ancestor = CommonBlockAncestor(candidate_block, current_new_block_idx);
@@ -404,7 +405,7 @@ bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
       // todo: shift directives back for earlier ancestor blocks
       // todo: improve this
       if (ancestor == current_new_block_idx && ancestor == candidate_block) {
-        const auto& candidate = directive.get<std::decay_t<T>>();
+        const auto& candidate = directive.get<cotyl::base_t<T>>();
         if (predicate(candidate, op)) {
           var_replacement[op.idx] = candidate.idx;
           return true;
@@ -565,7 +566,7 @@ Function&& BasicOptimizer::Optimize() {
 template<typename T>
 requires (calyx::is_directive_v<T>)
 void BasicOptimizer::EmitGeneric(T&& op) {
-  using dir_t = std::decay_t<decltype(op)>;
+  using dir_t = decltype_t(op);
 
   if constexpr(calyx::is_store_v<dir_t>) {
     TryReplaceOperand(op.src);

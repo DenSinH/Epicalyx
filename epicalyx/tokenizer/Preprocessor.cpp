@@ -6,6 +6,7 @@
 #include "parser/ConstParser.h"
 
 #include "SStream.h"
+#include "Decltype.h"
 
 #include <ranges>
 #include <iostream>
@@ -660,7 +661,7 @@ char Preprocessor::MacroStream::GetNew() {
   else if (current_stream.EOS()) {
     if (++current_index < def.value.size()) {
       std::visit([&](const auto& seg) {
-          using T = std::decay_t<decltype(seg)>;
+          using T = decltype_t(seg);
           if constexpr (std::is_same_v<T, i32>) {
             if (seg == -1) {
               current_stream = SString(&va_args);

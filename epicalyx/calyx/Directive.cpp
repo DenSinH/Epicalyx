@@ -1,5 +1,6 @@
 #include "Directive.h"
 #include "Format.h"
+#include "Decltype.h"
 
 
 namespace epi::cotyl {
@@ -422,7 +423,7 @@ template struct DirectiveInstantiator<detail::directive_pack>;
 bool IsBlockEnd(const AnyDirective& dir) {
   return dir.visit<bool>(
     [&](const auto& dir) {
-      using dir_t = std::decay_t<decltype(dir)>;
+      using dir_t = decltype_t(dir);
       if constexpr(std::is_base_of_v<calyx::Branch, dir_t>) {
         return true;
       }

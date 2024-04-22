@@ -42,9 +42,15 @@ static std::size_t NullifyUnusedVars(calyx::Function& function, FunctionDependen
 
     // remove nullified reads
     auto& var = dependencies.var_graph.at(var_idx);
-    std::erase_if(var.reads, [&](const auto& pos) { 
-      return calyx::IsType<calyx::NoOp>(function.blocks.at(pos.first).at(pos.second)); 
-    });
+    var.reads.erase(
+      std::remove_if(
+        var.reads.begin(), var.reads.end(),
+        [&](const auto& pos) { 
+          return calyx::IsType<calyx::NoOp>(function.blocks.at(pos.first).at(pos.second)); 
+        }
+      ), 
+      var.reads.end()
+    );
 
     // NEVER erase call results
     if (var.reads.empty() && !var.is_call_result) {

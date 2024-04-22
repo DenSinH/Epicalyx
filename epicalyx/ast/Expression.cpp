@@ -124,6 +124,8 @@ PostFixNode::PostFixNode(TokenType op, pExpr&& left) :
     left{std::move(left)} {
   // semantic analysis, postfix incr/decr type must store proper value
   op == TokenType::Incr ? left->type->Incr() : left->type->Decr();
+
+  // don't propagate constant info in "assigning" expression
   type->ForgetConstInfo();
 }
 
@@ -211,9 +213,8 @@ TernaryNode::TernaryNode(pExpr&& cond, pExpr&& _true, pExpr&& _false) :
       const auto& false_t = _false->type;
       auto common_t = true_t.CommonType(false_t);
 
-      // todo: type conversions for constexpr
-      if (cond_t.IsConstexpr()) {
-        if (cond_t.ConstBoolVal()) {
+      if (cond->IsConstexpr()) {
+        if (cond->ConstBoolVal()) {
           return common_t.Cast(true_t);
         }
         return common_t.Cast(false_t);
@@ -259,7 +260,8 @@ AssignmentNode::AssignmentNode(pExpr&& left, TokenType op, pExpr&& right) :
     left(std::move(left)),
     op(op),
     right(std::move(right)) {
-
+  // don't propagate constant info in assignment
+  type->ForgetConstInfo();
 }
 
 std::string AssignmentNode::ToString() const {

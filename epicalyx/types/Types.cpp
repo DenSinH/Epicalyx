@@ -5,6 +5,8 @@
 #include "Stringify.h"
 #include "Log.h"
 #include "SStream.h"
+#include "Decltype.h"
+#include "Exceptions.h"
 
 #include <functional>
 #include <utility>
@@ -58,7 +60,7 @@ AnyType BinopHelper(const ValueType<T>& one,  const ValueType<R>& other) {
   if (one.value.has_value() && other.value.has_value()) {
     handler<common_t> h;
     auto return_val = h(one.value.value(), other.value.value());
-    using return_t = std::conditional_t<std::is_same_v<decltype(return_val), bool>, i32, decltype(return_val)>;
+    using return_t = std::conditional_t<std::is_same_v<decltype_t(return_val), bool>, i32, decltype_t(return_val)>;
     return ValueType<return_t>(return_val, BaseType::LValueNess::None);
   }
   return ValueType<common_t>(BaseType::LValueNess::None);
@@ -68,7 +70,7 @@ template<template<typename S> class handler, typename T>
 AnyType NonAdditiveBinopHelper(const ValueType<T>& one, const char* op_str, const AnyType& other) {
   auto result = other.visit<AnyType>(
     [&](const auto& other) -> AnyType {
-      using other_t = std::decay_t<decltype(other)>;
+      using other_t = decltype_t(other);
       if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>)
         return BinopHelper<handler>(one, other);
       else
@@ -87,7 +89,7 @@ AnyType IntegralBinopHelper(const ValueType<T>& one, const char* op_str, const A
   else {
     auto result = other.visit<AnyType>(
       [&](const auto& other) -> AnyType {
-        using other_t = std::decay_t<decltype(other)>;
+        using other_t = decltype_t(other);
         if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>)
           if constexpr(std::is_integral_v<typename other_t::type_t>)
             return BinopHelper<handler>(one, other);
@@ -113,7 +115,7 @@ AnyType ValueType<T>::Add(const AnyType& other) const {
       return result;
     },
     [&](const auto& other) -> AnyType {
-      using other_t = std::decay_t<decltype(other)>;
+        using other_t = decltype_t(other);
       if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>)
         return BinopHelper<std::plus>(*this, other);
       else
@@ -230,7 +232,7 @@ AnyType ValueType<T>::CommonTypeImpl(const AnyType& other) const {
     auto result = other.visit<AnyType>(
     [](const PointerType& pointer) -> AnyType { return pointer; },
     [&](const auto& other) -> AnyType {
-      using other_t = std::decay_t<decltype(other)>;
+      using other_t = decltype_t(other);
       if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>)
         return ValueType<common_type_t<T, typename other_t::type_t>>{LValueNess::None};
       else
@@ -317,7 +319,7 @@ AnyType PointerType::Deref() const {
 AnyType PointerType::CommonTypeImpl(const AnyType& other) const {
   return other.visit<AnyType>(
     [&](const auto& other) -> AnyType {
-      using other_t = std::decay_t<decltype(other)>;
+      using other_t = decltype_t(other);
       if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>) {
         if constexpr(std::is_integral_v<typename other_t::type_t>) {
           return *this;
@@ -340,6 +342,10 @@ std::string PointerType::ToString() const {
   else {
     return cotyl::FormatStr("(%s)[%s]", contained, size);
   }
+}
+
+u64 PointerType::Stride() const {
+  return (*contained)->Sizeof();
 }
 
 void PointerType::ForgetConstInfo() const {
@@ -417,7 +423,7 @@ std::string FunctionType::ToString() const {
 AnyType FunctionType::CommonTypeImpl(const AnyType& other) const {
   return other.visit<AnyType>(
     [&](const auto& other) -> AnyType {
-      using other_t = std::decay_t<decltype(other)>;
+      using other_t = decltype_t(other);
       if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>) {
         if constexpr(std::is_integral_v<typename other_t::type_t>) {
           return *this;
@@ -435,6 +441,13 @@ AnyType FunctionType::ToAny() {
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * STRUCT TYPES
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+StructField::StructField(cotyl::CString&& name, size_t size, nested_type_t&& contained) :
+    name{std::move(name)}, size{size}, type{std::move(type)} { }
+
+StructField::StructField(cotyl::CString&& name, nested_type_t&& contained) :
+    StructField{std::move(name), 0, std::move(contained)} { }
+
 void StructUnionType::ForgetConstInfo() const {
   for (auto& field : fields) {
     (*field.type)->ForgetConstInfo();
@@ -486,6 +499,23 @@ u64 StructType::Sizeof() const {
   return value;
 }
 
+u64 UnionType::Sizeof() const {
+  throw cotyl::UnimplementedException();
+}
+
+AnyType StructUnionType::MemberAccess(const cotyl::CString& member) const {
+  for (auto& field : fields) {
+    if (field.name == member) {
+      return *field.type;
+    }
+  }
+  throw std::runtime_error("No field named " + member.str() + " in " + ToString());
+}
+
+AnyType StructUnionType::CommonTypeImpl(const AnyType& other) const {
+  // TypeEqual is already checked
+  InvalidOperands(this, "operation", other);
+}
 
 bool StructUnionType::TypeEqualImpl(const StructUnionType& other) const {
   if (fields.size() != other.fields.size()) {

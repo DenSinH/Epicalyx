@@ -29,6 +29,13 @@ struct Parser final : public ConstParser {
 
   // needs to be available publicly for shorthand binop parsing
   ast::pExpr ECast() final;
+
+  // external results
+  void Parse();
+  void Data();
+
+  cotyl::vector<ast::pNode<ast::DeclNode>> declarations{};
+  
 private:
   ast::pExpr EPrimary() final;
   ast::pExpr EPostfix();
@@ -59,9 +66,6 @@ private:
   void PushScope();
   void PopScope();
 
-  void Parse();
-  void Data();
-
   enum class Loop {
     For, While, DoWhile
   };
@@ -79,9 +83,6 @@ private:
   cotyl::unordered_set<cotyl::CString> labels{};
   cotyl::unordered_set<cotyl::CString> unresolved_labels{};
   cotyl::MapScope<cotyl::CString, type::AnyType> variables{};
-
-  // external results
-  cotyl::vector<ast::pNode<ast::DeclNode>> declarations{};
 };
 
 }

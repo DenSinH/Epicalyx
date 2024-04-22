@@ -2,6 +2,7 @@
 #include "types/Types.h"
 #include "types/AnyType.h"
 #include "Exceptions.h"
+#include "Decltype.h"
 
 
 namespace epi::detail {
@@ -31,7 +32,7 @@ calyx::global_t GetGlobalValue(const AnyType& type) {
       throw std::runtime_error("Incomplete global type"); 
     },
     [](const auto& value) -> calyx::global_t {
-      using value_t = std::decay_t<decltype(value)>;
+      using value_t = decltype_t(value);
       static_assert(cotyl::is_instantiation_of_v<ValueType, value_t>);
       return (typename value_t::type_t){0};
     }
@@ -71,7 +72,7 @@ std::pair<calyx::Local::Type, u64> GetLocalType(const type::AnyType& type) {
       return {calyx::Local::Type::Pointer, 0}; 
     },
     [](const auto& value) -> std::pair<calyx::Local::Type, u64> {
-      using value_t = std::decay_t<decltype(value)>;
+      using value_t = decltype_t(value);
       static_assert(cotyl::is_instantiation_of_v<ValueType, value_t>);
       return {calyx_loc_type_v<typename value_t::type_t>, 0};
     }

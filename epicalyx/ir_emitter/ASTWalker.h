@@ -5,6 +5,7 @@
 #include "calyx/Calyx.h"
 #include "Emitter.h"
 #include "Scope.h"
+#include "Helpers.h"
 
 #include <stack>
 
@@ -17,6 +18,11 @@ struct ASTWalker : public ast::NodeVisitor {
     state.push({State::Empty, {}});
   }
 
+  // public access for helpers
+  var_index_t current;
+  Emitter& emitter;
+
+private:
   enum class State {
     Empty, Assign, Address, Read, ConditionalBranch,
   };
@@ -46,9 +52,6 @@ struct ASTWalker : public ast::NodeVisitor {
 
   cotyl::MapScope<cotyl::CString, LocalData> locals{};
   cotyl::unordered_map<cotyl::CString, type::AnyType> symbol_types{};
-  
-  var_index_t current;
-  Emitter& emitter;
 
   void AddGlobal(const cotyl::CString& symbol, const type::AnyType& type) {
     if (symbol_types.contains(symbol)) {
@@ -74,12 +77,10 @@ struct ASTWalker : public ast::NodeVisitor {
     cotyl::Assert(locals.Depth() == 1, "Local scope is not empty after function");
   }
 
-  static calyx::Local::Type GetCalyxType(const type::AnyType& type);
-
   var_index_t AddLocal(cotyl::CString&& name, const type::AnyType& type, std::optional<var_index_t> arg_index = {}) {
     auto c_idx = emitter.c_counter++;
     size_t size = type->Sizeof();
-    auto& loc = emitter.current_function->locals.emplace(c_idx, calyx::Local{GetCalyxType(type), c_idx, size, std::move(arg_index)}).first->second;
+    auto& loc = emitter.current_function->locals.emplace(c_idx, calyx::Local{detail::GetLocalType(type).first, c_idx, size, std::move(arg_index)}).first->second;
     locals.Set(std::move(name), LocalData{ &loc, type });
     return c_idx;
   }

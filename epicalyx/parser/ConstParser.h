@@ -32,11 +32,13 @@ struct ConstParser : public cotyl::Locatable {
   void PrintLoc() const final;
   i64 EConstexpr();
 
-protected:
-  virtual ast::pExpr EPrimary();
+  // needs public access for shorthand parsing Binop Expressions
   virtual ast::pExpr ECast();
   template<ast::pExpr (ConstParser::*SubNode)(), enum TokenType... types>
   ast::pExpr EBinopImpl();
+
+protected:
+  virtual ast::pExpr EPrimary();
   ast::pExpr EBinop();
   ast::pExpr ETernary();
   virtual ast::pExpr EAssignment();

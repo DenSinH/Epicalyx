@@ -7,6 +7,7 @@
 #include "Hash.h"
 #include "Format.h"
 #include "Exceptions.h"
+#include "Decltype.h"
 
 #include <iostream>
 #include <tuple>
@@ -112,7 +113,7 @@ void VisualizeProgram(const Program& program, const std::string& filename) {
           },
           [&](const auto& dir) {
             auto node = graph->n(id, stringify(dir));
-            if constexpr (cotyl::is_instantiation_of_v<BranchCompare, std::decay_t<decltype(dir)>>) {
+            if constexpr (cotyl::is_instantiation_of_v<BranchCompare, decltype_t(dir)>) {
               node->n(GetNodeID(func, dir.tdest));
               node->n(GetNodeID(func, dir.fdest));
             }
