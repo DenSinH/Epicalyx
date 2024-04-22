@@ -25,11 +25,11 @@ using ::epi::stringify;
   );
 }
 
-static AnyType MakeBool(BaseType::LValueNess lvalue, u8 flags = 0) {
+AnyType MakeBool(BaseType::LValueNess lvalue, u8 flags) {
   return ValueType<i32>(lvalue, flags);
 }
 
-static AnyType MakeBool(bool value, BaseType::LValueNess lvalue, u8 flags = 0) {
+AnyType MakeBool(bool value, BaseType::LValueNess lvalue, u8 flags) {
   return ValueType<i32>(value ? 1 : 0, lvalue, flags);
 }
 

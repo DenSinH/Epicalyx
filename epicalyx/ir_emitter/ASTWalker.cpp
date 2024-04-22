@@ -1,5 +1,6 @@
 #include "ASTWalker.h"
 #include "Emitter.h"
+#include "Helpers.h"
 
 #include "types/Types.h"
 #include "calyx/Calyx.h"
@@ -13,11 +14,12 @@
 #include "Exceptions.h"
 #include "CustomAssert.h"
 
-// #include "Helpers.inl"
+#include "Helpers.inl"
 
 
 namespace epi {
 
+using namespace ast;
 
 // calyx::Local::Type ASTWalker::GetCalyxType(const pType<const CType>& type) {
 //   detail::CalyxLocalTypeVisitor visitor{};
@@ -26,22 +28,21 @@ namespace epi {
 // }
 
 
-void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
+void ASTWalker::Visit(epi::DeclarationNode& decl) {
   if (locals.Depth() == 1) {
     // global symbols
     AddGlobal(decl.name, decl.type);
 
-    auto global_init_visitor = detail::GlobalInitializerVisitor();
-    decl.type->Visit(global_init_visitor);
+    auto global_type = detail::GetGlobalValue(decl.type);
     if (emitter.program.globals.contains(decl.name)) {
       throw cotyl::FormatExcept("Duplicate global symbol: %s", decl.name.c_str());
     }
-    auto it = emitter.program.globals.emplace(decl.name, global_init_visitor.result);
+    auto it = emitter.program.globals.emplace(decl.name, std::move(global_type));
     calyx::global_t& global = it.first->second;
 
     if (decl.value.has_value()) {
-      if (std::holds_alternative<pExpr>(decl.value.value())) {
-        auto& expr = std::get<pExpr>(decl.value.value());
+      if (std::holds_alternative<pExpr>(decl.value.value().value)) {
+        auto& expr = std::get<pExpr>(decl.value.value().value);
 
         calyx::Function initializer{cotyl::CString("$init" + decl.name.str())};
         emitter.SetFunction(initializer);
@@ -51,7 +52,7 @@ void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
         state.pop();
 
         auto global_block_return_visitor = detail::EmitterTypeVisitor<detail::ReturnEmitter>(*this, { current });
-        decl.type->Visit(global_block_return_visitor);
+        global_block_return_visitor.Visit(decl.type);
 
         calyx::InterpretGlobalInitializer(global, std::move(initializer));
       }
@@ -65,13 +66,13 @@ void ASTWalker::Visit(epi::ast::DeclarationNode& decl) {
     auto c_idx = AddLocal(cotyl::CString(decl.name), decl.type);
 
     if (decl.value.has_value()) {
-      if (std::holds_alternative<pExpr>(decl.value.value())) {
+      if (std::holds_alternative<pExpr>(decl.value.value().value)) {
         state.push({State::Read, {}});
-        std::get<pExpr>(decl.value.value())->Visit(*this);
+        std::get<pExpr>(decl.value.value().value)->Visit(*this);
         state.pop();
         // current now holds the expression id that we want to assign with
         state.push({State::Assign, {.var = current}});
-        IdentifierNode(std::move(decl.name)).Visit(*this);
+        IdentifierNode(std::move(decl.name), std::move(decl.type)).Visit(*this);
         state.pop();
       }
       else {
@@ -87,10 +88,10 @@ void ASTWalker::Visit(FunctionDefinitionNode& decl) {
 
   // same as normal compound statement besides arguments
   locals.NewLayer();
-  for (int i = 0; i < decl.signature->arg_types.size(); i++) {
+  for (int i = 0; i < decl.signature.arg_types.size(); i++) {
     // turn arguments into locals
-    auto& arg = decl.signature->arg_types[i];
-    AddLocal(cotyl::CString(arg.name), arg.type, i);
+    auto& arg = decl.signature.arg_types[i];
+    AddLocal(cotyl::CString(arg.name), *arg.type, i);
   }
 
   // locals layer
@@ -142,12 +143,12 @@ void ASTWalker::Visit(IdentifierNode& decl) {
     const auto& cvar = *locals.Get(decl.name).loc;
     switch (state.top().first) {
       case State::Read: {
-        if (type->IsArray()) {
-          current = emitter.EmitExpr<calyx::LoadLocalAddr>({Emitter::Var::Type::Pointer, type->Deref()->Sizeof() }, cvar.idx);
+        if (type.holds_alternative<type::PointerType>() && type.get<type::PointerType>().size) {
+          current = emitter.EmitExpr<calyx::LoadLocalAddr>({Emitter::Var::Type::Pointer, type.get<type::PointerType>().Stride() }, cvar.idx);
         }
         else {
           auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalEmitter>(*this, {cvar.idx});
-          type->Visit(visitor);
+          visitor.Visit(type);
         }
         break;
       }
@@ -156,13 +157,13 @@ void ASTWalker::Visit(IdentifierNode& decl) {
         auto visitor = detail::EmitterTypeVisitor<detail::StoreLocalEmitter>(
                 *this, { cvar.idx, stored }
         );
-        type->Visit(visitor);
+        visitor.Visit(type);
         current = stored;
         break;
       }
       case State::Address: {
         auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalAddrEmitter>(*this, {cvar.idx});
-        type->Visit(visitor);
+        visitor.Visit(type);
         break;
       }
       default: {
@@ -174,16 +175,16 @@ void ASTWalker::Visit(IdentifierNode& decl) {
     // global symbol
     switch (state.top().first) {
       case State::Read: {
-        if (type->IsArray()) {
+        if (type.holds_alternative<type::PointerType>() && type.get<type::PointerType>().size > 0) {
           current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, type->Deref()->Sizeof() }, std::move(decl.name));
         }
-        else if (type->IsFunction()) {
+        else if (type.holds_alternative<type::FunctionType>()) {
           auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {std::move(decl.name)});
-          type->Visit(visitor);
+          visitor.Visit(type);
         }
         else {
           auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalEmitter>(*this, {std::move(decl.name)});
-          type->Visit(visitor);
+          visitor.Visit(type);
         }
         break;
       }
@@ -192,13 +193,13 @@ void ASTWalker::Visit(IdentifierNode& decl) {
         auto visitor = detail::EmitterTypeVisitor<detail::StoreGlobalEmitter>(
                 *this, { std::move(decl.name), stored }
         );
-        type->Visit(visitor);
+        visitor.Visit(type);
         current = stored;
         break;
       }
       case State::Address: {
         auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {std::move(decl.name)});
-        type->Visit(visitor);
+        visitor.Visit(type);
         break;
       }
       default: {
@@ -255,7 +256,7 @@ void ASTWalker::Visit(ArrayAccessNode& expr) {
 
   state.push({State::Read, {}});
   var_index_t ptr_idx, offs_idx;
-  if (expr.left->GetType()->IsPointer()) {
+  if (expr.left->type.holds_alternative<type::PointerType>()) {
     expr.left->Visit(*this);
     ptr_idx = current;
     expr.right->Visit(*this);
@@ -277,11 +278,11 @@ void ASTWalker::Visit(ArrayAccessNode& expr) {
 
   if (state.top().first == State::Read || state.top().first == State::ConditionalBranch) {
     auto visitor = detail::EmitterTypeVisitor<detail::LoadFromPointerEmitter>(*this, { ptr_idx });
-    if (expr.left->GetType()->IsPointer()) {
-      expr.left->GetType()->Deref()->Visit(visitor);
+    if (expr.left->type.holds_alternative<type::PointerType>()) {
+      visitor.Visit(expr.left->type->Deref());
     }
     else {
-      expr.right->GetType()->Deref()->Visit(visitor);
+      visitor.Visit(expr.right->type->Deref());
     }
 
     if (state.top().first == State::ConditionalBranch) {
@@ -298,11 +299,11 @@ void ASTWalker::Visit(ArrayAccessNode& expr) {
       case State::Assign: {
         auto var = state.top().second.var;
         auto visitor = detail::EmitterTypeVisitor<detail::StoreToPointerEmitter>(*this, { ptr_idx, var });
-        if (expr.left->GetType()->IsPointer()) {
-          expr.left->GetType()->Deref()->Visit(visitor);
+        if (expr.left->type.holds_alternative<type::PointerType>()) {
+          visitor.Visit(expr.left->type->Deref());
         }
         else {
-          expr.right->GetType()->Deref()->Visit(visitor);
+          visitor.Visit(expr.right->type->Deref());
         }
 
         // stored value is "returned" value
@@ -326,38 +327,47 @@ void ASTWalker::Visit(FunctionCallNode& expr) {
   state.pop();
 
   const auto fn = current;
-  const auto* signature = cotyl::shared_ptr_cast<const FunctionType>(expr.left->GetType());
-  const auto num_args = signature->arg_types.size();
+  const auto& signature = expr.left->type.get<type::FunctionType>();
+  const auto num_args = signature.arg_types.size();
   calyx::ArgData args{};
 
   for (int i = 0; i < num_args; i++) {
     expr.args[i]->Visit(*this);
     auto cast_arg_visitor = detail::EmitterTypeVisitor<detail::CastToEmitter>(*this, { current });
-    signature->arg_types[i].type->Visit(cast_arg_visitor);
+    cast_arg_visitor.Visit(*signature.arg_types[i].type);
 
-    auto arg_visitor = detail::ArgumentTypeVisitor(i, false);
-    signature->arg_types[i].type->Visit(arg_visitor);
-
-    args.args.emplace_back(current, arg_visitor.result);
+    auto arg_type = detail::GetLocalType(*signature.arg_types[i].type);
+    auto arg = calyx::Local{
+      arg_type.first,
+      current,
+      arg_type.second,
+      i
+    };
+    args.args.emplace_back(current, std::move(arg));
   }
 
-  if (signature->variadic) {
+  if (signature.variadic) {
     for (int i = num_args; i < expr.args.size(); i++) {
       expr.args[i]->Visit(*this);
 
-      auto arg_visitor = detail::ArgumentTypeVisitor(i - num_args, true);
-      expr.args[i]->GetType()->Visit(arg_visitor);
+      auto arg_type = detail::GetLocalType(expr.args[i]->type);
+      auto arg = calyx::Local{
+        arg_type.first,
+        current,
+        arg_type.second,
+        i
+      };
 
-      args.var_args.emplace_back(current, arg_visitor.result);
+      args.var_args.emplace_back(current, std::move(arg));
     }
   }
 
-  if (signature->contained->IsVoid()) {
+  if (signature.contained->holds_alternative<type::VoidType>()) {
     emitter.Emit<calyx::Call<void>>(var_index_t{0}, fn, std::move(args));
   }
   else {
     auto visitor = detail::EmitterTypeVisitor<detail::CallEmitter>(*this, { fn, std::move(args) });
-    signature->contained->Visit(visitor);
+    visitor.Visit(*signature.contained);
 
     if (state.top().first == State::ConditionalBranch) {
       auto tblock = state.top().second.true_block;
@@ -622,7 +632,7 @@ void ASTWalker::Visit(UnopNode& expr) {
 
         auto var = state.top().second.var;
         auto visitor = detail::EmitterTypeVisitor<detail::StoreToPointerEmitter>(*this, { current, var });
-        expr.left->GetType()->Deref()->Visit(visitor);
+        visitor.Visit(expr.left->type->Deref());
 
         // stored value is "returned" value
         current = var;
@@ -642,7 +652,7 @@ void ASTWalker::Visit(UnopNode& expr) {
         state.pop();
 
         auto visitor = detail::EmitterTypeVisitor<detail::LoadFromPointerEmitter>(*this, { current });
-        expr.left->GetType()->Deref()->Visit(visitor);
+        visitor.Visit(expr.left->type->Deref());
 
         // could be a conditional branch
       }
@@ -675,7 +685,7 @@ void ASTWalker::Visit(CastNode& expr) {
   // only need to emit an actual cast if we are not checking for 0
   if (state.top().first != State::ConditionalBranch) {
     auto visitor = detail::EmitterTypeVisitor<detail::CastToEmitter>(*this, { current });
-    expr.type->Visit(visitor);
+    visitor.Visit(expr.type);
   }
 }
 
@@ -822,7 +832,7 @@ void ASTWalker::Visit(BinopNode& expr) {
       if (state.top().first == State::Read) {
         // we create a "fake local" in order to do this
         auto name = cotyl::CString("$logop" + std::to_string(emitter.c_counter));
-        auto c_idx = AddLocal(std::move(name), CType::MakeBool());
+        auto c_idx = AddLocal(std::move(name), type::MakeBool(type::BaseType::LValueNess::Assignable));
         
         // now basically add an if statement
         auto rhs_block = emitter.MakeBlock();
@@ -921,7 +931,7 @@ void ASTWalker::Visit(TernaryNode& expr) {
   if (state.top().first == State::Read) {
     // we create a "fake local" in order to do this
     auto name = cotyl::CString("$tern" + std::to_string(emitter.c_counter));
-    auto type = expr.GetType();
+    auto type = expr.type;
     auto c_idx = AddLocal(std::move(name), type);
 
     // now basically add an if statement
@@ -943,7 +953,7 @@ void ASTWalker::Visit(TernaryNode& expr) {
       auto store_visitor = detail::EmitterTypeVisitor<detail::StoreLocalEmitter>(
               *this, { c_idx, stored }
       );
-      type->Visit(store_visitor);
+      store_visitor.Visit(type);
       current = stored;
       emitter.Emit<calyx::UnconditionalBranch>(post_block);
     }
@@ -956,7 +966,7 @@ void ASTWalker::Visit(TernaryNode& expr) {
       auto store_visitor = detail::EmitterTypeVisitor<detail::StoreLocalEmitter>(
               *this, { c_idx, stored }
       );
-      type->Visit(store_visitor);
+      store_visitor.Visit(type);
       current = stored;
       emitter.Emit<calyx::UnconditionalBranch>(post_block);
     }
@@ -968,7 +978,7 @@ void ASTWalker::Visit(TernaryNode& expr) {
       auto load_visitor = detail::EmitterTypeVisitor<detail::LoadLocalEmitter>(
               *this, { c_idx }
       );
-      type->Visit(load_visitor);
+      load_visitor.Visit(type);
     }
   }
   else {
@@ -1367,7 +1377,7 @@ void ASTWalker::Visit(ReturnNode& stat) {
     state.push({State::Read, {}});
     stat.expr->Visit(*this);
     auto visitor = detail::EmitterTypeVisitor<detail::ReturnEmitter>(*this, { current });
-    function->signature->contained->Visit(visitor);
+    visitor.Visit(*function->signature.contained);
     state.pop();
   }
   else {

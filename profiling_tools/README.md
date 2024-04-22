@@ -1,0 +1,1 @@
+Checkout https://ui.perfetto.dev/ for reading traces

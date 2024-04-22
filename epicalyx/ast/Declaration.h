@@ -39,9 +39,9 @@ struct DeclarationNode final : DeclNode {
 
 struct FunctionDefinitionNode final : DeclNode {
 
-  FunctionDefinitionNode(type::AnyType&& signature, cotyl::CString&& symbol, pNode<CompoundNode>&& body);
+  FunctionDefinitionNode(type::FunctionType&& signature, cotyl::CString&& symbol, pNode<CompoundNode>&& body);
 
-  type::AnyType&& signature;
+  type::FunctionType&& signature;
   cotyl::CString symbol;
   pNode<CompoundNode> body;
 

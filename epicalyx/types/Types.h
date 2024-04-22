@@ -108,6 +108,7 @@ struct PointerType final : AnyPointerType {
   AnyType Deref() const final;
 
   u64 Sizeof() const final;
+  u64 Stride() const;
 
   void ForgetConstInfo() const final;
   AnyType CommonTypeImpl(const AnyType& other) const final;
@@ -225,5 +226,8 @@ struct UnionType final : StructUnionType {
   u64 Sizeof() const final;
   std::string ToString() const final;
 };
+
+AnyType MakeBool(BaseType::LValueNess lvalue, u8 flags = 0);
+AnyType MakeBool(bool value, BaseType::LValueNess lvalue, u8 flags = 0);
 
 }

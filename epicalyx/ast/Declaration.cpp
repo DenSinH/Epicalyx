@@ -27,7 +27,7 @@ std::string DeclarationNode::ToString() const {
   return stringify(type);
 }
 
-FunctionDefinitionNode::FunctionDefinitionNode(type::AnyType&& signature, cotyl::CString&& symbol, pNode<CompoundNode>&& body) :
+FunctionDefinitionNode::FunctionDefinitionNode(type::FunctionType&& signature, cotyl::CString&& symbol, pNode<CompoundNode>&& body) :
     signature{std::move(signature)}, symbol{std::move(symbol)}, body{std::move(body)} { }
 
 std::string FunctionDefinitionNode::ToString() const {

@@ -39,7 +39,6 @@ struct Initializer {
 
   std::string ToString() const;
   
-private:
   std::variant<pExpr, InitializerList> value;
 };
 

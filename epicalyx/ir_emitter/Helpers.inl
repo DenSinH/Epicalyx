@@ -1,3 +1,4 @@
+#include "Default.h"
 
 namespace epi {
 
@@ -37,7 +38,7 @@ using func_return_t = typename func<Sig>::return_t;
  * This removes the boilerplate of the rest of the visitor pattern code.
  * */
 template<template<typename T> class emit>
-struct EmitterTypeVisitor : TypeVisitor {
+struct EmitterTypeVisitor {
   using args_t = func_args_t<decltype(emit<i32>::emit_value)>;
   using return_t = func_return_t<decltype(emit<i32>::emit_value)>;
 
@@ -46,6 +47,32 @@ struct EmitterTypeVisitor : TypeVisitor {
 
   }
 
+  void Visit(const type::AnyType& type) {
+    type.visit<void>(
+      [](const type::VoidType&) {
+        throw std::runtime_error("Incomplete type");
+      },
+      [&](const type::PointerType& ptr) {
+        VisitPointerImpl(ptr.Stride());
+      },
+      [&](const type::FunctionType& ptr) {
+        VisitPointerImpl(0);
+      },
+      [](const type::StructType&) {
+        throw cotyl::UnimplementedException();
+      },
+      [](const type::UnionType&) {
+        throw cotyl::UnimplementedException();
+      },
+      [&](const auto& value) {
+        using value_t = std::decay_t<decltype(value)>;
+        static_assert(cotyl::is_instantiation_of_v<type::ValueType, value_t>);
+        VisitValueImpl<typename value_t::type_t>();
+      }
+    );
+  }
+
+private:
   ASTWalker& walker;
   args_t args;
 
@@ -73,23 +100,6 @@ struct EmitterTypeVisitor : TypeVisitor {
       []<bool flag = false> { static_assert(flag); }();
     }
   }
-
-  void Visit(const VoidType& type) final { throw std::runtime_error("Incomplete type"); }
-  void Visit(const ValueType<i8>& type) final { VisitValueImpl<i8>(); }
-  void Visit(const ValueType<u8>& type) final { VisitValueImpl<u8>(); }
-  void Visit(const ValueType<i16>& type) final { VisitValueImpl<i16>(); }
-  void Visit(const ValueType<u16>& type) final { VisitValueImpl<u16>(); }
-  void Visit(const ValueType<i32>& type) final { VisitValueImpl<i32>(); }
-  void Visit(const ValueType<u32>& type) final { VisitValueImpl<u32>(); }
-  void Visit(const ValueType<i64>& type) final { VisitValueImpl<i64>(); }
-  void Visit(const ValueType<u64>& type) final { VisitValueImpl<u64>(); }
-  void Visit(const ValueType<float>& type) final { VisitValueImpl<float>(); }
-  void Visit(const ValueType<double>& type) final { VisitValueImpl<double>(); }
-  void Visit(const PointerType& type) final { VisitPointerImpl(type.Deref()->Sizeof()); }
-  void Visit(const ArrayType& type) final { VisitPointerImpl(type.Deref()->Sizeof()); }
-  void Visit(const FunctionType& type) final { VisitPointerImpl(type.Deref()->Sizeof()); }
-  void Visit(const StructType& type) final { throw cotyl::UnimplementedException(); }
-  void Visit(const UnionType& type) final { throw cotyl::UnimplementedException(); }
 };
 
 
@@ -253,55 +263,6 @@ struct StoreToPointerEmitter {
     var_index_t cast = CastToEmitter<T>::emit_pointer(walker, stride, src);
     walker.emitter.Emit<calyx::StoreToPointer<T>>(ptr_idx, cast);
   }
-};
-
-
-struct ArgumentTypeVisitor : TypeVisitor {
-  calyx::Argument result{};
-
-  ArgumentTypeVisitor(var_index_t arg_idx, bool variadic) {
-    result.arg_idx = arg_idx;
-    result.variadic = variadic;
-  }
-
-  void Visit(const VoidType& type) final { throw std::runtime_error("Incomplete type"); }
-  void Visit(const ValueType<i8>& type) final { result.type = calyx::Local::Type::I8; }
-  void Visit(const ValueType<u8>& type) final { result.type = calyx::Local::Type::U8; }
-  void Visit(const ValueType<i16>& type) final { result.type = calyx::Local::Type::I16; }
-  void Visit(const ValueType<u16>& type) final { result.type = calyx::Local::Type::U16; }
-  void Visit(const ValueType<i32>& type) final { result.type = calyx::Local::Type::I32; }
-  void Visit(const ValueType<u32>& type) final { result.type = calyx::Local::Type::U32; }
-  void Visit(const ValueType<i64>& type) final { result.type = calyx::Local::Type::I64; }
-  void Visit(const ValueType<u64>& type) final { result.type = calyx::Local::Type::U64; }
-  void Visit(const ValueType<float>& type) final { result.type = calyx::Local::Type::Float; }
-  void Visit(const ValueType<double>& type) final { result.type = calyx::Local::Type::Double; }
-  void Visit(const PointerType& type) final { result.type = calyx::Local::Type::Pointer; result.stride = type.Deref()->Sizeof(); }
-  void Visit(const ArrayType& type) final { result.type = calyx::Local::Type::Pointer; result.stride = type.Deref()->Sizeof(); }
-  void Visit(const FunctionType& type) final { result.type = calyx::Local::Type::Pointer; result.stride = 0; }
-  void Visit(const StructType& type) final { result.type = calyx::Local::Type::Struct; result.size = type.Sizeof(); }
-  void Visit(const UnionType& type) final { result.type = calyx::Local::Type::Struct; result.size = type.Sizeof(); }
-};
-
-
-struct GlobalInitializerVisitor : TypeVisitor {
-  calyx::global_t result{};
-
-  void Visit(const VoidType& type) final { throw std::runtime_error("Incomplete type for global initializer"); }
-  void Visit(const ValueType<i8>& type) final { result = i8{0}; }
-  void Visit(const ValueType<u8>& type) final { result = u8{0}; }
-  void Visit(const ValueType<i16>& type) final { result = i16{0}; }
-  void Visit(const ValueType<u16>& type) final { result = u16{0}; }
-  void Visit(const ValueType<i32>& type) final { result = i32{0}; }
-  void Visit(const ValueType<u32>& type) final { result = u32{0}; }
-  void Visit(const ValueType<i64>& type) final { result = i64{0}; }
-  void Visit(const ValueType<u64>& type) final { result = u64{0}; }
-  void Visit(const ValueType<float>& type) final { result = float{0}; }
-  void Visit(const ValueType<double>& type) final { result = double{0}; }
-  void Visit(const PointerType& type) final { result = calyx::Pointer{0}; }
-  void Visit(const ArrayType& type) final { throw cotyl::UnimplementedException("global array"); }
-  void Visit(const FunctionType& type) final { result = calyx::Pointer{0}; }
-  void Visit(const StructType& type) final { throw cotyl::UnimplementedException("global struct"); }
-  void Visit(const UnionType& type) final { throw cotyl::UnimplementedException("global struct");  }
 };
 
 }

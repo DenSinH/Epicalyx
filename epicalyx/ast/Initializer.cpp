@@ -36,7 +36,10 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
     // this means we do not need to recurse the reduction
     // (for obtaining constant values / type values from initializer lists)
     type.visit<void>(
-      [&](const type::StructUnionType& strct) {
+      [&](const type::StructType& strct) {
+        throw cotyl::UnimplementedException();
+      },
+      [&](const type::UnionType& strct) {
         throw cotyl::UnimplementedException();
       },
       [&](const type::VoidType&) {
@@ -55,6 +58,7 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
       },
       [&](const auto& val) { 
         using value_t = std::decay_t<decltype(val)>;
+        static_assert(std::is_same_v<value_t, type::FunctionType> || cotyl::is_instantiation_of_v(type::ValueType, value_t));
         if (list.list.empty()) {
           if constexpr(cotyl::is_instantiation_of_v<type::ValueType, value_t>) {
             value = std::make_unique<NumericalConstantNode<typename value_t::type_t>>(0);
@@ -70,7 +74,10 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
     const auto& has = std::get<pExpr>(value)->type;
     
     type.visit<void>(
-      [&](const type::StructUnionType& strct) {
+      [&](const type::StructType& strct) {
+        throw cotyl::UnimplementedException();
+      },
+      [&](const type::UnionType& strct) {
         throw cotyl::UnimplementedException();
       },
       [&](const type::VoidType&) {
@@ -88,6 +95,8 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
       },
       [&](const auto& val) {
         // function type, value type
+        using value_t = std::decay_t<decltype(val)>;
+        static_assert(std::is_same_v<value_t, type::FunctionType> || cotyl::is_instantiation_of_v(type::ValueType, value_t));
         if (!type.TypeEquals(has)) {
           throw cotyl::FormatExceptStr("Cannot cast type %s to %s in initializer", has, type);
         }
@@ -118,7 +127,10 @@ void InitializerList::ValidateAndReduceScalarType(const type::AnyType& type) {
 
 void InitializerList::ValidateAndReduce(const type::AnyType& type) {
   type.visit<void>(
-    [&](const type::StructUnionType& strct) {
+    [&](const type::StructType& strct) {
+      throw cotyl::UnimplementedException();
+    },
+    [&](const type::UnionType& strct) {
       throw cotyl::UnimplementedException();
     },
     [&](const type::VoidType&) {
@@ -133,6 +145,7 @@ void InitializerList::ValidateAndReduce(const type::AnyType& type) {
       }
     },
     [&](const auto& val) { 
+      static_assert(std::is_same_v<value_t, type::FunctionType> || cotyl::is_instantiation_of_v(type::ValueType, value_t));
       ValidateAndReduceScalarType(type);
     }
   );

@@ -156,32 +156,8 @@ struct Local {
   std::optional<var_index_t> arg_idx{};
 };
 
-
-struct Argument {
-
-  Argument() = default;
-  
-  Argument(Local::Type type, var_index_t arg_idx, bool variadic = false) :
-          type(type), arg_idx(arg_idx), variadic(variadic), stride(0) {
-
-  }
-
-  Argument(Local::Type type, var_index_t arg_idx, u64 stride, bool variadic = false) :
-          type(type), arg_idx(arg_idx), variadic(variadic), stride(stride) {
-
-  }
-
-  Local::Type type;
-  var_index_t arg_idx;
-  bool variadic;
-  union {
-    u64 stride;  // for pointers
-    u64 size;    // for structs
-  };
-};
-
 // IR var idx and Argument
-using arg_list_t = cotyl::vector<std::pair<var_index_t, Argument>>;
+using arg_list_t = cotyl::vector<std::pair<var_index_t, Local>>;
 
 struct ArgData {
   arg_list_t args;
