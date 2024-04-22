@@ -51,13 +51,13 @@ std::string StringConstantNode::ToString() const {
 
 ArrayAccessNode::ArrayAccessNode(pExpr&& left, pExpr&& right) :
     ExprNode{left->type->ArrayAccess(right->type)},
-    left(std::move(left)),
-    right(std::move(right)) {
+    ptr{left->type.holds_alternative<type::PointerType>() ? std::move(left) : std::move(right)},
+    offs{left->type.holds_alternative<type::PointerType>() ? std::move(right) : std::move(left)} {
 
 }
 
 std::string ArrayAccessNode::ToString() const { 
-  return cotyl::FormatStr("(%s)[%s]", left, right); 
+  return cotyl::FormatStr("(%s)[%s]", ptr, offs); 
 }
 
 

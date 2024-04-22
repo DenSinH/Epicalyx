@@ -61,7 +61,9 @@ struct ArrayAccessNode final : ExprNode {
 
   ArrayAccessNode(pExpr&& left, pExpr&& right);
 
-  pExpr left, right;
+  // in the constructor, we guarantee that "ptr" will
+  // hold the pointer type
+  pExpr ptr, offs;
 
   std::string ToString() const final;
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }

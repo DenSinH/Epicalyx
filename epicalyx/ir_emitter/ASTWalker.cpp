@@ -242,26 +242,18 @@ void ASTWalker::Visit(StringConstantNode& expr) {
 void ASTWalker::Visit(ArrayAccessNode& expr) {
   if (state.top().first == State::Empty) {
     // increments/decrements might happen
-    expr.left->Visit(*this);
-    expr.right->Visit(*this);
+    expr.ptr->Visit(*this);
+    expr.offs->Visit(*this);
     return;
   }
   cotyl::Assert(cotyl::Is(state.top().first).AnyOf<State::Read, State::ConditionalBranch, State::Assign, State::Address>());
 
   state.push({State::Read, {}});
   var_index_t ptr_idx, offs_idx;
-  if (expr.left->type.holds_alternative<type::PointerType>()) {
-    expr.left->Visit(*this);
-    ptr_idx = current;
-    expr.right->Visit(*this);
-    offs_idx = current;
-  }
-  else {
-    expr.right->Visit(*this);
-    ptr_idx = current;
-    expr.left->Visit(*this);
-    offs_idx = current;
-  }
+  expr.ptr->Visit(*this);
+  ptr_idx = current;
+  expr.offs->Visit(*this);
+  offs_idx = current;
   state.pop();
 
   auto ptr_var = emitter.vars[ptr_idx];
@@ -272,12 +264,7 @@ void ASTWalker::Visit(ArrayAccessNode& expr) {
 
   if (state.top().first == State::Read || state.top().first == State::ConditionalBranch) {
     auto visitor = detail::EmitterTypeVisitor<detail::LoadFromPointerEmitter>(*this, { ptr_idx });
-    if (expr.left->type.holds_alternative<type::PointerType>()) {
-      visitor.Visit(expr.left->type->Deref());
-    }
-    else {
-      visitor.Visit(expr.right->type->Deref());
-    }
+    visitor.Visit(expr.ptr->type->Deref());
 
     if (state.top().first == State::ConditionalBranch) {
       auto tblock = state.top().second.true_block;
@@ -293,12 +280,7 @@ void ASTWalker::Visit(ArrayAccessNode& expr) {
       case State::Assign: {
         auto var = state.top().second.var;
         auto visitor = detail::EmitterTypeVisitor<detail::StoreToPointerEmitter>(*this, { ptr_idx, var });
-        if (expr.left->type.holds_alternative<type::PointerType>()) {
-          visitor.Visit(expr.left->type->Deref());
-        }
-        else {
-          visitor.Visit(expr.right->type->Deref());
-        }
+        visitor.Visit(expr.ptr->type->Deref());
 
         // stored value is "returned" value
         current = var;
