@@ -53,44 +53,25 @@ private:
   cotyl::MapScope<cotyl::CString, LocalData> locals{};
   cotyl::unordered_map<cotyl::CString, type::AnyType> symbol_types{};
 
-  void AddGlobal(const cotyl::CString& symbol, const type::AnyType& type) {
-    if (symbol_types.contains(symbol)) {
-      throw cotyl::FormatExcept("Duplicate global symbol: %s", symbol.c_str());
-    }
-    symbol_types.emplace(symbol, type);
-  }
+  // helper for conditional branching
+  void EmitConditionalBranchForCurrent();
 
-  void NewFunction(cotyl::CString&& symbol, const type::AnyType& type) {
-    emitter.NewFunction(std::move(symbol));
-    symbol_types.emplace(emitter.current_function->symbol, type);
+  // debug function that asserts a valid function start / end state
+  void AssertClearState();
 
-    // state = {};
-    // break_stack = {};
-    // continue_stack = {};
-    // select_stack = {};
-    local_labels.clear();
-    cotyl::Assert(locals.Depth() == 1, "Local scope is not empty at function start");
-    locals.Clear();
-  }
+  // start new function
+  void NewFunction(cotyl::CString&& symbol, const type::AnyType& type);
 
-  void EndFunction() {
-    cotyl::Assert(locals.Depth() == 1, "Local scope is not empty after function");
-  }
+  // end function
+  void EndFunction();
 
-  var_index_t AddLocal(cotyl::CString&& name, const type::AnyType& type, std::optional<var_index_t> arg_index = {}) {
-    auto c_idx = emitter.c_counter++;
-    size_t size = type->Sizeof();
-    auto& loc = emitter.current_function->locals.emplace(c_idx, calyx::Local{detail::GetLocalType(type).first, c_idx, size, std::move(arg_index)}).first->second;
-    locals.Set(std::move(name), LocalData{ &loc, type });
-    return c_idx;
-  }
+  // add global variable
+  void AddGlobal(const cotyl::CString& symbol, const type::AnyType& type);
+  // add local variable
+  var_index_t AddLocal(cotyl::CString&& name, const type::AnyType& type, std::optional<var_index_t> arg_index = {});
 
-  const type::AnyType& GetSymbolType(const cotyl::CString& symbol) const {
-    if (locals.Has(symbol)) {
-      return locals.Get(symbol).type;
-    }
-    return symbol_types.at(symbol);
-  }
+  // get symbol type (local or global, depending on scope)
+  const type::AnyType& GetSymbolType(const cotyl::CString& symbol) const;
 
   const ast::FunctionDefinitionNode* function = nullptr;
 

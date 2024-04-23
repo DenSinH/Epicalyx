@@ -20,6 +20,50 @@ namespace epi {
 using namespace ast;
 
 
+void ASTWalker::AddGlobal(const cotyl::CString& symbol, const type::AnyType& type) {
+  if (symbol_types.contains(symbol)) {
+    throw cotyl::FormatExcept("Duplicate global symbol: %s", symbol.c_str());
+  }
+  symbol_types.emplace(symbol, type);
+}
+
+void ASTWalker::AssertClearState() {
+  cotyl::Assert(local_labels.empty());
+  cotyl::Assert(select_stack.empty());
+  cotyl::Assert(continue_stack.empty());
+  cotyl::Assert(break_stack.empty());
+  cotyl::Assert(state.size() == 1 && state.top().first == State::Empty);
+  cotyl::Assert(locals.Depth() == 1 && locals.Top().empty(), "Local scope is not empty at function start");
+}
+
+void ASTWalker::NewFunction(cotyl::CString&& symbol, const type::AnyType& type) {
+  emitter.NewFunction(std::move(symbol));
+  symbol_types.emplace(emitter.current_function->symbol, type);
+
+  AssertClearState();
+  locals.Clear();
+}
+
+void ASTWalker::EndFunction() {
+  local_labels.clear();
+  AssertClearState();
+}
+
+var_index_t ASTWalker::AddLocal(cotyl::CString&& name, const type::AnyType& type, std::optional<var_index_t> arg_index) {
+  auto c_idx = emitter.c_counter++;
+  size_t size = type->Sizeof();
+  auto& loc = emitter.current_function->locals.emplace(c_idx, calyx::Local{detail::GetLocalType(type).first, c_idx, size, std::move(arg_index)}).first->second;
+  locals.Set(std::move(name), LocalData{ &loc, type });
+  return c_idx;
+}
+
+const type::AnyType& ASTWalker::GetSymbolType(const cotyl::CString& symbol) const {
+  if (locals.Has(symbol)) {
+    return locals.Get(symbol).type;
+  }
+  return symbol_types.at(symbol);
+}
+
 void ASTWalker::Visit(epi::DeclarationNode& decl) {
   if (locals.Depth() == 1) {
     // global symbols

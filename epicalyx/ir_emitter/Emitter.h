@@ -54,17 +54,6 @@ struct Emitter {
     return &current_function->blocks[current_block].back().get<T>();
   }
 
-  block_label_t MakeBlock() {
-    // block 0 is special
-    return current_function->AddBlock().first;
-  }
-
-  void SelectBlock(block_label_t id) {
-    cotyl::Assert(current_function->blocks.at(id).empty(), "Expected empty block on selection");
-    reachable = true;
-    current_block = id;
-  }
-
   void MakeProgram(cotyl::vector<ast::pNode<ast::DeclNode>>& ast);
 
   // 0 are special IDs
@@ -77,23 +66,19 @@ struct Emitter {
   cotyl::vector<Var> vars{};
   calyx::Program program{};
 
-  void SetFunction(calyx::Function& func) {
-    current_function = &func;
-    const auto entry = MakeBlock();
-    cotyl::Assert(entry == calyx::Function::Entry, "Expected function entry to be block 1");
-    SelectBlock(entry);
-    ir_counter = 1;
-    c_counter = 1;
-    
-    // first var is special
-    vars = {{Var::Type::I32}};
-  }
+  // make new block and return block ID
+  block_label_t MakeBlock();
 
-  void NewFunction(cotyl::CString&& symbol) {
-    auto func = calyx::Function{std::move(symbol)};
-    const auto& sym = func.symbol;
-    SetFunction(program.functions.emplace(sym, std::move(func)).first->second);
-  }
+  // select block by ID to start emitting in
+  // asserts that this block is still empty
+  void SelectBlock(block_label_t id);
+
+  // set function to emit
+  // asserts that this function is still empty
+  void SetFunction(calyx::Function& func);
+
+  // create new function
+  void NewFunction(cotyl::CString&& symbol);
 
 private:
   bool reachable = true;

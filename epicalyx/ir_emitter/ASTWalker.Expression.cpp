@@ -19,6 +19,19 @@ namespace epi {
 
 using namespace ast;
 
+void ASTWalker::EmitConditionalBranchForCurrent() {
+  cotyl::Assert(state.top().first == State::ConditionalBranch);
+  // emit branch
+  // branch to false block if 0, otherwise go to true block
+  auto fblock = state.top().second.false_block;
+  auto tblock = state.top().second.true_block;
+  auto left = current;
+  auto type = emitter.vars[left].type;
+  EmitArithExpr<calyx::Imm>(type, 0);
+  auto imm = current;
+  EmitBranch<calyx::BranchCompare>(type, tblock, fblock, left, calyx::CmpType::Ne, imm);
+}
+
 void ASTWalker::BinopHelper(var_index_t left, calyx::BinopType op, var_index_t right) {
   auto casted = BinopCastHelper(left, right);
   EmitArithExpr<calyx::Binop>(casted.var.type, casted.left, op, casted.right);
@@ -33,20 +46,12 @@ void ASTWalker::Visit(IdentifierNode& decl) {
 
   if (state.top().first == State::ConditionalBranch) {
     // this makes no difference for local / global symbols
-
     // first part is same as read
     state.push({State::Read, {}});
     Visit(decl);
     state.pop();
 
-    // emit branch
-    // branch to false block if 0, otherwise go to true block
-    auto fblock = state.top().second.false_block;
-    auto tblock = state.top().second.true_block;
-    auto left = current;
-    EmitArithExpr<calyx::Imm>(emitter.vars[left].type, 0);
-    auto imm = current;
-    EmitBranch<calyx::BranchCompare>(emitter.vars[left].type, tblock, fblock, left, calyx::CmpType::Ne, imm);
+    EmitConditionalBranchForCurrent();
     return;
   }
 
@@ -60,7 +65,9 @@ void ASTWalker::Visit(IdentifierNode& decl) {
           current = emitter.EmitExpr<calyx::LoadLocalAddr>({Emitter::Var::Type::Pointer, type.get<type::PointerType>().Stride() }, cvar.idx);
         }
         else {
-          auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalEmitter>(*this, {cvar.idx});
+          auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalEmitter>(
+                  *this, {cvar.idx}
+          );
           visitor.Visit(type);
         }
         break;
@@ -75,7 +82,9 @@ void ASTWalker::Visit(IdentifierNode& decl) {
         break;
       }
       case State::Address: {
-        auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalAddrEmitter>(*this, {cvar.idx});
+        auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalAddrEmitter>(
+                *this, {cvar.idx}
+        );
         visitor.Visit(type);
         break;
       }
@@ -130,12 +139,8 @@ void ASTWalker::ConstVisitImpl(NumericalConstantNode<T>& expr) {
   }
   cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   if (state.top().first == State::ConditionalBranch) {
-    if (expr.value) {
-      emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
-    }
-    else {
-      emitter.Emit<calyx::UnconditionalBranch>(state.top().second.false_block);
-    }
+    if (expr.value) emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
+    else            emitter.Emit<calyx::UnconditionalBranch>(state.top().second.false_block);
   }
   else {
     current = emitter.EmitExpr<calyx::Imm<calyx::calyx_upcast_t<T>>>({ detail::calyx_var_type_v<calyx::calyx_upcast_t<T>> }, expr.value);
@@ -186,12 +191,7 @@ void ASTWalker::Visit(ArrayAccessNode& expr) {
     visitor.Visit(expr.ptr->type->Deref());
 
     if (state.top().first == State::ConditionalBranch) {
-      auto tblock = state.top().second.true_block;
-      auto fblock = state.top().second.false_block;
-      auto left = current;
-      EmitArithExpr<calyx::Imm>(emitter.vars[left].type, 0);
-      auto imm = current;
-      EmitBranch<calyx::BranchCompare>(emitter.vars[left].type, tblock, fblock, left, calyx::CmpType::Ne, imm);
+      EmitConditionalBranchForCurrent();
     }
   }
   else {
@@ -233,10 +233,7 @@ void ASTWalker::Visit(FunctionCallNode& expr) {
 
     auto arg_type = detail::GetLocalType(*signature.arg_types[i].type);
     auto arg = calyx::Local{
-      arg_type.first,
-      current,
-      arg_type.second,
-      i
+      arg_type.first, current, arg_type.second, i
     };
     args.args.emplace_back(current, std::move(arg));
   }
@@ -247,10 +244,7 @@ void ASTWalker::Visit(FunctionCallNode& expr) {
 
       auto arg_type = detail::GetLocalType(expr.args[i]->type);
       auto arg = calyx::Local{
-        arg_type.first,
-        current,
-        arg_type.second,
-        i
+        arg_type.first, current, arg_type.second, i
       };
 
       args.var_args.emplace_back(current, std::move(arg));
@@ -265,12 +259,7 @@ void ASTWalker::Visit(FunctionCallNode& expr) {
     visitor.Visit(*signature.contained);
 
     if (state.top().first == State::ConditionalBranch) {
-      auto tblock = state.top().second.true_block;
-      auto fblock = state.top().second.false_block;
-      auto left = current;
-      EmitArithExpr<calyx::Imm>(emitter.vars[left].type, 0);
-      auto imm = current;
-      EmitBranch<calyx::BranchCompare>(emitter.vars[left].type, tblock, fblock, left, calyx::CmpType::Ne, imm);
+      EmitConditionalBranchForCurrent();
     }
   }
 }
@@ -355,12 +344,7 @@ void ASTWalker::Visit(PostFixNode& expr) {
   }
 
   if (conditional_branch) {
-    auto tblock = state.top().second.true_block;
-    auto fblock = state.top().second.false_block;
-    auto left = current;
-    EmitArithExpr<calyx::Imm>(emitter.vars[left].type, 0);
-    auto imm = current;
-    EmitBranch<calyx::BranchCompare>(emitter.vars[left].type, tblock, fblock, left, calyx::CmpType::Ne, imm);
+    EmitConditionalBranchForCurrent();
   }
 }
 
@@ -379,7 +363,8 @@ void ASTWalker::Visit(UnopNode& expr) {
       if (!conditional_branch) {
         EmitArithExpr<calyx::Unop>(emitter.vars[current].type, calyx::UnopType::Neg, current);
       }
-      // return, no need to check for conditional branches, is handled in visiting the expr
+      // return, no need to check for conditional branches, is handled in visiting the 
+      // the truthiness for the expression won't change for this unop
       return;
     }
     case TokenType::Plus: {
@@ -399,8 +384,15 @@ void ASTWalker::Visit(UnopNode& expr) {
       // no need to push a new state
       expr.left->Visit(*this);
       EmitArithExpr<calyx::Unop>(emitter.vars[current].type, calyx::UnopType::BinNot, current);
-      // break, need to check for conditional branches
-      break;
+      
+      if (conditional_branch) {
+        // emit conditional branch with opposite destinations
+        std::swap(state.top().second.true_block, state.top().second.false_block);
+        EmitConditionalBranchForCurrent();
+      }
+
+      // return, no need to check for conditional branches, already handled
+      return;
     }
     case TokenType::Exclamation: {
       if (state.top().first == State::Empty) {
@@ -413,14 +405,9 @@ void ASTWalker::Visit(UnopNode& expr) {
       state.pop();
 
       if (conditional_branch) {
-        auto tblock = state.top().second.true_block;
-        auto fblock = state.top().second.false_block;
-
-      auto left = current;
-      EmitArithExpr<calyx::Imm>(emitter.vars[left].type, 0);
-      auto imm = current;
-        // branch to false if current != 0 (if current == 0, then !current is true)
-        EmitBranch<calyx::BranchCompare>(emitter.vars[current].type, fblock, tblock, left, calyx::CmpType::Ne, imm);
+        // emit conditional branch with opposite destinations
+        std::swap(state.top().second.true_block, state.top().second.false_block);
+        EmitConditionalBranchForCurrent();
       }
       else {
         auto left = current;
@@ -559,12 +546,7 @@ void ASTWalker::Visit(UnopNode& expr) {
   }
 
   if (conditional_branch) {
-    auto tblock = state.top().second.true_block;
-    auto fblock = state.top().second.false_block;
-    auto left = current;
-    EmitArithExpr<calyx::Imm>(emitter.vars[left].type, 0);
-    auto imm = current;
-    EmitBranch<calyx::BranchCompare>(emitter.vars[left].type, tblock, fblock, left, calyx::CmpType::Ne, imm);
+    EmitConditionalBranchForCurrent();
   }
 }
 
@@ -659,26 +641,13 @@ void ASTWalker::Visit(BinopNode& expr) {
       auto casted = BinopCastHelper(left, right);
       calyx::CmpType cmp_type;
       switch (expr.op) {
-        case TokenType::Less:
-          cmp_type = calyx::CmpType::Lt;
-          break;
-        case TokenType::LessEqual:
-          cmp_type = calyx::CmpType::Le;
-          break;
-        case TokenType::GreaterEqual:
-          cmp_type = calyx::CmpType::Ge;
-          break;
-        case TokenType::Greater:
-          cmp_type = calyx::CmpType::Gt;
-          break;
-        case TokenType::Equal:
-          cmp_type = calyx::CmpType::Eq;
-          break;
-        case TokenType::NotEqual:
-          cmp_type = calyx::CmpType::Ne;
-          break;
-        default:
-          throw std::runtime_error("Unreachable");
+        case TokenType::Less:         cmp_type = calyx::CmpType::Lt; break;
+        case TokenType::LessEqual:    cmp_type = calyx::CmpType::Le; break;
+        case TokenType::GreaterEqual: cmp_type = calyx::CmpType::Ge; break;
+        case TokenType::Greater:      cmp_type = calyx::CmpType::Gt; break;
+        case TokenType::Equal:        cmp_type = calyx::CmpType::Eq; break;
+        case TokenType::NotEqual:     cmp_type = calyx::CmpType::Ne; break;
+        default: throw std::runtime_error("Unreachable");
       }
 
       if (conditional_branch) {
@@ -810,13 +779,7 @@ void ASTWalker::Visit(BinopNode& expr) {
   }
 
   if (conditional_branch) {
-    auto type = emitter.vars[current].type;
-    auto tblock = state.top().second.true_block;
-    auto fblock = state.top().second.false_block;
-    auto left = current;
-    EmitArithExpr<calyx::Imm>(type, 0);
-    auto imm = current;
-    EmitBranch<calyx::BranchCompare>(type, tblock, fblock, left, calyx::CmpType::Ne, imm);
+    EmitConditionalBranchForCurrent();
   }
 }
 
