@@ -6,5 +6,6 @@ build/
 *.ini
 output/*.pdf
 profiling_tools/*.exe
+profiling_tools/*.prof
 profiling_tools/ninjatracing
 -.json

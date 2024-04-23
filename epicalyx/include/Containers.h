@@ -6,8 +6,6 @@
 #include <boost/container/map.hpp>
 #include <boost/container/flat_set.hpp>
 #include <boost/container/flat_map.hpp>
-#include <boost/container/static_vector.hpp>
-#include <boost/container/small_vector.hpp>
 #include <boost/unordered_set.hpp>
 #include <boost/unordered_map.hpp>
 
@@ -40,11 +38,6 @@ template<typename T>
 using flat_set = boost::container::flat_set<T>;
 template<typename K, typename V>
 using flat_map = boost::container::flat_map<K, V>;
-template<typename T, std::size_t N>
-using static_vector = boost::container::static_vector<T, N>;
-template<typename T, std::size_t N>
-using small_vector = boost::container::small_vector<T, N>;
-
 }
 
 #else
@@ -53,7 +46,6 @@ using small_vector = boost::container::small_vector<T, N>;
 #include <map>
 #include <unordered_set>
 #include <unordered_map>
-#include "Vector.h"
 
 namespace epi::cotyl {
 
@@ -69,8 +61,6 @@ template<typename T>
 using flat_set = std::unordered_set<T>;
 template<typename K, typename V>
 using flat_map = std::unordered_map<K, V>;
-template<typename T, std::size_t N>
-using small_vector = cotyl::vector<T>;
 
 }
 

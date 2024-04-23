@@ -39,8 +39,8 @@ else()
     add_compile_options(-fexceptions)
     if(CMAKE_BUILD_TYPE MATCHES Debug)
         # message(STATUS "Adding time trace for compilation")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -ftime-trace")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1")
+        # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -ftime-trace -fno-pie")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
     endif()
 endif()
 add_compile_options(-Wno-format-security)
@@ -88,6 +88,8 @@ add_executable(
         epicalyx
         main.cpp
         epicalyx/config/Log.cpp
+        epicalyx/config/Info.h
+        epicalyx/config/Info.cpp
         ${INCLUDE_HEADERS}
 )
 

@@ -37,6 +37,7 @@ struct CString {
       size_{other.size_},
       data(std::make_unique<char[]>(size_ + 1)) {
     std::memcpy(data.get(), other.data.get(), size_);
+
   }
 
   CString(CString&& other) : 

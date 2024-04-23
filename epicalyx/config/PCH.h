@@ -14,6 +14,7 @@
 #include <boost/container/small_vector.hpp>
 #include <boost/unordered_set.hpp>
 #include <boost/unordered_map.hpp>
+#include <boost/container/vector.hpp>
 
 #include <boost/container_hash/hash.hpp>
 

@@ -4,7 +4,6 @@
 
 #include "types/Types.h"
 #include "calyx/Calyx.h"
-#include "calyx/Utils.h"
 #include "ast/Statement.h"
 #include "ast/Declaration.h"
 #include "ast/Expression.h"
