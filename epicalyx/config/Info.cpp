@@ -6,10 +6,47 @@
 
 #include "TypeName.h"
 
+#include "argparse/argparse.hpp"
 #include <iostream>
+#include <cstdlib>
 
 
 namespace epi::info {
+
+  
+ProgramSettings parse_args(int argc, char** argv) {
+  argparse::ArgumentParser program("epicalyx");
+  program.add_argument("-variant-size")
+         .help("Print large variant sizes and exit")
+         .flag()
+         .action([](const auto&) {
+            variant_sizes();
+            std::exit(0);
+          })
+          .nargs(0);
+  program.add_argument("-rigfunc")
+         .help("Function to analyze the RIG for")
+         .metavar("FUNCTION")
+         .default_value("main");
+  program.add_argument("filename")
+         .help("C file to compile")
+         .metavar("FILENAME")
+         .required();
+  
+  try {
+    program.parse_args(argc, argv);
+  }
+  catch (const std::exception& err) {
+    std::cerr << err.what() << std::endl;
+    std::cerr << program;
+    std::exit(1);
+  }
+  
+  return {
+    .filename = program.get<std::string>("filename"),
+    .rigfunc = program.get<std::string>("rigfunc")
+  };
+}
 
 template<typename T>
 struct size_debugger;

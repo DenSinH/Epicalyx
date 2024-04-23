@@ -13,18 +13,20 @@ namespace epi::type {
 
 // type.Cast(other) = (type)(other)
 // Cast "other" to "this" type
-AnyType AnyType::Cast(const AnyType& other) const {
+AnyType AnyType::Cast(const AnyType& other, bool check_flags) const {
   if (!TypeEquals(other)) {
     if (other.holds_alternative<StructType>() || other.holds_alternative<UnionType>()) {
       throw std::runtime_error("Bad cast");
     }
   }
-  auto flagdiff = other->qualifiers & ~(*this)->qualifiers;
-  if (flagdiff & BaseType::Qualifier::Const) {
-    Log::Warn("Casting drops 'const' qualifier");
-  }
-  if (flagdiff & BaseType::Qualifier::Volatile) {
-    Log::Warn("Casting drops 'volatile' qualifier");
+  if (check_flags) {
+    auto flagdiff = other->qualifiers & ~(*this)->qualifiers;
+    if (flagdiff & BaseType::Qualifier::Const) {
+      Log::Warn("Casting drops 'const' qualifier");
+    }
+    if (flagdiff & BaseType::Qualifier::Volatile) {
+      Log::Warn("Casting drops 'volatile' qualifier");
+    }
   }
 
   AnyType result = *this;

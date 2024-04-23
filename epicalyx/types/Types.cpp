@@ -392,7 +392,7 @@ AnyType FunctionType::FunctionCall(const cotyl::vector<AnyType>& args) const {
 
   for (int i = 0; i < arg_types.size(); i++) {
     // try to cast
-    (*arg_types[i].type).Cast(args[i]);
+    (*arg_types[i].type).Cast(args[i], false);
   }
   return *contained;
 }

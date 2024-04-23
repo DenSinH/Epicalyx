@@ -173,7 +173,7 @@ pNode<StatNode> Parser::SStatement() {
       in_stream.Eat(TokenType::SemiColon);
 
       // check function return type
-      function_return->Cast(expr->type);
+      function_return->Cast(expr->type, false);
 
       auto ret_stat = std::make_unique<ReturnNode>(std::move(expr));
       return ret_stat;

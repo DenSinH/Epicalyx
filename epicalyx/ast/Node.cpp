@@ -6,12 +6,12 @@ namespace epi::ast {
 
 void ExprNode::VerifySwitchable() const {
   type::AnyType switch_val = type::ValueType<i64>(type::BaseType::LValueNess::Assignable);
-  switch_val.Cast(type);
+  switch_val.Cast(type, false);
 }
 
 void ExprNode::VerifyTruthiness() const {
   type::AnyType bool_val = type::MakeBool(type::BaseType::LValueNess::Assignable);
-  bool_val.Cast(type);
+  bool_val.Cast(type, false);
 }
 
 bool ExprNode::IsConstexpr() const {

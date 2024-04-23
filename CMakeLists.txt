@@ -89,6 +89,7 @@ add_executable(
         main.cpp
         epicalyx/config/Log.cpp
         epicalyx/config/Info.h
+        epicalyx/config/argparse/argparse.hpp
         epicalyx/config/Info.cpp
         ${INCLUDE_HEADERS}
 )

@@ -4,7 +4,8 @@
     "cmake.buildArgs": [],
     "cmake.buildDirectory" : "${workspaceRoot}/build/${buildType}",
     "cmake.debugConfig": {
-        "cwd": "${workspaceRoot}"
+        "cwd": "${workspaceRoot}",
+        "args": ["examples/emitting/optimizing.c"]
     },
     "editor.indentSize": 2,
     "editor.detectIndentation": false,

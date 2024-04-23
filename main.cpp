@@ -26,13 +26,22 @@
 #endif
 
 
-int main() {
-  epi::info::variant_sizes();
+int main(int argc, char** argv) {
+  auto settings = epi::info::parse_args(argc, argv);
+  auto rig_func_sym = epi::cotyl::CString(settings.rigfunc);
 
-  std::string file = "examples/emitting/optimizing.c";
-  auto rig_func_sym = epi::cotyl::CString("test");
-  auto preprocessor = epi::Preprocessor(file);
-  auto tokenizer = epi::Tokenizer(preprocessor);
+  std::unique_ptr<epi::Preprocessor> pp;
+
+  try {
+    pp = std::make_unique<epi::Preprocessor>(settings.filename);
+  }
+  catch_e {
+    std::cerr << "Initialization error:" << std::endl << std::endl;
+    std::cerr << e.what() << std::endl;
+    std::exit(1);
+  }
+
+  auto tokenizer = epi::Tokenizer(*pp);
   auto parser = epi::Parser(tokenizer);
 
   try {
@@ -40,10 +49,9 @@ int main() {
     parser.Data();
   }
   catch_e {
-    Log::ConsoleColor<Log::Color::Red>();
-    std::cout << "Parser error:" << std::endl << std::endl;
-    std::cout << e.what() << std::endl;
-    preprocessor.PrintLoc();
+    std::cerr << "Parser error:" << std::endl << std::endl;
+    std::cerr << e.what() << std::endl;
+    parser.PrintLoc();
     return 1;
   }
 
@@ -52,9 +60,8 @@ int main() {
     emitter.MakeProgram(parser.declarations);
   }
   catch_e {
-    Log::ConsoleColor<Log::Color::Red>();
-    std::cout << "Emitter error:" << std::endl << std::endl;
-    std::cout << e.what() << std::endl;
+    std::cerr << "Emitter error:" << std::endl << std::endl;
+    std::cerr << e.what() << std::endl;
     return 1;
   }
 
@@ -75,9 +82,8 @@ int main() {
         func_hash = new_hash;
       }
       catch_e {
-        Log::ConsoleColor<Log::Color::Red>();
-        std::cout << "Optimizer error:" << std::endl << std::endl;
-        std::cout << e.what() << std::endl;
+        std::cerr << "Optimizer error:" << std::endl << std::endl;
+        std::cerr << e.what() << std::endl;
         return 1;
       }
     }
@@ -149,13 +155,14 @@ int main() {
     dependencies.VisualizeVars("output/vars.pdf");
   }
   catch_e {
-    Log::ConsoleColor<Log::Color::Red>();
-    std::cout << "Interpreter error:" << std::endl << std::endl;
-    std::cout << e.what() << std::endl;
+    std::cerr << "Interpreter error:" << std::endl << std::endl;
+    std::cerr << e.what() << std::endl;
     return 1;
   }
 
   if (!program.functions.contains(rig_func_sym)) {
+    std::cout << "No function " << rig_func_sym.view()
+              << " exists, defaulting to 'main'..." << std::endl;
     rig_func_sym = epi::cotyl::CString("main");
   }
   const auto& rig_func = program.functions.at(rig_func_sym);

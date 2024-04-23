@@ -35,7 +35,7 @@ struct AnyType : detail::any_type_t {
 
   // type.Cast(other) = (type)(other)
   // Cast "other" to "this" type
-  AnyType Cast(const AnyType& other) const;
+  AnyType Cast(const AnyType& other, bool check_flags = true) const;
   AnyType CommonType(const AnyType& other) const;
   bool TypeEquals(const AnyType& other) const;
 };

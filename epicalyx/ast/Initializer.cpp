@@ -87,7 +87,7 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
       [&](const type::PointerType& ptr) {
         if (ptr.size == 0) {
           // try to cast
-          type.Cast(has);
+          type.Cast(has, false);
         }
         else {
           // array type

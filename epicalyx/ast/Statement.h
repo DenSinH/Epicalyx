@@ -9,7 +9,7 @@ namespace epi::ast {
 struct DeclarationNode;
 
 struct EmptyNode final : StatNode {
-  std::string ToString() const final { return ";"; }
+  std::string ToString() const final { return ""; }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
 };
 
