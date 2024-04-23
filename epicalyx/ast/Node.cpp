@@ -10,8 +10,7 @@ void ExprNode::VerifySwitchable() const {
 }
 
 void ExprNode::VerifyTruthiness() const {
-  type::AnyType bool_val = type::MakeBool(type::BaseType::LValueNess::Assignable);
-  bool_val.Cast(type, false);
+  type->Truthiness();
 }
 
 bool ExprNode::IsConstexpr() const {
@@ -27,20 +26,11 @@ bool ExprNode::IsConstexpr() const {
 }
 
 bool ExprNode::ConstBoolVal() const {
-  return type.visit<bool>(
-    [](const auto& value) -> bool {
-      using value_t = decltype_t(value);
-      if constexpr(cotyl::is_instantiation_of_v<type::ValueType, value_t>) {
-        if (!value.value.has_value()) {
-          throw std::runtime_error("Expected constant expression");
-        }
-        return value.value.value() != 0;
-      }
-      else {
-        throw std::runtime_error("Expected constant expression");
-      }
-    }
-  );
+  auto truthiness = type->Truthiness();
+  if (!truthiness.value.has_value()) {
+    throw std::runtime_error("Expected constant expression");
+  }
+  return truthiness.value.value() ? true : false;
 }
 
 i64 ExprNode::ConstIntVal() const {

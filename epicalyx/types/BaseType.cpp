@@ -27,35 +27,90 @@ AnyType BaseType::Xor(const AnyType& other) const { InvalidOperands(this, "^", o
 AnyType BaseType::BinAnd(const AnyType& other) const { InvalidOperands(this, "&", other); }
 AnyType BaseType::BinOr(const AnyType& other) const { InvalidOperands(this, "|", other); }
 
-AnyType BaseType::LogAnd(const AnyType& other) const { InvalidOperands(this, "&&", other); }
-AnyType BaseType::LogOr(const AnyType& other) const { InvalidOperands(this, "||", other); }
-AnyType BaseType::LogNot() const { InvalidOperand(this, "~"); }
 
-AnyType BaseType::Lt(const AnyType& other) const { InvalidOperands(this, "<", other); }
-AnyType BaseType::Eq(const AnyType& other) const { InvalidOperands(this, "==", other); }
+BoolType BaseType::Truthiness() const {
+  throw cotyl::FormatExceptStr("%s has no truthiness");
+}
+
+BoolType BaseType::LogAnd(const AnyType& other) const { 
+  auto truthiness = Truthiness();
+  auto rtruthiness = other->Truthiness();
+
+  if (rtruthiness.value.has_value()) {
+    std::swap(truthiness, rtruthiness);
+  }
+
+  if (truthiness.value.has_value()) {
+    if (!truthiness.value.value()) {
+      // false, return false
+      return truthiness;
+    }
+    else {
+      // true, return rtruthiness
+      return rtruthiness;
+    }
+  }
+
+  // neither has a truth value
+  return truthiness;
+}
+
+BoolType BaseType::LogOr(const AnyType& other) const { 
+  auto truthiness = Truthiness();
+  auto rtruthiness = other->Truthiness();
+
+  if (rtruthiness.value.has_value()) {
+    std::swap(truthiness, rtruthiness);
+  }
+
+  if (truthiness.value.has_value()) {
+    if (truthiness.value.value()) {
+      // true, return true
+      return truthiness;
+    }
+    else {
+      // false, return other
+      return rtruthiness;
+    }
+  }
+
+  // neither has a truth value
+  return truthiness;
+}
+
+BoolType BaseType::LogNot() const { 
+  auto truthiness = Truthiness();
+  if (truthiness.value.has_value()) {
+    truthiness.value.emplace(truthiness.value.value() ? 0 : 1);
+  }
+  return truthiness;
+}
+
+BoolType BaseType::Lt(const AnyType& other) const { InvalidOperands(this, "<", other); }
+BoolType BaseType::Eq(const AnyType& other) const { InvalidOperands(this, "==", other); }
 AnyType BaseType::LShift(const AnyType& other) const { InvalidOperands(this, "<<", other); }
 AnyType BaseType::RShift(const AnyType& other) const { InvalidOperands(this, ">>", other); }
 
 // combinations of above functions
-AnyType BaseType::Gt(const AnyType& other) const {
-  return Le(other)->LogNot();  // !(<=)
+BoolType BaseType::Gt(const AnyType& other) const {
+  return Le(other).LogNot();  // !(<=)
 }
 
-AnyType BaseType::Le(const AnyType& other) const {
+BoolType BaseType::Le(const AnyType& other) const {
   auto lt = this->Lt(other);
   auto eq = this->Eq(other);
-  return lt->LogOr(eq);  // < || ==
+  return lt.LogOr(eq);  // < || ==
 }
 
-AnyType BaseType::Ge(const AnyType& other) const {
+BoolType BaseType::Ge(const AnyType& other) const {
   auto gt = this->Gt(other);
   auto eq = this->Eq(other);
-  return gt->LogOr(eq);  // > || ==
+  return gt.LogOr(eq);  // > || ==
 }
 
-AnyType BaseType::Neq(const AnyType& other) const {
+BoolType BaseType::Neq(const AnyType& other) const {
   auto eq = this->Eq(other);
-  return eq->LogNot();   // !( == )
+  return eq.LogNot();   // !( == )
 }
 
 
@@ -69,17 +124,19 @@ AnyType BaseType::ArrayAccess(const AnyType& other) const { InvalidOperand(this,
 AnyType BaseType::Neg() const { InvalidOperand(this, "-"); }
 AnyType BaseType::Pos() const { InvalidOperand(this, "+"); }
 AnyType BaseType::BinNot() const { InvalidOperand(this, "~"); }
-AnyType BaseType::Incr() const { InvalidOperand(this, "++"); }
-AnyType BaseType::Decr() const { InvalidOperand(this, "--"); }
 
-AnyType BaseType::Ref() const {
-  // only for lvalues
-  // not an lvalue after
-  if (lvalue == LValueNess::None) {
-    throw std::runtime_error("Cannot get reference to non-lvalue expression");
+AnyType BaseType::Incr() const { 
+  if (lvalue != LValueNess::Assignable) {
+    throw std::runtime_error("Expression is not assignable");
   }
-  // todo: handle function types
-  throw std::runtime_error("not reimplemented");
+  return Add(ValueType<i32>(1, LValueNess::None));
+}
+
+AnyType BaseType::Decr() const { 
+  if (lvalue != LValueNess::Assignable) {
+    throw std::runtime_error("Expression is not assignable");
+  }
+  return Sub(ValueType<i32>(1, LValueNess::None));
 }
 
 u64 BaseType::Alignof() const {

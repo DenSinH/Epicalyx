@@ -47,20 +47,21 @@ struct BaseType {
   virtual AnyType BinAnd(const AnyType& other) const;
   virtual AnyType BinOr(const AnyType& other) const;
 
-  AnyType LogAnd(const AnyType& other) const;
-  AnyType LogOr(const AnyType& other) const;
-  AnyType LogNot() const;
+  virtual BoolType Truthiness() const;
+  BoolType LogAnd(const AnyType& other) const;
+  BoolType LogOr(const AnyType& other) const;
+  BoolType LogNot() const;
 
-  virtual AnyType Lt(const AnyType& other) const;
-  virtual AnyType Eq(const AnyType& other) const;
+  virtual BoolType Lt(const AnyType& other) const;
+  virtual BoolType Eq(const AnyType& other) const;
   virtual AnyType LShift(const AnyType& other) const;
   virtual AnyType RShift(const AnyType& other) const;
 
   // combinations of above functions
-  AnyType Gt(const AnyType& other) const;
-  AnyType Le(const AnyType& other) const;
-  AnyType Ge(const AnyType& other) const;
-  AnyType Neq(const AnyType& other) const;
+  BoolType Gt(const AnyType& other) const;
+  BoolType Le(const AnyType& other) const;
+  BoolType Ge(const AnyType& other) const;
+  BoolType Neq(const AnyType& other) const;
 
   virtual AnyType MemberAccess(const cotyl::CString& member) const;
   virtual AnyType FunctionCall(const cotyl::vector<AnyType>& args) const;
@@ -68,12 +69,11 @@ struct BaseType {
   virtual AnyType Deref() const;
   AnyType ArrayAccess(const AnyType& other) const;
 
-  AnyType Ref() const;  // we want a different default here
   virtual AnyType Neg() const;
   virtual AnyType Pos() const;  // really just sets LValueNess to None
   virtual AnyType BinNot() const;
-  virtual AnyType Incr() const;
-  virtual AnyType Decr() const;
+  AnyType Incr() const;
+  AnyType Decr() const;
 
   virtual u64 Sizeof() const = 0;
   u64 Alignof() const;

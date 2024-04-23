@@ -58,14 +58,16 @@ struct ValueType final : AnyValueType {
   AnyType BinAnd(const AnyType& other) const final;
   AnyType BinOr(const AnyType& other) const final;
 
-  AnyType Lt(const AnyType& other) const final;
-  AnyType Eq(const AnyType& other) const final;
+  BoolType Lt(const AnyType& other) const final;
+  BoolType Eq(const AnyType& other) const final;
   AnyType LShift(const AnyType& other) const final;
   AnyType RShift(const AnyType& other) const final;
 
   AnyType Pos() const;
   AnyType Neg() const;
   AnyType BinNot() const;
+
+  BoolType Truthiness() const final;
 
   u64 Sizeof() const final { return sizeof(T); }
   AnyType CommonTypeImpl(const AnyType& other) const final;
@@ -98,14 +100,14 @@ struct PointerType final : AnyPointerType {
   std::size_t size;
 
   std::string ToString() const final;  //  { return cotyl::FormatStr("(%s)*", contained); }
-  // bool HasTruthiness() const final { return true; }
 
   AnyType Add(const AnyType& other) const final;
   AnyType Sub(const AnyType& other) const final;
-  AnyType Lt(const AnyType& other) const final;
-  AnyType Eq(const AnyType& other) const final;
+  BoolType Lt(const AnyType& other) const final;
+  BoolType Eq(const AnyType& other) const final;
   AnyType Deref() const final;
 
+  BoolType Truthiness() const final;
   u64 Sizeof() const final;
   u64 Stride() const;
 
@@ -133,6 +135,7 @@ struct FunctionType final : AnyPointerType {
   AnyType Deref() const final;
 
   void AddArg(cotyl::CString&& name, nested_type_t&& arg);
+  BoolType Truthiness() const final;
   u64 Sizeof() const final { return sizeof(u64); }
 
   std::string ToString() const final;
@@ -220,8 +223,5 @@ struct UnionType final : StructUnionType {
   u64 Sizeof() const final;
   std::string ToString() const final;
 };
-
-AnyType MakeBool(BaseType::LValueNess lvalue, u8 flags = 0);
-AnyType MakeBool(bool value, BaseType::LValueNess lvalue, u8 flags = 0);
 
 }

@@ -122,7 +122,7 @@ PostFixNode::PostFixNode(TokenType op, pExpr&& left) :
     op{op},
     left{std::move(left)} {
   // semantic analysis, postfix incr/decr type must store proper value
-  op == TokenType::Incr ? left->type->Incr() : left->type->Decr();
+  op == TokenType::Incr ? type->Incr() : type->Decr();
 
   // don't propagate constant info in "assigning" expression
   type->ForgetConstInfo();
@@ -134,11 +134,11 @@ std::string PostFixNode::ToString() const {
 
 
 UnopNode::UnopNode(TokenType op, pExpr&& left) :
-    ExprNode{[&] {
+    ExprNode{[&]() -> type::AnyType {
       switch (op) {
         case TokenType::Incr: return left->type->Incr();
         case TokenType::Decr: return left->type->Decr();
-        case TokenType::Ampersand: return left->type->Ref();
+        case TokenType::Ampersand: return left->type.Ref();
         case TokenType::Asterisk: return left->type->Deref();
         case TokenType::Plus: return left->type->Pos();
         case TokenType::Minus: return left->type->Neg();
@@ -170,7 +170,7 @@ std::string CastNode::ToString() const {
 
 
 BinopNode::BinopNode(pExpr&& left, TokenType op, pExpr&& right) :
-    ExprNode{[&] {
+    ExprNode{[&]() -> type::AnyType {
     switch (op) {
         case TokenType::Asterisk: return left->type->Mul(right->type);
         case TokenType::Div: return left->type->Div(right->type);

@@ -10,6 +10,17 @@ template<> type::detail::any_type_t::~Variant() = default;
 }
 
 namespace epi::type {
+  
+AnyType AnyType::Ref() const {
+  // only for lvalues
+  // not an lvalue after
+  if ((*this)->lvalue == BaseType::LValueNess::None) {
+    throw std::runtime_error("Cannot get reference to non-lvalue expression");
+  }
+  // todo: handle function types
+  return PointerType{std::make_shared<AnyType>(*this), BaseType::LValueNess::None};
+//   throw std::runtime_error("not reimplemented");
+}
 
 // type.Cast(other) = (type)(other)
 // Cast "other" to "this" type

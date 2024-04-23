@@ -27,14 +27,6 @@ using ::epi::stringify;
   );
 }
 
-AnyType MakeBool(BaseType::LValueNess lvalue, u8 flags) {
-  return ValueType<i32>(lvalue, flags);
-}
-
-AnyType MakeBool(bool value, BaseType::LValueNess lvalue, u8 flags) {
-  return ValueType<i32>(value ? 1 : 0, lvalue, flags);
-}
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * VOID TYPES
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -78,6 +70,30 @@ AnyType NonAdditiveBinopHelper(const ValueType<T>& one, const char* op_str, cons
     }
   );
   result->lvalue = BaseType::LValueNess::None;
+  return std::move(result);
+}
+
+
+template<template<typename S> class handler, typename T>
+BoolType BooleanBinopHelper(const ValueType<T>& one, const char* op_str, const AnyType& other) {
+  auto result = other.visit<BoolType>(
+    [&](const auto& other) -> BoolType {
+      using other_t = decltype_t(other);
+      if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>) {
+          using common_t = common_type_t<T, typename other_t::type_t>;
+          if (one.value.has_value() && other.value.has_value()) {
+            handler<common_t> h;
+            bool return_val = h(one.value.value(), other.value.value());
+            return BoolType(return_val ? 1 : 0, BaseType::LValueNess::None);
+          }
+          return BoolType(BaseType::LValueNess::None);
+      }
+      else {
+        InvalidOperands(&one, op_str, other);
+      }
+    }
+  );
+  result.lvalue = BaseType::LValueNess::None;
   return std::move(result);
 }
 
@@ -170,14 +186,14 @@ AnyType ValueType<T>::BinOr(const AnyType& other) const {
 
 template<typename T>
 requires (cotyl::pack_contains_v<T, value_type_pack>)
-AnyType ValueType<T>::Lt(const AnyType& other) const {
-  return NonAdditiveBinopHelper<std::less>(*this, "<", other);
+BoolType ValueType<T>::Lt(const AnyType& other) const {
+  return BooleanBinopHelper<std::less>(*this, "<", other);
 }
 
 template<typename T>
 requires (cotyl::pack_contains_v<T, value_type_pack>)
-AnyType ValueType<T>::Eq(const AnyType& other) const {
-  return NonAdditiveBinopHelper<std::equal_to>(*this, "==", other);
+BoolType ValueType<T>::Eq(const AnyType& other) const {
+  return BooleanBinopHelper<std::equal_to>(*this, "==", other);
 }
 
 template<typename T> struct lshift { T operator()(const T& l, const T& r) const { return l < r; }};
@@ -224,6 +240,15 @@ AnyType ValueType<T>::BinNot() const {
     }
     return ValueType<T>{LValueNess::None, 0};
   }
+}
+
+template<typename T>
+requires (cotyl::pack_contains_v<T, value_type_pack>)
+BoolType ValueType<T>::Truthiness() const {
+  if (value.has_value()) {
+    return BoolType{value.value() ? 1 : 0, BaseType::LValueNess::None};
+  }
+  return BoolType{BaseType::LValueNess::None};
 }
 
 template<typename T>
@@ -278,42 +303,46 @@ AnyType PointerType::Sub(const AnyType& other) const {
   );
 }
 
-AnyType PointerType::Lt(const AnyType& other) const {
-  return other.visit<AnyType>(
+BoolType PointerType::Lt(const AnyType& other) const {
+  return other.visit<BoolType>(
     [&](const PointerType& other) {
       if (!contained->TypeEquals(*other.contained)) {
         InvalidOperands(this, "<", other); 
       }
-      return MakeBool(LValueNess::None);
+      return BoolType(LValueNess::None);
     },
     [&](const AnyValueType& other) {
-      return MakeBool(LValueNess::None);
+      return BoolType(LValueNess::None);
     },
-    [&](const auto&) -> AnyType { InvalidOperands(this, "<", other); }
+    [&](const auto&) -> BoolType { InvalidOperands(this, "<", other); }
   );
 }
 
-AnyType PointerType::Eq(const AnyType& other) const {
-  return other.visit<AnyType>(
+BoolType PointerType::Eq(const AnyType& other) const {
+  return other.visit<BoolType>(
     [&](const PointerType& other) {
       if (contained->holds_alternative<VoidType>()) {
         // allowed
-        return MakeBool(LValueNess::None);
+        return BoolType(LValueNess::None);
       }
       if (!contained->TypeEquals(*other.contained)) {
         InvalidOperands(this, "<", other); 
       }
-      return MakeBool(LValueNess::None);
+      return BoolType(LValueNess::None);
     },
     [&](const AnyValueType& other) {
-      return MakeBool(LValueNess::None);
+      return BoolType(LValueNess::None);
     },
-    [&](const auto&) -> AnyType { InvalidOperands(this, "<", other); }
+    [&](const auto&) -> BoolType { InvalidOperands(this, "<", other); }
   );
 }
 
 AnyType PointerType::Deref() const {
   return *contained;
+}
+
+BoolType PointerType::Truthiness() const {
+  return BoolType{BaseType::LValueNess::None};
 }
 
 AnyType PointerType::CommonTypeImpl(const AnyType& other) const {
@@ -395,6 +424,11 @@ AnyType FunctionType::FunctionCall(const cotyl::vector<AnyType>& args) const {
     (*arg_types[i].type).Cast(args[i], false);
   }
   return *contained;
+}
+
+BoolType FunctionType::Truthiness() const {
+  // symbol always has truthiness
+  return BoolType(1, BaseType::LValueNess::None);
 }
 
 std::string FunctionType::Arg::ToString() const {
