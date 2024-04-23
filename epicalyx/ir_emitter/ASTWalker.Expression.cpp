@@ -275,75 +275,35 @@ void ASTWalker::Visit(TypeInitializerNode& expr) {
 void ASTWalker::Visit(PostFixNode& expr) {
   cotyl::Assert(state.top().first == State::Empty || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   
-  bool conditional_branch = state.top().first == State::ConditionalBranch;
-
-  switch (expr.op) {
-    case TokenType::Incr: {
-      state.push({State::Read, {}});
-      expr.left->Visit(*this);
-      state.pop();
-      auto read = current;
-      auto type = emitter.vars[current].type;
-      if (type == Emitter::Var::Type::Pointer) {
-        auto var = emitter.vars[read];
-        auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, 1);
-        EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, read, var.stride, imm);
-      }
-      else if (type == Emitter::Var::Type::Struct) {
-        throw std::runtime_error("Bad expression for post-increment: struct");
-      }
-      else {
-        EmitArithExpr<calyx::Imm>(type, 1);
-        auto imm = current;
-        EmitArithExpr<calyx::Binop>(type, read, calyx::BinopType::Add, imm);
-      }
-
-      // write back
-      state.push({State::Assign, {.var = current}});
-      expr.left->Visit(*this);
-      state.pop();
-      // restore read value for next expression
-      current = read;
-
-      // need to check for conditional branches
-      break;
-    }
-    case TokenType::Decr: {
-      state.push({State::Read, {}});
-      expr.left->Visit(*this);
-      state.pop();
-      auto read = current;
-      auto type = emitter.vars[current].type;
-      if (type == Emitter::Var::Type::Pointer) {
-        auto var = emitter.vars[read];
-        auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, -1);
-        EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, read, var.stride, imm);
-      }
-      else if (type == Emitter::Var::Type::Struct) {
-        throw std::runtime_error("Bad expression for post-decrement: struct");
-      }
-      else {
-        EmitArithExpr<calyx::Imm>(type, 1);
-        auto imm = current;
-        EmitArithExpr<calyx::Binop>(type, read, calyx::BinopType::Sub, imm);
-      }
-
-      // write back
-      state.push({State::Assign, {.var = current}});
-      expr.left->Visit(*this);
-      state.pop();
-      // restore read value for next expression
-      current = read;
-
-      // need to check for conditional branches
-      break;
-    }
-    default: {
-      throw std::runtime_error("Bad postfix");
-    }
+  state.push({State::Read, {}});
+  expr.left->Visit(*this);
+  state.pop();
+  auto read = current;
+  auto type = emitter.vars[current].type;
+  if (type == Emitter::Var::Type::Pointer) {
+    auto var = emitter.vars[read];
+    auto value = expr.op == TokenType::Incr ? 1 : -1;
+    auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, value);
+    EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, read, var.stride, imm);
+  }
+  else if (type == Emitter::Var::Type::Struct) {
+    throw cotyl::FormatExceptStr("Bad expression for %s: struct", expr.op);
+  }
+  else {
+    EmitArithExpr<calyx::Imm>(type, 1);
+    auto imm = current;
+    auto op = expr.op == TokenType::Incr ? calyx::BinopType::Add : calyx::BinopType::Sub;
+    EmitArithExpr<calyx::Binop>(type, read, op, imm);
   }
 
-  if (conditional_branch) {
+  // write back
+  state.push({State::Assign, {.var = current}});
+  expr.left->Visit(*this);
+  state.pop();
+  // restore read value for next expression
+  current = read;
+
+  if (state.top().first == State::ConditionalBranch) {
     EmitConditionalBranchForCurrent();
   }
 }
