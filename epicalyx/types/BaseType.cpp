@@ -103,9 +103,8 @@ BoolType BaseType::Le(const AnyType& other) const {
 }
 
 BoolType BaseType::Ge(const AnyType& other) const {
-  auto gt = this->Gt(other);
-  auto eq = this->Eq(other);
-  return gt.LogOr(eq);  // > || ==
+  auto gt = this->Lt(other);
+  return gt.LogNot();  // !(<)
 }
 
 BoolType BaseType::Neq(const AnyType& other) const {

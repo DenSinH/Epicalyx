@@ -321,7 +321,7 @@ BoolType PointerType::Lt(const AnyType& other) const {
 BoolType PointerType::Eq(const AnyType& other) const {
   return other.visit<BoolType>(
     [&](const PointerType& other) {
-      if (contained->holds_alternative<VoidType>()) {
+      if (contained->holds_alternative<VoidType>() || other.contained->holds_alternative<VoidType>()) {
         // allowed
         return BoolType(LValueNess::None);
       }
