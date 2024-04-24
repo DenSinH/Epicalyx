@@ -53,9 +53,9 @@ AnyType BinopHelper(const ValueType<T>& one,  const ValueType<R>& other) {
     handler<common_t> h;
     auto return_val = h(one.value.value(), other.value.value());
     using return_t = std::conditional_t<std::is_same_v<decltype_t(return_val), bool>, i32, decltype_t(return_val)>;
-    return ValueType<return_t>(return_val, BaseType::LValueNess::None);
+    return ValueType<return_t>(return_val, LValue::None);
   }
-  return ValueType<common_t>(BaseType::LValueNess::None);
+  return ValueType<common_t>(LValue::None);
 }
 
 template<template<typename S> class handler, typename T>
@@ -69,7 +69,7 @@ AnyType NonAdditiveBinopHelper(const ValueType<T>& one, const char* op_str, cons
         InvalidOperands(&one, op_str, other);
     }
   );
-  result->lvalue = BaseType::LValueNess::None;
+  result->lvalue = LValue::None;
   return std::move(result);
 }
 
@@ -84,16 +84,16 @@ BoolType BooleanBinopHelper(const ValueType<T>& one, const char* op_str, const A
           if (one.value.has_value() && other.value.has_value()) {
             handler<common_t> h;
             bool return_val = h(one.value.value(), other.value.value());
-            return BoolType(return_val ? 1 : 0, BaseType::LValueNess::None);
+            return BoolType(return_val ? 1 : 0, LValue::None);
           }
-          return BoolType(BaseType::LValueNess::None);
+          return BoolType(LValue::None);
       }
       else {
         InvalidOperands(&one, op_str, other);
       }
     }
   );
-  result.lvalue = BaseType::LValueNess::None;
+  result.lvalue = LValue::None;
   return std::move(result);
 }
 
@@ -115,7 +115,7 @@ AnyType IntegralBinopHelper(const ValueType<T>& one, const char* op_str, const A
           InvalidOperands(&one, op_str, other);
       }
     );
-    result->lvalue = BaseType::LValueNess::None;
+    result->lvalue = LValue::None;
     return std::move(result);
   }
 }
@@ -138,7 +138,7 @@ AnyType ValueType<T>::Add(const AnyType& other) const {
         InvalidOperands(this, "+", other);
     }
   );
-  result->lvalue = BaseType::LValueNess::None;
+  result->lvalue = LValue::None;
   return std::move(result);
 }
 
@@ -215,7 +215,7 @@ template<typename T>
 requires (cotyl::pack_contains_v<T, value_type_pack>)
 AnyType ValueType<T>::Pos() const {
   auto result = *this;
-  result.lvalue = LValueNess::None;
+  result.lvalue = LValue::None;
   return result;
 }
 
@@ -223,9 +223,9 @@ template<typename T>
 requires (cotyl::pack_contains_v<T, value_type_pack>)
 AnyType ValueType<T>::Neg() const {
   if (value.has_value()) {
-    return ValueType<T>{(T)-value.value(), LValueNess::None, 0};
+    return ValueType<T>{(T)-value.value(), LValue::None, 0};
   }
-  return ValueType<T>{LValueNess::None, 0};
+  return ValueType<T>{LValue::None, 0};
 }
 
 template<typename T>
@@ -236,9 +236,9 @@ AnyType ValueType<T>::BinNot() const {
   }
   else {
     if (value.has_value()) {
-      return ValueType<T>{(T)~value.value(), LValueNess::None, 0};
+      return ValueType<T>{(T)~value.value(), LValue::None, 0};
     }
-    return ValueType<T>{LValueNess::None, 0};
+    return ValueType<T>{LValue::None, 0};
   }
 }
 
@@ -246,9 +246,9 @@ template<typename T>
 requires (cotyl::pack_contains_v<T, value_type_pack>)
 BoolType ValueType<T>::Truthiness() const {
   if (value.has_value()) {
-    return BoolType{value.value() ? 1 : 0, BaseType::LValueNess::None};
+    return BoolType{value.value() ? 1 : 0, LValue::None};
   }
-  return BoolType{BaseType::LValueNess::None};
+  return BoolType{LValue::None};
 }
 
 template<typename T>
@@ -259,12 +259,12 @@ AnyType ValueType<T>::CommonTypeImpl(const AnyType& other) const {
     [&](const auto& other) -> AnyType {
       using other_t = decltype_t(other);
       if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>)
-        return ValueType<common_type_t<T, typename other_t::type_t>>{LValueNess::None};
+        return ValueType<common_type_t<T, typename other_t::type_t>>{LValue::None};
       else
         InvalidOperands(this, "operation", other);
     }
   );
-  result->lvalue = BaseType::LValueNess::None;
+  result->lvalue = LValue::None;
   return std::move(result);
 }
 
@@ -293,7 +293,7 @@ AnyType PointerType::Sub(const AnyType& other) const {
   return other.visit<AnyType>(
     [&](const PointerType& other) -> AnyType {
       if (contained->TypeEquals(*other.contained)) {
-        return ValueType<u64>{LValueNess::None, 0};
+        return ValueType<u64>{LValue::None, 0};
       }
       InvalidOperands(this, "-", other);
     },
@@ -309,10 +309,10 @@ BoolType PointerType::Lt(const AnyType& other) const {
       if (!contained->TypeEquals(*other.contained)) {
         InvalidOperands(this, "<", other); 
       }
-      return BoolType(LValueNess::None);
+      return BoolType(LValue::None);
     },
     [&](const AnyValueType& other) {
-      return BoolType(LValueNess::None);
+      return BoolType(LValue::None);
     },
     [&](const auto&) -> BoolType { InvalidOperands(this, "<", other); }
   );
@@ -323,15 +323,15 @@ BoolType PointerType::Eq(const AnyType& other) const {
     [&](const PointerType& other) {
       if (contained->holds_alternative<VoidType>() || other.contained->holds_alternative<VoidType>()) {
         // allowed
-        return BoolType(LValueNess::None);
+        return BoolType(LValue::None);
       }
       if (!contained->TypeEquals(*other.contained)) {
         InvalidOperands(this, "<", other); 
       }
-      return BoolType(LValueNess::None);
+      return BoolType(LValue::None);
     },
     [&](const AnyValueType& other) {
-      return BoolType(LValueNess::None);
+      return BoolType(LValue::None);
     },
     [&](const auto&) -> BoolType { InvalidOperands(this, "<", other); }
   );
@@ -342,7 +342,7 @@ AnyType PointerType::Deref() const {
 }
 
 BoolType PointerType::Truthiness() const {
-  return BoolType{BaseType::LValueNess::None};
+  return BoolType{LValue::None};
 }
 
 AnyType PointerType::CommonTypeImpl(const AnyType& other) const {
@@ -428,7 +428,7 @@ AnyType FunctionType::FunctionCall(const cotyl::vector<AnyType>& args) const {
 
 BoolType FunctionType::Truthiness() const {
   // symbol always has truthiness
-  return BoolType(1, BaseType::LValueNess::None);
+  return BoolType(1, LValue::None);
 }
 
 std::string FunctionType::Arg::ToString() const {

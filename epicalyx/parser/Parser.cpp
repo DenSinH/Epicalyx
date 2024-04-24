@@ -19,8 +19,8 @@ type::AnyType Parser::ResolveIdentifierType(const cotyl::CString& name) const {
   if (enum_values.Has(name)) {
     return type::ValueType<Parser::enum_type>(
             enum_values.Get(name),
-            type::BaseType::LValueNess::None,
-            type::BaseType::Qualifier::Const
+            type::LValue::None,
+            type::Qualifier::Const
     );
   }
   else if (variables.Has(name)) {

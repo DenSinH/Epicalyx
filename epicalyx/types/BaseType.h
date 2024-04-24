@@ -8,32 +8,32 @@
 
 namespace epi::type {
 
+enum Qualifier : u8 {
+  Const = 0x1,
+  Restrict = 0x2,
+  Volatile = 0x4,
+  Atomic = 0x8,
+};
+
+enum class LValue : u8 {
+  None = 0,
+  LValue,
+  Assignable,
+};
+
 struct BaseType {
-
-  enum Qualifier : u8 {
-    Const = 0x1,
-    Restrict = 0x2,
-    Volatile = 0x4,
-    Atomic = 0x8,
-  };
-
-  enum class LValueNess : u8 {
-    None = 0,
-    LValue,
-    Assignable,
-  };
-
-  BaseType(LValueNess lvalue, u8 flags = 0) : qualifiers{flags}, lvalue{lvalue} { }
+  
+  BaseType(LValue lvalue, u8 flags = 0) : qualifiers{flags}, lvalue{lvalue} { }
 
   u8 qualifiers = 0;
-  LValueNess lvalue;
+  LValue lvalue;
 
   // virtual bool IsConstexpr() const { return false; }  // for optimizing branching
   // virtual bool GetBoolValue() const { throw std::runtime_error("Type cannot be converted to bool"); }
   // virtual bool HasTruthiness() const { return false; }
   AnyType TruthinessAsCType() const;
   bool IsAssignable() const { 
-    return lvalue == LValueNess::Assignable && !(qualifiers & Qualifier::Const); 
+    return lvalue == LValue::Assignable && !(qualifiers & Qualifier::Const); 
   }
 
   virtual std::string ToString() const = 0;
@@ -70,7 +70,7 @@ struct BaseType {
   AnyType ArrayAccess(const AnyType& other) const;
 
   virtual AnyType Neg() const;
-  virtual AnyType Pos() const;  // really just sets LValueNess to None
+  virtual AnyType Pos() const;  // really just sets LValue to None
   virtual AnyType BinNot() const;
   AnyType Incr() const;
   AnyType Decr() const;

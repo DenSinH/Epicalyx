@@ -5,7 +5,7 @@
 namespace epi::ast {
 
 void ExprNode::VerifySwitchable() const {
-  type::AnyType switch_val = type::ValueType<i64>(type::BaseType::LValueNess::Assignable);
+  type::AnyType switch_val = type::ValueType<i64>(type::LValue::Assignable);
   switch_val.Cast(type, false);
 }
 

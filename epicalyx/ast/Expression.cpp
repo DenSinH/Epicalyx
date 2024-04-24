@@ -21,7 +21,7 @@ std::string IdentifierNode::ToString() const {
 template<typename T>
 NumericalConstantNode<T>::NumericalConstantNode(T value) :
     ExprNode{type::ValueType<T>{
-      value, type::BaseType::LValueNess::None, type::BaseType::Qualifier::Const
+      value, type::LValue::None, type::Qualifier::Const
     }}, value(value) { 
 
 }
@@ -35,10 +35,10 @@ std::string NumericalConstantNode<T>::ToString() const {
 StringConstantNode::StringConstantNode(cotyl::CString&& value) :
     ExprNode{type::PointerType{
       std::make_shared<type::AnyType>(
-        type::ValueType<i8>(type::BaseType::LValueNess::LValue, type::BaseType::Qualifier::Const)
+        type::ValueType<i8>(type::LValue::LValue, type::Qualifier::Const)
       ),
-      type::BaseType::LValueNess::LValue,
-      type::BaseType::Qualifier::Const
+      type::LValue::LValue,
+      type::Qualifier::Const
     }}, 
     value(std::move(value)) { 
 

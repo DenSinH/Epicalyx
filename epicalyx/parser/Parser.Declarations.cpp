@@ -116,7 +116,7 @@ type::AnyType Parser::DEnum() {
       if (!enums.Has(name)) {
         throw cotyl::FormatExcept("Undefined enum %s", name.c_str());
       }
-      return type::ValueType<enum_type>(type::BaseType::LValueNess::None);
+      return type::ValueType<enum_type>(type::LValue::None);
     }
   }
   else {
@@ -134,7 +134,7 @@ type::AnyType Parser::DEnum() {
       counter = EConstexpr();
     }
     enum_values.Set(constant, counter++);
-    variables.Set(constant, type::ValueType<enum_type>(counter, type::BaseType::LValueNess::None, type::BaseType::Qualifier::Const));
+    variables.Set(constant, type::ValueType<enum_type>(counter, type::LValue::None, type::Qualifier::Const));
     if (!in_stream.EatIf(TokenType::Comma)) {
       // no comma: expect end of enum declaration
       in_stream.Eat(TokenType::RBrace);
@@ -143,7 +143,7 @@ type::AnyType Parser::DEnum() {
   } while(!in_stream.EatIf(TokenType::RBrace));
 
   enums.Add(name);
-  return type::ValueType<enum_type>(type::BaseType::LValueNess::None);
+  return type::ValueType<enum_type>(type::LValue::None);
 }
 
 type::AnyType Parser::DStruct() {
@@ -196,7 +196,7 @@ type::AnyType Parser::DStruct() {
     auto result_type = type::StructType{
       std::move(name),
       std::move(fields),
-      type::BaseType::LValueNess::Assignable
+      type::LValue::Assignable
     };
     if (!result_type.name.empty()) structdefs.Set(result_type.name, result_type);
     return result_type;
@@ -205,7 +205,7 @@ type::AnyType Parser::DStruct() {
     auto result_type = type::UnionType{
       std::move(name),
       std::move(fields),
-      type::BaseType::LValueNess::Assignable
+      type::LValue::Assignable
     };
     if (!result_type.name.empty()) uniondefs.Set(result_type.name, result_type);
     return result_type;
@@ -397,15 +397,15 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
         break;
       }
 
-      case TokenType::Const:    in_stream.Skip(); qualifiers |= type::BaseType::Qualifier::Const; break;
-      case TokenType::Restrict: in_stream.Skip(); qualifiers |= type::BaseType::Qualifier::Restrict; break;
-      case TokenType::Volatile: in_stream.Skip(); qualifiers |= type::BaseType::Qualifier::Volatile; break;
+      case TokenType::Const:    in_stream.Skip(); qualifiers |= type::Qualifier::Const; break;
+      case TokenType::Restrict: in_stream.Skip(); qualifiers |= type::Qualifier::Restrict; break;
+      case TokenType::Volatile: in_stream.Skip(); qualifiers |= type::Qualifier::Volatile; break;
       case TokenType::Atomic: {
         in_stream.Skip();
         if (in_stream.IsAfter(1, TokenType::LParen)) {
           throw cotyl::UnimplementedException("_Atomic");
         }
-        qualifiers |= type::BaseType::Qualifier::Atomic;
+        qualifiers |= type::Qualifier::Atomic;
         break;
       }
 
@@ -454,8 +454,8 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
   }
 
   auto make = [=]<typename T>() -> type::AnyType {
-    if (_sign == -1) return type::ValueType<T>(type::BaseType::LValueNess::Assignable, qualifiers);
-    return type::ValueType<std::make_unsigned_t<T>>(type::BaseType::LValueNess::Assignable, qualifiers);
+    if (_sign == -1) return type::ValueType<T>(type::LValue::Assignable, qualifiers);
+    return type::ValueType<std::make_unsigned_t<T>>(type::LValue::Assignable, qualifiers);
   };
 
   if (!type.has_value()) {
@@ -482,9 +482,9 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
       case Type::Void:
         ctype.emplace(type::VoidType(qualifiers)); break;
       case Type::Float:
-        ctype.emplace(type::ValueType<float>(type::BaseType::LValueNess::Assignable, qualifiers)); break;
+        ctype.emplace(type::ValueType<float>(type::LValue::Assignable, qualifiers)); break;
       case Type::Double:
-        ctype.emplace(type::ValueType<double>(type::BaseType::LValueNess::Assignable, qualifiers)); break;
+        ctype.emplace(type::ValueType<double>(type::LValue::Assignable, qualifiers)); break;
     }
   }
   return std::make_pair(ctype.value(), storage ? storage.value() : StorageClass::None);
@@ -507,16 +507,16 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
         u8 ptr_qualifiers = 0;
         while (in_stream.IsAfter(0, TokenType::Const, TokenType::Restrict, TokenType::Volatile, TokenType::Atomic)) {
           switch (in_stream.Get()->type) {
-            case TokenType::Const: ptr_qualifiers |= type::BaseType::Qualifier::Const; break;
-            case TokenType::Restrict: ptr_qualifiers |= type::BaseType::Qualifier::Restrict; break;
-            case TokenType::Volatile: ptr_qualifiers |= type::BaseType::Qualifier::Volatile; break;
-            case TokenType::Atomic: ptr_qualifiers |= type::BaseType::Qualifier::Atomic; break;
+            case TokenType::Const: ptr_qualifiers |= type::Qualifier::Const; break;
+            case TokenType::Restrict: ptr_qualifiers |= type::Qualifier::Restrict; break;
+            case TokenType::Volatile: ptr_qualifiers |= type::Qualifier::Volatile; break;
+            case TokenType::Atomic: ptr_qualifiers |= type::Qualifier::Atomic; break;
             default:
               // [[unreachable]]
               break;
           }
         }
-        layer.push(type::PointerType{nullptr, type::BaseType::LValueNess::Assignable, ptr_qualifiers});
+        layer.push(type::PointerType{nullptr, type::LValue::Assignable, ptr_qualifiers});
         break;
       }
       case TokenType::LParen: {
@@ -537,7 +537,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
           }
           case TokenType::RParen: {
             // function()
-            layer.push(type::FunctionType{nullptr, false, type::BaseType::LValueNess::Assignable});
+            layer.push(type::FunctionType{nullptr, false, type::LValue::Assignable});
             in_stream.Skip();
             break;
           }
@@ -582,7 +582,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
           default: {
             function_call:
             // has to be a function declaration with at least one parameter
-            auto typ = type::FunctionType{nullptr, false, type::BaseType::LValueNess::Assignable};
+            auto typ = type::FunctionType{nullptr, false, type::LValue::Assignable};
 
             do {
               auto arg_specifier = DSpecifier();
@@ -720,7 +720,7 @@ void Parser::ExternalDeclaration() {
       throw std::runtime_error("Unexpected compound statement after external declaration");
     }
     type::FunctionType signature = std::move(decl.type.get<type::FunctionType>());
-    signature.lvalue = type::BaseType::LValueNess::None;
+    signature.lvalue = type::LValue::None;
 
     auto symbol = std::move(decl.name);
     if (symbol.empty()) {

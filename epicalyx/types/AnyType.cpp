@@ -14,11 +14,11 @@ namespace epi::type {
 AnyType AnyType::Ref() const {
   // only for lvalues
   // not an lvalue after
-  if ((*this)->lvalue == BaseType::LValueNess::None) {
+  if ((*this)->lvalue == LValue::None) {
     throw std::runtime_error("Cannot get reference to non-lvalue expression");
   }
   // todo: handle function types
-  return PointerType{std::make_shared<AnyType>(*this), BaseType::LValueNess::None};
+  return PointerType{std::make_shared<AnyType>(*this), LValue::None};
 //   throw std::runtime_error("not reimplemented");
 }
 
@@ -32,10 +32,10 @@ AnyType AnyType::Cast(const AnyType& other, bool check_flags) const {
   }
   if (check_flags) {
     auto flagdiff = other->qualifiers & ~(*this)->qualifiers;
-    if (flagdiff & BaseType::Qualifier::Const) {
+    if (flagdiff & Qualifier::Const) {
       Log::Warn("Casting drops 'const' qualifier");
     }
-    if (flagdiff & BaseType::Qualifier::Volatile) {
+    if (flagdiff & Qualifier::Volatile) {
       Log::Warn("Casting drops 'volatile' qualifier");
     }
   }
@@ -54,7 +54,7 @@ AnyType AnyType::Cast(const AnyType& other, bool check_flags) const {
       }
     }
   );
-  result->lvalue = BaseType::LValueNess::None;
+  result->lvalue = LValue::None;
   return result;
 }
 
@@ -64,7 +64,7 @@ AnyType AnyType::CommonType(const AnyType& other) const {
   }
   AnyType result = *this;
   result->ForgetConstInfo();
-  result->lvalue = BaseType::LValueNess::None;
+  result->lvalue = LValue::None;
   return result;
 }
 

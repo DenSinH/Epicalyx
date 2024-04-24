@@ -14,7 +14,7 @@ using nested_type_t = std::shared_ptr<const AnyType>;
 
 
 struct VoidType final : BaseType {
-  VoidType(u8 flags = 0) : BaseType{LValueNess::None, flags} { }
+  VoidType(u8 flags = 0) : BaseType{LValue::None, flags} { }
 
   u64 Sizeof() const final;
 
@@ -33,13 +33,13 @@ requires (cotyl::pack_contains_v<T, value_type_pack>)
 struct ValueType final : AnyValueType {
   using type_t = T;
 
-  ValueType(LValueNess lvalue, u8 flags = 0) : 
+  ValueType(LValue lvalue, u8 flags = 0) : 
       AnyValueType{lvalue, flags}, value{} { }
 
-  ValueType(T value, LValueNess lvalue, u8 flags = 0) : 
+  ValueType(T value, LValue lvalue, u8 flags = 0) : 
       AnyValueType{lvalue, flags}, value{value} { }
 
-  ValueType(std::optional<T> value, LValueNess lvalue, u8 flags = 0) :
+  ValueType(std::optional<T> value, LValue lvalue, u8 flags = 0) :
       AnyValueType{lvalue, flags}, value{value} { }
 
   mutable std::optional<T> value;
@@ -78,7 +78,7 @@ struct ValueType final : AnyValueType {
 struct AnyPointerType : BaseType {
   virtual ~AnyPointerType() = default;
 
-  AnyPointerType(nested_type_t&& contained, LValueNess lvalue, u8 flags = 0) :
+  AnyPointerType(nested_type_t&& contained, LValue lvalue, u8 flags = 0) :
       BaseType{lvalue, flags}, contained{std::move(contained)} {
 
   } 
@@ -88,11 +88,11 @@ struct AnyPointerType : BaseType {
 
 struct PointerType final : AnyPointerType {
   
-  PointerType(nested_type_t&& contained, LValueNess lvalue, u8 flags = 0, std::size_t size = 0) :
+  PointerType(nested_type_t&& contained, LValue lvalue, u8 flags = 0, std::size_t size = 0) :
       AnyPointerType{std::move(contained), lvalue, flags}, size{size} { }
 
   static PointerType ArrayType(nested_type_t&& contained, std::size_t size, u8 flags = 0) {
-    return PointerType{std::move(contained), LValueNess::LValue, flags, size};
+    return PointerType{std::move(contained), LValue::LValue, flags, size};
   }
 
 
@@ -117,7 +117,7 @@ struct PointerType final : AnyPointerType {
 
 struct FunctionType final : AnyPointerType {
   FunctionType(
-    nested_type_t&& return_type, bool variadic, LValueNess lvalue, u8 flags = 0
+    nested_type_t&& return_type, bool variadic, LValue lvalue, u8 flags = 0
   ) : AnyPointerType{std::move(return_type), lvalue, flags}, variadic{variadic} {}
 
   struct Arg {
@@ -160,7 +160,7 @@ struct StructUnionType : BaseType {
   StructUnionType(
     cotyl::CString&& name,
     cotyl::vector<StructField>&& fields,
-    LValueNess lvalue, 
+    LValue lvalue, 
     u8 flags = 0
   ) : BaseType{lvalue, flags}, 
       name{std::move(name)}, 
@@ -193,7 +193,7 @@ struct StructType final : StructUnionType {
   StructType(
     cotyl::CString&& name,
     cotyl::vector<StructField>&& fields,
-    LValueNess lvalue, 
+    LValue lvalue, 
     u8 flags = 0
   ) : StructUnionType{
       std::move(name), 
@@ -211,7 +211,7 @@ struct UnionType final : StructUnionType {
   UnionType(
     cotyl::CString&& name,
     cotyl::vector<StructField>&& fields,
-    LValueNess lvalue, 
+    LValue lvalue, 
     u8 flags = 0
   ) : StructUnionType{
       std::move(name), 

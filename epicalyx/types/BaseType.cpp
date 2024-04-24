@@ -125,17 +125,17 @@ AnyType BaseType::Pos() const { InvalidOperand(this, "+"); }
 AnyType BaseType::BinNot() const { InvalidOperand(this, "~"); }
 
 AnyType BaseType::Incr() const { 
-  if (lvalue != LValueNess::Assignable) {
+  if (lvalue != LValue::Assignable) {
     throw std::runtime_error("Expression is not assignable");
   }
-  return Add(ValueType<i32>(1, LValueNess::None));
+  return Add(ValueType<i32>(1, LValue::None));
 }
 
 AnyType BaseType::Decr() const { 
-  if (lvalue != LValueNess::Assignable) {
+  if (lvalue != LValue::Assignable) {
     throw std::runtime_error("Expression is not assignable");
   }
-  return Sub(ValueType<i32>(1, LValueNess::None));
+  return Sub(ValueType<i32>(1, LValue::None));
 }
 
 u64 BaseType::Alignof() const {
