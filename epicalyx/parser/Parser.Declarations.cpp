@@ -180,13 +180,13 @@ type::AnyType Parser::DStruct() {
       do {
         auto decl = DDeclarator(ctype.first, ctype.second);
         size_t size = 0;
-        if (decl->storage != StorageClass::None) {
+        if (decl.storage != StorageClass::None) {
           throw std::runtime_error("Invalid storage class specifier in struct definition");
         }
         if (in_stream.EatIf(TokenType::Colon)) {
           size = EConstexpr();
         }
-        fields.emplace_back(std::move(decl->name), size, std::make_unique<type::AnyType>(std::move(decl->type)));
+        fields.emplace_back(std::move(decl.name), size, std::make_unique<type::AnyType>(std::move(decl.type)));
       } while (in_stream.EatIf(TokenType::Comma));
       in_stream.Eat(TokenType::SemiColon);
     }
@@ -591,7 +591,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
               }
 
               auto arg = DDeclarator(std::move(arg_specifier.first), StorageClass::Auto);
-              typ.AddArg(std::move(arg->name), std::make_shared<type::AnyType>(std::move(arg->type)));
+              typ.AddArg(std::move(arg.name), std::make_shared<type::AnyType>(std::move(arg.type)));
               if (in_stream.EatIf(TokenType::Comma)) {
                 if (in_stream.EatIf(TokenType::Ellipsis)) {
                   typ.variadic = true;
@@ -661,66 +661,68 @@ static type::AnyType UnwindDirectDeclarators(type::AnyType&& ctype, std::stack<P
   );
 }
 
-pNode<DeclarationNode> Parser::DDeclarator(type::AnyType ctype, StorageClass storage) {
+DeclarationNode Parser::DDeclarator(type::AnyType ctype, StorageClass storage) {
   std::stack<any_pointer_t> direct{};
 
   cotyl::CString name = DDirectDeclaratorImpl(direct);
   auto apparent_type = UnwindDirectDeclarators(std::move(ctype), direct);
-  return std::make_unique<DeclarationNode>(std::move(apparent_type), std::move(name), storage);
+  return DeclarationNode(std::move(apparent_type), std::move(name), storage);
 }
 
-void Parser::DInitDeclaratorList(cotyl::vector<pNode<DeclarationNode>>& dest) {
-  auto ctype = DSpecifier();
-
+void Parser::DInitDeclaratorList(cotyl::vector<DeclarationNode>& dest) {
+  auto [ctype, storage] = DSpecifier();
   do {
-    auto decl = DDeclarator(std::move(ctype.first), ctype.second);
-    if (decl->storage == StorageClass::Typedef) {
-      // store typedef names
-      if (decl->name.empty()) {
-        throw std::runtime_error("Typedef declaration must have a name");
-      }
-      typedefs.Set(decl->name, decl->type);
-    }
-    else {
-      RecordDeclaration(*decl);
-      if (in_stream.EatIf(TokenType::Assign)) {
-        // type var = <expression> or {initializer list}
-        if (decl->name.empty()) {
-          throw std::runtime_error("Cannot assign to nameless variable");
-        }
-        decl->value = EInitializer();
-        dest.emplace_back(std::move(decl));
-      }
-      else {
-        // type var, var2, var3
-        if (!decl->name.empty()) {
-          dest.emplace_back(std::move(decl));
-        }
-        else {
-          // warn: statement has no effect
-        }
-      }
-    }
+    StoreDeclaration(DDeclarator(ctype, storage), dest);
   } while (in_stream.EatIf(TokenType::Comma));
 }
 
-pNode<FunctionDefinitionNode> Parser::ExternalDeclaration(cotyl::vector<pNode<DeclarationNode>>& dest) {
+void Parser::StoreDeclaration(DeclarationNode&& decl, cotyl::vector<ast::DeclarationNode>& dest) {
+  if (decl.storage == StorageClass::Typedef) {
+    // store typedef names
+    if (decl.name.empty()) {
+      throw std::runtime_error("Typedef declaration must have a name");
+    }
+    typedefs.Set(decl.name, decl.type);
+  }
+  else {
+    RecordDeclaration(decl);
+    if (in_stream.EatIf(TokenType::Assign)) {
+      // type var = <expression> or {initializer list}
+      if (decl.name.empty()) {
+        throw std::runtime_error("Cannot assign to nameless variable");
+      }
+      decl.value = EInitializer();
+      dest.emplace_back(std::move(decl));
+    }
+    else {
+      // type var, var2, var3
+      if (!decl.name.empty()) {
+        dest.emplace_back(std::move(decl));
+      }
+      else {
+        // warn: statement has no effect
+      }
+    }
+  }
+}
+
+void Parser::ExternalDeclaration() {
   if (in_stream.IsAfter(0, TokenType::StaticAssert)) {
     DStaticAssert();
-    return nullptr;
+    return;
   }
-  auto ctype = DSpecifier();
-  pNode<DeclarationNode> decl = DDeclarator(ctype.first, ctype.second);
+  auto [ctype, storage] = DSpecifier();
+  auto decl = DDeclarator(ctype, storage);
 
   // signature { body }
   if (in_stream.EatIf(TokenType::LBrace)) {
-    if (!decl->type.holds_alternative<type::FunctionType>()) {
+    if (!decl.type.holds_alternative<type::FunctionType>()) {
       throw std::runtime_error("Unexpected compound statement after external declaration");
     }
-    type::FunctionType signature = std::move(decl->type.get<type::FunctionType>());
+    type::FunctionType signature = std::move(decl.type.get<type::FunctionType>());
     signature.lvalue = type::BaseType::LValueNess::None;
 
-    auto symbol = std::move(decl->name);
+    auto symbol = std::move(decl.name);
     if (symbol.empty()) {
       throw std::runtime_error("Missing name in function declaration");
     }
@@ -739,37 +741,24 @@ pNode<FunctionDefinitionNode> Parser::ExternalDeclaration(cotyl::vector<pNode<De
     function_return = nullptr;
     variables.PopLayer();
     in_stream.Eat(TokenType::RBrace);
-    return std::make_unique<FunctionDefinitionNode>(
+    
+    auto func = FunctionDefinitionNode(
       std::move(signature), std::move(symbol), std::move(body)
     );
+    RecordDeclaration(func);
+    functions.emplace_back(std::move(func));
   }
-
-  // normal declaration
-  do {
-    if (decl->storage == StorageClass::Typedef) {
-      // store typedef names
-      if (decl->name.empty()) {
-        throw std::runtime_error("Typedef declaration must have a name");
-      }
-      typedefs.Set(decl->name, decl->type);
+  else {
+    // normal declaration
+    RecordDeclaration(decl);
+    StoreDeclaration(std::move(decl), declarations);
+    while (!in_stream.EatIf(TokenType::SemiColon)) {
+      in_stream.Eat(TokenType::Comma);
+      auto decl = DDeclarator(ctype, storage);
+      RecordDeclaration(decl);
+      StoreDeclaration(std::move(decl), declarations);
     }
-    else {
-      if (in_stream.EatIf(TokenType::Assign)) {
-        // type var = <expression> or {initializer list}
-        decl->value = EInitializer();
-        dest.emplace_back(std::move(decl));
-      }
-      else {
-        // type var, var2, var3
-        dest.emplace_back(std::move(decl));
-      }
-    }
-    if (in_stream.EatIf(TokenType::SemiColon)) {
-      return nullptr;
-    }
-    in_stream.Eat(TokenType::Comma);
-    decl = DDeclarator(ctype.first, ctype.second);
-  } while (true);
+  }
 }
 
 }

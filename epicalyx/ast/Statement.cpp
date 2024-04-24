@@ -82,7 +82,7 @@ pStat DoWhileNode::Reduce() {
 
 
 ForNode::ForNode(
-  cotyl::vector<pNode<DeclarationNode>>&& decls,
+  cotyl::vector<DeclarationNode>&& decls,
   cotyl::vector<pExpr>&& inits,
   pExpr&& cond,
   cotyl::vector<pExpr>&& updates,

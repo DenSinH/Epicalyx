@@ -56,7 +56,7 @@ struct Emitter {
     return &current_function->blocks[current_block].back().get<T>();
   }
 
-  void MakeProgram(cotyl::vector<ast::pNode<ast::DeclNode>>& ast);
+  void MakeProgram(cotyl::vector<ast::DeclarationNode>& decls, cotyl::vector<ast::FunctionDefinitionNode>& funcs);
 
   // 0 are special IDs
   var_index_t ir_counter = 1;  // ir vars

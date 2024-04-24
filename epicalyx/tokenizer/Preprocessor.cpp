@@ -6,6 +6,7 @@
 #include "parser/ConstParser.h"
 
 #include "SStream.h"
+#include "CustomAssert.h"
 #include "Decltype.h"
 
 #include <ranges>

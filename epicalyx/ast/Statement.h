@@ -6,8 +6,6 @@
 
 namespace epi::ast {
 
-struct DeclarationNode;
-
 struct EmptyNode final : StatNode {
   std::string ToString() const final { return ""; }
   void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
@@ -53,7 +51,7 @@ struct DoWhileNode final : StatNode {
 struct ForNode final : StatNode {
 
   ForNode(
-      cotyl::vector<pNode<DeclarationNode>>&& decls,
+      cotyl::vector<DeclarationNode>&& decls,
       cotyl::vector<pExpr>&& inits,
       pExpr&& cond,
       cotyl::vector<pExpr>&& updates,
@@ -61,7 +59,7 @@ struct ForNode final : StatNode {
   );
 
 
-  cotyl::vector<pNode<DeclarationNode>> decls{};
+  cotyl::vector<DeclarationNode> decls{};
   cotyl::vector<pExpr> inits{};
   pExpr cond;
   cotyl::vector<pExpr> updates{};

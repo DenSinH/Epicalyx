@@ -4,6 +4,7 @@
 
 namespace epi::ast {
 
+enum class StorageClass;
 struct DeclarationNode;
 struct FunctionDefinitionNode;
 

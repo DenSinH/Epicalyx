@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
 
   auto emitter = epi::Emitter();
   try {
-    emitter.MakeProgram(parser.declarations);
+    emitter.MakeProgram(parser.declarations, parser.functions);
   }
   catch_e {
     std::cerr << "Emitter error:" << std::endl << std::endl;

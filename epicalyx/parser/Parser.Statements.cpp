@@ -99,7 +99,7 @@ pNode<StatNode> Parser::SStatement() {
 
       // new scope for for loop declarations
       PushScope();
-      cotyl::vector<pNode<DeclarationNode>> decl_list;
+      cotyl::vector<DeclarationNode> decl_list;
       if (IsDeclarationSpecifier()) {
         DInitDeclaratorList(decl_list);
       }
@@ -224,12 +224,12 @@ pNode<CompoundNode> Parser::SCompound() {
       DStaticAssert();
     }
     else if (IsDeclarationSpecifier()) {
-      cotyl::vector<pNode<DeclarationNode>> decl_list{};
+      cotyl::vector<DeclarationNode> decl_list{};
       DInitDeclaratorList(decl_list);
       in_stream.Eat(TokenType::SemiColon);
       for (auto& decl : decl_list) {
-        RecordDeclaration(*decl);
-        compound->AddNode(std::move(decl));
+        RecordDeclaration(decl);
+        compound->AddNode(std::make_unique<DeclarationNode>(std::move(decl)));
       }
     }
     else {

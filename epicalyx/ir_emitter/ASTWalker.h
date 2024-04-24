@@ -22,6 +22,10 @@ struct ASTWalker : public ast::NodeVisitor {
   var_index_t current;
   Emitter& emitter;
 
+  // public access for making the program
+  void Visit(ast::DeclarationNode& decl) final;
+  void Visit(ast::FunctionDefinitionNode& decl) final;
+  
 private:
   enum class State {
     Empty, Assign, Address, Read, ConditionalBranch,
@@ -96,8 +100,6 @@ private:
   BinopCastResult BinopCastHelper(var_index_t left, var_index_t right);
   void BinopHelper(var_index_t left, calyx::BinopType op, var_index_t right);
 
-  void Visit(ast::DeclarationNode& decl) final;
-  void Visit(ast::FunctionDefinitionNode& decl) final;
   void Visit(ast::IdentifierNode& decl) final;
 
   void Visit(ast::NumericalConstantNode<i8>& expr) final { ConstVisitImpl(expr); }

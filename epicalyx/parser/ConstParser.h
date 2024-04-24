@@ -9,7 +9,7 @@
  * */
 
 #include "Locatable.h"
-#include "ast/Node.h"
+#include "ast/NodeFwd.h"
 
 namespace epi {
 
@@ -27,7 +27,7 @@ enum class TokenType : u32;
 
 struct ConstParser : public cotyl::Locatable {
 
-  ConstParser(cotyl::Stream<AnyToken>& in_stream) : in_stream{in_stream} { }
+  ConstParser(cotyl::Stream<AnyToken>& in_stream);
 
   void PrintLoc() const final;
   i64 EConstexpr();

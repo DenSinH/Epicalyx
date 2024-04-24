@@ -214,10 +214,10 @@ type::AnyType Parser::ETypeName() {
   }
 
   auto decl = DDeclarator(ctype.first, StorageClass::None);
-  if (!decl->name.empty()) {
+  if (!decl.name.empty()) {
     throw std::runtime_error("Name not allowed in type name");
   }
-  return std::move(decl->type);
+  return std::move(decl.type);
 }
 
 pExpr ConstParser::ECast() {

@@ -128,7 +128,7 @@ void ASTWalker::Visit(ForNode& stat) {
   emitter.Emit<calyx::UnconditionalBranch>(init_block);
   emitter.SelectBlock(init_block);
   for (auto& decl : stat.decls) {
-    decl->Visit(*this);
+    Visit(decl);
   }
   for (auto& init : stat.inits) {
     init->Visit(*this);

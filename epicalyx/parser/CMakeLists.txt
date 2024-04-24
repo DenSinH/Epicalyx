@@ -5,6 +5,7 @@ add_library(Parser STATIC
         Parser.Statements.cpp
         Parser.cpp
         ConstParser.h
+        ConstParser.cpp
 )
 
 set_target_properties(Parser PROPERTIES LINKER_LANGUAGE CXX)

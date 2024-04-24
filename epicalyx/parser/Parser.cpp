@@ -14,9 +14,6 @@ namespace epi {
 
 using namespace ast;
 
-void ConstParser::PrintLoc() const {
-  in_stream.PrintLoc();
-}
 
 type::AnyType Parser::ResolveIdentifierType(const cotyl::CString& name) const {
   if (enum_values.Has(name)) {
@@ -54,26 +51,9 @@ void Parser::PopScope() {
 
 void Parser::Parse() {
   while (!in_stream.EOS()) {
-    cotyl::vector<pNode<DeclarationNode>> decls{};
-    auto function = ExternalDeclaration(decls);
+    ExternalDeclaration();
 
-    if (variables.Depth() != 1) [[unlikely]] {
-      throw cotyl::FormatExceptStr("Scope not handled properly: depth %s", variables.Depth());
-    }
-
-    if (function) {
-      RecordDeclaration(*function);
-      if (!decls.empty()) {
-        throw std::runtime_error("Bad parsing: unexpected declaration");
-      }
-      declarations.emplace_back(std::move(function));
-    }
-    else {
-      for (auto& decl : decls) {
-        RecordDeclaration(*decl);
-        declarations.emplace_back(std::move(decl));
-      }
-    }
+    cotyl::Assert(variables.Depth() == 1, "Scope not handled properly");
   }
 
   for (const auto& label : unresolved_labels) {

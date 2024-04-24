@@ -3,22 +3,15 @@
 #include "ConstParser.h"
 #include "Scope.h"
 #include "Containers.h"
-#include "types/TypeFwd.h"
+#include "types/AnyType.h"
 #include "ast/Initializer.h"
+#include "ast/Declaration.h"  // FunctionDef for vector destructor
+#include "ast/Statement.h"  // compoundnode for FunctionDef
 #include "Variant.h"
 
 #include <stack>
 
 namespace epi {
-
-namespace ast {
-
-struct DeclarationNode;
-enum class StorageClass;
-struct CompoundNode;
-struct FunctionDefinitionNode;
-
-}
 
 
 struct Parser final : public ConstParser {
@@ -35,7 +28,8 @@ struct Parser final : public ConstParser {
   void Parse();
   void Data();
 
-  cotyl::vector<ast::pNode<ast::DeclNode>> declarations{};
+  cotyl::vector<ast::DeclarationNode> declarations{};
+  cotyl::vector<ast::FunctionDefinitionNode> functions{};
 
   // needed public for unwinding function
   using any_pointer_t = cotyl::Variant<
@@ -61,8 +55,9 @@ private:
   type::AnyType DEnum();
   type::AnyType DStruct();
   cotyl::CString DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest);
-  ast::pNode<ast::DeclarationNode> DDeclarator(type::AnyType ctype, ast::StorageClass storage);
-  void DInitDeclaratorList(cotyl::vector<ast::pNode<ast::DeclarationNode>>& dest);
+  ast::DeclarationNode DDeclarator(type::AnyType ctype, ast::StorageClass storage);
+  void DInitDeclaratorList(cotyl::vector<ast::DeclarationNode>& dest);
+  void StoreDeclaration(ast::DeclarationNode&& decl, cotyl::vector<ast::DeclarationNode>& dest);
   bool IsDeclarationSpecifier(int after = 0);
   void RecordDeclaration(const ast::DeclarationNode& decl);
   void RecordDeclaration(const ast::FunctionDefinitionNode& decl);
@@ -70,7 +65,7 @@ private:
   ast::pNode<ast::StatNode> SStatement();
   ast::pNode<ast::CompoundNode> SCompound();
 
-  ast::pNode<ast::FunctionDefinitionNode> ExternalDeclaration(cotyl::vector<ast::pNode<ast::DeclarationNode>>& dest);
+  void ExternalDeclaration();
 
   void PushScope();
   void PopScope();

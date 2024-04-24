@@ -1,6 +1,7 @@
 #include "Emitter.h"
 #include "ASTWalker.h"
 #include "ast/Node.h"
+#include "ast/Declaration.h"
 
 
 namespace epi {
@@ -38,10 +39,13 @@ void Emitter::NewFunction(cotyl::CString&& symbol) {
   SetFunction(program.functions.emplace(sym, std::move(func)).first->second);
 }
 
-void Emitter::MakeProgram(cotyl::vector<ast::pNode<ast::DeclNode>>& ast) {
+void Emitter::MakeProgram(cotyl::vector<ast::DeclarationNode>& decls, cotyl::vector<ast::FunctionDefinitionNode>& funcs) {
   auto walker = ASTWalker(*this);
-  for (auto& decl : ast) {
-    decl->Visit(walker);
+  for (auto& decl : decls) {
+    walker.Visit(decl);
+  }
+  for (auto& func : funcs) {
+    walker.Visit(func);
   }
 }
 
