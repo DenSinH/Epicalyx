@@ -3,7 +3,7 @@
 #include "Helpers.h"
 
 #include "types/Types.h"
-#include "calyx/Calyx.h"
+#include "calyx/Directive.h"
 #include "ast/Statement.h"
 #include "ast/Declaration.h"
 #include "ast/Expression.h"
@@ -52,7 +52,6 @@ void ASTWalker::Visit(IfNode& stat) {
 
   // create post block here to improve optimization ancestry finding
   emitter.SelectBlock(post_block);
-  cotyl::Assert(emitter.current_function->blocks.at(post_block).empty());
 }
 
 void ASTWalker::Visit(WhileNode& stat) {

@@ -86,8 +86,8 @@ BoolType BaseType::LogNot() const {
   return truthiness;
 }
 
-BoolType BaseType::Lt(const AnyType& other) const { InvalidOperands(this, "<", other); }
-BoolType BaseType::Eq(const AnyType& other) const { InvalidOperands(this, "==", other); }
+BoolType BaseType::Lt(const AnyType& other) const { InvalidOperands(this, "comparison", other); }
+BoolType BaseType::Eq(const AnyType& other) const { InvalidOperands(this, "comparison", other); }
 AnyType BaseType::LShift(const AnyType& other) const { InvalidOperands(this, "<<", other); }
 AnyType BaseType::RShift(const AnyType& other) const { InvalidOperands(this, ">>", other); }
 

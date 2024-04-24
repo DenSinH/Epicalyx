@@ -1,6 +1,6 @@
 #pragma once
 
-#include "calyx/Calyx.h"
+#include "calyx/CalyxFwd.h"
 
 
 namespace epi::calyx {

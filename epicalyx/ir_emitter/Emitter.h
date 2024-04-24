@@ -1,6 +1,6 @@
 #pragma once
 
-#include "calyx/Calyx.h"
+#include "calyx/CalyxFwd.h"
 #include "ast/NodeFwd.h"
 #include "Containers.h"
 #include "TypeTraits.h"
@@ -31,6 +31,7 @@ struct Emitter {
   };
 
   template<typename T, typename... Args>
+  requires (std::is_base_of_v<calyx::Expr, T>)
   var_index_t EmitExpr(Var var, Args&&... args) {
     if (!reachable) {
       return 0;
@@ -42,6 +43,7 @@ struct Emitter {
   }
 
   template<typename T, typename... Args>
+  requires (std::is_base_of_v<calyx::Directive, T>)
   T* Emit(Args&&... args) {
     if (!reachable) {
       return nullptr;

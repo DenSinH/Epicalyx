@@ -2,7 +2,7 @@
 
 #include "ast/NodeVisitor.h"
 #include "types/AnyType.h"
-#include "calyx/Calyx.h"
+#include "calyx/CalyxFwd.h"
 #include "Emitter.h"
 #include "Scope.h"
 #include "Helpers.h"

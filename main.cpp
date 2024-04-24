@@ -16,7 +16,7 @@
 #include "Log.h"
 
 
-#undef catch_errors
+#define catch_errors
 
 #ifndef catch_errors
 #define try if (true)

@@ -3,7 +3,7 @@
 #include "Helpers.h"
 
 #include "types/Types.h"
-#include "calyx/Calyx.h"
+#include "calyx/Directive.h"
 #include "ast/Expression.h"
 #include "ast/Declaration.h"
 

@@ -6,6 +6,7 @@
 #include "Stringify.h"
 #include "CustomAssert.h"
 #include "Decltype.h"
+#include "CalyxFwd.h"
 
 #include <variant>
 #include <string>
@@ -13,26 +14,6 @@
 
 
 namespace epi {
-
-namespace calyx {
-
-struct Function;
-
-}
-
-using var_index_t = u32;
-using block_label_t = u32;
-using func_pos_t = std::pair<block_label_t, int>;
-
-struct program_pos_t {
-  const calyx::Function* func;
-  func_pos_t pos;
-};
-
-struct label_offset_t {
-  cotyl::CString label;
-  i64 offset;
-};
 
 namespace calyx {
 
@@ -52,35 +33,6 @@ static_assert(sizeof(Pointer) == sizeof(i64));
 struct Struct { };
 
 STRINGIFY_METHOD(Struct);
-
-using calyx_small_types = cotyl::pack<i8, u8, i16, u16>;
-using calyx_integral_types = cotyl::pack<i32, u32, i64, u64>;
-using calyx_arithmetic_types = cotyl::flatten_pack<calyx_integral_types, float, double>;
-using calyx_arithmetic_ptr_types = cotyl::flatten_pack<calyx_arithmetic_types, calyx::Pointer>;
-using calyx_types = cotyl::flatten_pack<calyx_arithmetic_ptr_types, calyx::Struct>;
-using calyx_return_types = cotyl::flatten_pack<calyx_types, void>;
-using calyx_memory_types = cotyl::flatten_pack<calyx_types, calyx_small_types>;
-
-template<typename T>
-constexpr bool is_calyx_small_type_v = cotyl::pack_contains_v<T, calyx_small_types>;
-template<typename T>
-constexpr bool is_calyx_integral_type_v = cotyl::pack_contains_v<T, calyx_integral_types>;
-template<typename T>
-constexpr bool is_calyx_arithmetic_type_v = cotyl::pack_contains_v<T, calyx_arithmetic_types>;
-template<typename T>
-constexpr bool is_calyx_arithmetic_ptr_type_v = cotyl::pack_contains_v<T, calyx_arithmetic_ptr_types>;
-template<typename T>
-constexpr bool is_calyx_type_v = cotyl::pack_contains_v<T, calyx_types>;
-
-template<typename T> struct calyx_upcast { using type = T; };
-template<> struct calyx_upcast<i8> { using type = i32; };
-template<> struct calyx_upcast<u8> { using type = i32; };  // todo: fix this in CType (cast to i32, should be u32)
-template<> struct calyx_upcast<i16> { using type = i32; };
-template<> struct calyx_upcast<u16> { using type = i32; };
-template<typename T>
-using calyx_upcast_t = typename calyx_upcast<T>::type;
-
-#define calyx_op_type(op) typename decltype_t(op)
 
 template<typename T>
 requires (is_calyx_type_v<T>)
@@ -157,15 +109,10 @@ struct Local {
   std::optional<var_index_t> arg_idx{};
 };
 
-// IR var idx and Argument
-using arg_list_t = cotyl::vector<std::pair<var_index_t, Local>>;
-
 struct ArgData {
   arg_list_t args;
   arg_list_t var_args;
 };
-
-using global_t = std::variant<i8, u8, i16, u16, i32, u32, i64, u64, float, double, Pointer, label_offset_t>;
 
 }
 

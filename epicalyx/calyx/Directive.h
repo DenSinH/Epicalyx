@@ -379,15 +379,14 @@ struct Return : Directive {
 
 template<typename T>
 requires (cotyl::pack_contains_v<T, calyx_return_types>)
-struct Call : Directive {
+struct Call : Expr {
   using result_t = T;
 
   Call(var_index_t idx, var_index_t fn_idx, ArgData&& args) :
-      Directive{}, idx{idx}, fn_idx{fn_idx}, args{std::make_shared<ArgData>(std::move(args))} {
+      Expr{idx}, fn_idx{fn_idx}, args{std::make_shared<ArgData>(std::move(args))} {
 
   }
 
-  var_index_t idx;
   var_index_t fn_idx;
   std::shared_ptr<ArgData> args;
 
@@ -396,15 +395,14 @@ struct Call : Directive {
 
 template<typename T>
 requires (cotyl::pack_contains_v<T, calyx_return_types>)
-struct CallLabel : Directive {
+struct CallLabel : Expr {
   using result_t = T;
 
   CallLabel(var_index_t idx, cotyl::CString&& label, ArgData&& args) :
-    Directive{}, idx{idx}, label{std::move(label)}, args{std::make_shared<ArgData>(std::move(args))} {
+    Expr{idx}, label{std::move(label)}, args{std::make_shared<ArgData>(std::move(args))} {
 
   }
 
-  var_index_t idx;
   cotyl::CString label;
   std::shared_ptr<ArgData> args;
 
@@ -440,6 +438,8 @@ template<typename... Ts>
 requires (std::is_base_of_v<Expr, Ts> && ...)
 using any_expr_helper = cotyl::Variant<Expr, Ts...>;
 
+// except for call expressions, as these cannot
+// be replaced
 using expr_pack = cotyl::flatten_pack<
   cotyl::map_types_t<Binop, calyx_arithmetic_types>,
   cotyl::map_types_t<Shift, calyx_integral_types>,

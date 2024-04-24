@@ -356,7 +356,7 @@ AnyToken Tokenizer::ReadNumericalConstant() {
       }
     }
     else if (hex) {
-      val = std::stoll(value.finalize(), nullptr, 16);
+      val = (i64)std::stoull(value.finalize(), nullptr, 16);
     }
     else {
       val = std::stoll(value.finalize());

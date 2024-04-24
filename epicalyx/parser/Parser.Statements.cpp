@@ -137,8 +137,8 @@ pNode<StatNode> Parser::SStatement() {
     }
     case TokenType::Goto: {
       in_stream.Skip();
-      in_stream.Expect(TokenType::Identifier);
-      auto label = std::move(in_stream.Get().get<IdentifierToken>().name);
+      auto labelt = in_stream.Expect(TokenType::Identifier);
+      auto label = std::move(labelt.get<IdentifierToken>().name);
       in_stream.Eat(TokenType::SemiColon);
 
       // labels might be predeclared

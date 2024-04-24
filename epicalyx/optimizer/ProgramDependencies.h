@@ -1,6 +1,6 @@
 #pragma once
 
-#include "calyx/Calyx.h"
+#include "calyx/CalyxFwd.h"
 #include "Containers.h"
 #include "cycle/Graph.h"
 

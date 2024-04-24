@@ -96,8 +96,8 @@ void Parser::DStaticAssert() {
   in_stream.EatSequence(TokenType::StaticAssert, TokenType::LParen);
   auto expr = Parser::EConstexpr();
   in_stream.Eat(TokenType::Comma);
-  in_stream.Expect(TokenType::StringConstant);
-  auto str = std::move(in_stream.Get().get<StringConstantToken>().value);
+  auto strt = in_stream.Expect(TokenType::StringConstant);
+  auto str = std::move(strt.get<StringConstantToken>().value);
   in_stream.EatSequence(TokenType::RParen, TokenType::SemiColon);
 
   if (!expr) {
@@ -126,8 +126,8 @@ type::AnyType Parser::DEnum() {
 
   enum_type counter = 0;
   do {
-    in_stream.Expect(TokenType::Identifier);
-    auto constant = std::move(in_stream.Get().get<IdentifierToken>().name);
+    auto idt = in_stream.Expect(TokenType::Identifier);
+    auto constant = std::move(idt.get<IdentifierToken>().name);
     if (in_stream.EatIf(TokenType::Assign)) {
       // constant = value
       // update counter

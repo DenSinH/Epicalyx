@@ -2,7 +2,7 @@
 
 #include "Default.h"
 #include "GeneralizedVar.h"
-#include "calyx/Calyx.h"
+#include "calyx/CalyxFwd.h"
 
 #include <memory>
 #include <optional>

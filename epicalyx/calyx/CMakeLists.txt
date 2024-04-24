@@ -15,6 +15,7 @@ add_library(Calyx STATIC
         Calyx.cpp
         Utils.h
         Utils.cpp
+        CalyxFwd.h
 )
 
 target_precompile_headers(Calyx REUSE_FROM CalyxHeaders)

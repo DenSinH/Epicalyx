@@ -2,7 +2,7 @@
 
 #include "Default.h"
 #include "Hash.h"
-#include "calyx/Calyx.h"
+#include "calyx/CalyxFwd.h"
 
 
 namespace epi {

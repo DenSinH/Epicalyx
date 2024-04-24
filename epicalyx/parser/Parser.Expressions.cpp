@@ -379,8 +379,8 @@ InitializerList Parser::EInitializerList() {
         // keep fetching nested declarators
         if (in_stream.EatIf(TokenType::Dot)) {
           // .member
-          in_stream.Expect(TokenType::Identifier);
-          designator.emplace_back(std::move(in_stream.Get().get<IdentifierToken>().name));
+          auto idt = in_stream.Expect(TokenType::Identifier);
+          designator.emplace_back(std::move(idt.get<IdentifierToken>().name));
           if (in_stream.EatIf(TokenType::Assign)) {
             list.Push(std::move(designator), EInitializer());
             break;
