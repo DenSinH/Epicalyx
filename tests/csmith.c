@@ -878,7 +878,6 @@ static int ** func_176(int ** p_177)
 /* ---------------------------------------- */
 int main (void)
 {
-    func_1();
     return func_1();
 }
 

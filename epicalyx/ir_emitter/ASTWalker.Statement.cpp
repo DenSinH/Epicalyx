@@ -18,11 +18,11 @@ namespace epi {
 
 using namespace ast;
 
-void ASTWalker::Visit(EmptyNode& stat) {
+void ASTWalker::Visit(const EmptyNode& stat) {
 
 }
 
-void ASTWalker::Visit(IfNode& stat) {
+void ASTWalker::Visit(const IfNode& stat) {
   auto true_block = emitter.MakeBlock();
   auto false_block = emitter.MakeBlock();
   block_label_t post_block;
@@ -54,7 +54,7 @@ void ASTWalker::Visit(IfNode& stat) {
   emitter.SelectBlock(post_block);
 }
 
-void ASTWalker::Visit(WhileNode& stat) {
+void ASTWalker::Visit(const WhileNode& stat) {
   // loop entry is lowest index
   auto cond_block = emitter.MakeBlock();
   emitter.Emit<calyx::UnconditionalBranch>(cond_block);
@@ -85,7 +85,7 @@ void ASTWalker::Visit(WhileNode& stat) {
   emitter.SelectBlock(post_block);
 }
 
-void ASTWalker::Visit(DoWhileNode& stat) {
+void ASTWalker::Visit(const DoWhileNode& stat) {
   // loop entry is lowest index
   auto loop_block = emitter.MakeBlock();
   auto cond_block = emitter.MakeBlock();
@@ -117,7 +117,7 @@ void ASTWalker::Visit(DoWhileNode& stat) {
   emitter.SelectBlock(post_block);
 }
 
-void ASTWalker::Visit(ForNode& stat) {
+void ASTWalker::Visit(const ForNode& stat) {
   
   auto init_block = emitter.MakeBlock();
 
@@ -174,7 +174,7 @@ void ASTWalker::Visit(ForNode& stat) {
   emitter.SelectBlock(post_block);
 }
 
-void ASTWalker::Visit(LabelNode& stat) {
+void ASTWalker::Visit(const LabelNode& stat) {
   if (!local_labels.contains(stat.name)) {
     auto block = emitter.MakeBlock();
     local_labels.emplace(stat.name, block);
@@ -189,7 +189,7 @@ void ASTWalker::Visit(LabelNode& stat) {
   stat.stat->Visit(*this);
 }
 
-void ASTWalker::Visit(SwitchNode& stat) {
+void ASTWalker::Visit(const SwitchNode& stat) {
   state.push({State::Read, {}});
   stat.expr->Visit(*this);
   state.pop();
@@ -230,7 +230,7 @@ void ASTWalker::Visit(SwitchNode& stat) {
   emitter.SelectBlock(post_block);
 }
 
-void ASTWalker::Visit(CaseNode& stat) {
+void ASTWalker::Visit(const CaseNode& stat) {
   cotyl::Assert(!select_stack.empty(), "Invalid case statement");
   auto* select = select_stack.top();
   cotyl::Assert(!select->table->contains(stat.expr), "Duplicate case statement");
@@ -245,7 +245,7 @@ void ASTWalker::Visit(CaseNode& stat) {
   stat.stat->Visit(*this);
 }
 
-void ASTWalker::Visit(DefaultNode& stat) {
+void ASTWalker::Visit(const DefaultNode& stat) {
   cotyl::Assert(!select_stack.empty(), "Invalid default statement");
   auto* select = select_stack.top();
   cotyl::Assert(select->_default == 0, "Duplicate default statement");
@@ -260,7 +260,7 @@ void ASTWalker::Visit(DefaultNode& stat) {
   stat.stat->Visit(*this);
 }
 
-void ASTWalker::Visit(GotoNode& stat) {
+void ASTWalker::Visit(const GotoNode& stat) {
   if (!local_labels.contains(stat.label)) {
     auto block = emitter.MakeBlock();
     local_labels.emplace(stat.label, block);
@@ -271,7 +271,7 @@ void ASTWalker::Visit(GotoNode& stat) {
   }
 }
 
-void ASTWalker::Visit(ReturnNode& stat) {
+void ASTWalker::Visit(const ReturnNode& stat) {
   if (stat.expr) {
     state.push({State::Read, {}});
     stat.expr->Visit(*this);
@@ -284,17 +284,17 @@ void ASTWalker::Visit(ReturnNode& stat) {
   }
 }
 
-void ASTWalker::Visit(BreakNode& stat) {
+void ASTWalker::Visit(const BreakNode& stat) {
   cotyl::Assert(!break_stack.empty());
   emitter.Emit<calyx::UnconditionalBranch>(break_stack.top());
 }
 
-void ASTWalker::Visit(ContinueNode& stat) {
+void ASTWalker::Visit(const ContinueNode& stat) {
   cotyl::Assert(!continue_stack.empty());
   emitter.Emit<calyx::UnconditionalBranch>(continue_stack.top());
 }
 
-void ASTWalker::Visit(CompoundNode& stat) {
+void ASTWalker::Visit(const CompoundNode& stat) {
   locals.NewLayer();
   for (const auto& node : stat.stats) {
     node->Visit(*this);

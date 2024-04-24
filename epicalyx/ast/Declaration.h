@@ -34,7 +34,7 @@ struct DeclarationNode final : DeclNode {
   std::optional<Initializer> value;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 struct FunctionDefinitionNode final : DeclNode {
@@ -46,7 +46,7 @@ struct FunctionDefinitionNode final : DeclNode {
   pNode<CompoundNode> body;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 }

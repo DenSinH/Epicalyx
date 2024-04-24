@@ -25,7 +25,7 @@ struct IdentifierNode final : ExprNode {
   cotyl::CString name;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 
@@ -38,7 +38,7 @@ struct NumericalConstantNode final : ExprNode {
   const T value;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 
@@ -50,7 +50,7 @@ struct StringConstantNode final : ExprNode {
   cotyl::CString value;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 /*
@@ -66,7 +66,7 @@ struct ArrayAccessNode final : ExprNode {
   pExpr ptr, offs;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 
@@ -79,7 +79,7 @@ struct FunctionCallNode final : ExprNode {
   cotyl::vector<pExpr> args{};
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 
@@ -93,7 +93,7 @@ struct MemberAccessNode final : ExprNode {
   cotyl::CString member;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 
@@ -104,7 +104,7 @@ struct TypeInitializerNode : ExprNode {
   InitializerList list;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 
@@ -117,7 +117,7 @@ struct PostFixNode final : ExprNode {
   TokenType op;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 
@@ -130,7 +130,7 @@ struct UnopNode final : ExprNode {
   TokenType op;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 
@@ -142,7 +142,7 @@ struct CastNode final : ExprNode {
   pExpr expr;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 
@@ -156,7 +156,7 @@ struct BinopNode final : ExprNode {
   pExpr right;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 
@@ -170,7 +170,7 @@ struct TernaryNode final : ExprNode {
   pExpr _false;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 
@@ -184,7 +184,7 @@ struct AssignmentNode final : ExprNode {
   pExpr right;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 }

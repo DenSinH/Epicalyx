@@ -124,7 +124,11 @@ template<typename T>
 requires (cotyl::pack_contains_v<T, value_type_pack>)
 AnyType ValueType<T>::Add(const AnyType& other) const {
   auto result = other.visit<AnyType>(
-    [](const PointerType& pointer) -> AnyType { 
+    [&](const PointerType& pointer) -> AnyType { 
+      if (pointer.Stride() == 0) {
+        // can't add to pointer to incomplete type
+        InvalidOperands(this, "+", other);
+      }
       PointerType result = pointer;
       result.size = 0;           // lose array status
       result.ForgetConstInfo();  // forget constant info
@@ -374,7 +378,11 @@ std::string PointerType::ToString() const {
 }
 
 u64 PointerType::Stride() const {
-  return (*contained)->Sizeof();
+  // stride may be 0 for incomplete types
+  return contained->visit<u64>(
+    [](const VoidType&) -> u64 { return 0; },
+    [](const auto& type) -> u64 { return type.Sizeof(); }
+  );
 }
 
 void PointerType::ForgetConstInfo() const {

@@ -22,16 +22,12 @@ enum class LValue : u8 {
 };
 
 struct BaseType {
-  
+
   BaseType(LValue lvalue, u8 flags = 0) : qualifiers{flags}, lvalue{lvalue} { }
 
   u8 qualifiers = 0;
   LValue lvalue;
 
-  // virtual bool IsConstexpr() const { return false; }  // for optimizing branching
-  // virtual bool GetBoolValue() const { throw std::runtime_error("Type cannot be converted to bool"); }
-  // virtual bool HasTruthiness() const { return false; }
-  AnyType TruthinessAsCType() const;
   bool IsAssignable() const { 
     return lvalue == LValue::Assignable && !(qualifiers & Qualifier::Const); 
   }

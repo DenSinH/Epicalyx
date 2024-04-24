@@ -37,7 +37,7 @@ void ASTWalker::BinopHelper(var_index_t left, calyx::BinopType op, var_index_t r
   EmitArithExpr<calyx::Binop>(casted.var.type, casted.left, op, casted.right);
 }
 
-void ASTWalker::Visit(IdentifierNode& decl) {
+void ASTWalker::Visit(const IdentifierNode& decl) {
   // after the AST, the only identifiers left are C locals
   if (state.top().first == State::Empty) {
     // statement has no effect
@@ -98,14 +98,14 @@ void ASTWalker::Visit(IdentifierNode& decl) {
     switch (state.top().first) {
       case State::Read: {
         if (type.holds_alternative<type::PointerType>() && type.get<type::PointerType>().size > 0) {
-          current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, type->Deref()->Sizeof() }, std::move(decl.name));
+          current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, type->Deref()->Sizeof() }, cotyl::CString{decl.name});
         }
         else if (type.holds_alternative<type::FunctionType>()) {
-          auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {std::move(decl.name)});
+          auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {cotyl::CString{decl.name}});
           visitor.Visit(type);
         }
         else {
-          auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalEmitter>(*this, {std::move(decl.name)});
+          auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalEmitter>(*this, {cotyl::CString{decl.name}});
           visitor.Visit(type);
         }
         break;
@@ -113,14 +113,14 @@ void ASTWalker::Visit(IdentifierNode& decl) {
       case State::Assign: {
         const auto stored = state.top().second.var;
         auto visitor = detail::EmitterTypeVisitor<detail::StoreGlobalEmitter>(
-                *this, { std::move(decl.name), stored }
+                *this, { cotyl::CString{decl.name}, stored }
         );
         visitor.Visit(type);
         current = stored;
         break;
       }
       case State::Address: {
-        auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {std::move(decl.name)});
+        auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {cotyl::CString{decl.name}});
         visitor.Visit(type);
         break;
       }
@@ -132,7 +132,7 @@ void ASTWalker::Visit(IdentifierNode& decl) {
 }
 
 template<typename T>
-void ASTWalker::ConstVisitImpl(NumericalConstantNode<T>& expr) {
+void ASTWalker::ConstVisitImpl(const NumericalConstantNode<T>& expr) {
   if (state.top().first == State::Empty) {
     // statement has no effect
     return;
@@ -147,23 +147,23 @@ void ASTWalker::ConstVisitImpl(NumericalConstantNode<T>& expr) {
   }
 }
 
-template void ASTWalker::ConstVisitImpl(NumericalConstantNode<i8>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstantNode<u8>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstantNode<i16>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstantNode<u16>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstantNode<i32>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstantNode<u32>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstantNode<i64>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstantNode<u64>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstantNode<float>&);
-template void ASTWalker::ConstVisitImpl(NumericalConstantNode<double>&);
+template void ASTWalker::ConstVisitImpl(const NumericalConstantNode<i8>&);
+template void ASTWalker::ConstVisitImpl(const NumericalConstantNode<u8>&);
+template void ASTWalker::ConstVisitImpl(const NumericalConstantNode<i16>&);
+template void ASTWalker::ConstVisitImpl(const NumericalConstantNode<u16>&);
+template void ASTWalker::ConstVisitImpl(const NumericalConstantNode<i32>&);
+template void ASTWalker::ConstVisitImpl(const NumericalConstantNode<u32>&);
+template void ASTWalker::ConstVisitImpl(const NumericalConstantNode<i64>&);
+template void ASTWalker::ConstVisitImpl(const NumericalConstantNode<u64>&);
+template void ASTWalker::ConstVisitImpl(const NumericalConstantNode<float>&);
+template void ASTWalker::ConstVisitImpl(const NumericalConstantNode<double>&);
 
-void ASTWalker::Visit(StringConstantNode& expr) {
+void ASTWalker::Visit(const StringConstantNode& expr) {
   // load from rodata
   throw cotyl::UnimplementedException("string constant");
 }
 
-void ASTWalker::Visit(ArrayAccessNode& expr) {
+void ASTWalker::Visit(const ArrayAccessNode& expr) {
   if (state.top().first == State::Empty) {
     // increments/decrements might happen
     expr.ptr->Visit(*this);
@@ -216,7 +216,7 @@ void ASTWalker::Visit(ArrayAccessNode& expr) {
   }
 }
 
-void ASTWalker::Visit(FunctionCallNode& expr) {
+void ASTWalker::Visit(const FunctionCallNode& expr) {
   state.push({State::Read, {}});
   expr.left->Visit(*this);
   state.pop();
@@ -264,15 +264,15 @@ void ASTWalker::Visit(FunctionCallNode& expr) {
   }
 }
 
-void ASTWalker::Visit(MemberAccessNode& expr) {
+void ASTWalker::Visit(const MemberAccessNode& expr) {
   throw cotyl::UnimplementedException("member access");
 }
 
-void ASTWalker::Visit(TypeInitializerNode& expr) {
+void ASTWalker::Visit(const TypeInitializerNode& expr) {
   throw cotyl::UnimplementedException("type initializer");
 }
 
-void ASTWalker::Visit(PostFixNode& expr) {
+void ASTWalker::Visit(const PostFixNode& expr) {
   cotyl::Assert(state.top().first == State::Empty || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   
   state.push({State::Read, {}});
@@ -308,7 +308,7 @@ void ASTWalker::Visit(PostFixNode& expr) {
   }
 }
 
-void ASTWalker::Visit(UnopNode& expr) {
+void ASTWalker::Visit(const UnopNode& expr) {
   const bool conditional_branch = state.top().first == State::ConditionalBranch;
 
   switch (expr.op) {
@@ -510,7 +510,7 @@ void ASTWalker::Visit(UnopNode& expr) {
   }
 }
 
-void ASTWalker::Visit(CastNode& expr) {
+void ASTWalker::Visit(const CastNode& expr) {
   if (state.top().first == State::Empty) {
     expr.expr->Visit(*this);
     return;
@@ -526,7 +526,7 @@ void ASTWalker::Visit(CastNode& expr) {
   }
 }
 
-void ASTWalker::Visit(BinopNode& expr) {
+void ASTWalker::Visit(const BinopNode& expr) {
   if (state.top().first == State::Empty) {
     // increments / decrements might happen on either side
     expr.left->Visit(*this);
@@ -743,7 +743,7 @@ void ASTWalker::Visit(BinopNode& expr) {
   }
 }
 
-void ASTWalker::Visit(TernaryNode& expr) {
+void ASTWalker::Visit(const TernaryNode& expr) {
   cotyl::Assert(state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   
   if (state.top().first == State::Read) {
@@ -822,7 +822,7 @@ void ASTWalker::Visit(TernaryNode& expr) {
   }
 }
 
-void ASTWalker::Visit(AssignmentNode& expr) {
+void ASTWalker::Visit(const AssignmentNode& expr) {
   cotyl::Assert(state.top().first == State::Empty || state.top().first == State::Read);
   
   state.push({State::Read, {}});

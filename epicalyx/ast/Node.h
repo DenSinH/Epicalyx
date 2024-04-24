@@ -16,7 +16,7 @@ struct Node {
   virtual ~Node() = default;
 
   virtual std::string ToString() const = 0;
-  virtual void Visit(NodeVisitor& visitor) = 0;
+  virtual void Visit(NodeVisitor& visitor) const = 0;
 };
 
 struct DeclNode : public Node {

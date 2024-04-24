@@ -51,6 +51,7 @@ void ASTWalker::EndFunction() {
 
 var_index_t ASTWalker::AddLocal(cotyl::CString&& name, const type::AnyType& type, std::optional<var_index_t> arg_index) {
   auto c_idx = emitter.c_counter++;
+  // guarantees the type is complete
   size_t size = type->Sizeof();
   auto& loc = emitter.current_function->locals.emplace(c_idx, calyx::Local{detail::GetLocalType(type).first, c_idx, size, std::move(arg_index)}).first->second;
   locals.Set(std::move(name), LocalData{ &loc, type });
@@ -64,7 +65,7 @@ const type::AnyType& ASTWalker::GetSymbolType(const cotyl::CString& symbol) cons
   return symbol_types.at(symbol);
 }
 
-void ASTWalker::Visit(epi::DeclarationNode& decl) {
+void ASTWalker::Visit(const epi::DeclarationNode& decl) {
   if (locals.Depth() == 1) {
     // global symbols
     AddGlobal(decl.name, decl.type);
@@ -99,7 +100,7 @@ void ASTWalker::Visit(epi::DeclarationNode& decl) {
     }
   }
   else {
-    auto c_idx = AddLocal(cotyl::CString(decl.name), decl.type);
+    auto c_idx = AddLocal(cotyl::CString{decl.name}, decl.type);
 
     if (decl.value.has_value()) {
       if (std::holds_alternative<pExpr>(decl.value.value().value)) {
@@ -108,7 +109,7 @@ void ASTWalker::Visit(epi::DeclarationNode& decl) {
         state.pop();
         // current now holds the expression id that we want to assign with
         state.push({State::Assign, {.var = current}});
-        IdentifierNode(std::move(decl.name), std::move(decl.type)).Visit(*this);
+        Visit(IdentifierNode(cotyl::CString{decl.name}, type::AnyType{decl.type}));
         state.pop();
       }
       else {
@@ -119,15 +120,15 @@ void ASTWalker::Visit(epi::DeclarationNode& decl) {
   }
 }
 
-void ASTWalker::Visit(FunctionDefinitionNode& decl) {
-  NewFunction(std::move(decl.symbol), decl.signature);
+void ASTWalker::Visit(const FunctionDefinitionNode& decl) {
+  NewFunction(cotyl::CString{decl.symbol}, decl.signature);
 
   // same as normal compound statement besides arguments
   locals.NewLayer();
   for (int i = 0; i < decl.signature.arg_types.size(); i++) {
     // turn arguments into locals
     auto& arg = decl.signature.arg_types[i];
-    AddLocal(cotyl::CString(arg.name), *arg.type, i);
+    AddLocal(cotyl::CString{arg.name}, *arg.type, i);
   }
 
   // locals layer

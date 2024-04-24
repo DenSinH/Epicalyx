@@ -8,7 +8,7 @@ namespace epi::ast {
 
 struct EmptyNode final : StatNode {
   std::string ToString() const final { return ""; }
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 struct IfNode final : StatNode {
@@ -20,7 +20,7 @@ struct IfNode final : StatNode {
   pStat _else;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
   pStat Reduce() final;
 };
 
@@ -32,7 +32,7 @@ struct WhileNode final : StatNode {
   pStat stat;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
   pStat Reduce() final;
 };
 
@@ -44,7 +44,7 @@ struct DoWhileNode final : StatNode {
   pExpr cond;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
   pStat Reduce() final;
 };
 
@@ -66,7 +66,7 @@ struct ForNode final : StatNode {
   pStat stat;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
   pStat Reduce() final;
 };
 
@@ -78,7 +78,7 @@ struct LabelNode final : StatNode {
   pStat stat;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 
@@ -90,7 +90,7 @@ struct SwitchNode final : StatNode {
   pStat stat;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 struct CaseNode final : StatNode {
@@ -101,7 +101,7 @@ struct CaseNode final : StatNode {
   pStat stat;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 struct DefaultNode final : StatNode {
@@ -111,7 +111,7 @@ struct DefaultNode final : StatNode {
   pStat stat;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 struct GotoNode final : StatNode {
@@ -121,7 +121,7 @@ struct GotoNode final : StatNode {
   cotyl::CString label;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 struct ReturnNode final : StatNode {
@@ -131,19 +131,19 @@ struct ReturnNode final : StatNode {
   pExpr expr;
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 struct BreakNode final : StatNode {
 
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 struct ContinueNode final : StatNode {
 
   std::string ToString() const;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 struct CompoundNode final : StatNode {
@@ -152,7 +152,7 @@ struct CompoundNode final : StatNode {
 
   cotyl::vector<pNode<Node>> stats{};
   std::string ToString() const final;
-  void Visit(NodeVisitor& visitor) final { visitor.Visit(*this); }
+  VISIT_IMPL
 };
 
 }

@@ -23,9 +23,9 @@ struct ASTWalker : public ast::NodeVisitor {
   Emitter& emitter;
 
   // public access for making the program
-  void Visit(ast::DeclarationNode& decl) final;
-  void Visit(ast::FunctionDefinitionNode& decl) final;
-  
+  void Visit(const ast::DeclarationNode& decl) final;
+  void Visit(const ast::FunctionDefinitionNode& decl) final;
+
 private:
   enum class State {
     Empty, Assign, Address, Read, ConditionalBranch,
@@ -100,47 +100,47 @@ private:
   BinopCastResult BinopCastHelper(var_index_t left, var_index_t right);
   void BinopHelper(var_index_t left, calyx::BinopType op, var_index_t right);
 
-  void Visit(ast::IdentifierNode& decl) final;
+  void Visit(const ast::IdentifierNode& decl) final;
 
-  void Visit(ast::NumericalConstantNode<i8>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstantNode<u8>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstantNode<i16>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstantNode<u16>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstantNode<i32>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstantNode<u32>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstantNode<i64>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstantNode<u64>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstantNode<float>& expr) final { ConstVisitImpl(expr); }
-  void Visit(ast::NumericalConstantNode<double>& expr) final { ConstVisitImpl(expr); }
+  void Visit(const ast::NumericalConstantNode<i8>& expr) final { ConstVisitImpl(expr); }
+  void Visit(const ast::NumericalConstantNode<u8>& expr) final { ConstVisitImpl(expr); }
+  void Visit(const ast::NumericalConstantNode<i16>& expr) final { ConstVisitImpl(expr); }
+  void Visit(const ast::NumericalConstantNode<u16>& expr) final { ConstVisitImpl(expr); }
+  void Visit(const ast::NumericalConstantNode<i32>& expr) final { ConstVisitImpl(expr); }
+  void Visit(const ast::NumericalConstantNode<u32>& expr) final { ConstVisitImpl(expr); }
+  void Visit(const ast::NumericalConstantNode<i64>& expr) final { ConstVisitImpl(expr); }
+  void Visit(const ast::NumericalConstantNode<u64>& expr) final { ConstVisitImpl(expr); }
+  void Visit(const ast::NumericalConstantNode<float>& expr) final { ConstVisitImpl(expr); }
+  void Visit(const ast::NumericalConstantNode<double>& expr) final { ConstVisitImpl(expr); }
   template<typename T>
-  void ConstVisitImpl(ast::NumericalConstantNode<T>& expr);
+  void ConstVisitImpl(const ast::NumericalConstantNode<T>& expr);
 
-  void Visit(ast::StringConstantNode& expr) final;
-  void Visit(ast::ArrayAccessNode& expr) final;
-  void Visit(ast::FunctionCallNode& expr) final;
-  void Visit(ast::MemberAccessNode& expr) final;
-  void Visit(ast::TypeInitializerNode& expr) final;
-  void Visit(ast::PostFixNode& expr) final;
-  void Visit(ast::UnopNode& expr) final;
-  void Visit(ast::CastNode& expr) final;
-  void Visit(ast::BinopNode& expr) final;
-  void Visit(ast::TernaryNode& expr) final;
-  void Visit(ast::AssignmentNode& expr) final;
+  void Visit(const ast::StringConstantNode& expr) final;
+  void Visit(const ast::ArrayAccessNode& expr) final;
+  void Visit(const ast::FunctionCallNode& expr) final;
+  void Visit(const ast::MemberAccessNode& expr) final;
+  void Visit(const ast::TypeInitializerNode& expr) final;
+  void Visit(const ast::PostFixNode& expr) final;
+  void Visit(const ast::UnopNode& expr) final;
+  void Visit(const ast::CastNode& expr) final;
+  void Visit(const ast::BinopNode& expr) final;
+  void Visit(const ast::TernaryNode& expr) final;
+  void Visit(const ast::AssignmentNode& expr) final;
 
-  void Visit(ast::EmptyNode& stat) final;
-  void Visit(ast::IfNode& stat) final;
-  void Visit(ast::WhileNode& stat) final;
-  void Visit(ast::DoWhileNode& stat) final;
-  void Visit(ast::ForNode& stat) final;
-  void Visit(ast::LabelNode& stat) final;
-  void Visit(ast::SwitchNode& stat) final;
-  void Visit(ast::CaseNode& stat) final;
-  void Visit(ast::DefaultNode& stat) final;
-  void Visit(ast::GotoNode& stat) final;
-  void Visit(ast::ReturnNode& stat) final;
-  void Visit(ast::BreakNode& stat) final;
-  void Visit(ast::ContinueNode& stat) final;
-  void Visit(ast::CompoundNode& stat) final;
+  void Visit(const ast::EmptyNode& stat) final;
+  void Visit(const ast::IfNode& stat) final;
+  void Visit(const ast::WhileNode& stat) final;
+  void Visit(const ast::DoWhileNode& stat) final;
+  void Visit(const ast::ForNode& stat) final;
+  void Visit(const ast::LabelNode& stat) final;
+  void Visit(const ast::SwitchNode& stat) final;
+  void Visit(const ast::CaseNode& stat) final;
+  void Visit(const ast::DefaultNode& stat) final;
+  void Visit(const ast::GotoNode& stat) final;
+  void Visit(const ast::ReturnNode& stat) final;
+  void Visit(const ast::BreakNode& stat) final;
+  void Visit(const ast::ContinueNode& stat) final;
+  void Visit(const ast::CompoundNode& stat) final;
 };
 
 }
