@@ -152,7 +152,10 @@ cotyl::vector<I> TopSort(const Graph<I, T, true>& graph, bool acyclic) {
     }
   }
 
-  while (!candidates.empty()) {
+  // can't check candidates, since the graph might have multiple
+  // connected components that start with loops, causing it to
+  // not add all nodes to the resulting topological sort
+  while (!todo.empty()) {
     auto order_size = result.size();
     // all candidates MUST be in todo,
     // as they are selected as the nodes with an input from the previous "layer"
@@ -173,6 +176,10 @@ cotyl::vector<I> TopSort(const Graph<I, T, true>& graph, bool acyclic) {
     // for cycles, pick the node with the least inputs left
     if (order_size == result.size()) {
       std::pair<u32, I> least = {-1, I{}};
+      if (candidates.empty()) {
+        candidates = {todo.begin(), todo.end()};
+      }
+      
       for (const auto& id : candidates) {
         const auto& node = graph.At(id);
         auto inputs = std::count_if(
@@ -198,89 +205,6 @@ cotyl::vector<I> TopSort(const Graph<I, T, true>& graph, bool acyclic) {
   }
 
   cotyl::Assert(result.size() == graph.size(), "Not all nodes added to topological sort!");
-  return std::move(result);
-}
-
-template<typename I, typename T>
-cotyl::vector<cotyl::vector<I>> LayeredTopSort(const Graph<I, T, true>& graph, bool acyclic) {
-  cotyl::vector<cotyl::vector<I>> result{};
-  cotyl::unordered_set<I> todo{};
-  cotyl::flat_set<I> candidates{};
-
-  result.push_back({});
-  for (const auto& [id, node] : graph) {
-    // first layer is only nodes that have no inputs
-    if (node.from.empty()) {
-      result.back().push_back(id);
-      for (const auto& to_idx : node.to) {
-        candidates.emplace(to_idx);
-      }
-    }
-    else {
-      todo.insert(id);
-    }
-  }
-
-  if (!acyclic) {
-    if (result.back().empty() && !todo.empty()) [[unlikely]] {
-      // possible if only loops exist in fist layer
-      result.pop_back();
-      candidates.emplace(*todo.begin());
-    }
-  }
-
-  while (!candidates.empty()) {
-    // see remark before on candidates always being filled
-    result.push_back({});
-    for (const auto& id : candidates) {
-      // check if all inputs are done
-      const auto& node = graph.At(id);
-      bool allow_add = std::none_of(
-        node.from.begin(), node.from.end(), [&](const auto& from_id) { return todo.contains(from_id); }
-      );
-
-      if (allow_add) {
-        result.back().push_back(id);
-      }
-    }
-
-    // for cycles, pick the node with the least inputs left
-    if (result.back().empty()) {
-      std::pair<u32, I> least = {-1, I{}};
-      for (const auto& id : candidates) {
-        const auto& node = graph.At(id);
-        auto inputs = std::count_if(
-          node.from.begin(), node.from.end(), [&](const auto& from_id) { return todo.contains(from_id); }
-        );
-        least = std::min(least, {inputs, id});
-      }
-
-      result.back().push_back(least.second);
-    }
-
-    candidates.clear();
-    for (const auto& id : result.back()) {
-      todo.erase(id);
-      for (const auto& to_idx : graph.At(id).to) {
-        candidates.emplace(to_idx);
-      }
-    }
-
-    if (!acyclic) {
-      // remove any candidates that were done already
-      cotyl::erase_if_set(candidates, [&](const auto& idx) { return !todo.contains(idx); });
-    }
-  }
-
-  cotyl::Assert(
-    std::accumulate(
-      result.begin(),
-      result.end(),
-      0,
-      [](auto acc, const auto& layer) { return acc + layer.size(); }
-    ) == graph.size(), 
-    "Not all nodes added to topological sort!"
-  );
   return std::move(result);
 }
 

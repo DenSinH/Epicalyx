@@ -90,7 +90,7 @@ std::string Binop<T>::ToString() const {
   else {
     return cotyl::FormatStr(
       "binim v%s = v%s %s<%s> %s", 
-      this->idx, left_idx, op_str, detail::type_string<T>::value, right.GetImm()
+      this->idx, left_idx, op_str, detail::type_string<T>::value, right.GetScalar()
     );
   }
 }
@@ -113,7 +113,7 @@ std::string Shift<T>::ToString() const {
     else {
       return cotyl::FormatStr(
         "shift v%s = imm(%s) %s<%s> v%s",
-        this->idx, left.GetImm(), op_str, detail::type_string<T>::value, right.GetVar()
+        this->idx, left.GetScalar(), op_str, detail::type_string<T>::value, right.GetVar()
       );
     }
   }
@@ -121,13 +121,13 @@ std::string Shift<T>::ToString() const {
     if (left.IsVar()) {
       return cotyl::FormatStr(
         "shift v%s = v%s %s<%s> imm(%s)",
-        this->idx, left.GetVar(), op_str, detail::type_string<T>::value, right.GetImm()
+        this->idx, left.GetVar(), op_str, detail::type_string<T>::value, right.GetScalar()
       );
     }
     else {
       return cotyl::FormatStr(
         "shift v%s = imm(%s) %s<%s> imm(%s)",
-        this->idx, left.GetImm(), op_str, detail::type_string<T>::value, right.GetImm()
+        this->idx, left.GetScalar(), op_str, detail::type_string<T>::value, right.GetScalar()
       );
     }
   }
@@ -158,7 +158,7 @@ std::string Compare<T>::ToString() const {
     return cotyl::FormatStr(
         "cmpim v%s = v%s %s<%s> %s",
         this->idx, left_idx, cmp_string(op),
-        detail::type_string<T>::value, right.GetImm()
+        detail::type_string<T>::value, right.GetScalar()
     );
   }
 }
@@ -180,7 +180,7 @@ std::string BranchCompare<T>::ToString() const {
   else {
     return cotyl::FormatStr(
         "brnch (v%s %s<%s> imm(%s)) ? L%s : L%s",
-        left_idx, cmp_string(op), detail::type_string<T>::value, right.GetImm(),
+        left_idx, cmp_string(op), detail::type_string<T>::value, right.GetScalar(),
         tdest, fdest
     );
   }
@@ -203,7 +203,7 @@ std::string AddToPointer<T>::ToString() const {
     else {
       return cotyl::FormatStr(
         "paddi v%s = v%s + %s * imm(%s)", 
-        this->idx, ptr.GetVar(), stride, right.GetImm()
+        this->idx, ptr.GetVar(), stride, right.GetScalar()
       );
     }
   }
@@ -211,13 +211,13 @@ std::string AddToPointer<T>::ToString() const {
     if (right.IsVar()) {
       return cotyl::FormatStr(
         "ptrad v%s = %s + %s * v%s", 
-        this->idx, ptr.GetImm(), stride, right.GetVar()
+        this->idx, ptr.GetScalar(), stride, right.GetVar()
       );
     }
     else {
       return cotyl::FormatStr(
         "paddi v%s = %s + %s * imm(%s)", 
-        this->idx, ptr.GetImm(), stride, right.GetImm()
+        this->idx, ptr.GetScalar(), stride, right.GetScalar()
       );
     }
   }
@@ -263,7 +263,7 @@ std::string StoreLocal<T>::ToString() const {
   else {
     return cotyl::FormatStr(
       "strim c%s = <%s> imm(%s)", 
-      loc_idx, detail::type_string<T>::value, this->src.GetImm()
+      loc_idx, detail::type_string<T>::value, this->src.GetScalar()
     );
   }
 }
@@ -290,7 +290,7 @@ std::string StoreGlobal<T>::ToString() const {
   else {
     return cotyl::FormatStr(
       "sglim [%s] = <%s> %s",
-      symbol, detail::type_string<T>::value, this->src.GetImm()
+      symbol, detail::type_string<T>::value, this->src.GetScalar()
     );
   }
 }
@@ -313,7 +313,7 @@ std::string StoreToPointer<T>::ToString() const {
   else {
     return cotyl::FormatStr(
       "strim *v%s <-<%s> imm(%s)",
-      ptr_idx, detail::type_string<T>::value, this->src.GetImm()
+      ptr_idx, detail::type_string<T>::value, this->src.GetScalar()
     );
   }
 }
@@ -334,7 +334,7 @@ std::string Return<T>::ToString() const {
     else {
       return cotyl::FormatStr(
         "retrn [%s]imm(%s)", 
-        detail::type_string<T>::value, val.GetImm()
+        detail::type_string<T>::value, val.GetScalar()
       );
     }
   }

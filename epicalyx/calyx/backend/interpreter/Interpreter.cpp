@@ -15,7 +15,7 @@ namespace epi::calyx {
 
 using ::epi::stringify;
 
-void Interpreter::InterpretGlobalInitializer(global_t& dest, Function&& func) {
+void Interpreter::InterpretGlobalInitializer(Global& dest, Function&& func) {
   calyx::ArgData no_args{};
   call_stack.emplace(program_counter_t{nullptr, {0, 0}}, -1, &no_args);
   EnterFunction(&func);
@@ -28,20 +28,26 @@ void Interpreter::InterpretGlobalInitializer(global_t& dest, Function&& func) {
     cotyl::Assert(!called, "Call invalid in global ininitializer");
   }
 
-  std::visit([&](auto& var) {
-    using var_t = decltype_t(var);
+  // todo: visit global type and get var based on that
+  // that is what caused the bad global types
+  swl::visit(
+    swl::overloaded{
+      [&](const auto& var) {
+      // using var_t = decltype_t(var);
 
-    if constexpr(std::is_same_v<var_t, Pointer>) {
-      auto pval = ReadPointer(var.value);
-      if (std::holds_alternative<label_offset_t>(pval)) {
-        dest = std::get<label_offset_t>(pval);
-      }
-      else {
-        dest = Pointer{std::get<i64>(pval)};
-      }
-    }
-    else {
-      dest = var;
+      // if constexpr(std::is_same_v<var_t, Pointer>) {
+      //   auto pval = ReadPointer(var.value);
+      //   if (swl::holds_alternative<LabelOffset>(pval)) {
+      //     dest = swl::get<LabelOffset>(pval);
+      //   }
+      //   else {
+      //     dest = Pointer{swl::get<i64>(pval)};
+      //   }
+      // }
+      // else {
+      //   static_assert(cotyl::is_instantiation_of_v<Immediate, var_t>);
+      //   dest = Global{swl::in_place_type<var_t>, var};
+      // }
     }
   }, vars.Get(-1));
 }
@@ -52,21 +58,22 @@ void Interpreter::Emit(const AnyDirective& dir) {
 
 void Interpreter::Interpret(const Program& program) {
   for (const auto& [symbol, global] : program.globals) {
-    auto index = global_data.size();
-    globals.emplace(symbol, index);
-    std::visit([&](auto& glob) {
-      using glob_t = decltype_t(glob);
-
-      if constexpr(std::is_same_v<glob_t, label_offset_t>) {
-        Pointer ptr = MakePointer(glob);
-        global_data.emplace_back(sizeof(ptr));
-        std::memcpy(global_data.back().data(), &ptr, sizeof(ptr));
-      }
-      else {
-        global_data.emplace_back(sizeof(glob));
-        std::memcpy(global_data.back().data(), &glob, sizeof(glob));
-      }
-    }, global);
+    swl::visit(
+      swl::overloaded{
+        // we have to handle label offsets differently, since
+        // instructions do not care about LabelOffset types, only 
+        // Pointer types
+        [&](const LabelOffset& glob) {
+          Pointer ptr = MakePointer(glob);
+          globals.emplace(symbol, std::move(ptr));
+        },
+        // any other type can just be passed straight off
+        [&](const auto& glob) {
+          globals.emplace(symbol, glob);
+        }
+      },
+      global
+    );
   }
 
   EnterFunction(&program.functions.at(cotyl::CString("main")));
@@ -81,17 +88,23 @@ void Interpreter::Interpret(const Program& program) {
     } 
   }
 
-  std::visit([&](auto& var) {
-    if constexpr(std::is_same_v<decltype_t(var), Pointer>) {
-      std::cout << "return pointer" << std::endl;
-    }
-    else if constexpr(std::is_same_v<decltype_t(var), Struct>) {
-      std::cout << "return struct" << std::endl;
-    }
-    else {
-      std::cout << "return " << var << std::endl;
-    }
-  }, returned.value());
+  swl::visit(
+    swl::overloaded{
+      [](const Pointer& var) {
+        std::cout << "return pointer" << std::endl;
+      },
+      [](const Struct& var) {
+        std::cout << "return struct" << std::endl;
+      },
+      []<typename T>(const Scalar<T>& var) {
+        static_assert(cotyl::is_instantiation_of_v<Scalar, decltype_t(var)>);
+        std::cout << "return " << var.value << std::endl;
+      },
+      // exhaustive variant access
+      [](const auto& variant) { static_assert(!sizeof(variant)); }
+    },
+    returned.value()
+  );
 }
 
 void Interpreter::LoadArg(const calyx::Local& loc) {
@@ -102,57 +115,57 @@ void Interpreter::LoadArg(const calyx::Local& loc) {
   const auto arg_idx = loc.arg_idx.value();
   switch (loc.type) {
     case Local::Type::I8: {
-      i32 value = std::get<i32>(vars.Get(args->args[arg_idx].first));
+      i8 value = swl::get<i32>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U8: {
-      u32 value = std::get<u32>(vars.Get(args->args[arg_idx].first));
+      u8 value = swl::get<u32>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::I16: {
-      i32 value = std::get<i32>(vars.Get(args->args[arg_idx].first));
+      i16 value = swl::get<i32>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U16: {
-      u32 value = std::get<u32>(vars.Get(args->args[arg_idx].first));
+      u16 value = swl::get<u32>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::I32: {
-      i32 value = std::get<i32>(vars.Get(args->args[arg_idx].first));
+      i32 value = swl::get<i32>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U32: {
-      u32 value = std::get<u32>(vars.Get(args->args[arg_idx].first));
+      u32 value = swl::get<u32>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::I64: {
-      i64 value = std::get<i64>(vars.Get(args->args[arg_idx].first));
+      i64 value = swl::get<i64>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U64: {
-      u64 value = std::get<u64>(vars.Get(args->args[arg_idx].first));
+      u64 value = swl::get<u64>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::Float: {
-      float value = std::get<float>(vars.Get(args->args[arg_idx].first));
+      float value = swl::get<float>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::Double: {
-      double value = std::get<double>(vars.Get(args->args[arg_idx].first));
+      double value = swl::get<double>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::Pointer: {
-      Pointer value = std::get<Pointer>(vars.Get(args->args[arg_idx].first));
+      Pointer value = swl::get<Pointer>(vars.Get(args->args[arg_idx].first));
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
@@ -187,7 +200,7 @@ void Interpreter::Emit(const Cast<To, From>& op) {
   using src_t = calyx_op_type(op)::src_t;
   if constexpr(std::is_same_v<To, Pointer>) {
     To value;
-    From from = std::get<From>(vars.Get(op.right_idx));
+    From from = swl::get<From>(vars.Get(op.right_idx));
     if constexpr(std::is_same_v<From, Pointer>) {
       vars.Set(op.idx, MakePointer(ReadPointer(from.value)));
     }
@@ -198,18 +211,18 @@ void Interpreter::Emit(const Cast<To, From>& op) {
   else if constexpr(std::is_same_v<From, Pointer>) {
     // we know that To is not a pointer type
     result_t value;
-    src_t from = std::get<src_t>(vars.Get(op.right_idx));
+    src_t from = swl::get<src_t>(vars.Get(op.right_idx));
 
     // assume we don't get label offsets here, otherwise we read garbage anyway
     auto pval = ReadPointer(from.value);
-    if (std::holds_alternative<i64>(pval)) {
-      value = std::get<i64>(pval);
+    if (swl::holds_alternative<i64>(pval)) {
+      value = swl::get<i64>(pval);
     }
     vars.Set(op.idx, value);
   }
   else {
     result_t value;
-    auto from = std::get<src_t>(vars.Get(op.right_idx));
+    auto from = swl::get<src_t>(vars.Get(op.right_idx));
     if constexpr(std::is_floating_point_v<src_t>) {
       if constexpr(std::is_floating_point_v<result_t>) {
         value = (result_t)from;
@@ -262,10 +275,10 @@ void Interpreter::Emit(const StoreLocal<T>& op) {
     using src_t = calyx_op_type(op)::src_t;
     T value;
     if (op.src.IsVar()) {
-      value = (T)std::get<src_t>(vars.Get(op.src.GetVar()));
+      value = (T)swl::get<src_t>(vars.Get(op.src.GetVar()));
     }
     else {
-      value = (T)op.src.GetImm();
+      value = (T)op.src.GetScalar();
     }
     memcpy(&stack[locals.Get(op.loc_idx).first], &value, sizeof(T));
   }
@@ -278,15 +291,14 @@ void Interpreter::Emit(const LoadGlobal<T>& op) {
   }
   else {
     using result_t = calyx_op_type(op)::result_t;
-    cotyl::Assert(global_data[globals.at(op.symbol)].size() == sizeof(T));
-    T value;
-    std::memcpy(&value, global_data[globals.at(op.symbol)].data(), sizeof(T));
+    cotyl::Assert(swl::holds_alternative<T>(globals.at(op.symbol)));
+    T value = swl::get<T>(globals.at(op.symbol));
     vars.Set(op.idx, (result_t)value);
   }
 }
 
 void Interpreter::Emit(const LoadGlobalAddr& op) {
-  vars.Set(op.idx, MakePointer(label_offset_t{cotyl::CString(op.symbol), 0}));
+  vars.Set(op.idx, MakePointer(LabelOffset{cotyl::CString(op.symbol), 0}));
 }
 
 template<typename T>
@@ -296,35 +308,35 @@ void Interpreter::Emit(const StoreGlobal<T>& op) {
   }
   else {
     using src_t = calyx_op_type(op)::src_t;
-    cotyl::Assert(global_data[globals.at(op.symbol)].size() == sizeof(T));
+    cotyl::Assert(swl::holds_alternative<T>(globals.at(op.symbol)));
     T value;
     if (op.src.IsVar()) {
-      value = (T)std::get<src_t>(vars.Get(op.src.GetVar()));
+      value = (T)swl::get<src_t>(vars.Get(op.src.GetVar()));
     }
     else {
-      value = (T)op.src.GetImm();
+      value = (T)op.src.GetScalar();
     }
-    std::memcpy(global_data[globals.at(op.symbol)].data(), &value, sizeof(T));
+    globals.at(op.symbol).emplace(std::move(value));
   }
 }
 
 template<typename T>
 void Interpreter::Emit(const LoadFromPointer<T>& op) {
-  auto pointer = ReadPointer(std::get<Pointer>(vars.Get(op.ptr_idx)).value);
+  auto pointer = ReadPointer(swl::get<Pointer>(vars.Get(op.ptr_idx)).value);
   if constexpr(std::is_same_v<T, Struct>) {
     throw cotyl::UnimplementedException("load struct from pointer");
   }
   else {
     T value;
-    if (std::holds_alternative<i64>(pointer)) {
-      const auto pval = std::get<i64>(pointer);
+    if (swl::holds_alternative<i64>(pointer)) {
+      const auto pval = swl::get<i64>(pointer);
       cotyl::Assert(pval >= 0);
       memcpy(&value, &stack[pval] + op.offset, sizeof(T));
     }
     else {
-      const auto pval = std::get<label_offset_t>(pointer);
-      cotyl::Assert(global_data[globals[pval.label]].size() - op.offset - pval.offset >= sizeof(T));
-      memcpy(&value, global_data[globals[pval.label]].data() + op.offset + pval.offset, sizeof(T));
+      const auto pval = swl::get<LabelOffset>(pointer);
+    //   cotyl::Assert(global_data[globals[pval.label]].size() - op.offset - pval.offset >= sizeof(T));
+      throw cotyl::UnimplementedException("Partial global data load");
     }
     using result_t = calyx_op_type(op)::result_t;
     vars.Set(op.idx, (result_t)value);
@@ -333,7 +345,7 @@ void Interpreter::Emit(const LoadFromPointer<T>& op) {
 
 template<typename T>
 void Interpreter::Emit(const StoreToPointer<T>& op) {
-  auto pointer = ReadPointer(std::get<Pointer>(vars.Get(op.ptr_idx)).value);
+  auto pointer = ReadPointer(swl::get<Pointer>(vars.Get(op.ptr_idx)).value);
   if constexpr(std::is_same_v<T, Struct>) {
     throw cotyl::UnimplementedException("store struct to pointer");
   }
@@ -341,21 +353,21 @@ void Interpreter::Emit(const StoreToPointer<T>& op) {
     using src_t = calyx_op_type(op)::src_t;
     T value;
     if (op.src.IsVar()) {
-      value = (T)std::get<src_t>(vars.Get(op.src.GetVar()));
+      value = (T)swl::get<src_t>(vars.Get(op.src.GetVar()));
     }
     else {
-      value = (T)op.src.GetImm();
+      value = (T)op.src.GetScalar();
     }
 
-    if (std::holds_alternative<i64>(pointer)) {
-      const auto pval = std::get<i64>(pointer);
+    if (swl::holds_alternative<i64>(pointer)) {
+      const auto pval = swl::get<i64>(pointer);
       cotyl::Assert(pval >= 0);
       memcpy(&stack[pval + op.offset], &value, sizeof(T));
     }
     else {
-      const auto pval = std::get<label_offset_t>(pointer);
-      cotyl::Assert(global_data[globals[pval.label]].size() - op.offset - pval.offset >= sizeof(T));
-      memcpy(global_data[globals[pval.label]].data() + op.offset + pval.offset, &value, sizeof(T));
+      const auto pval = swl::get<LabelOffset>(pointer);
+    //   cotyl::Assert(global_data[globals[pval.label]].size() - op.offset - pval.offset >= sizeof(T));
+      throw cotyl::UnimplementedException("Partial global data store");
     }
   }
 }
@@ -363,14 +375,14 @@ void Interpreter::Emit(const StoreToPointer<T>& op) {
 template<typename T>
 void Interpreter::Emit(const Call<T>& op) {
   call_stack.emplace(pos, op.idx, op.args.get());
-  auto pointer = ReadPointer(std::get<Pointer>(vars.Get(op.fn_idx)).value);
+  auto pointer = ReadPointer(swl::get<Pointer>(vars.Get(op.fn_idx)).value);
   const Function* func;
-  if (std::holds_alternative<i64>(pointer)) {
-    // pos.pos.first = std::get<i64>(pointer);
+  if (swl::holds_alternative<i64>(pointer)) {
+    // pos.pos.first = swl::get<i64>(pointer);
     throw cotyl::UnimplementedException("Interpreter call pointer value");
   }
   else {
-    auto pval = std::get<label_offset_t>(pointer);
+    auto pval = swl::get<LabelOffset>(pointer);
     called = cotyl::CString(pval.label);
     cotyl::Assert(pval.offset == 0, "Cannot jump to offset label in call");
   }
@@ -401,7 +413,7 @@ void Interpreter::Emit(const Return<T>& op) {
           returned = top_vars.at(op.val.GetVar());
         }
         else {
-          returned = op.val.GetImm();
+          returned = op.val.GetScalar();
         }
       }
       else {
@@ -414,7 +426,7 @@ void Interpreter::Emit(const Return<T>& op) {
       pos = _pos;
       if constexpr(!std::is_same_v<T, void>) {
         if (op.val.IsVar()) vars.Set(return_to, top_vars.at(op.val.GetVar()));
-        else vars.Set(return_to, op.val.GetImm());
+        else vars.Set(return_to, op.val.GetScalar());
       }
     }
 
@@ -433,7 +445,7 @@ void Interpreter::Emit(const Imm<T>& op) {
 template<typename T>
 void Interpreter::Emit(const Unop<T>& op) {
   cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
-  T right = std::get<T>(vars.Get(op.right_idx));
+  T right = swl::get<T>(vars.Get(op.right_idx));
   switch (op.op) {
     case UnopType::Neg:
       vars.Set(op.idx, (T)-right); break;
@@ -450,13 +462,13 @@ void Interpreter::Emit(const Unop<T>& op) {
 template<typename T>
 void Interpreter::Emit(const Binop<T>& op) {
   cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
-  T left = std::get<T>(vars.Get(op.left_idx));
+  T left = swl::get<T>(vars.Get(op.left_idx));
   T right;
   if (op.right.IsVar()) {
-    right = std::get<T>(vars.Get(op.right.GetVar()));
+    right = swl::get<T>(vars.Get(op.right.GetVar()));
   }
   else {
-    right = op.right.GetImm();
+    right = op.right.GetScalar();
   }
 
   T result;
@@ -511,16 +523,16 @@ void Interpreter::Emit(const Shift<T>& op) {
   T left;
   calyx_op_type(op)::shift_t right;
   if (op.left.IsVar()) {
-    left = std::get<T>(vars.Get(op.left.GetVar()));
+    left = swl::get<T>(vars.Get(op.left.GetVar()));
   }
   else {
-    left = op.left.GetImm();
+    left = op.left.GetScalar();
   }
   if (op.right.IsVar()) {
-    right = std::get<calyx_op_type(op)::shift_t>(vars.Get(op.right.GetVar()));
+    right = swl::get<calyx_op_type(op)::shift_t>(vars.Get(op.right.GetVar()));
   }
   else {
-    right = op.right.GetImm();
+    right = op.right.GetScalar();
   }
   
   switch (op.op) {
@@ -538,22 +550,56 @@ void Interpreter::Emit(const Shift<T>& op) {
 
 template<typename T>
 void Interpreter::Emit(const Compare<T>& op) {
-  T left = std::get<T>(vars.Get(op.left_idx));
+  T left = swl::get<T>(vars.Get(op.left_idx));
   T right;
   if (op.right.IsVar()) {
-    right = std::get<T>(vars.Get(op.right.GetVar()));
+    right = swl::get<T>(vars.Get(op.right.GetVar()));
   }
   else {
-    right = op.right.GetImm();
+    right = op.right.GetScalar();
   }
   calyx_op_type(op)::result_t result;
 
   if constexpr(std::is_same_v<T, calyx::Pointer>) {
     auto lptr = ReadPointer(left.value);
     auto rptr = ReadPointer(right.value);
-    if (std::holds_alternative<i64>(lptr) && std::holds_alternative<i64>(rptr)) {
-      auto lval = std::get<i64>(lptr);
-      auto rval = std::get<i64>(rptr);
+
+    if (swl::holds_alternative<LabelOffset>(lptr) && swl::holds_alternative<LabelOffset>(rptr)) {
+      LabelOffset llab = swl::get<LabelOffset>(lptr);
+      LabelOffset rlab = swl::get<LabelOffset>(rptr);
+      if (llab.label == rlab.label) {
+        // same label, values are the same if and only if the offset is the same
+        result = llab.offset == rlab.offset;
+      }
+      else if (llab.offset == rlab.offset) {
+        // same offset with different labels is always false
+        result = false;
+      }
+      else {
+        throw std::runtime_error("Cannot compare pointers to different symbols with varying offsets");
+      }
+    }
+    else {
+      i64 lval, rval;
+      if (swl::holds_alternative<i64>(lptr)) {
+        lval = swl::get<i64>(lptr);
+        if (swl::holds_alternative<i64>(rptr)) {
+          rval = swl::get<i64>(rptr);
+        }
+        else {
+          if (lval != 0) throw std::runtime_error("Comparing label to non-zero pointer");
+          // 0 is ALWAYS less and not equal to label, regardless of the label
+          rval = 1;
+        }
+      }
+      else {
+        // must have rptr = i64, lptr = LabelOffset
+        rval = swl::get<i64>(rptr);
+        if (rval != 0) throw std::runtime_error("Comparing label to non-zero pointer");;
+        // 0 is ALWAYS less and not equal to label, regardless of the label
+        lval = 1;
+      }
+
       switch (op.op) {
         case CmpType::Eq: result = lval == rval; break;
         case CmpType::Ne: result = lval != rval; break;
@@ -562,9 +608,6 @@ void Interpreter::Emit(const Compare<T>& op) {
         case CmpType::Gt: result = lval >  rval; break;
         case CmpType::Ge: result = lval >= rval; break;
       }
-    }
-    else {
-      throw cotyl::UnimplementedException("symbol compare");
     }
   }
   else {
@@ -587,22 +630,22 @@ void Interpreter::Emit(const UnconditionalBranch& op) {
 
 template<typename T>
 void Interpreter::Emit(const BranchCompare<T>& op) {
-  T left = std::get<T>(vars.Get(op.left_idx));
+  T left = swl::get<T>(vars.Get(op.left_idx));
   T right;
   if (op.right.IsVar()) {
-    right = std::get<T>(vars.Get(op.right.GetVar()));
+    right = swl::get<T>(vars.Get(op.right.GetVar()));
   }
   else {
-    right = op.right.GetImm();
+    right = op.right.GetScalar();
   }
   bool branch;
 
   if constexpr(std::is_same_v<T, Pointer>) {
     auto lptr = ReadPointer(left.value);
     auto rptr = ReadPointer(right.value);
-    if (std::holds_alternative<i64>(lptr) && std::holds_alternative<i64>(rptr)) {
-      auto lval = std::get<i64>(lptr);
-      auto rval = std::get<i64>(rptr);
+    if (swl::holds_alternative<i64>(lptr) && swl::holds_alternative<i64>(rptr)) {
+      auto lval = swl::get<i64>(lptr);
+      auto rval = swl::get<i64>(rptr);
       switch (op.op) {
         case CmpType::Eq: branch = lval == rval; break;
         case CmpType::Ne: branch = lval != rval; break;
@@ -633,7 +676,7 @@ void Interpreter::Emit(const BranchCompare<T>& op) {
 
 void Interpreter::Emit(const Select& op) {
   cotyl::Assert(vars.HasTop(op.idx));
-  auto val = std::get<calyx_op_type(op)::src_t>(vars.Get(op.idx));
+  auto val = swl::get<calyx_op_type(op)::src_t>(vars.Get(op.idx));
   cotyl::Assert(op._default || op.table->contains(val), "Jump table does not contain value");
   if (op.table->contains(val)) {
     pos.pos.first  = op.table->at(val);
@@ -648,27 +691,27 @@ template<typename T>
 void Interpreter::Emit(const AddToPointer<T>& op) {
   calyx::Pointer left;
   if (op.ptr.IsVar()) {
-    left = std::get<calyx::Pointer>(vars.Get(op.ptr.GetVar()));
+    left = swl::get<calyx::Pointer>(vars.Get(op.ptr.GetVar()));
   }
   else {
-    left = op.ptr.GetImm();
+    left = op.ptr.GetScalar();
   }
   const auto lptr = ReadPointer(left.value);
   calyx_op_type(op)::offset_t right;
   if (op.right.IsVar()) {
-    right = std::get<calyx_op_type(op)::offset_t>(vars.Get(op.right.GetVar()));
+    right = swl::get<calyx_op_type(op)::offset_t>(vars.Get(op.right.GetVar()));
   }
   else {
-    right = op.right.GetImm();
+    right = op.right.GetScalar();
   }
   calyx::Pointer result;
 
-  if (std::holds_alternative<i64>(lptr)) {
-    result = MakePointer(std::get<i64>(lptr) + (i64)op.stride * (i64)right);
+  if (swl::holds_alternative<i64>(lptr)) {
+    result = MakePointer(swl::get<i64>(lptr) + (i64)op.stride * (i64)right);
   }
   else {
-    auto pval = std::get<label_offset_t>(lptr);
-    result = MakePointer(label_offset_t{cotyl::CString(pval.label), pval.offset + (i64) op.stride * (i64) right});
+    auto pval = swl::get<LabelOffset>(lptr);
+    result = MakePointer(LabelOffset{cotyl::CString(pval.label), pval.offset + (i64) op.stride * (i64) right});
   }
   vars.Set(op.idx, result);
 }

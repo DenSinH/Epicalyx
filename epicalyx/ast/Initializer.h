@@ -5,7 +5,7 @@
 #include "types/TypeFwd.h"
 #include "Vector.h"
 
-#include <variant>
+#include "swl/variant.hpp"
 #include <string>
 
 namespace epi::ast {
@@ -13,7 +13,7 @@ namespace epi::ast {
 struct InitializerList;
 struct Initializer;
 
-using Designator = std::variant<cotyl::CString, i64>;
+using Designator = swl::variant<cotyl::CString, i64>;
 using DesignatorList = cotyl::vector<Designator>;
 
 struct InitializerList {
@@ -39,7 +39,7 @@ struct Initializer {
 
   std::string ToString() const;
   
-  std::variant<pExpr, InitializerList> value;
+  swl::variant<pExpr, InitializerList> value;
 };
 
 }

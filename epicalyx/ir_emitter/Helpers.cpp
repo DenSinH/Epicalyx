@@ -9,15 +9,15 @@ namespace epi::detail {
 
 using namespace type;
 
-calyx::global_t GetGlobalValue(const AnyType& type) {
-  return type.visit<calyx::global_t>(
-    [](const StructType&) -> calyx::global_t  {
+calyx::Global GetGlobalValue(const AnyType& type) {
+  return type.visit<calyx::Global>(
+    [](const StructType&) -> calyx::Global  {
       throw cotyl::UnimplementedException("global struct");
     },
-    [](const UnionType&) -> calyx::global_t {
+    [](const UnionType&) -> calyx::Global {
       throw cotyl::UnimplementedException("global union");
     },
-    [](const PointerType& ptr) -> calyx::global_t {
+    [](const PointerType& ptr) -> calyx::Global {
       if (ptr.size == 0) {
         return calyx::Pointer{0};
       }
@@ -25,16 +25,16 @@ calyx::global_t GetGlobalValue(const AnyType& type) {
         throw cotyl::UnimplementedException("global array");
       }
     },
-    [](const FunctionType& func) -> calyx::global_t { 
+    [](const FunctionType& func) -> calyx::Global { 
       return calyx::Pointer{0}; 
     },
-    [](const VoidType&) -> calyx::global_t { 
+    [](const VoidType&) -> calyx::Global { 
       throw std::runtime_error("Incomplete global type"); 
     },
-    [](const auto& value) -> calyx::global_t {
+    [](const auto& value) -> calyx::Global {
       using value_t = decltype_t(value);
       static_assert(cotyl::is_instantiation_of_v<ValueType, value_t>);
-      return (typename value_t::type_t){0};
+      return calyx::Scalar<typename value_t::type_t>{0};
     }
   );
 }

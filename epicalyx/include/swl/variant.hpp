@@ -650,6 +650,7 @@ constexpr const T* get_if(const variant<Ts...>* v) noexcept {
 // =============================== visitation (20.7.7)
 
 template <class Fn, class... Vs>
+	requires (is_variant<Vs> && ...)
 constexpr decltype(auto) visit(Fn&& fn, Vs&&... vs){
 	if constexpr ( (std::decay_t<Vs>::can_be_valueless || ...) )
 		if ( (vs.valueless_by_exception() || ...) ) 
@@ -671,6 +672,10 @@ template <class R, class Fn, class... Vs>
 constexpr R visit(Fn&& fn, Vs&&... vars){
 	return static_cast<R>( swl::visit( SWL_FWD(fn), SWL_FWD(vars)...) );
 }
+
+// for simple visitor pattern
+template<class... Args>
+struct overloaded : Args... { using Args::operator()...; };
 
 // ============================== relational operators (20.7.6)
 

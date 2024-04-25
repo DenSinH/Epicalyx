@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 #include "Vector.h"
-#include <variant>
+#include "swl/variant.hpp"
 #include <optional>
 
 namespace epi::calyx {
@@ -60,12 +60,13 @@ struct Program {
   cotyl::vector<cotyl::CString> strings{};
 
   // global variable sizes
-  cotyl::unordered_map<cotyl::CString, global_t> globals{};
+  cotyl::unordered_map<cotyl::CString, Global> globals{};
 
   size_t Hash() const;
 };
 
 void VisualizeProgram(const Program& program, const std::string& filename);
 void PrintProgram(const Program& program);
+void PrintFunction(const Function& program);
 
 }

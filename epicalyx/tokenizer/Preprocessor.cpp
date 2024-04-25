@@ -661,9 +661,12 @@ char Preprocessor::MacroStream::GetNew() {
   }
   else if (current_stream.EOS()) {
     if (++current_index < def.value.size()) {
-      std::visit([&](const auto& seg) {
-          using T = decltype_t(seg);
-          if constexpr (std::is_same_v<T, i32>) {
+      swl::visit(
+        swl::overloaded{
+          [&](const std::string& seg) {
+            current_stream = SString(&seg);
+          },
+          [&](const i32 seg) {
             if (seg == -1) {
               current_stream = SString(&va_args);
             }
@@ -671,10 +674,9 @@ char Preprocessor::MacroStream::GetNew() {
               current_stream = SString(&arguments[seg]);
             }
           }
-          else if constexpr (std::is_same_v<T, std::string>) {
-            current_stream = SString(&seg);
-          }
-      }, def.value[current_index]);
+        },
+        def.value[current_index]
+      );
     }
     else {
       eos = true;

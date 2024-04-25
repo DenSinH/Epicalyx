@@ -14,7 +14,7 @@
 
 
 namespace epi::type {
-  
+
 template<typename T1, typename T2>
 using common_type_t = std::common_type_t<T1, T2>;
 

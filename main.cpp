@@ -64,15 +64,15 @@ int main(int argc, char** argv) {
     std::cerr << e.what() << std::endl;
     return 1;
   }
-
+  
   auto program = std::move(emitter.program);
-  epi::calyx::PrintProgram(program);
+//   epi::calyx::PrintProgram(program);
 
   for (auto& [sym, func] : program.functions) {
     // repeating multiple times will link more blocks
     auto func_hash = func.Hash();
     while (true) {
-      std::cout << "Optimizing program hash " << func_hash << "..." << std::endl;
+      std::cout << "Optimizing function " << sym.c_str() << " hash " << func_hash << "..." << std::endl;
       try {
         auto optimizer = epi::BasicOptimizer(std::move(func));
         func = optimizer.Optimize();
@@ -89,29 +89,35 @@ int main(int argc, char** argv) {
     }
   }
 
-  epi::calyx::PrintProgram(program);
+//   epi::calyx::PrintProgram(program);
 
   std::cout << std::endl << std::endl;
   std::cout << "-- globals" << std::endl;
   for (const auto& [symbol, global] : program.globals) {
     std::cout << symbol.c_str() << " ";
-    std::visit([](auto& glob) {
-      using glob_t = decltype_t(glob);
-      if constexpr(std::is_same_v<glob_t, epi::calyx::Pointer>) {
-        std::cout << "%p" << std::hex << glob.value << std::endl;
-      }
-      else if constexpr(std::is_same_v<glob_t, epi::label_offset_t>) {
-        if (glob.offset) {
-          std::cout << glob.label.c_str() << "+" << glob.offset << std::endl;
-        }
-        else {
-          std::cout << glob.label.c_str() << std::endl;
-        }
-      }
-      else {
-        std::cout << glob << std::endl;
-      }
-    }, global);
+    swl::visit(
+      swl::overloaded{
+        [](const epi::calyx::Pointer& glob) {
+          std::cout << "%p" << std::hex << glob.value << std::endl;
+        },
+        [](const epi::calyx::LabelOffset& glob) {
+          if (glob.offset) {
+            std::cout << glob.label.c_str() << "+" << glob.offset << std::endl;
+          }
+          else {
+            std::cout << glob.label.c_str() << std::endl;
+          }
+        },
+        []<typename T>(const epi::calyx::Scalar<T>& glob) {
+          using glob_t = decltype_t(glob);
+          static_assert(epi::cotyl::is_instantiation_of_v<epi::calyx::Scalar, glob_t>);
+          std::cout << glob.value << " (" << std::dec << (sizeof(typename glob_t::type_t) * 8) << ")" << std::endl;
+        },
+        // exhaustive variant access
+        [](const auto& variant) { static_assert(!sizeof(variant)); }
+      }, 
+      global
+    );
   }
 
   for (const auto& string : program.strings) {
@@ -130,25 +136,27 @@ int main(int argc, char** argv) {
     std::cout << "  -- globals" << std::endl;
     for (const auto& [glob, glob_idx] : interpreter.globals) {
       std::cout << "  " << glob.c_str() << " ";
-      std::visit([&](auto& pglob) {
-        using glob_t = decltype_t(pglob);
-        glob_t data;
-        std::memcpy(&data, interpreter.global_data[glob_idx].data(), sizeof(glob_t));
-        if constexpr(std::is_same_v<glob_t, epi::calyx::Pointer>) {
-          std::cout << "%p" << std::hex << data.value << std::endl;
-        }
-        else if constexpr(std::is_same_v<glob_t, epi::label_offset_t>) {
-          if (data.offset) {
-            std::cout << data.label.c_str() << "+" << data.offset << std::endl;
+      swl::visit(
+        swl::overloaded{
+          [](const epi::calyx::Pointer& glob) {
+            std::cout << "%p" << std::hex << glob.value << std::endl;
+          },
+          [](const epi::calyx::LabelOffset& glob) {
+            if (glob.offset) {
+              std::cout << glob.label.c_str() << "+" << glob.offset << std::endl;
+            }
+            else {
+              std::cout << glob.label.c_str() << std::endl;
+            }
+          },
+          [](const auto& glob) {
+            using glob_t = decltype_t(glob);
+            static_assert(epi::cotyl::is_instantiation_of_v<epi::calyx::Scalar, glob_t>);
+            std::cout << glob.value << std::endl;
           }
-          else {
-            std::cout << data.label.c_str() << std::endl;
-          }
-        }
-        else {
-          std::cout << data << std::endl;
-        }
-      }, program.globals.at(glob));
+        },
+        program.globals.at(glob)
+      );
     }
 
     auto dependencies = epi::ProgramDependencies::GetDependencies(program);

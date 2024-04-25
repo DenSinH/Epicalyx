@@ -375,7 +375,7 @@ void BasicOptimizer::FlushAliasedLocals() {
 }
 
 void BasicOptimizer::TryReplaceVar(var_index_t& var_idx) const {
-  if (var_replacement.contains(var_idx)) {
+  while (var_replacement.contains(var_idx)) {
     var_idx = var_replacement.at(var_idx);
   }
 }
@@ -387,7 +387,7 @@ void BasicOptimizer::TryReplaceOperand(Operand<T>& var) const {
     if constexpr(!std::is_same_v<T, Struct>) {
       auto* var_imm = TryGetVarDirective<Imm<T>>(var.GetVar());
       if (var_imm) {
-        var = typename Operand<T>::Imm{var_imm->value};
+        var = Scalar<T>{var_imm->value};
       }
     }
   }
@@ -538,10 +538,11 @@ Function&& BasicOptimizer::Optimize() {
       PropagateLocalValues();
     }
 
-    auto inserted = new_function.AddBlock(current_new_block_idx);
-    current_block = &inserted.second;
     auto& node = new_block_graph.EmplaceNodeIfNotExists(current_new_block_idx, nullptr);
     if (node.value) continue;  // we have already emitted this block
+
+    auto inserted = new_function.AddBlock(current_new_block_idx);
+    current_block = &inserted.second;
     node.value = current_block;
 
     bool block_finished;
@@ -682,7 +683,7 @@ void BasicOptimizer::Emit(StoreLocal<T>&& op) {
     }
   }
   else {
-    const auto& src = op.src.GetImm();
+    const auto& src = op.src.GetScalar();
     if constexpr(!std::is_same_v<T, Struct>) {
       const auto loc_idx = op.loc_idx;  // op will be moved when assigning
       StoreLocalData(loc_idx, LocalData{
@@ -764,13 +765,13 @@ void BasicOptimizer::Emit(StoreToPointer<T>&& op) {
         });
       }
       else {
-        T src = (T)op.src.GetImm();
+        T src = (T)op.src.GetScalar();
 
         // replace alias
         StoreLocalData(alias, LocalData{
                 .aliases = 0,
                 .replacement = std::make_shared<AnyExpr>(Imm<calyx_op_type(op)::src_t>{0, src}),
-                .store = std::make_unique<AnyDirective>(StoreLocal<T>{alias, typename Operand<calyx_op_type(op)::src_t>::Imm{src}})
+                .store = std::make_unique<AnyDirective>(StoreLocal<T>{alias, Scalar<calyx_op_type(op)::src_t>{src}})
         });
       }
       return;
@@ -875,8 +876,7 @@ void BasicOptimizer::Emit(Unop<T>&& op) {
 }
 
 template<typename T>
-void BasicOptimizer::Emit(Binop<T>&& op_) {
-  auto op = CopyDirective(op_);
+void BasicOptimizer::Emit(Binop<T>&& op) {
   TryReplaceVar(op.left_idx);
   TryReplaceOperand(op.right);
   if (op.right.IsVar()) {
@@ -908,7 +908,7 @@ void BasicOptimizer::Emit(Binop<T>&& op_) {
           case BinopType::BinOr:
           case BinopType::BinXor:
           case BinopType::Mul: {
-            EmitRepl<Binop<T>>(op.idx, op.right.GetVar(), op.op, typename Operand<T>::Imm{left_imm->value});
+            EmitRepl<Binop<T>>(op.idx, op.right.GetVar(), op.op, Scalar<T>{left_imm->value});
             return;
           }
           case BinopType::Sub:
@@ -919,7 +919,7 @@ void BasicOptimizer::Emit(Binop<T>&& op_) {
         }
       }
       else {
-        auto right = op.right.GetImm();
+        auto right = op.right.GetScalar();
         T result;
         switch (op.op) {
           case BinopType::Add: result = left_imm->value + right; break;
@@ -958,7 +958,7 @@ void BasicOptimizer::Emit(Binop<T>&& op_) {
     else {
       // result (v2 = (v1 @second b) @first a
       auto* left_binim = TryGetVarDirective<Binop<T>>(op.left_idx);
-      if (left_binim && left_binim->right.IsImm()) {
+      if (left_binim && left_binim->right.IsScalar()) {
         using op_pair_t = std::pair<BinopType, BinopType>;
         using result_pair_t = std::pair<BinopType, T(*)(T, T)>;
         using enum BinopType;
@@ -978,7 +978,7 @@ void BasicOptimizer::Emit(Binop<T>&& op_) {
 
         if (binim_fold.contains({op.op, left_binim->op})) {
           const auto [repl_op, repl_fn] = binim_fold.at({op.op, left_binim->op});
-          EmitRepl<Binop<T>>(op.idx, left_binim->left_idx, repl_op, typename Operand<T>::Imm{repl_fn(op.right.GetImm(), left_binim->right.GetImm())});
+          EmitRepl<Binop<T>>(op.idx, left_binim->left_idx, repl_op, Scalar<T>{repl_fn(op.right.GetScalar(), left_binim->right.GetScalar())});
           return;
         }
       }
@@ -993,18 +993,18 @@ void BasicOptimizer::Emit(Shift<T>&& op) {
   TryReplaceOperand(op.left);
   TryReplaceOperand(op.right);
 
-  if (op.right.IsImm()) {
-    if (op.left.IsImm()) {
+  if (op.right.IsScalar()) {
+    if (op.left.IsScalar()) {
       // both are imm
       T result;
       switch (op.op) {
-        case ShiftType::Left:  result = op.left.GetImm() << op.right.GetImm(); break;
-        case ShiftType::Right: result = op.left.GetImm() >> op.right.GetImm(); break;
+        case ShiftType::Left:  result = op.left.GetScalar() << op.right.GetScalar(); break;
+        case ShiftType::Right: result = op.left.GetScalar() >> op.right.GetScalar(); break;
       }
       EmitRepl<Imm<T>>(op.idx, result);
       return;
     }
-    else if (op.right.GetImm() == 0) {
+    else if (op.right.GetScalar() == 0) {
       var_replacement[op.idx] = op.left.GetVar();
       return;
     }
@@ -1022,8 +1022,8 @@ void BasicOptimizer::Emit(Compare<T>&& op) {
   if constexpr(!std::is_same_v<T, Pointer>) {
     auto* left_imm = TryGetVarDirective<Imm<T>>(op.left_idx);
     if (left_imm) {
-      if (op.right.IsImm()) {
-        auto right = op.right.GetImm();
+      if (op.right.IsScalar()) {
+        auto right = op.right.GetScalar();
         i32 result;
         
         switch (op.op) {
@@ -1048,18 +1048,18 @@ void BasicOptimizer::Emit(Compare<T>&& op) {
           case CmpType::Gt: flipped = CmpType::Lt; break;
           case CmpType::Ge: flipped = CmpType::Le; break;
         }
-        EmitRepl<Compare<T>>(op.idx, op.right.GetVar(), flipped, typename Operand<T>::Imm{left_imm->value});
+        EmitRepl<Compare<T>>(op.idx, op.right.GetVar(), flipped, Scalar<T>{left_imm->value});
         return;
       }
     }
 
-    if (op.right.IsImm()) {
-      auto& right = op.right.GetImm();
+    if (op.right.IsScalar()) {
+      auto& right = op.right.GetScalar();
       // replace comparisons with added constants
       // i.e., change (left + 1) > 0 with left > -1
       auto* left_binim = TryGetVarDirective<Binop<T>>(op.left_idx);
-      if (left_binim && left_binim->right.IsImm()) {
-        auto binim_right = left_binim->right.GetImm();
+      if (left_binim && left_binim->right.IsScalar()) {
+        auto binim_right = left_binim->right.GetScalar();
         switch (left_binim->op) {
           case BinopType::Add:
             op.left_idx = left_binim->left_idx;
@@ -1128,11 +1128,11 @@ void BasicOptimizer::Emit(BranchCompare<T>&& op) {
           case CmpType::Gt: flipped = CmpType::Lt; break;
           case CmpType::Ge: flipped = CmpType::Le; break;
         }
-        EmitRepl<BranchCompare<T>>(op.tdest, op.fdest, op.right.GetVar(), flipped, typename Operand<T>::Imm{left_imm->value});
+        EmitRepl<BranchCompare<T>>(op.tdest, op.fdest, op.right.GetVar(), flipped, Scalar<T>{left_imm->value});
         return;
       }
       else {
-        auto right = op.right.GetImm();
+        auto right = op.right.GetScalar();
         auto emit_unconditional = [&](bool cmp) {
           if (cmp) EmitRepl<UnconditionalBranch>(op.tdest);
           else     EmitRepl<UnconditionalBranch>(op.fdest);
@@ -1152,13 +1152,13 @@ void BasicOptimizer::Emit(BranchCompare<T>&& op) {
   }
 
   if constexpr(!std::is_same_v<T, Pointer>) {
-    if (op.right.IsImm()) {
-      auto& right = op.right.GetImm();
+    if (op.right.IsScalar()) {
+      auto& right = op.right.GetScalar();
       // replace comparisons with added constants
       // i.e., change (left + 1) > 0 with left > -1
       auto* left_binim = TryGetVarDirective<Binop<T>>(op.left_idx);
-      if (left_binim && left_binim->right.IsImm()) {
-        auto binim_right = left_binim->right.GetImm();
+      if (left_binim && left_binim->right.IsScalar()) {
+        auto binim_right = left_binim->right.GetScalar();
         switch (left_binim->op) {
           case BinopType::Add:
             op.left_idx = left_binim->left_idx;
@@ -1213,12 +1213,12 @@ void BasicOptimizer::Emit(AddToPointer<T>&& op) {
   TryReplaceOperand(op.ptr);
   TryReplaceOperand(op.right);
 
-  if (op.right.IsImm()) {
-    // todo: if (op.left.IsImm())
-    auto right = op.right.GetImm();
+  if (op.right.IsScalar()) {
+    // todo: if (op.left.IsScalar())
+    auto right = op.right.GetScalar();
     if (right == 0) {
       if (op.ptr.IsVar()) var_replacement[op.idx] = op.ptr.GetVar();
-      else EmitRepl<Imm<Pointer>>(op.idx, op.ptr.GetImm());
+      else EmitRepl<Imm<Pointer>>(op.idx, op.ptr.GetScalar());
       return;
     }
   }

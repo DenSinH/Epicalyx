@@ -28,8 +28,8 @@ Initializer::Initializer(InitializerList&& init) :
 }
 
 void Initializer::ValidateAndReduce(const type::AnyType& type) {
-  if (std::holds_alternative<InitializerList>(value)) {
-    auto& list = std::get<InitializerList>(value);
+  if (swl::holds_alternative<InitializerList>(value)) {
+    auto& list = swl::get<InitializerList>(value);
     list.ValidateAndReduce(type);
 
     // since we first validate and reduce the initializer list,
@@ -72,7 +72,7 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
     );
   }
   else {
-    const auto& has = std::get<pExpr>(value)->type;
+    const auto& has = swl::get<pExpr>(value)->type;
     
     type.visit<void>(
       [&](const type::StructType& strct) {
@@ -107,10 +107,10 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
 }
 
 std::string Initializer::ToString() const {
-  if (std::holds_alternative<pExpr>(value))
-    return std::get<pExpr>(value)->ToString();
+  if (swl::holds_alternative<pExpr>(value))
+    return swl::get<pExpr>(value)->ToString();
   else
-    return std::get<InitializerList>(value).ToString();
+    return swl::get<InitializerList>(value).ToString();
 }
 
 
@@ -163,11 +163,11 @@ std::string InitializerList::ToString() const {
   for (const auto& init : list) {
     repr << '\n';
     for (const auto& des : init.first) {
-      if (std::holds_alternative<cotyl::CString>(des)) {
-        repr << '.' << std::get<cotyl::CString>(des);
+      if (swl::holds_alternative<cotyl::CString>(des)) {
+        repr << '.' << swl::get<cotyl::CString>(des);
       }
       else {
-        repr << '[' << std::to_string(std::get<i64>(des)) << ']';
+        repr << '[' << std::to_string(swl::get<i64>(des)) << ']';
       }
     }
     if (!init.first.empty()) {

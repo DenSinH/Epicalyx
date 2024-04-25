@@ -5,6 +5,7 @@
 
 #include "Default.h"
 #include "Containers.h"
+#include "swl/variant.hpp"
 
 #include <stack>
 #include <queue>
@@ -38,7 +39,9 @@ private:
   };
 
   struct Definition {
-    using value_t = cotyl::vector<std::variant<std::string, i32>>;
+    // a segment is either a string or an argument index
+    using segment_t = swl::variant<std::string, i32>;
+    using value_t = cotyl::vector<segment_t>;
     struct Arguments {
       size_t count;
       bool variadic;

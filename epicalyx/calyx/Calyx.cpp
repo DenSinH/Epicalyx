@@ -69,19 +69,24 @@ size_t Program::Hash() const {
 }
 
 
+void PrintFunction(const Function& func) {
+  for (const auto& [i, block] : func.blocks) {
+    if (!block.empty()) {
+      std::cout << func.symbol.c_str() << ".L" << i << std::endl;
+      for (const auto& op : block) {
+        std::cout << "    " << stringify(op) << std::endl;
+      }
+    }
+  }
+}
+
+
 void PrintProgram(const Program& program) {
   std::cout << std::endl << std::endl;
   std::cout << "-- program" << std::endl;
   for (const auto& [sym, func] : program.functions) {
     std::cout << sym.c_str() << std::endl;
-    for (const auto& [i, block] : func.blocks) {
-      if (!block.empty()) {
-        std::cout << sym.c_str() << ".L" << i << std::endl;
-        for (const auto& op : block) {
-          std::cout << "    " << stringify(op) << std::endl;
-        }
-      }
-    }
+    PrintFunction(func);
   }
 }
 

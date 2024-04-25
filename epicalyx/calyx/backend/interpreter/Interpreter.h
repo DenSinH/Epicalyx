@@ -5,7 +5,7 @@
 #include "CString.h"
 #include "Containers.h"
 
-#include <variant>
+#include "swl/variant.hpp"
 #include <optional>
 #include <stack>
 
@@ -15,24 +15,31 @@ namespace epi::calyx {
 struct Interpreter {
   using program_counter_t = program_pos_t;
 
-  void InterpretGlobalInitializer(global_t& dest, Function&& func);
+  void InterpretGlobalInitializer(Global& dest, Function&& func);
   void Interpret(const calyx::Program& program);
 
   // globals as raw data
-  cotyl::unordered_map<cotyl::CString, i64> globals{};
-  cotyl::vector<cotyl::vector<u8>> global_data{{}};
+  cotyl::unordered_map<cotyl::CString, calyx::Global> globals{};
 
 private:
-  cotyl::vector<u8> stack{};
-  cotyl::vector<std::variant<i64, label_offset_t>> pointer_values{};
+  using pointer_real_t = swl::variant<i64, LabelOffset>;
+  using var_real_t = swl::variant<
+    Scalar<i32>, Scalar<u32>, 
+    Scalar<i64>, Scalar<u64>, 
+    Scalar<float>, Scalar<double>, 
+    calyx::Pointer
+  >;
 
-  calyx::Pointer MakePointer(std::variant<i64, label_offset_t> value) {
+  cotyl::vector<u8> stack{};
+  cotyl::vector<pointer_real_t> pointer_values{};
+
+  calyx::Pointer MakePointer(pointer_real_t value) {
     const auto idx = pointer_values.size();
     pointer_values.emplace_back(value);
     return calyx::Pointer{(i64)idx};
   }
 
-  std::variant<i64, label_offset_t> ReadPointer(i64 idx) const {
+  pointer_real_t ReadPointer(i64 idx) const {
     return pointer_values.at(idx);
   }
 
@@ -40,13 +47,13 @@ private:
   cotyl::MapScope<var_index_t, std::pair<i64, u64>> locals{};
 
   // IR variables
-  cotyl::MapScope<var_index_t, std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>, true> vars{};
+  cotyl::MapScope<var_index_t, var_real_t, true> vars{};
 
   program_counter_t pos{nullptr, {0, 0}};
   std::optional<cotyl::CString> called{};
   // link, return_to, args, var_args
   std::stack<std::tuple<program_counter_t, var_index_t, const calyx::ArgData*>> call_stack{};
-  std::optional<std::variant<i32, u32, i64, u64, float, double, calyx::Pointer>> returned = {};
+  std::optional<var_real_t> returned = {};
 
   void EnterFunction(const calyx::Function* function);
   void LoadArg(const calyx::Local& loc);

@@ -174,7 +174,7 @@ template <class F, class Tuple, class Extra, std::size_t... I>
 constexpr decltype(auto)
 apply_plus_one_impl(F &&f, Tuple &&t, Extra &&x,
                     std::index_sequence<I...> /*unused*/) {
-  return std::invoke(std::forward<F>(f), std::get<I>(std::forward<Tuple>(t))...,
+  return std::invoke(std::forward<F>(f), swl::get<I>(std::forward<Tuple>(t))...,
                      std::forward<Extra>(x));
 }
 

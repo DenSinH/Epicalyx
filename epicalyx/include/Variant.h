@@ -81,18 +81,15 @@ struct Variant {
   
   template<typename R, typename... Args>
   R visit(Args&&... args) {
-    return swl::visit(overloaded{args...}, value);
+    return swl::visit(swl::overloaded{std::forward<Args>(args)...}, value);
   }
 
   template<typename R, typename... Args>
   R visit(Args&&... args) const {
-    return swl::visit(overloaded{args...}, value);
+    return swl::visit(swl::overloaded{std::forward<Args>(args)...}, value);
   }
 
 protected:
-  // for simple visitor pattern
-  template<class... Args>
-  struct overloaded : Args... { using Args::operator()...; };
   
   swl::variant<Ts...> value;
 };

@@ -14,6 +14,8 @@
 
 #include "Helpers.inl"
 
+#include <iostream>
+
 
 namespace epi {
 
@@ -75,11 +77,11 @@ void ASTWalker::Visit(const epi::DeclarationNode& decl) {
       throw cotyl::FormatExcept("Duplicate global symbol: %s", decl.name.c_str());
     }
     auto it = emitter.program.globals.emplace(decl.name, std::move(global_type));
-    calyx::global_t& global = it.first->second;
+    calyx::Global& global = it.first->second;
 
     if (decl.value.has_value()) {
-      if (std::holds_alternative<pExpr>(decl.value.value().value)) {
-        auto& expr = std::get<pExpr>(decl.value.value().value);
+      if (swl::holds_alternative<pExpr>(decl.value.value().value)) {
+        auto& expr = swl::get<pExpr>(decl.value.value().value);
 
         calyx::Function initializer{cotyl::CString("$init" + decl.name.str())};
         emitter.SetFunction(initializer);
@@ -103,9 +105,9 @@ void ASTWalker::Visit(const epi::DeclarationNode& decl) {
     auto c_idx = AddLocal(cotyl::CString{decl.name}, decl.type);
 
     if (decl.value.has_value()) {
-      if (std::holds_alternative<pExpr>(decl.value.value().value)) {
+      if (swl::holds_alternative<pExpr>(decl.value.value().value)) {
         state.push({State::Read, {}});
-        std::get<pExpr>(decl.value.value().value)->Visit(*this);
+        swl::get<pExpr>(decl.value.value().value)->Visit(*this);
         state.pop();
         // current now holds the expression id that we want to assign with
         state.push({State::Assign, {.var = current}});
