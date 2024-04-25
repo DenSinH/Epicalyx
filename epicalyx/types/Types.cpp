@@ -61,12 +61,11 @@ AnyType BinopHelper(const ValueType<T>& one,  const ValueType<R>& other) {
 template<template<typename S> class handler, typename T>
 AnyType NonAdditiveBinopHelper(const ValueType<T>& one, const char* op_str, const AnyType& other) {
   auto result = other.visit<AnyType>(
+    [&]<typename R>(const ValueType<R>& other) {
+      return BinopHelper<handler>(one, other);
+    },
     [&](const auto& other) -> AnyType {
-      using other_t = decltype_t(other);
-      if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>)
-        return BinopHelper<handler>(one, other);
-      else
-        InvalidOperands(&one, op_str, other);
+      InvalidOperands(&one, op_str, other);
     }
   );
   result->lvalue = LValue::None;
@@ -77,20 +76,17 @@ AnyType NonAdditiveBinopHelper(const ValueType<T>& one, const char* op_str, cons
 template<template<typename S> class handler, typename T>
 BoolType BooleanBinopHelper(const ValueType<T>& one, const char* op_str, const AnyType& other) {
   auto result = other.visit<BoolType>(
+    [&]<typename R>(const ValueType<R>& other) {
+      using common_t = common_type_t<T, R>;
+      if (one.value.has_value() && other.value.has_value()) {
+        handler<common_t> h;
+        bool return_val = h(one.value.value(), other.value.value());
+        return BoolType(return_val ? 1 : 0, LValue::None);
+      }
+      return BoolType(LValue::None);
+    },
     [&](const auto& other) -> BoolType {
-      using other_t = decltype_t(other);
-      if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>) {
-          using common_t = common_type_t<T, typename other_t::type_t>;
-          if (one.value.has_value() && other.value.has_value()) {
-            handler<common_t> h;
-            bool return_val = h(one.value.value(), other.value.value());
-            return BoolType(return_val ? 1 : 0, LValue::None);
-          }
-          return BoolType(LValue::None);
-      }
-      else {
-        InvalidOperands(&one, op_str, other);
-      }
+      InvalidOperands(&one, op_str, other);
     }
   );
   result.lvalue = LValue::None;
@@ -104,15 +100,11 @@ AnyType IntegralBinopHelper(const ValueType<T>& one, const char* op_str, const A
   }
   else {
     auto result = other.visit<AnyType>(
+      [&]<std::integral R>(const ValueType<R>& other) {
+        return BinopHelper<handler>(one, other);
+      },
       [&](const auto& other) -> AnyType {
-        using other_t = decltype_t(other);
-        if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>)
-          if constexpr(std::is_integral_v<typename other_t::type_t>)
-            return BinopHelper<handler>(one, other);
-          else 
-            InvalidOperands(&one, op_str, other);
-        else
-          InvalidOperands(&one, op_str, other);
+        InvalidOperands(&one, op_str, other);
       }
     );
     result->lvalue = LValue::None;
@@ -134,12 +126,11 @@ AnyType ValueType<T>::Add(const AnyType& other) const {
       result.ForgetConstInfo();  // forget constant info
       return result;
     },
+    [&]<typename R>(const ValueType<R>& other) -> AnyType {
+      return BinopHelper<std::plus>(*this, other);
+    },
     [&](const auto& other) -> AnyType {
-        using other_t = decltype_t(other);
-      if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>)
-        return BinopHelper<std::plus>(*this, other);
-      else
-        InvalidOperands(this, "+", other);
+      InvalidOperands(this, "+", other);
     }
   );
   result->lvalue = LValue::None;
@@ -259,13 +250,14 @@ template<typename T>
 requires (cotyl::pack_contains_v<T, value_type_pack>)
 AnyType ValueType<T>::CommonTypeImpl(const AnyType& other) const {
     auto result = other.visit<AnyType>(
-    [](const PointerType& pointer) -> AnyType { return pointer; },
+    [](const PointerType& pointer) -> AnyType {
+      return pointer; 
+    },
+    []<typename R>(const ValueType<R>& other) -> AnyType {
+      return ValueType<common_type_t<T, R>>{LValue::None};
+    },
     [&](const auto& other) -> AnyType {
-      using other_t = decltype_t(other);
-      if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>)
-        return ValueType<common_type_t<T, typename other_t::type_t>>{LValue::None};
-      else
-        InvalidOperands(this, "operation", other);
+      InvalidOperands(this, "operation", other);
     }
   );
   result->lvalue = LValue::None;
@@ -351,13 +343,12 @@ BoolType PointerType::Truthiness() const {
 
 AnyType PointerType::CommonTypeImpl(const AnyType& other) const {
   return other.visit<AnyType>(
+    [&]<std::integral T>(const ValueType<T>& other) {
+      PointerType result = *this;
+      result.ForgetConstInfo();
+      return std::move(result);
+    },
     [&](const auto& other) -> AnyType {
-      using other_t = decltype_t(other);
-      if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>) {
-        if constexpr(std::is_integral_v<typename other_t::type_t>) {
-          return *this;
-        }
-      }
       InvalidOperands(this, "operation", other);
     }
   );
@@ -460,13 +451,12 @@ std::string FunctionType::ToString() const {
 
 AnyType FunctionType::CommonTypeImpl(const AnyType& other) const {
   return other.visit<AnyType>(
+    [&]<std::integral T>(const ValueType<T>& other) {
+      FunctionType result = *this;
+      result.ForgetConstInfo();
+      return std::move(result);
+    },
     [&](const auto& other) -> AnyType {
-      using other_t = decltype_t(other);
-      if constexpr(cotyl::is_instantiation_of_v<ValueType, other_t>) {
-        if constexpr(std::is_integral_v<typename other_t::type_t>) {
-          return *this;
-        }
-      }
       InvalidOperands(this, "operation", other);
     }
   );

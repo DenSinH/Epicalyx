@@ -31,11 +31,11 @@ calyx::Global GetGlobalValue(const AnyType& type) {
     [](const VoidType&) -> calyx::Global { 
       throw std::runtime_error("Incomplete global type"); 
     },
-    [](const auto& value) -> calyx::Global {
-      using value_t = decltype_t(value);
-      static_assert(cotyl::is_instantiation_of_v<ValueType, value_t>);
-      return calyx::Scalar<typename value_t::type_t>{0};
-    }
+    []<typename T>(const ValueType<T>& value) -> calyx::Global {
+      return calyx::Scalar<T>{0};
+    },
+    // exhaustive variant access
+    [](const auto& invalid) { static_assert(!sizeof(invalid)); }
   );
 }
 
@@ -71,11 +71,11 @@ std::pair<calyx::Local::Type, u64> GetLocalType(const type::AnyType& type) {
     [](const FunctionType&) -> std::pair<calyx::Local::Type, u64> { 
       return {calyx::Local::Type::Pointer, 0}; 
     },
-    [](const auto& value) -> std::pair<calyx::Local::Type, u64> {
-      using value_t = decltype_t(value);
-      static_assert(cotyl::is_instantiation_of_v<ValueType, value_t>);
-      return {calyx_loc_type_v<typename value_t::type_t>, 0};
-    }
+    []<typename T>(const ValueType<T>& value) -> std::pair<calyx::Local::Type, u64> {
+      return {calyx_loc_type_v<T>, 0};
+    },
+    // exhaustive variant access
+    [](const auto& invalid) { static_assert(!sizeof(invalid)); }
   );
 }
 

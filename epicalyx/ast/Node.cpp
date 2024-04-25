@@ -15,11 +15,10 @@ void ExprNode::VerifyTruthiness() const {
 
 bool ExprNode::IsConstexpr() const {
   return type.visit<bool>(
+    []<typename T>(const type::ValueType<T>& value) -> bool {
+      return value.value.has_value();
+    },
     [](const auto& value) -> bool {
-      using value_t = decltype_t(value);
-      if constexpr(cotyl::is_instantiation_of_v<type::ValueType, value_t>) {
-        return value.value.has_value();
-      }
       return false;
     }
   );
@@ -35,17 +34,14 @@ bool ExprNode::ConstBoolVal() const {
 
 i64 ExprNode::ConstIntVal() const {
   return type.visit<i64>(
-    [](const auto& value) -> i64 {
-      using value_t = decltype_t(value);
-      if constexpr(cotyl::is_instantiation_of_v<type::ValueType, value_t>) {
-        if (!value.value.has_value()) {
-          throw std::runtime_error("Expected constant expression");
-        }
-        return (i64)value.value.value();
-      }
-      else {
+    []<typename T>(const type::ValueType<T>& value) -> i64 {
+      if (!value.value.has_value()) {
         throw std::runtime_error("Expected constant expression");
       }
+      return (i64)value.value.value();
+    },
+    [](const auto& value) -> i64 {
+      throw std::runtime_error("Expected constant expression");
     }
   );
 }

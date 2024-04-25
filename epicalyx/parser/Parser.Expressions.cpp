@@ -14,17 +14,13 @@ using namespace ast;
 
 static pExpr ExprOrReduced(pExpr&& expr) {
   pExpr reduced = expr->type.visit<pExpr>(
-    [](const auto& value) -> pExpr {
-      using value_t = decltype_t(value);
-      if constexpr(cotyl::is_instantiation_of_v<type::ValueType, value_t>) {
-        if (value.value.has_value()) {
-          return std::make_unique<NumericalConstantNode<typename value_t::type_t>>(
-            value.value.value()
-          );
-        }
+    []<typename T>(const type::ValueType<T>& value) -> pExpr {
+      if (value.value.has_value()) {
+        return std::make_unique<NumericalConstantNode<T>>(value.value.value());
       }
       return nullptr;
-    }
+    },
+    [](const auto&) -> pExpr { return nullptr; }
   );
   if (reduced) return std::move(reduced);
   return std::move(expr);
@@ -52,12 +48,11 @@ pExpr ConstParser::EPrimary() {
     [](const KeywordToken& keyw) -> pExpr {
       throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", keyw);
     },
-    [](const auto& num) -> pExpr {
-      using tok_t = decltype_t(num);
-      static_assert(cotyl::is_instantiation_of_v<NumericalConstantToken, tok_t>);
-      auto val = num.value;
-      return std::make_unique<NumericalConstantNode<decltype_t(val)>>(val);
-    }
+    []<typename T>(const NumericalConstantToken<T>& num) -> pExpr {
+      return std::make_unique<NumericalConstantNode<T>>(num.value);
+    },
+    // exhaustive variant access
+    [](const auto& invalid) { static_assert(!sizeof(invalid)); }
   );
 }
 
@@ -94,12 +89,11 @@ pExpr Parser::EPrimary() {
     [](const KeywordToken& keyw) -> pExpr {
       throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", keyw);
     },
-    [](const auto& num) -> pExpr {
-      using tok_t = decltype_t(num);
-      static_assert(cotyl::is_instantiation_of_v<NumericalConstantToken, tok_t>);
-      auto val = num.value;
-      return std::make_unique<NumericalConstantNode<decltype_t(val)>>(val);
-    }
+    []<typename T>(const NumericalConstantToken<T>& num) -> pExpr {
+      return std::make_unique<NumericalConstantNode<T>>(num.value);
+    },
+    // exhaustive variant access
+    [](const auto& invalid) { static_assert(!sizeof(invalid)); }
   );
 }
 

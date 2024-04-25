@@ -57,18 +57,28 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
           // not implemented
         }
       },
-      [&](const auto& val) { 
-        using value_t = decltype_t(val);
-        static_assert(std::is_same_v<value_t, type::FunctionType> || cotyl::is_instantiation_of_v<type::ValueType, value_t>);
+      [&]<typename T>(const type::ValueType<T>& val) { 
         if (list.list.empty()) {
-          if constexpr(cotyl::is_instantiation_of_v<type::ValueType, value_t>) {
-            value = std::make_unique<NumericalConstantNode<typename value_t::type_t>>(0);
-          }
+          value = std::make_unique<NumericalConstantNode<T>>(0);
         }
-        // list wil have size one by recursion above
-        cotyl::Assert(list.list.size() == 1);
-        value = std::move(list.list[0].second.value);
-      }
+        else {
+          // list wil have size one by recursion above
+          cotyl::Assert(list.list.size() == 1);
+          value = std::move(list.list[0].second.value);
+        }
+      },
+      [&](const type::FunctionType& val) { 
+        if (list.list.empty()) {
+          throw cotyl::UnimplementedException("Function pointer empty initializer list");
+        }
+        else {
+          // list wil have size one by recursion above
+          cotyl::Assert(list.list.size() == 1);
+          value = std::move(list.list[0].second.value);
+        }
+      },
+      // exhaustive variant access
+      [](const auto& invalid) { static_assert(!sizeof(invalid)); }
     );
   }
   else {
@@ -94,14 +104,20 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
           throw std::runtime_error("Expected initializer list");
         }
       },
-      [&](const auto& val) {
+      [&]<typename T>(const type::ValueType<T>& val) {
         // function type, value type
-        using value_t = decltype_t(val);
-        static_assert(std::is_same_v<value_t, type::FunctionType> || cotyl::is_instantiation_of_v<type::ValueType, value_t>);
         if (!type.TypeEquals(has)) {
           throw cotyl::FormatExceptStr("Cannot cast type %s to %s in initializer", has, type);
         }
-      }
+      },
+      [&](const type::FunctionType& val) {
+        // function type, value type
+        if (!type.TypeEquals(has)) {
+          throw cotyl::FormatExceptStr("Cannot cast type %s to %s in initializer", has, type);
+        }
+      },
+      // exhaustive variant access
+      [](const auto& invalid) { static_assert(!sizeof(invalid)); }
     );
   }
 }
@@ -145,11 +161,14 @@ void InitializerList::ValidateAndReduce(const type::AnyType& type) {
         // not implemented
       }
     },
-    [&](const auto& val) {
-      using value_t = decltype_t(val);
-      static_assert(std::is_same_v<value_t, type::FunctionType> || cotyl::is_instantiation_of_v<type::ValueType, value_t>);
+    [&]<typename T>(const type::ValueType<T>& val) {
       ValidateAndReduceScalarType(type);
-    }
+    },
+    [&](const type::FunctionType& val) {
+      ValidateAndReduceScalarType(type);
+    },
+    // exhaustive variant access
+    [](const auto& invalid) { static_assert(!sizeof(invalid)); }
   );
 }
 

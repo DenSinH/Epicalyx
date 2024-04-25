@@ -129,17 +129,15 @@ bool BasicOptimizer::NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, func_po
           register_branch(branch.dest);
           _reachable = false;
         },
-        [&](const auto& dir) {
-          using dir_t = decltype_t(dir);
-          if constexpr(cotyl::is_instantiation_of_v<calyx::BranchCompare, dir_t>) {
-            register_branch(dir.tdest);
-            register_branch(dir.fdest);
-            _reachable = false;
-          }
-          else if constexpr(cotyl::is_instantiation_of_v<calyx::Return, dir_t>) {
-            _reachable = false;
-          }
-        }
+        [&]<typename T>(const BranchCompare<T>& branch) {
+          register_branch(branch.tdest);
+          register_branch(branch.fdest);
+          _reachable = false;
+        },
+        [&]<typename T>(const Return<T>& ret) {
+          _reachable = false;
+        },
+        [](const auto&) { }
       );
 
       if (bad(op, pos)) return false;

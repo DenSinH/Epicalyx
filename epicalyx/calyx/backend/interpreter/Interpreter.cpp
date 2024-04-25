@@ -126,7 +126,7 @@ void Interpreter::Interpret(const Program& program) {
         std::cout << "return " << var.value << std::endl;
       },
       // exhaustive variant access
-      [](const auto& variant) { static_assert(!sizeof(variant)); }
+      [](const auto& invalid) { static_assert(!sizeof(invalid)); }
     },
     returned.value()
   );

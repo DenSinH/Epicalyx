@@ -63,11 +63,11 @@ struct EmitterTypeVisitor {
       [](const type::UnionType&) {
         throw cotyl::UnimplementedException();
       },
-      [&](const auto& value) {
-        using value_t = decltype_t(value);
-        static_assert(cotyl::is_instantiation_of_v<type::ValueType, value_t>);
-        VisitValueImpl<typename value_t::type_t>();
-      }
+      [&]<typename T>(const type::ValueType<T>& value) {
+        VisitValueImpl<T>();
+      },
+      // exhaustive variant access
+      [](const auto& invalid) { static_assert(!sizeof(invalid)); }
     );
   }
 

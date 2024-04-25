@@ -41,18 +41,19 @@ AnyType AnyType::Cast(const AnyType& other, bool check_flags) const {
   }
 
   AnyType result = *this;
+  result->ForgetConstInfo();
   result.visit<void>(
-    [&](auto& dest) {
-      if constexpr(cotyl::is_instantiation_of_v<ValueType, decltype_t(dest)>) {
-        other.visit<void>(
-          [&](const auto& src) {
-          if constexpr(cotyl::is_instantiation_of_v<ValueType, decltype_t(src)>) {
-              dest.value = src.value;
-            }
+    [&]<typename T>(ValueType<T>& dest) {
+      other.visit<void>(
+        [&]<typename R>(const ValueType<R>& src) {
+          if (src.value.has_value()) {
+            dest.value = src.value.value();
           }
-        );
-      }
-    }
+        },
+        [](const auto&) { }
+      );
+    },
+    [](const auto&) { }
   );
   result->lvalue = LValue::None;
   return result;

@@ -113,12 +113,13 @@ static void VisualizeFunctionHelper(epi::cycle::VisualGraph& graph, const Functi
           auto node = graph.n(id, stringify(branch));
           node->n(GetNodeID(func, branch.dest));
         },
+        [&]<typename T>(const BranchCompare<T>& branch) {
+          auto node = graph.n(id, stringify(branch));
+          node->n(GetNodeID(func, branch.tdest));
+          node->n(GetNodeID(func, branch.fdest));
+        },
         [&](const auto& dir) {
           auto node = graph.n(id, stringify(dir));
-          if constexpr (cotyl::is_instantiation_of_v<BranchCompare, decltype_t(dir)>) {
-            node->n(GetNodeID(func, dir.tdest));
-            node->n(GetNodeID(func, dir.fdest));
-          }
         }
       );
     }
@@ -185,7 +186,7 @@ STRINGIFY_METHOD(Global) {
         return std::to_string(+glob.value);
       },
       // exhaustive variant access
-      [](const auto& variant) { static_assert(!sizeof(variant)); }
+      [](const auto& invalid) { static_assert(!sizeof(invalid)); }
     }, 
     value
   );

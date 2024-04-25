@@ -673,7 +673,9 @@ char Preprocessor::MacroStream::GetNew() {
             else {
               current_stream = SString(&arguments[seg]);
             }
-          }
+          },
+          // exhaustive variant access
+          [](const auto& invalid) { static_assert(!sizeof(invalid)); }
         },
         def.value[current_index]
       );
