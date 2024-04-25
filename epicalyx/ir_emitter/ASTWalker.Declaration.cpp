@@ -21,6 +21,17 @@ namespace epi {
 
 using namespace ast;
 
+#undef DEBUG_GLOBAL_INITIALIZERS
+
+#ifdef DEBUG_GLOBAL_INITIALIZERS
+namespace calyx {
+
+void VisualizeFunction(const Function& func, const std::string& filename);
+
+}
+#endif
+
+
 
 void ASTWalker::AddGlobal(const cotyl::CString& symbol, const type::AnyType& type) {
   if (symbol_types.contains(symbol)) {
@@ -92,7 +103,9 @@ void ASTWalker::Visit(const epi::DeclarationNode& decl) {
 
         auto global_block_return_visitor = detail::EmitterTypeVisitor<detail::ReturnEmitter>(*this, { current });
         global_block_return_visitor.Visit(decl.type);
-        
+#ifdef DEBUG_GLOBAL_INITIALIZERS
+        VisualizeFunction(initializer, "output/init" + decl.name.str() + ".pdf");
+#endif
         calyx::InterpretGlobalInitializer(global, std::move(initializer));
       }
       else {

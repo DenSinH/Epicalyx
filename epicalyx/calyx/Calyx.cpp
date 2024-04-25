@@ -94,52 +94,65 @@ static i64 GetNodeID(const Function& func, block_label_t block_idx) {
   return (std::uintptr_t)(&func.blocks.at(block_idx));
 }
 
+static void VisualizeFunctionHelper(epi::cycle::VisualGraph& graph, const Function& func) {
+  for (const auto& [block_idx, block] : func.blocks) {
+    const auto id = GetNodeID(func, block_idx);
+    graph.n(id).title(cotyl::Format("L%d", block_idx));
+    for (const auto& directive : block) {
+      directive.visit<void>(
+        [&](const Select& select) {
+          auto node = graph.n(id, stringify(select));
+          for (auto [val, dest] : *select.table) {
+            node->n(GetNodeID(func, dest), std::to_string(val));
+          }
+          if (select._default) {
+            node->n(GetNodeID(func, select._default), "default");
+          }
+        },
+        [&](const UnconditionalBranch& branch) {
+          auto node = graph.n(id, stringify(branch));
+          node->n(GetNodeID(func, branch.dest));
+        },
+        [&](const auto& dir) {
+          auto node = graph.n(id, stringify(dir));
+          if constexpr (cotyl::is_instantiation_of_v<BranchCompare, decltype_t(dir)>) {
+            node->n(GetNodeID(func, dir.tdest));
+            node->n(GetNodeID(func, dir.fdest));
+          }
+        }
+      );
+    }
+  }
+
+  auto fnode = graph.n((std::uintptr_t)&func);
+  fnode.title(func.symbol.str() + "(*)");
+  fnode->n(GetNodeID(func, Function::Entry));
+  for (const auto& [loc_idx, local] : func.locals) {
+    std::string label;
+    if (local.arg_idx.has_value()) {
+      label = cotyl::Format("%s c%d <- a%d", detail::TypeString(local.type).c_str(), loc_idx, local.arg_idx.value());
+    }
+    else {
+      label = cotyl::Format("%s c%d", detail::TypeString(local.type).c_str(), loc_idx);
+    }
+    graph.n((std::uintptr_t)&func, label);
+  }
+}
+
+void VisualizeFunction(const Function& func, const std::string& filename) {
+  auto graph = std::make_unique<epi::cycle::VisualGraph>();
+
+  VisualizeFunctionHelper(*graph, func);
+
+  graph->allow_multi_edge = true;
+  graph->Visualize(filename);
+}
+ 
 void VisualizeProgram(const Program& program, const std::string& filename) {
   auto graph = std::make_unique<epi::cycle::VisualGraph>();
 
   for (const auto& [symbol, func] : program.functions) {
-    for (const auto& [block_idx, block] : func.blocks) {
-      const auto id = GetNodeID(func, block_idx);
-      graph->n(id).title(cotyl::Format("L%d", block_idx));
-      for (const auto& directive : block) {
-        directive.visit<void>(
-          [&](const Select& select) {
-            auto node = graph->n(id, stringify(select));
-            for (auto [val, dest] : *select.table) {
-              node->n(GetNodeID(func, dest), std::to_string(val));
-            }
-            if (select._default) {
-              node->n(GetNodeID(func, select._default), "default");
-            }
-          },
-          [&](const UnconditionalBranch& branch) {
-            auto node = graph->n(id, stringify(branch));
-            node->n(GetNodeID(func, branch.dest));
-          },
-          [&](const auto& dir) {
-            auto node = graph->n(id, stringify(dir));
-            if constexpr (cotyl::is_instantiation_of_v<BranchCompare, decltype_t(dir)>) {
-              node->n(GetNodeID(func, dir.tdest));
-              node->n(GetNodeID(func, dir.fdest));
-            }
-          }
-        );
-      }
-    }
-
-    auto fnode = graph->n((std::uintptr_t)&func);
-    fnode.title(symbol.str() + "(*)");
-    fnode->n(GetNodeID(func, Function::Entry));
-    for (const auto& [loc_idx, local] : func.locals) {
-      std::string label;
-      if (local.arg_idx.has_value()) {
-        label = cotyl::Format("%s c%d <- a%d", detail::TypeString(local.type).c_str(), loc_idx, local.arg_idx.value());
-      }
-      else {
-        label = cotyl::Format("%s c%d", detail::TypeString(local.type).c_str(), loc_idx);
-      }
-      graph->n((std::uintptr_t)&func, label);
-    }
+    VisualizeFunctionHelper(*graph, func);
   }
 
   graph->allow_multi_edge = true;

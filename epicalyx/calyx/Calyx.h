@@ -66,6 +66,7 @@ struct Program {
 };
 
 void VisualizeProgram(const Program& program, const std::string& filename);
+void VisualizeFunction(const Function& func, const std::string& filename);
 void PrintProgram(const Program& program);
 void PrintFunction(const Function& program);
 
