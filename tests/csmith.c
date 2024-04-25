@@ -189,13 +189,11 @@ static int  func_17(long long  p_18, unsigned short  p_19)
     int ***l_812 = (void*)0;
     unsigned int l_830 = 4UL;
     (*g_178) = func_153(g_436);
-lbl_773:
     l_768--;
     (*g_600) ^= ((long long)0x3DD30B71DFB4F0E1LL << (long long)2);
     if (((void*)0 != &l_747))
     { /* block id: 183 */
-        if (g_138)
-            goto lbl_773;
+    
     }
     else
     { /* block id: 185 */

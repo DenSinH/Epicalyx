@@ -74,7 +74,10 @@ void Interpreter::InterpretGlobalInitializer(Global& dest, Function&& func) {
 }
 
 void Interpreter::Emit(const AnyDirective& dir) {
-  dir.visit<void>([&](const auto& d) { Emit(d); });
+  dir.visit<void>([&](const auto& d) {
+    // std::cout << stringify(d) << std::endl;
+    Emit(d); 
+  });
 }
 
 void Interpreter::Interpret(const Program& program) {
@@ -220,7 +223,7 @@ void Interpreter::EnterFunction(const Function* function) {
 
 template<typename To, typename From>
 void Interpreter::Emit(const Cast<To, From>& op) {
- cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
+//  cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
   using result_t = calyx_op_type(op)::result_t;
   using src_t = calyx_op_type(op)::src_t;
   if constexpr(std::is_same_v<To, Pointer>) {
@@ -273,7 +276,7 @@ void Interpreter::Emit(const Cast<To, From>& op) {
 
 template<typename T>
 void Interpreter::Emit(const LoadLocal<T>& op) {
-  cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
+  // cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
   if constexpr(std::is_same_v<T, Struct>) {
     throw cotyl::UnimplementedException("load struct cvar");
   }
@@ -360,8 +363,18 @@ void Interpreter::Emit(const LoadFromPointer<T>& op) {
     }
     else {
       const auto pval = swl::get<LabelOffset>(pointer);
-    //   cotyl::Assert(global_data[globals[pval.label]].size() - op.offset - pval.offset >= sizeof(T));
-      throw cotyl::UnimplementedException("Partial global data load");
+      if (pval.offset != 0) {
+        throw std::runtime_error("Partial global data load");
+      }
+
+      if (!globals.contains(pval.label)) {
+        throw std::runtime_error("Invalid symbol load");
+      }
+      const auto& glob = globals.at(pval.label);
+      if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
+        throw std::runtime_error("Invalid aliased global data load");
+      }
+      value = swl::get<scalar_or_pointer_t<T>>(glob).value;
     }
     using result_t = calyx_op_type(op)::result_t;
     vars.Set(op.idx, scalar_or_pointer_t<result_t>{(result_t)value});
@@ -391,8 +404,18 @@ void Interpreter::Emit(const StoreToPointer<T>& op) {
     }
     else {
       const auto pval = swl::get<LabelOffset>(pointer);
-    //   cotyl::Assert(global_data[globals[pval.label]].size() - op.offset - pval.offset >= sizeof(T));
-      throw cotyl::UnimplementedException("Partial global data store");
+      if (pval.offset != 0) {
+        throw std::runtime_error("Partial global data store");
+      }
+
+      if (!globals.contains(pval.label)) {
+        throw std::runtime_error("Invalid symbol store");
+      }
+      auto& glob = globals.at(pval.label);
+      if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
+        throw std::runtime_error("Invalid aliased global data store");
+      }
+      glob.template emplace<scalar_or_pointer_t<T>>(std::move(value));
     }
   }
 }
@@ -463,13 +486,13 @@ void Interpreter::Emit(const Return<T>& op) {
 
 template<typename T>
 void Interpreter::Emit(const Imm<T>& op) {
-  cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
+  // cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
   vars.Set(op.idx, scalar_or_pointer_t<T>{op.value});
 }
 
 template<typename T>
 void Interpreter::Emit(const Unop<T>& op) {
-  cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
+  // cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
   T right = swl::get<Scalar<T>>(vars.Get(op.right_idx)).value;
   switch (op.op) {
     case UnopType::Neg:
@@ -486,7 +509,7 @@ void Interpreter::Emit(const Unop<T>& op) {
 
 template<typename T>
 void Interpreter::Emit(const Binop<T>& op) {
-  cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
+  // cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
   T left = swl::get<Scalar<T>>(vars.Get(op.left_idx)).value;
   T right;
   if (op.right.IsVar()) {
@@ -544,7 +567,7 @@ void Interpreter::Emit(const Binop<T>& op) {
 
 template<typename T>
 void Interpreter::Emit(const Shift<T>& op) {
-  cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
+  // cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
   T left;
   calyx_op_type(op)::shift_t right;
   if (op.left.IsVar()) {
