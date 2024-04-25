@@ -92,7 +92,7 @@ void ASTWalker::Visit(const epi::DeclarationNode& decl) {
 
         auto global_block_return_visitor = detail::EmitterTypeVisitor<detail::ReturnEmitter>(*this, { current });
         global_block_return_visitor.Visit(decl.type);
-
+        
         calyx::InterpretGlobalInitializer(global, std::move(initializer));
       }
       else {

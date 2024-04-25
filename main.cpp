@@ -25,6 +25,8 @@
 #define catch_e catch (std::runtime_error& e)
 #endif
 
+using ::epi::stringify;
+
 
 int main(int argc, char** argv) {
   auto settings = epi::info::parse_args(argc, argv);
@@ -94,30 +96,7 @@ int main(int argc, char** argv) {
   std::cout << std::endl << std::endl;
   std::cout << "-- globals" << std::endl;
   for (const auto& [symbol, global] : program.globals) {
-    std::cout << symbol.c_str() << " ";
-    swl::visit(
-      swl::overloaded{
-        [](const epi::calyx::Pointer& glob) {
-          std::cout << "%p" << std::hex << glob.value << std::endl;
-        },
-        [](const epi::calyx::LabelOffset& glob) {
-          if (glob.offset) {
-            std::cout << glob.label.c_str() << "+" << glob.offset << std::endl;
-          }
-          else {
-            std::cout << glob.label.c_str() << std::endl;
-          }
-        },
-        []<typename T>(const epi::calyx::Scalar<T>& glob) {
-          using glob_t = decltype_t(glob);
-          static_assert(epi::cotyl::is_instantiation_of_v<epi::calyx::Scalar, glob_t>);
-          std::cout << glob.value << " (" << std::dec << (sizeof(typename glob_t::type_t) * 8) << ")" << std::endl;
-        },
-        // exhaustive variant access
-        [](const auto& variant) { static_assert(!sizeof(variant)); }
-      }, 
-      global
-    );
+    std::cout << symbol.c_str() << " " << stringify(global) << std::endl;
   }
 
   for (const auto& string : program.strings) {
@@ -134,29 +113,8 @@ int main(int argc, char** argv) {
 
     // extract globals from interpreter
     std::cout << "  -- globals" << std::endl;
-    for (const auto& [glob, glob_idx] : interpreter.globals) {
-      std::cout << "  " << glob.c_str() << " ";
-      swl::visit(
-        swl::overloaded{
-          [](const epi::calyx::Pointer& glob) {
-            std::cout << "%p" << std::hex << glob.value << std::endl;
-          },
-          [](const epi::calyx::LabelOffset& glob) {
-            if (glob.offset) {
-              std::cout << glob.label.c_str() << "+" << glob.offset << std::endl;
-            }
-            else {
-              std::cout << glob.label.c_str() << std::endl;
-            }
-          },
-          [](const auto& glob) {
-            using glob_t = decltype_t(glob);
-            static_assert(epi::cotyl::is_instantiation_of_v<epi::calyx::Scalar, glob_t>);
-            std::cout << glob.value << std::endl;
-          }
-        },
-        program.globals.at(glob)
-      );
+    for (const auto& [symbol, global] : interpreter.globals) {
+      std::cout << "  " << symbol.c_str() << " " << stringify(global) << std::endl;
     }
 
     auto dependencies = epi::ProgramDependencies::GetDependencies(program);

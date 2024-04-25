@@ -31,14 +31,28 @@ static STRINGIFY_METHOD(std::string) {
   return value; 
 }
 
+namespace detail {
+  
 template<typename T>
+concept HasStdToString = requires(T a) {
+  { std::to_string(a) } -> std::same_as<std::string>;
+};
+
+template<typename T>
+concept HasToString = requires(T a) {
+  { a.ToString() } -> std::same_as<std::string>;
+};
+
+}
+
+template<detail::HasStdToString T>
 static STRINGIFY_METHOD(T) {
-  if constexpr(std::is_arithmetic_v<T>) {
-    return std::to_string(value);
-  }
-  else {
-    return value.ToString();
-  }
+  return std::to_string(value);
+}
+
+template<detail::HasToString T>
+static STRINGIFY_METHOD(T) {
+  return value.ToString();
 }
 
 }

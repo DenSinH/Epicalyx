@@ -154,4 +154,28 @@ STRINGIFY_METHOD(Struct) {
   return "<struct type>"; 
 }
 
+STRINGIFY_METHOD(Global) {
+  return swl::visit<std::string>(
+    swl::overloaded{
+      [](const epi::calyx::Pointer& glob) {
+        return cotyl::Format("%%p%016x", glob.value);
+      },
+      [](const epi::calyx::LabelOffset& glob) {
+        if (glob.offset) {
+          return cotyl::Format("&%s + %llx", glob.label.c_str(), glob.offset);
+        }
+        else {
+          return cotyl::Format("&%s", glob.label.c_str());
+        }
+      },
+      []<typename T>(const epi::calyx::Scalar<T>& glob) {
+        return std::to_string(+glob.value);
+      },
+      // exhaustive variant access
+      [](const auto& variant) { static_assert(!sizeof(variant)); }
+    }, 
+    value
+  );
+}
+
 }

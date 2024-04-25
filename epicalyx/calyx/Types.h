@@ -141,6 +141,8 @@ struct Global : detail::global_t {
 
 };
 
+STRINGIFY_METHOD(Global);
+
 }
 
 }

@@ -13,6 +13,19 @@
 
 namespace epi::calyx {
 
+template<typename T>
+struct scalar_or_pointer {
+  using type = Scalar<T>;
+};
+
+template<>
+struct scalar_or_pointer<Pointer> {
+  using type = Pointer;
+};
+
+template<typename T>
+using scalar_or_pointer_t = scalar_or_pointer<T>::type;
+
 using ::epi::stringify;
 
 void Interpreter::InterpretGlobalInitializer(Global& dest, Function&& func) {
@@ -30,26 +43,34 @@ void Interpreter::InterpretGlobalInitializer(Global& dest, Function&& func) {
 
   // todo: visit global type and get var based on that
   // that is what caused the bad global types
+  const auto& result = vars.Get(-1);
   swl::visit(
     swl::overloaded{
-      [&](const auto& var) {
-      // using var_t = decltype_t(var);
-
-      // if constexpr(std::is_same_v<var_t, Pointer>) {
-      //   auto pval = ReadPointer(var.value);
-      //   if (swl::holds_alternative<LabelOffset>(pval)) {
-      //     dest = swl::get<LabelOffset>(pval);
-      //   }
-      //   else {
-      //     dest = Pointer{swl::get<i64>(pval)};
-      //   }
-      // }
-      // else {
-      //   static_assert(cotyl::is_instantiation_of_v<Immediate, var_t>);
-      //   dest = Global{swl::in_place_type<var_t>, var};
-      // }
-    }
-  }, vars.Get(-1));
+      [&](Pointer& glob) {
+        const auto& ptr = swl::get<Pointer>(result);
+        auto real_pointer = ReadPointer(ptr.value);
+        if (swl::holds_alternative<i64>(real_pointer)) {
+          glob = Pointer{swl::get<i64>(real_pointer)};
+        }
+        else {
+          dest.emplace<LabelOffset>(swl::get<LabelOffset>(real_pointer));
+        }
+      },
+      [&](LabelOffset& glob) {
+        auto&& ptr = swl::get<Pointer>(result);
+        auto&& loffs = swl::get<LabelOffset>(ReadPointer(ptr.value));
+        glob.label = std::move(loffs.label);
+        glob.offset = loffs.offset;
+      },
+      [&]<typename T>(Scalar<T>& glob) {
+        glob.value = swl::get<Scalar<typename StoreGlobal<T>::src_t>>(result).value;
+      },
+      [](const auto&) {
+        throw cotyl::UnimplementedException("Global struct initializer");
+      }
+    },
+    dest
+  );
 }
 
 void Interpreter::Emit(const AnyDirective& dir) {
@@ -65,6 +86,10 @@ void Interpreter::Interpret(const Program& program) {
         // Pointer types
         [&](const LabelOffset& glob) {
           Pointer ptr = MakePointer(glob);
+          globals.emplace(symbol, std::move(ptr));
+        },
+        [&](const Pointer& glob) {
+          Pointer ptr = MakePointer(glob.value);
           globals.emplace(symbol, std::move(ptr));
         },
         // any other type can just be passed straight off
@@ -115,52 +140,52 @@ void Interpreter::LoadArg(const calyx::Local& loc) {
   const auto arg_idx = loc.arg_idx.value();
   switch (loc.type) {
     case Local::Type::I8: {
-      i8 value = swl::get<i32>(vars.Get(args->args[arg_idx].first));
+      i8 value = swl::get<Scalar<i32>>(vars.Get(args->args[arg_idx].first)).value;
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U8: {
-      u8 value = swl::get<u32>(vars.Get(args->args[arg_idx].first));
+      u8 value = swl::get<Scalar<u32>>(vars.Get(args->args[arg_idx].first)).value;
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::I16: {
-      i16 value = swl::get<i32>(vars.Get(args->args[arg_idx].first));
+      i16 value = swl::get<Scalar<i32>>(vars.Get(args->args[arg_idx].first)).value;
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U16: {
-      u16 value = swl::get<u32>(vars.Get(args->args[arg_idx].first));
+      u16 value = swl::get<Scalar<u32>>(vars.Get(args->args[arg_idx].first)).value;
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::I32: {
-      i32 value = swl::get<i32>(vars.Get(args->args[arg_idx].first));
+      i32 value = swl::get<Scalar<i32>>(vars.Get(args->args[arg_idx].first)).value;
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U32: {
-      u32 value = swl::get<u32>(vars.Get(args->args[arg_idx].first));
+      u32 value = swl::get<Scalar<u32>>(vars.Get(args->args[arg_idx].first)).value;
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::I64: {
-      i64 value = swl::get<i64>(vars.Get(args->args[arg_idx].first));
+      i64 value = swl::get<Scalar<i64>>(vars.Get(args->args[arg_idx].first)).value;
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::U64: {
-      u64 value = swl::get<u64>(vars.Get(args->args[arg_idx].first));
+      u64 value = swl::get<Scalar<u64>>(vars.Get(args->args[arg_idx].first)).value;
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::Float: {
-      float value = swl::get<float>(vars.Get(args->args[arg_idx].first));
+      float value = swl::get<Scalar<float>>(vars.Get(args->args[arg_idx].first)).value;
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
     case Local::Type::Double: {
-      double value = swl::get<double>(vars.Get(args->args[arg_idx].first));
+      double value = swl::get<Scalar<double>>(vars.Get(args->args[arg_idx].first)).value;
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
@@ -200,7 +225,7 @@ void Interpreter::Emit(const Cast<To, From>& op) {
   using src_t = calyx_op_type(op)::src_t;
   if constexpr(std::is_same_v<To, Pointer>) {
     To value;
-    From from = swl::get<From>(vars.Get(op.right_idx));
+    From from = swl::get<scalar_or_pointer_t<From>>(vars.Get(op.right_idx)).value;
     if constexpr(std::is_same_v<From, Pointer>) {
       vars.Set(op.idx, MakePointer(ReadPointer(from.value)));
     }
@@ -218,11 +243,11 @@ void Interpreter::Emit(const Cast<To, From>& op) {
     if (swl::holds_alternative<i64>(pval)) {
       value = swl::get<i64>(pval);
     }
-    vars.Set(op.idx, value);
+    vars.Set(op.idx, Scalar<result_t>{value});
   }
   else {
     result_t value;
-    auto from = swl::get<src_t>(vars.Get(op.right_idx));
+    auto from = swl::get<Scalar<src_t>>(vars.Get(op.right_idx)).value;
     if constexpr(std::is_floating_point_v<src_t>) {
       if constexpr(std::is_floating_point_v<result_t>) {
         value = (result_t)from;
@@ -242,7 +267,7 @@ void Interpreter::Emit(const Cast<To, From>& op) {
     else {
       value = from;
     }
-    vars.Set(op.idx, (result_t)value);
+    vars.Set(op.idx, Scalar<result_t>{(result_t)value});
   }
 }
 
@@ -257,7 +282,7 @@ void Interpreter::Emit(const LoadLocal<T>& op) {
     using result_t = calyx_op_type(op)::result_t;
     T value;
     memcpy(&value, &stack[locals.Get(op.loc_idx).first], sizeof(T));
-    vars.Set(op.idx, (result_t)value);
+    vars.Set(op.idx, scalar_or_pointer_t<result_t>{(result_t)value});
   }
 }
 
@@ -275,7 +300,7 @@ void Interpreter::Emit(const StoreLocal<T>& op) {
     using src_t = calyx_op_type(op)::src_t;
     T value;
     if (op.src.IsVar()) {
-      value = (T)swl::get<src_t>(vars.Get(op.src.GetVar()));
+      value = (T)swl::get<scalar_or_pointer_t<src_t>>(vars.Get(op.src.GetVar())).value;
     }
     else {
       value = (T)op.src.GetScalar();
@@ -291,9 +316,9 @@ void Interpreter::Emit(const LoadGlobal<T>& op) {
   }
   else {
     using result_t = calyx_op_type(op)::result_t;
-    cotyl::Assert(swl::holds_alternative<T>(globals.at(op.symbol)));
-    T value = swl::get<T>(globals.at(op.symbol));
-    vars.Set(op.idx, (result_t)value);
+    cotyl::Assert(swl::holds_alternative<scalar_or_pointer_t<T>>(globals.at(op.symbol)));
+    result_t value = (T)swl::get<scalar_or_pointer_t<T>>(globals.at(op.symbol)).value;
+    vars.Set(op.idx, scalar_or_pointer_t<result_t>{std::move(value)});
   }
 }
 
@@ -308,15 +333,15 @@ void Interpreter::Emit(const StoreGlobal<T>& op) {
   }
   else {
     using src_t = calyx_op_type(op)::src_t;
-    cotyl::Assert(swl::holds_alternative<T>(globals.at(op.symbol)));
+    cotyl::Assert(swl::holds_alternative<scalar_or_pointer_t<T>>(globals.at(op.symbol)));
     T value;
     if (op.src.IsVar()) {
-      value = (T)swl::get<src_t>(vars.Get(op.src.GetVar()));
+      value = (T)swl::get<scalar_or_pointer_t<src_t>>(vars.Get(op.src.GetVar())).value;
     }
     else {
       value = (T)op.src.GetScalar();
     }
-    globals.at(op.symbol).emplace(std::move(value));
+    globals.at(op.symbol).template emplace<scalar_or_pointer_t<T>>(std::move(value));
   }
 }
 
@@ -339,7 +364,7 @@ void Interpreter::Emit(const LoadFromPointer<T>& op) {
       throw cotyl::UnimplementedException("Partial global data load");
     }
     using result_t = calyx_op_type(op)::result_t;
-    vars.Set(op.idx, (result_t)value);
+    vars.Set(op.idx, scalar_or_pointer_t<result_t>{(result_t)value});
   }
 }
 
@@ -353,7 +378,7 @@ void Interpreter::Emit(const StoreToPointer<T>& op) {
     using src_t = calyx_op_type(op)::src_t;
     T value;
     if (op.src.IsVar()) {
-      value = (T)swl::get<src_t>(vars.Get(op.src.GetVar()));
+      value = (T)swl::get<scalar_or_pointer_t<src_t>>(vars.Get(op.src.GetVar())).value;
     }
     else {
       value = (T)op.src.GetScalar();
@@ -426,7 +451,7 @@ void Interpreter::Emit(const Return<T>& op) {
       pos = _pos;
       if constexpr(!std::is_same_v<T, void>) {
         if (op.val.IsVar()) vars.Set(return_to, top_vars.at(op.val.GetVar()));
-        else vars.Set(return_to, op.val.GetScalar());
+        else vars.Set(return_to, scalar_or_pointer_t<T>{op.val.GetScalar()});
       }
     }
 
@@ -439,19 +464,19 @@ void Interpreter::Emit(const Return<T>& op) {
 template<typename T>
 void Interpreter::Emit(const Imm<T>& op) {
   cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
-  vars.Set(op.idx, op.value);
+  vars.Set(op.idx, scalar_or_pointer_t<T>{op.value});
 }
 
 template<typename T>
 void Interpreter::Emit(const Unop<T>& op) {
   cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
-  T right = swl::get<T>(vars.Get(op.right_idx));
+  T right = swl::get<Scalar<T>>(vars.Get(op.right_idx)).value;
   switch (op.op) {
     case UnopType::Neg:
-      vars.Set(op.idx, (T)-right); break;
+      vars.Set(op.idx, Scalar<T>{(T)-right}); break;
     case UnopType::BinNot:
       if constexpr(std::is_integral_v<T>) {
-        vars.Set(op.idx, (T)~right); break;
+        vars.Set(op.idx, Scalar<T>{(T)~right}); break;
       }
       else {
         throw std::runtime_error("floating point operand for binary not");
@@ -462,10 +487,10 @@ void Interpreter::Emit(const Unop<T>& op) {
 template<typename T>
 void Interpreter::Emit(const Binop<T>& op) {
   cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
-  T left = swl::get<T>(vars.Get(op.left_idx));
+  T left = swl::get<Scalar<T>>(vars.Get(op.left_idx)).value;
   T right;
   if (op.right.IsVar()) {
-    right = swl::get<T>(vars.Get(op.right.GetVar()));
+    right = swl::get<Scalar<T>>(vars.Get(op.right.GetVar())).value;
   }
   else {
     right = op.right.GetScalar();
@@ -514,7 +539,7 @@ void Interpreter::Emit(const Binop<T>& op) {
       }
     }
   }
-  vars.Set(op.idx, result);
+  vars.Set(op.idx, Scalar<T>{result});
 }
 
 template<typename T>
@@ -523,13 +548,13 @@ void Interpreter::Emit(const Shift<T>& op) {
   T left;
   calyx_op_type(op)::shift_t right;
   if (op.left.IsVar()) {
-    left = swl::get<T>(vars.Get(op.left.GetVar()));
+    left = swl::get<Scalar<T>>(vars.Get(op.left.GetVar())).value;
   }
   else {
     left = op.left.GetScalar();
   }
   if (op.right.IsVar()) {
-    right = swl::get<calyx_op_type(op)::shift_t>(vars.Get(op.right.GetVar()));
+    right = swl::get<Scalar<calyx_op_type(op)::shift_t>>(vars.Get(op.right.GetVar())).value;
   }
   else {
     right = op.right.GetScalar();
@@ -545,15 +570,15 @@ void Interpreter::Emit(const Shift<T>& op) {
       break;
     }
   }
-  vars.Set(op.idx, left);
+  vars.Set(op.idx, Scalar<T>{left});
 }
 
 template<typename T>
 void Interpreter::Emit(const Compare<T>& op) {
-  T left = swl::get<T>(vars.Get(op.left_idx));
+  T left = swl::get<scalar_or_pointer_t<T>>(vars.Get(op.left_idx)).value;
   T right;
   if (op.right.IsVar()) {
-    right = swl::get<T>(vars.Get(op.right.GetVar()));
+    right = swl::get<scalar_or_pointer_t<T>>(vars.Get(op.right.GetVar())).value;
   }
   else {
     right = op.right.GetScalar();
@@ -620,7 +645,7 @@ void Interpreter::Emit(const Compare<T>& op) {
       case CmpType::Ge: result = left >= right; break;
     }
   }
-  vars.Set(op.idx, result);
+  vars.Set(op.idx, Scalar<i32>{result});
 }
 
 void Interpreter::Emit(const UnconditionalBranch& op) {
@@ -630,10 +655,10 @@ void Interpreter::Emit(const UnconditionalBranch& op) {
 
 template<typename T>
 void Interpreter::Emit(const BranchCompare<T>& op) {
-  T left = swl::get<T>(vars.Get(op.left_idx));
+  T left = swl::get<scalar_or_pointer_t<T>>(vars.Get(op.left_idx)).value;
   T right;
   if (op.right.IsVar()) {
-    right = swl::get<T>(vars.Get(op.right.GetVar()));
+    right = swl::get<scalar_or_pointer_t<T>>(vars.Get(op.right.GetVar())).value;
   }
   else {
     right = op.right.GetScalar();
@@ -676,7 +701,7 @@ void Interpreter::Emit(const BranchCompare<T>& op) {
 
 void Interpreter::Emit(const Select& op) {
   cotyl::Assert(vars.HasTop(op.idx));
-  auto val = swl::get<calyx_op_type(op)::src_t>(vars.Get(op.idx));
+  auto val = swl::get<Scalar<calyx_op_type(op)::src_t>>(vars.Get(op.idx)).value;
   cotyl::Assert(op._default || op.table->contains(val), "Jump table does not contain value");
   if (op.table->contains(val)) {
     pos.pos.first  = op.table->at(val);
@@ -699,7 +724,7 @@ void Interpreter::Emit(const AddToPointer<T>& op) {
   const auto lptr = ReadPointer(left.value);
   calyx_op_type(op)::offset_t right;
   if (op.right.IsVar()) {
-    right = swl::get<calyx_op_type(op)::offset_t>(vars.Get(op.right.GetVar()));
+    right = swl::get<Scalar<calyx_op_type(op)::offset_t>>(vars.Get(op.right.GetVar())).value;
   }
   else {
     right = op.right.GetScalar();
