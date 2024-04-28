@@ -5,7 +5,10 @@
     "cmake.buildDirectory" : "${workspaceRoot}/build/${buildType}",
     "cmake.debugConfig": {
         "cwd": "${workspaceRoot}",
-        "args": ["-rigfunc", "main", "C:\\Projects\\CProjects\\Epicalyx\\tests\\suites\\scctests\\cc\\execute\\0013-addridx.c"]
+        "args": [
+          "-rigfunc", "main",
+          "C:/Projects/CProjects/Epicalyx/tests/suites/scctests/cc/execute/0022-typedef.c"
+        ]
     },
     "editor.indentSize": 2,
     "editor.detectIndentation": false,

@@ -428,8 +428,8 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
           if (ctype) {
             throw std::runtime_error("Bad declaration");
           }
-          in_stream.Skip();
           ctype.emplace(typedefs.Get(ident_name));
+          in_stream.Skip();
         }
         else {
           // otherwise: name is detected in declarator, was not a specifier

@@ -20,7 +20,7 @@ def run_tests(base_command, root, output_file, error_file):
             continue
         
         print(f"Running test {file}...")
-        cmd = [*base_command, os.path.abspath(os.path.join(root, file))]
+        cmd = [*base_command, os.path.abspath(os.path.join(root, file)).replace("\\", "/")]
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
