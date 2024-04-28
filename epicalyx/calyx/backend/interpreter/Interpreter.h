@@ -21,7 +21,6 @@ struct Interpreter {
   // globals as raw data
   cotyl::unordered_map<cotyl::CString, calyx::Global> globals{};
 
-private:
   using pointer_real_t = swl::variant<i64, LabelOffset>;
   using var_real_t = swl::variant<
     Scalar<i32>, Scalar<u32>, 
@@ -29,6 +28,7 @@ private:
     Scalar<float>, Scalar<double>, 
     calyx::Pointer
   >;
+private:
 
   cotyl::vector<u8> stack{};
   cotyl::vector<pointer_real_t> pointer_values{};
@@ -54,6 +54,8 @@ private:
   // link, return_to, args, var_args
   std::stack<std::tuple<program_counter_t, var_index_t, const calyx::ArgData*>> call_stack{};
   std::optional<var_real_t> returned = {};
+
+  void DumpVars() const;
 
   void EnterFunction(const calyx::Function* function);
   void LoadArg(const calyx::Local& loc);

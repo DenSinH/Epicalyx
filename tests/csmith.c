@@ -133,7 +133,26 @@ static unsigned int  func_1(void)
     int *l_1003 = &g_29;
     int *l_1004 = &g_410;
     int *l_1005 = (void*)0;
-    (*g_178) = func_2(((char)(((l_10 & ((void*)0 != l_11)) != 1UL) || (((long long)g_12 % (long long)((unsigned long long)((func_17((((((void*)0 == l_11) == func_20((&g_12 != l_11), &g_12, (*l_11), (*l_11), (*l_11))) ^ (**g_178)) > (*l_11)), (*l_11)) | (*l_11)) && (-1L)) >> (unsigned long long)29)) ^ (*l_11))) / (char)g_676), g_138, g_676, l_11, l_941);
+    (*g_178) = func_2(
+      (
+        (char)(
+          ((l_10 & ((void*)0 != l_11)) != 1UL) 
+          || (
+            (
+              (long long)g_12 
+              + (long long)(
+                (unsigned long long)(
+                  (
+                    func_17((((((void*)0 == l_11) == func_20((&g_12 != l_11), &g_12, (*l_11), (*l_11), (*l_11))) ^ (**g_178)) > (*l_11)), (*l_11)) | (*l_11)
+                  ) && (-1L)
+                ) >> (unsigned long long)29
+              )
+            ) ^ (*l_11)
+          )
+        ) / (char)g_676
+      ), 
+      g_138, g_676, l_11, l_941
+    );
     ++g_1006;
     return g_181;
 }

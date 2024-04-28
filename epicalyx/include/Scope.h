@@ -28,6 +28,11 @@ struct Scope {
     return std::move(result);
   }
 
+  auto begin() { return scope.begin(); }
+  auto end() { return scope.end(); }
+  auto begin() const { return scope.begin(); }
+  auto end() const { return scope.end(); }
+
 protected:
   std::vector<U> scope{{}};
 };

@@ -28,6 +28,31 @@ using scalar_or_pointer_t = scalar_or_pointer<T>::type;
 
 using ::epi::stringify;
 
+static STRINGIFY_METHOD(Interpreter::var_real_t) {
+  return swl::visit<std::string>(
+    swl::overloaded{
+      [](const epi::calyx::Pointer& var) {
+        return cotyl::Format("pointerid", var.value);
+      },
+      []<typename T>(const epi::calyx::Scalar<T>& var) {
+        return cotyl::Format("%d (%d)", var.value, 8 * sizeof(T));
+      },
+      // exhaustive variant access
+      [](const auto& invalid) { static_assert(!sizeof(invalid)); }
+    }, 
+    value
+  );
+}
+
+void Interpreter::DumpVars() const {
+  for (const auto& layer : vars) {
+    std::cout << "Layer (" << layer.size() << " vars)" << std::endl;
+    for (const auto& [var_idx, var] : layer) {
+      std::cout << "  " << var_idx << " = " << stringify(var) << std::endl;
+    }
+  }
+}
+
 void Interpreter::InterpretGlobalInitializer(Global& dest, Function&& func) {
   calyx::ArgData no_args{};
   call_stack.emplace(program_counter_t{nullptr, {0, 0}}, -1, &no_args);
