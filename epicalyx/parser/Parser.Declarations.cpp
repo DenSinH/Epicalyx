@@ -133,8 +133,9 @@ type::AnyType Parser::DEnum() {
       // update counter
       counter = EConstexpr();
     }
-    enum_values.Set(constant, counter++);
+    enum_values.Set(constant, counter);
     variables.Set(constant, type::ValueType<enum_type>(counter, type::LValue::None, type::Qualifier::Const));
+    counter++;
     if (!in_stream.EatIf(TokenType::Comma)) {
       // no comma: expect end of enum declaration
       in_stream.Eat(TokenType::RBrace);
@@ -142,7 +143,8 @@ type::AnyType Parser::DEnum() {
     }
   } while(!in_stream.EatIf(TokenType::RBrace));
 
-  enums.Add(name);
+  // only add if not anonymous
+  if (!name.empty()) enums.Add(name);
   return type::ValueType<enum_type>(type::LValue::None);
 }
 

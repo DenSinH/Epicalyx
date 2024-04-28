@@ -7,7 +7,7 @@
         "cwd": "${workspaceRoot}",
         "args": [
           "-rigfunc", "main",
-          "C:/Projects/CProjects/Epicalyx/tests/suites/scctests/cc/execute/0035-breakcont.c"
+          "C:/Projects/CProjects/Epicalyx/tests/suites/scctests/cc/execute/0124-enumstruct.c"
         ]
     },
     "editor.indentSize": 2,
