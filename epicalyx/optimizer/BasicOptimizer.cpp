@@ -923,11 +923,28 @@ void BasicOptimizer::Emit(Binop<T>&& op) {
           case BinopType::Add: result = left_imm->value + right; break;
           case BinopType::Sub: result = left_imm->value - right; break;
           case BinopType::Mul: result = left_imm->value * right; break;
-          case BinopType::Div: result = left_imm->value / right; break;
+          case BinopType::Div: {
+            if (right == 0) {
+              Log::Warn("Integer division by 0");
+              EmitRepl<Imm<T>>(op.idx, left_imm->value);
+              return;
+            }
+            result = left_imm->value / right; 
+            break;
+          }
           default:
             if constexpr(is_calyx_integral_type_v<T>) {
               switch (op.op) {
-                case BinopType::Mod:    result = left_imm->value % right; break;
+                case BinopType::Mod: {
+                  // UB
+                  if (right == 0) {
+                    Log::Warn("Integer modulo 0");
+                    EmitRepl<Imm<T>>(op.idx, left_imm->value);
+                    return;
+                  }
+                  result = left_imm->value % right; 
+                  break;
+                }
                 case BinopType::BinAnd: result = left_imm->value & right; break;
                 case BinopType::BinOr:  result = left_imm->value | right; break;
                 case BinopType::BinXor: result = left_imm->value ^ right; break;
