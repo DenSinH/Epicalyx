@@ -51,9 +51,11 @@ std::string StringConstantNode::ToString() const {
 
 ArrayAccessNode::ArrayAccessNode(pExpr&& left, pExpr&& right) :
     ExprNode{left->type->ArrayAccess(right->type)},
-    ptr{left->type.holds_alternative<type::PointerType>() ? std::move(left) : std::move(right)},
-    offs{left->type.holds_alternative<type::PointerType>() ? std::move(right) : std::move(left)} {
-
+    ptr{std::move(left)},
+    offs{std::move(right)} {
+  if (!ptr->type.holds_alternative<type::PointerType>()) {
+    std::swap(ptr, offs);
+  }
 }
 
 std::string ArrayAccessNode::ToString() const { 

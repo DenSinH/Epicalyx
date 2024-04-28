@@ -117,7 +117,9 @@ AnyType BaseType::MemberAccess(const cotyl::CString& member) const { InvalidOper
 AnyType BaseType::FunctionCall(const cotyl::vector<AnyType>& args) const { InvalidOperand(this, "()"); }
 
 AnyType BaseType::Deref() const { InvalidOperand(this, "*"); };
-AnyType BaseType::ArrayAccess(const AnyType& other) const { InvalidOperand(this, "[]"); };
+AnyType BaseType::ArrayAccess(const AnyType& other) const { 
+  return Add(other)->Deref(); 
+};
 
 // AnyType Ref() const;  // we want a different default here
 AnyType BaseType::Neg() const { InvalidOperand(this, "-"); }
