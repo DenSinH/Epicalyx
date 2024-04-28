@@ -112,11 +112,11 @@ std::string ForNode::ToString() const {
 }
 
 pStat ForNode::Reduce() {
-  if (cond->IsConstexpr()) {
-    if (!cond->ConstBoolVal()) {
-      return std::make_unique<EmptyNode>();
-    }
-  }
+  // todo: improve deductions
+  // make sure that init / update blocks are still called
+  // if (cond && cond->IsConstexpr() && !cond->ConstBoolVal()) {
+  //   return std::make_unique<EmptyNode>();
+  // }
   return nullptr;
 }
 
