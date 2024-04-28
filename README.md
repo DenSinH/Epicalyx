@@ -1,7 +1,7 @@
 ## TODO:
- - pre-processor
+ - some pre-processor directives
  - struct/union sized fields
- - upcast in value type binops
+ - optimize `tests/suites/scctests/cc/execute/0033-ptrindec.c` example
    
 ## Unsupported
  - `_Generic` related statements

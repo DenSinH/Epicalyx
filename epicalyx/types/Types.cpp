@@ -293,6 +293,9 @@ AnyType PointerType::Sub(const AnyType& other) const {
       }
       InvalidOperands(this, "-", other);
     },
+    [&]<std::integral T>(const ValueType<T>& other) {
+      return Add(other.Neg());
+    },
     [&](const auto& other) -> AnyType {
       InvalidOperands(this, "-", other);
     }

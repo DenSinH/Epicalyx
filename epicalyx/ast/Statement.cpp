@@ -92,7 +92,9 @@ ForNode::ForNode(
     cond{std::move(cond)},
     updates{std::move(updates)},
     stat{std::move(stat)} {
-  this->cond->VerifyTruthiness();
+  if (this->cond) {
+    this->cond->VerifyTruthiness();
+  }
 }
 
 std::string ForNode::ToString() const {

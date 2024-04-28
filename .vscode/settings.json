@@ -7,7 +7,7 @@
         "cwd": "${workspaceRoot}",
         "args": [
           "-rigfunc", "main",
-          "C:/Projects/CProjects/Epicalyx/tests/suites/scctests/cc/execute/0022-typedef.c"
+          "C:/Projects/CProjects/Epicalyx/tests/suites/scctests/cc/execute/0035-breakcont.c"
         ]
     },
     "editor.indentSize": 2,

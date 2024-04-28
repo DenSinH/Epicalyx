@@ -135,18 +135,25 @@ void ASTWalker::Visit(const ForNode& stat) {
   }
 
   // loop entry is lowest block
-  auto cond_block = emitter.MakeBlock();
+  block_label_t cond_block;
+  if (stat.cond) cond_block = emitter.MakeBlock();
   auto loop_block = emitter.MakeBlock();
-  auto post_block = emitter.MakeBlock();
-  // go to condition
-  emitter.Emit<calyx::UnconditionalBranch>(cond_block);
-  emitter.SelectBlock(cond_block);
-
-  state.push({State::ConditionalBranch, {.true_block = loop_block, .false_block = post_block}});
-  stat.cond->Visit(*this);
-  state.pop();
-
   auto update_block = emitter.MakeBlock();
+  auto post_block = emitter.MakeBlock();
+
+  if (stat.cond) {
+    // go to condition
+    emitter.Emit<calyx::UnconditionalBranch>(cond_block);
+    emitter.SelectBlock(cond_block);
+
+    state.push({State::ConditionalBranch, {.true_block = loop_block, .false_block = post_block}});
+    stat.cond->Visit(*this);
+    state.pop();
+  }
+  else {
+    emitter.Emit<calyx::UnconditionalBranch>(loop_block);
+  }
+
   // branching case should have been handled by condition
   emitter.SelectBlock(loop_block);
 
@@ -165,8 +172,8 @@ void ASTWalker::Visit(const ForNode& stat) {
   for (auto& update : stat.updates) {
     update->Visit(*this);
   }
-  emitter.Emit<calyx::UnconditionalBranch>(cond_block);
-
+  if (stat.cond) emitter.Emit<calyx::UnconditionalBranch>(cond_block);
+  else           emitter.Emit<calyx::UnconditionalBranch>(loop_block);
   // pop locals layer
   locals.PopLayer();
 
