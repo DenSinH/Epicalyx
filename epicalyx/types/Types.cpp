@@ -306,11 +306,11 @@ BoolType PointerType::Lt(const AnyType& other) const {
   return other.visit<BoolType>(
     [&](const PointerType& other) {
       if (!contained->TypeEquals(*other.contained)) {
-        InvalidOperands(this, "<", other); 
+        Log::Warn(cotyl::FormatStr("Comparing pointers to different types: %s and %s", *contained, *other.contained).c_str());
       }
       return BoolType(LValue::None);
     },
-    [&](const AnyValueType& other) {
+    []<std::integral T>(const ValueType<T>& other) {
       return BoolType(LValue::None);
     },
     [&](const auto&) -> BoolType { InvalidOperands(this, "<", other); }
@@ -325,11 +325,11 @@ BoolType PointerType::Eq(const AnyType& other) const {
         return BoolType(LValue::None);
       }
       if (!contained->TypeEquals(*other.contained)) {
-        InvalidOperands(this, "<", other); 
+        Log::Warn(cotyl::FormatStr("Comparing pointers to different types: %s and %s", *contained, *other.contained).c_str());
       }
       return BoolType(LValue::None);
     },
-    [&](const AnyValueType& other) {
+    []<std::integral T>(const ValueType<T>& other) {
       return BoolType(LValue::None);
     },
     [&](const auto&) -> BoolType { InvalidOperands(this, "<", other); }
