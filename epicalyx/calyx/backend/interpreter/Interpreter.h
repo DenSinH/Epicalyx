@@ -16,7 +16,7 @@ struct Interpreter {
   using program_counter_t = program_pos_t;
 
   void InterpretGlobalInitializer(Global& dest, Function&& func);
-  void Interpret(const calyx::Program& program);
+  i32 Interpret(const calyx::Program& program);
 
   // globals as raw data
   cotyl::unordered_map<cotyl::CString, calyx::Global> globals{};
@@ -53,7 +53,7 @@ private:
   std::optional<cotyl::CString> called{};
   // link, return_to, args, var_args
   std::stack<std::tuple<program_counter_t, var_index_t, const calyx::ArgData*>> call_stack{};
-  std::optional<var_real_t> returned = {};
+  std::optional<i32> returned = {};
 
   void DumpVars() const;
 

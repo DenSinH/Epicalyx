@@ -7,6 +7,7 @@ namespace epi::info {
 struct ProgramSettings {
   std::string filename;
   std::string rigfunc;
+  bool novisualize;
 };
 
 void variant_sizes();

@@ -204,6 +204,7 @@ pNode<StatNode> Parser::SStatement() {
       }
       cotyl::vector<pExpr> exprlist{};
       EExpressionList(exprlist);
+      in_stream.Eat(TokenType::SemiColon);
       if (exprlist.size() == 1) {
         return std::move(exprlist[0]);
       }

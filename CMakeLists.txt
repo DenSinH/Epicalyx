@@ -133,6 +133,17 @@ add_custom_target(graphviz ALL
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_graphviz"
 )
 
+add_test(
+    NAME scctests
+    COMMAND 
+    python "run_suite.py" 
+          "$<TARGET_FILE:epicalyx>"
+          "./scctests/cc/execute"
+          "./scctests/output.txt"
+          "./scctests/errors.txt"
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/tests/suites"
+)
+
 # we are not using any boost libraries that need compiling
 # if(${Boost_FOUND})
 #     target_link_libraries(epicalyx ${Boost_LIBRARY})

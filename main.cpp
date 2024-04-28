@@ -16,7 +16,7 @@
 #include "Log.h"
 
 
-#undef catch_errors
+#define catch_errors
 
 #ifndef catch_errors
 #define try if (true)
@@ -103,13 +103,17 @@ int main(int argc, char** argv) {
     std::cout << '"' << string.c_str() << '"' << std::endl;
   }
 
-  epi::calyx::VisualizeProgram(program, "output/program.pdf");
+  if (!settings.novisualize) {
+    epi::calyx::VisualizeProgram(program, "output/program.pdf");
+  }
 
+  int returned = -1;
   try {
     epi::calyx::Interpreter interpreter{};
     std::cout << std::endl << std::endl;
     std::cout << "-- interpreted" << std::endl;
-    interpreter.Interpret(program);
+    returned = interpreter.Interpret(program);
+    std::cout << "return " << returned << std::endl;
 
     // extract globals from interpreter
     std::cout << "  -- globals" << std::endl;
@@ -117,8 +121,10 @@ int main(int argc, char** argv) {
       std::cout << "  " << symbol.c_str() << " " << stringify(global) << std::endl;
     }
 
-    auto dependencies = epi::ProgramDependencies::GetDependencies(program);
-    dependencies.VisualizeVars("output/vars.pdf");
+    if (!settings.novisualize) {
+      auto dependencies = epi::ProgramDependencies::GetDependencies(program);
+      dependencies.VisualizeVars("output/vars.pdf");
+    }
   }
   catch_e {
     std::cerr << "Interpreter error:" << std::endl << std::endl;
@@ -147,7 +153,9 @@ int main(int argc, char** argv) {
   }
 
   rig.Reduce(*regspace);
-  rig.Visualize("output/rig.pdf");
+  if (!settings.novisualize) {
+    rig.Visualize("output/rig.pdf");
+  }
 
-  return 0;
+  return returned;
 }

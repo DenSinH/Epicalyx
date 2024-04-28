@@ -84,7 +84,8 @@ private:
       std::apply([&](auto&&... _args) { return emit<T>::emit_value(walker, std::move(_args)...); }, std::move(args));
     }
     else {
-      []<bool flag = false> { static_assert(flag); }();
+      // this if else pattern is exhaustive
+      static_assert(!sizeof(return_t));
     }
   }
 
@@ -96,7 +97,8 @@ private:
       std::apply([&](auto&&... _args){ return emit<calyx::Pointer>::emit_pointer(walker, stride, std::move(_args)...); }, std::move(args));
     }
     else {
-      []<bool flag = false> { static_assert(flag); }();
+      // this if else pattern is exhaustive
+      static_assert(!sizeof(return_t));
     }
   }
 };

@@ -105,7 +105,7 @@ void Interpreter::Emit(const AnyDirective& dir) {
   });
 }
 
-void Interpreter::Interpret(const Program& program) {
+i32 Interpreter::Interpret(const Program& program) {
   for (const auto& [symbol, global] : program.globals) {
     swl::visit(
       swl::overloaded{
@@ -141,23 +141,10 @@ void Interpreter::Interpret(const Program& program) {
     } 
   }
 
-  swl::visit(
-    swl::overloaded{
-      [](const Pointer& var) {
-        std::cout << "return pointer" << std::endl;
-      },
-      [](const Struct& var) {
-        std::cout << "return struct" << std::endl;
-      },
-      []<typename T>(const Scalar<T>& var) {
-        static_assert(cotyl::is_instantiation_of_v<Scalar, decltype_t(var)>);
-        std::cout << "return " << var.value << std::endl;
-      },
-      // exhaustive variant access
-      [](const auto& invalid) { static_assert(!sizeof(invalid)); }
-    },
-    returned.value()
-  );
+  if (!returned.has_value()) {
+    throw std::runtime_error("Program 'main' function did not return a value");
+  }
+  return returned.value();
 }
 
 void Interpreter::LoadArg(const calyx::Local& loc) {
@@ -481,16 +468,16 @@ void Interpreter::Emit(const Return<T>& op) {
     vars.PopLayer();
 
     if (call_stack.empty()) {
-      if constexpr(!std::is_same_v<T, void>) {
+      if constexpr(std::is_same_v<T, i32>) {
         if (op.val.IsVar()) {
-          returned = top_vars.at(op.val.GetVar());
+          returned = swl::get<Scalar<i32>>(top_vars.at(op.val.GetVar())).value;
         }
         else {
           returned = op.val.GetScalar();
         }
       }
       else {
-        throw std::runtime_error("void return from main");
+        throw std::runtime_error("Invalid return type from 'main' symbol");
       }
     }
     else {

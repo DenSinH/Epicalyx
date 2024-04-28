@@ -15,6 +15,7 @@ namespace epi::info {
 
   
 ProgramSettings parse_args(int argc, char** argv) {
+  ProgramSettings settings{};
   argparse::ArgumentParser program("epicalyx");
   program.add_argument("-variant-size")
          .help("Print large variant sizes and exit")
@@ -24,14 +25,20 @@ ProgramSettings parse_args(int argc, char** argv) {
             std::exit(0);
           })
           .nargs(0);
+  program.add_argument("-novisualize")
+         .help("Don't visualize program / RIG with graphviz")
+         .flag()
+         .store_into(settings.novisualize);
   program.add_argument("-rigfunc")
          .help("Function to analyze the RIG for")
          .metavar("FUNCTION")
-         .default_value("main");
+         .default_value("main")
+         .store_into(settings.rigfunc);
   program.add_argument("filename")
          .help("C file to compile")
          .metavar("FILENAME")
-         .required();
+         .required()
+         .store_into(settings.filename);
   
   try {
     program.parse_args(argc, argv);
@@ -42,10 +49,7 @@ ProgramSettings parse_args(int argc, char** argv) {
     std::exit(1);
   }
   
-  return {
-    .filename = program.get<std::string>("filename"),
-    .rigfunc = program.get<std::string>("rigfunc")
-  };
+  return std::move(settings);
 }
 
 template<typename T>
