@@ -7,7 +7,7 @@
         "cwd": "${workspaceRoot}",
         "args": [
           "-rigfunc", "main",
-          "C:/Projects/CProjects/Epicalyx/tests/suites/scctests/cc/execute/0060-charlit.c"
+          "C:/Projects/CProjects/Epicalyx/tests/suites/scctests/cc/execute/0098-tentative.c"
         ]
     },
     "editor.indentSize": 2,

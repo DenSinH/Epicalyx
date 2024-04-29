@@ -33,9 +33,12 @@ void VisualizeFunction(const Function& func, const std::string& filename);
 
 void ASTWalker::AddGlobal(const cotyl::CString& symbol, const type::AnyType& type) {
   if (symbol_types.contains(symbol)) {
-    throw cotyl::FormatExcept("Duplicate global symbol: %s", symbol.c_str());
+    // this is supposed to be checked in the parser
+    cotyl::Assert(type.TypeEquals(symbol_types.at(symbol)));
   }
-  symbol_types.emplace(symbol, type);
+  else {
+    symbol_types.emplace(symbol, type);
+  }
 }
 
 void ASTWalker::AssertClearState() {
@@ -82,9 +85,11 @@ void ASTWalker::Visit(const epi::DeclarationNode& decl) {
     AddGlobal(decl.name, decl.type);
 
     auto global_type = detail::GetGlobalValue(decl.type);
-    if (emitter.program.globals.contains(decl.name)) {
-      throw cotyl::FormatExcept("Duplicate global symbol: %s", decl.name.c_str());
-    }
+    // todo: return since previously initialized?
+    // see 0098-tentative.c
+    // if (emitter.program.globals.contains(decl.name)) {
+    //   throw cotyl::FormatExcept("Duplicate global symbol: %s", decl.name.c_str());
+    // }
     auto it = emitter.program.globals.emplace(decl.name, std::move(global_type));
     calyx::Global& global = it.first->second;
 
