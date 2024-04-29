@@ -61,7 +61,7 @@ struct CString {
   using const_iterator = const char*;
 
   const_iterator begin() const { return data.get(); }
-  const_iterator end() const { return data.get() + size_ + 1; }
+  const_iterator end() const { return data.get() + size_; }
   std::size_t size() const { return size_; }
   bool empty() const { return size_ == 0; }
 
