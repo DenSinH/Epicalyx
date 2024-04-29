@@ -7,7 +7,7 @@
         "cwd": "${workspaceRoot}",
         "args": [
           "-rigfunc", "main",
-          "C:/Projects/CProjects/Epicalyx/tests/suites/scctests/cc/execute/0055-enum.c"
+          "C:/Projects/CProjects/Epicalyx/tests/suites/scctests/cc/execute/0078-dirifexpr.c"
         ]
     },
     "editor.indentSize": 2,

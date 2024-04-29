@@ -197,8 +197,8 @@ BoolType ValueType<T>::Eq(const AnyType& other) const {
   return BooleanBinopHelper<std::equal_to>(*this, "==", other);
 }
 
-template<typename T> struct lshift { T operator()(const T& l, const T& r) const { return l < r; }};
-template<typename T> struct rshift { T operator()(const T& l, const T& r) const { return l == r; }};
+template<typename T> struct lshift { T operator()(const T& l, const T& r) const { return l << r; }};
+template<typename T> struct rshift { T operator()(const T& l, const T& r) const { return l >> r; }};
 
 template<typename T>
 requires (cotyl::pack_contains_v<T, value_type_pack>)

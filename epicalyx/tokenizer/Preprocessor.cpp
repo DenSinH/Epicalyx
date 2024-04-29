@@ -281,7 +281,7 @@ i64 Preprocessor::EatConstexpr() {
   std::string line = FetchLine();
   ReplaceNewlines(line);
 
-  expression = &line;
+  expression = {line};
 
   // the Tokenizer class does not allocate any memory anyway
   auto tokenizer = Tokenizer(*this);
@@ -623,7 +623,7 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
   const std::string& value
 ) {
   value_t result{};
-  auto valstream = SString(&value);
+  auto valstream = SString(value);
   cotyl::StringStream current_val{};
   char c;
 
@@ -674,14 +674,14 @@ char Preprocessor::MacroStream::GetNew() {
       swl::visit(
         swl::overloaded{
           [&](const std::string& seg) {
-            current_stream = SString(&seg);
+            current_stream = SString(seg);
           },
           [&](const i32 seg) {
             if (seg == -1) {
-              current_stream = SString(&va_args);
+              current_stream = SString(va_args);
             }
             else {
-              current_stream = SString(&arguments[seg]);
+              current_stream = SString(arguments[seg]);
             }
           },
           // exhaustive variant access

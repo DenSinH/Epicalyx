@@ -65,7 +65,7 @@ private:
         def{def}, 
         arguments{std::move(arguments)},
         va_args{std::move(va_args)},
-        current_stream{&InitialStream},
+        current_stream{InitialStream},
         current_index{-1} {
         
     }

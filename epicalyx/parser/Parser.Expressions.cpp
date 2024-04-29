@@ -216,8 +216,44 @@ type::AnyType Parser::ETypeName() {
 
 pExpr ConstParser::ECast() {
   // cast expressions are not allowed in BaseParser expressions
-  // todo: this should be eunary
-  return this->ConstParser::EPrimary();
+  // we instead parse a unary expression with 
+  // valid constexpr values
+  auto type = in_stream.ForcePeek()->type;
+  switch (type) {
+    case TokenType::Plus:        // +expr
+    case TokenType::Minus:       // -expr
+    case TokenType::Tilde:       // ~expr
+    case TokenType::Exclamation: // !expr
+    {
+      in_stream.Skip();
+      auto right = ECast();
+      auto expr = std::make_unique<UnopNode>(type, std::move(right));
+      return ExprOrReduced(std::move(expr));
+    }
+    case TokenType::Sizeof: {
+      // sizeof(expr) / sizeof(type-name)
+      in_stream.Skip();
+      if (in_stream.IsAfter(0, TokenType::LParen) /* && IsDeclarationSpecifier(1) */) {
+        throw cotyl::UnimplementedException("Constparser typename");
+        // in_stream.Eat(TokenType::LParen);
+        // auto type_name = ETypeName();
+        // in_stream.Eat(TokenType::RParen);
+        // return std::make_unique<NumericalConstantNode<u64>>(type_name->Sizeof());
+      }
+      return std::make_unique<NumericalConstantNode<u64>>(ETernary()->type->Sizeof());
+    }
+    case TokenType::Alignof: {
+      // _Alignof(type-name)
+      in_stream.EatSequence(TokenType::Alignof, TokenType::LParen);
+      throw cotyl::UnimplementedException("Constparser typename");
+      // auto type_name = ETypeName();
+      // in_stream.Eat(TokenType::RParen);
+      // return std::make_unique<NumericalConstantNode<u64>>(type_name->Alignof());
+    }
+    default: {
+      return this->ConstParser::EPrimary();
+    }
+  }
 }
 
 pExpr Parser::ECast() {
