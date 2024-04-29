@@ -15,16 +15,6 @@
 
 #include "Log.h"
 
-
-#define catch_errors
-
-#ifndef catch_errors
-#define try if (true)
-#define catch_e ; for (std::runtime_error e(""); false;)
-#else
-#define catch_e catch (std::runtime_error& e)
-#endif
-
 using ::epi::stringify;
 
 
@@ -37,7 +27,8 @@ int main(int argc, char** argv) {
   try {
     pp = std::make_unique<epi::Preprocessor>(settings.filename);
   }
-  catch_e {
+  catch (std::runtime_error& e) {
+    if (!settings.catch_errors) throw;
     std::cerr << "Initialization error:" << std::endl << std::endl;
     std::cerr << e.what() << std::endl;
     std::exit(1);
@@ -50,7 +41,8 @@ int main(int argc, char** argv) {
     parser.Parse();
     parser.Data();
   }
-  catch_e {
+  catch (std::runtime_error& e) {
+    if (!settings.catch_errors) throw;
     std::cerr << "Parser error:" << std::endl << std::endl;
     std::cerr << e.what() << std::endl;
     parser.PrintLoc(std::cerr);
@@ -61,7 +53,8 @@ int main(int argc, char** argv) {
   try {
     emitter.MakeProgram(parser.declarations, parser.functions);
   }
-  catch_e {
+  catch (std::runtime_error& e) {
+    if (!settings.catch_errors) throw;
     std::cerr << "Emitter error:" << std::endl << std::endl;
     std::cerr << e.what() << std::endl;
     return 1;
@@ -83,7 +76,8 @@ int main(int argc, char** argv) {
         if (func_hash == new_hash) break;
         func_hash = new_hash;
       }
-      catch_e {
+      catch (std::runtime_error& e) {
+        if (!settings.catch_errors) throw;
         std::cerr << "Optimizer error:" << std::endl << std::endl;
         std::cerr << e.what() << std::endl;
         return 1;
@@ -126,7 +120,8 @@ int main(int argc, char** argv) {
       dependencies.VisualizeVars("output/vars.pdf");
     }
   }
-  catch_e {
+  catch (std::runtime_error& e) {
+    if (!settings.catch_errors) throw;
     std::cerr << "Interpreter error:" << std::endl << std::endl;
     std::cerr << e.what() << std::endl;
     return 1;

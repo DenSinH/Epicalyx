@@ -29,6 +29,10 @@ ProgramSettings parse_args(int argc, char** argv) {
          .help("Don't visualize program / RIG with graphviz")
          .flag()
          .store_into(settings.novisualize);
+  program.add_argument("-catch-errors")
+         .help("Catch runtime errors and display a message to stderr")
+         .flag()
+         .store_into(settings.catch_errors);
   program.add_argument("-rigfunc")
          .help("Function to analyze the RIG for")
          .metavar("FUNCTION")

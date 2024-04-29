@@ -8,6 +8,7 @@ struct ProgramSettings {
   std::string filename;
   std::string rigfunc;
   bool novisualize;
+  bool catch_errors;
 };
 
 void variant_sizes();
