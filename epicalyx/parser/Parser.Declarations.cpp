@@ -97,6 +97,9 @@ void Parser::DStaticAssert() {
 }
 
 type::AnyType Parser::DEnum() {
+  // return type with type::LValue::Assignable by default,
+  // since this will be used to initialize variables with 
+  // enum type
   in_stream.Eat(TokenType::Enum);
   cotyl::CString name;
   if (in_stream.IsAfter(0, TokenType::Identifier)) {
@@ -107,7 +110,7 @@ type::AnyType Parser::DEnum() {
       if (!enums.Has(name)) {
         throw cotyl::FormatExcept("Undefined enum %s", name.c_str());
       }
-      return type::ValueType<enum_type>(type::LValue::None);
+      return type::ValueType<enum_type>(type::LValue::Assignable);
     }
   }
   else {
@@ -136,7 +139,7 @@ type::AnyType Parser::DEnum() {
 
   // only add if not anonymous
   if (!name.empty()) enums.Add(name);
-  return type::ValueType<enum_type>(type::LValue::None);
+  return type::ValueType<enum_type>(type::LValue::Assignable);
 }
 
 type::AnyType Parser::DStruct() {
