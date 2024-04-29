@@ -10,7 +10,7 @@ struct SString final : public cotyl::Stream<char> {
   SString(const std::string* string) : string(string) { };
   ~SString() = default;
 
-  void PrintLoc() const final;
+  void PrintLoc(std::ostream& out) const final;
 
 protected:
   char GetNew() final { return (*string)[position++]; }

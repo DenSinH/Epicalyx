@@ -9,8 +9,8 @@ ConstParser::ConstParser(cotyl::Stream<AnyToken>& in_stream) :
     in_stream{in_stream} { }
 
 
-void ConstParser::PrintLoc() const {
-  in_stream.PrintLoc();
+void ConstParser::PrintLoc(std::ostream& out) const {
+  in_stream.PrintLoc(out);
 }
 
 // expression methods are in Parser.Expressions.cpp,

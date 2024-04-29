@@ -10,17 +10,16 @@
 #include "Decltype.h"
 
 #include <ranges>
-#include <iostream>
 
 
 namespace epi {
 
-void Preprocessor::PrintLoc() const {
+void Preprocessor::PrintLoc(std::ostream& out) const {
   for (const auto& file : file_stack) {
-    std::cout << "in " << file.name << ":" << file.line << std::endl;
+    out << "in " << file.name << ":" << file.line << std::endl;
   }
-  std::cout << std::endl;
-  file_stack.back().stream.PrintLoc();
+  out << std::endl;
+  file_stack.back().stream.PrintLoc(out);
 }
 
 cotyl::Stream<char>& Preprocessor::CurrentStream() const {
@@ -692,8 +691,8 @@ bool Preprocessor::MacroStream::IsEOS() {
   return eos;
 }
 
-void Preprocessor::MacroStream::PrintLoc() const {
-
+void Preprocessor::MacroStream::PrintLoc(std::ostream& out) const {
+  // todo
 }
 
 std::string Preprocessor::GetMacroArgumentValue(bool variadic) {

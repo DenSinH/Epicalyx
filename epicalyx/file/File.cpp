@@ -18,7 +18,7 @@ File::~File() {
   file.close();
 }
 
-void File::PrintLoc() const {
+void File::PrintLoc(std::ostream& out) const {
   const std::streampos restore = file.tellg();
   const std::streampos current = file.tellg() - (std::streampos)BufSize() - (lookahead ? 1 : 0);
   std::string l;
@@ -26,19 +26,19 @@ void File::PrintLoc() const {
   if (prev != -1) {
     file.seekg(prev, std::ios::beg);
     std::getline(file, l);
-    std::cout << l << std::endl;
+    out << l << std::endl;
   }
   else {
     file.seekg(line, std::ios::beg);
   }
   std::getline(file, l);
-  std::cout << l << std::endl;
+  out << l << std::endl;
   for (int i = 0; i < current - line; i++) {
-    std::cout << '~';
+    out << '~';
   }
-  std::cout << '^' << std::endl;
+  out << '^' << std::endl;
   std::getline(file, l);
-  std::cout << l << std::endl;
+  out << l << std::endl;
   file.seekg(restore);
 }
 

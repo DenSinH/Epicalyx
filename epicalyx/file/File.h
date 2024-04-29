@@ -10,7 +10,7 @@ struct File final : public cotyl::Stream<char> {
   File(const std::string& filename);
   ~File();
 
-  void PrintLoc() const final;
+  void PrintLoc(std::ostream& out) const final;
 
 protected:
   char GetNew() final;

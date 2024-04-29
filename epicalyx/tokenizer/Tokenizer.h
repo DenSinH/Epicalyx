@@ -23,7 +23,7 @@ public:
       in_stream(in_stream) {
 
   }
-  void PrintLoc() const final { in_stream.PrintLoc(); };
+  void PrintLoc(std::ostream& out) const final { in_stream.PrintLoc(out); };
 
 protected:
   AnyToken GetNew() override;

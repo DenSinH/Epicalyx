@@ -20,7 +20,7 @@ struct Preprocessor final : public cotyl::Stream<char> {
     file_stack.emplace_back(in_stream);
   }
 
-  void PrintLoc() const final;
+  void PrintLoc(std::ostream& out) const final;
 
 protected:
   char GetNew() final;
@@ -72,7 +72,7 @@ private:
     MacroStream(const std::string& name, const Definition& def) : MacroStream{name, def, {}, ""} { }
     ~MacroStream() = default;
 
-    void PrintLoc() const final;
+    void PrintLoc(std::ostream& out) const final;
 
   protected:
     char GetNew() final;

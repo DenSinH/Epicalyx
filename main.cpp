@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
   catch_e {
     std::cerr << "Parser error:" << std::endl << std::endl;
     std::cerr << e.what() << std::endl;
-    parser.PrintLoc();
+    parser.PrintLoc(std::cerr);
     return 1;
   }
 

@@ -65,7 +65,9 @@ bool Parser::IsDeclarationSpecifier(int after) {
 }
 
 void Parser::RecordDeclaration(const cotyl::CString& name, const type::AnyType& type) {
-  cotyl::Assert(!name.empty());
+  if (name.empty()) {
+    return;
+  }
   // todo: check enum/struct/typdef
   if (variables.HasTop(name)) {
     // gets the first scoped value (which will be the top one)

@@ -1,9 +1,12 @@
 #pragma once
 
+#include <ostream>
+
+
 namespace epi::cotyl {
 
 struct Locatable {
-  virtual void PrintLoc() const = 0;
+  virtual void PrintLoc(std::ostream& out) const = 0;
 };
 
 }

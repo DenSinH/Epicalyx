@@ -29,7 +29,7 @@ struct ConstParser : public cotyl::Locatable {
 
   ConstParser(cotyl::Stream<AnyToken>& in_stream);
 
-  void PrintLoc() const final;
+  void PrintLoc(std::ostream& out) const final;
   i64 EConstexpr();
 
   // needs public access for shorthand parsing Binop Expressions
