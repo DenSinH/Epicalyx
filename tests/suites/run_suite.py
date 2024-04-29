@@ -32,6 +32,8 @@ def run_tests(base_command, root, output_file, error_file):
             proc=proc
         ))
     
+    passed = 0
+    failed = 0
     for test in tests:
         stdout, stderr = test.proc.communicate()
         print(f"{test.file: <30} {test.proc.returncode}", file=output, flush=True)
@@ -43,6 +45,15 @@ def run_tests(base_command, root, output_file, error_file):
             err = stderr.decode("utf-8", errors="ignore").strip()
             print(err)
             print(err, file=errors, flush=True)
+            failed += 1
+        else:
+            passed += 1
+    print("=" * 50, file=output)
+    print(f"Total tests: {passed + failed}", file=output)
+    print(f"Passed:      {passed}", file=output)
+    print(f"Failed:      {failed}", file=output)
+    print("=" * 50, file=output, flush=True)
+    
 
 
 if __name__ == "__main__":
