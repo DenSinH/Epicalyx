@@ -587,7 +587,7 @@ void Preprocessor::PreprocessorDirective() {
   }
   else if (pp_token == "error") {
     std::string message = FetchLine();
-    throw cotyl::FormatExcept("error: %s", message.c_str());
+    if (Enabled()) throw cotyl::FormatExcept("error: %s", message.c_str());
   }
   else if (pp_token == "pragma") {
     // todo

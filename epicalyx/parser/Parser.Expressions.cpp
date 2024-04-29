@@ -216,6 +216,7 @@ type::AnyType Parser::ETypeName() {
 
 pExpr ConstParser::ECast() {
   // cast expressions are not allowed in BaseParser expressions
+  // todo: this should be eunary
   return this->ConstParser::EPrimary();
 }
 

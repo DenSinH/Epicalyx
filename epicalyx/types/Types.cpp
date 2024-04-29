@@ -51,8 +51,14 @@ AnyType BinopHelper(const ValueType<T>& one,  const ValueType<R>& other) {
   using common_t = common_type_t<T, R>;
   if (one.value.has_value() && other.value.has_value()) {
     handler<common_t> h;
+    using return_t = std::conditional_t<std::is_same_v<decltype_t(h(one.value.value(), other.value.value())), bool>, i32, decltype_t(h(one.value.value(), other.value.value()))>;
+    if constexpr(std::is_same_v<handler<common_t>, std::divides<common_t>> || std::is_same_v<handler<common_t>, std::modulus<common_t>>) {
+      if (other.value.value() == 0) {
+        // todo: fix this (lazy eval in constexpr, see 0160-cpp_if.c)
+        return ValueType<return_t>(LValue::None);
+      }
+    }
     auto return_val = h(one.value.value(), other.value.value());
-    using return_t = std::conditional_t<std::is_same_v<decltype_t(return_val), bool>, i32, decltype_t(return_val)>;
     return ValueType<return_t>(return_val, LValue::None);
   }
   return ValueType<common_t>(LValue::None);
@@ -359,7 +365,7 @@ AnyType PointerType::CommonTypeImpl(const AnyType& other) const {
 
 u64 PointerType::Sizeof() const {
   if (size == 0) return sizeof(u64);
-  return size * sizeof(u64);
+  return size * (*contained)->Sizeof();
 }
 
 std::string PointerType::ToString() const {

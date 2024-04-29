@@ -496,7 +496,7 @@ template<> Parser::any_pointer_t::~Variant() = default;
 
 cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
   cotyl::CString name;
-  std::stack<any_pointer_t> layer{};
+  // std::stack<any_pointer_t> layer{};
 
   const Token* current;
   while (true) {
@@ -518,7 +518,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
               break;
           }
         }
-        layer.push(type::PointerType{nullptr, type::LValue::Assignable, ptr_qualifiers});
+        dest.push(type::PointerType{nullptr, type::LValue::Assignable, ptr_qualifiers});
         break;
       }
       case TokenType::LParen: {
@@ -539,7 +539,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
           }
           case TokenType::RParen: {
             // function()
-            layer.push(type::FunctionType{nullptr, false, type::LValue::Assignable});
+            dest.push(type::FunctionType{nullptr, false, type::LValue::Assignable});
             in_stream.Skip();
             break;
           }
@@ -606,7 +606,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
                 break;
               }
             } while (true);
-            layer.push(std::move(typ));
+            dest.push(std::move(typ));
           }
         }
         break;
@@ -632,16 +632,16 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
           }
         }
         in_stream.Eat(TokenType::RBracket);
-        layer.push(type::PointerType{type::PointerType::ArrayType(nullptr, size)});
+        dest.push(type::PointerType{type::PointerType::ArrayType(nullptr, size)});
         break;
       }
       default: {
-        while (!layer.empty()) {
-          // declarator might be empty
-          // for example: int (a) = 0;
-          dest.push(std::move(layer.top()));
-          layer.pop();
-        }
+        // while (!layer.empty()) {
+        //   // declarator might be empty
+        //   // for example: int (a) = 0;
+        //   dest.push(std::move(layer.top()));
+        //   layer.pop();
+        // }
         return name;
       }
     }

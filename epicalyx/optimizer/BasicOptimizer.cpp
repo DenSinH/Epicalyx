@@ -6,6 +6,7 @@
 #include "CustomAssert.h"
 #include "TypeTraits.h"
 #include "Decltype.h"
+#include "Log.h"
 
 
 namespace epi {

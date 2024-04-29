@@ -171,18 +171,32 @@ void ASTWalker::Visit(const ArrayAccessNode& expr) {
     return;
   }
   cotyl::Assert(cotyl::Is(state.top().first).AnyOf<State::Read, State::ConditionalBranch, State::Assign, State::Address>());
-
-  state.push({State::Read, {}});
+  cotyl::Assert(expr.ptr->type.holds_alternative<type::PointerType>());
+  const auto& ptrtype = expr.ptr->type.get<type::PointerType>();
   var_index_t ptr_idx, offs_idx;
+  if (ptrtype.size != 0) {
+    // pointer to array, load address again
+    state.push({State::Address, {}});
+  }
+  else {
+    // pointer to pointer, load pointer
+    state.push({State::Read, {}});
+  }
+
   expr.ptr->Visit(*this);
   ptr_idx = current;
+  state.pop();
+
+  // read offset value
+  state.push({State::Read, {}});
   expr.offs->Visit(*this);
   offs_idx = current;
   state.pop();
 
   auto ptr_var = emitter.vars[ptr_idx];
+  auto stride = ptrtype.Stride();
   EmitPointerIntegralExpr<calyx::AddToPointer>(
-          emitter.vars[offs_idx].type, ptr_var.stride, ptr_idx, ptr_var.stride, offs_idx
+          emitter.vars[offs_idx].type, stride, ptr_idx, stride, offs_idx
   );
   ptr_idx = current;
 
