@@ -111,6 +111,8 @@ struct PointerType final : AnyPointerType {
   u64 Sizeof() const final;
   u64 Stride() const;
 
+  AnyType FunctionCall(const cotyl::vector<AnyType>& args) const final;
+  
   void ForgetConstInfo() const final;
   AnyType CommonTypeImpl(const AnyType& other) const final;
 };

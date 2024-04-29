@@ -346,6 +346,17 @@ AnyType PointerType::Deref() const {
   return *contained;
 }
 
+AnyType PointerType::FunctionCall(const cotyl::vector<AnyType>& args) const {
+  return contained->visit<AnyType>(
+    [&](const FunctionType& func) {
+      return func.FunctionCall(args);
+    }, 
+    [](const auto& contained) -> AnyType {
+      throw cotyl::FormatExceptStr("Invalid operand for call: (%s)*", contained);
+    }
+  );
+}
+
 BoolType PointerType::Truthiness() const {
   return BoolType{LValue::None};
 }
@@ -368,6 +379,14 @@ u64 PointerType::Sizeof() const {
   return size * (*contained)->Sizeof();
 }
 
+u64 PointerType::Stride() const {
+  // stride may be 0 for incomplete types
+  return contained->visit<u64>(
+    [](const VoidType&) -> u64 { return 0; },
+    [](const auto& type) -> u64 { return type.Sizeof(); }
+  );
+}
+
 std::string PointerType::ToString() const {
   if (size == 0) {
     return cotyl::FormatStr("(%s)*", contained);
@@ -375,14 +394,6 @@ std::string PointerType::ToString() const {
   else {
     return cotyl::FormatStr("(%s)[%s]", contained, size);
   }
-}
-
-u64 PointerType::Stride() const {
-  // stride may be 0 for incomplete types
-  return contained->visit<u64>(
-    [](const VoidType&) -> u64 { return 0; },
-    [](const auto& type) -> u64 { return type.Sizeof(); }
-  );
 }
 
 void PointerType::ForgetConstInfo() const {

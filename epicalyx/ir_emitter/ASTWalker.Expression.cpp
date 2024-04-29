@@ -235,8 +235,14 @@ void ASTWalker::Visit(const FunctionCallNode& expr) {
   expr.left->Visit(*this);
   state.pop();
 
+  // regardless of whether the left type is a pointer to a function
+  // or a function itself, "current" will hold a pointer to the
+  // to-be-called address, as addresses are taken of function types
   const auto fn = current;
-  const auto& signature = expr.left->type.get<type::FunctionType>();
+  const type::FunctionType& signature = expr.left->type.holds_alternative<type::FunctionType>() ? 
+      expr.left->type.get<type::FunctionType>() :
+      expr.left->type.get<type::PointerType>().contained->get<type::FunctionType>();
+      
   const auto num_args = signature.arg_types.size();
   calyx::ArgData args{};
 
