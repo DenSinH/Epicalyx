@@ -229,10 +229,9 @@ pExpr Parser::ECast() {
       auto type_name = ETypeName();
       in_stream.Eat(TokenType::RParen);
 
-      if (in_stream.EatIf(TokenType::LBrace)) {
+      if (in_stream.IsAfter(0, TokenType::LBrace)) {
         // type initializer
         InitializerList list = EInitializerList();
-        in_stream.Eat(TokenType::RBrace);
         // this can never be reduced
         return std::make_unique<TypeInitializerNode>(std::move(type_name), std::move(list));
       }
@@ -351,10 +350,9 @@ void Parser::EExpressionList(cotyl::vector<pExpr>& dest) {
 }
 
 Initializer Parser::EInitializer() {
-  if (in_stream.EatIf(TokenType::LBrace)) {
+  if (in_stream.IsAfter(0, TokenType::LBrace)) {
     // initializer list
     auto value = EInitializerList();
-    in_stream.Eat(TokenType::RBrace);
     return {std::move(value)};
   }
   else {
@@ -367,9 +365,10 @@ Initializer Parser::EInitializer() {
 InitializerList Parser::EInitializerList() {
   InitializerList list{};
 
+  in_stream.Expect(TokenType::LBrace);
   while (!in_stream.IsAfter(0, TokenType::RBrace)) {
-    DesignatorList designator{};
-    if (in_stream.IsAfter(0, TokenType::Dot, TokenType::LBracket)) {
+    if (in_stream.IsAfter(0, TokenType::Dot, TokenType::LBracket)) {  
+      DesignatorList designator{};
       while (true) {
         // keep fetching nested declarators
         if (in_stream.EatIf(TokenType::Dot)) {
@@ -383,7 +382,7 @@ InitializerList Parser::EInitializerList() {
         }
         else {
           // [constant-expression]
-          in_stream.Skip();
+          in_stream.Eat(TokenType::LBracket);
           designator.emplace_back(EConstexpr());
           in_stream.Eat(TokenType::RBracket);
           if (in_stream.EatIf(TokenType::Assign)) {
@@ -399,10 +398,11 @@ InitializerList Parser::EInitializerList() {
 
     if (!in_stream.EatIf(TokenType::Comma)) {
       // initializer list ends if no other comma is present
-      in_stream.Expect(TokenType::RBrace);
+      break;
     }
   }
-  return list;
+  in_stream.Expect(TokenType::RBrace);
+  return std::move(list);
 }
 
 }

@@ -60,8 +60,8 @@ private:
   };
 
   struct MacroStream final : public cotyl::Stream<char> {
-    MacroStream(const std::string& name, const Definition& def, cotyl::vector<std::string>&& arguments, std::string&& va_args) :
-        name{name}, 
+    MacroStream(std::string&& name, const Definition& def, cotyl::vector<std::string>&& arguments, std::string&& va_args) :
+        name{std::move(name)}, 
         def{def}, 
         arguments{std::move(arguments)},
         va_args{std::move(va_args)},
@@ -69,11 +69,16 @@ private:
         current_index{-1} {
         
     }
-    MacroStream(const std::string& name, const Definition& def) : MacroStream{name, def, {}, ""} { }
+    MacroStream(std::string&& name, const Definition& def) : MacroStream{std::move(name), def, {}, ""} { }
     ~MacroStream() = default;
 
     void PrintLoc(std::ostream& out) const final;
 
+    // check whether stream is currently expanding an
+    // argument or a literal
+    bool ExpandingArgument() const;
+
+    std::string name;
   protected:
     char GetNew() final;
     bool IsEOS() final;
@@ -81,7 +86,6 @@ private:
   private:
     const static std::string InitialStream;  // " "
 
-    std::string name;
     const Definition& def; // value
     cotyl::vector<std::string> arguments{};  // argument values
     std::string va_args{};
@@ -176,7 +180,7 @@ private:
 
   std::string GetMacroArgumentValue(bool variadic);
   static void ReplaceNewlines(std::string& value);
-  void PushMacro(const std::string& name, const Definition& definition);
+  void PushMacro(std::string&& name, const Definition& definition);
   void EatNewline();
   i64 EatConstexpr();
 

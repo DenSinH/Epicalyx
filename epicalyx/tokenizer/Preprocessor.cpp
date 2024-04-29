@@ -10,6 +10,7 @@
 #include "Decltype.h"
 
 #include <ranges>
+#include <iostream>
 
 
 namespace epi {
@@ -345,7 +346,7 @@ std::string Preprocessor::GetNextProcessed() {
       // possible identifier, process entire identifier
       // we can always fetch identifiers from the current stream, as it does not cross any
       // state changing boundaries
-      const std::string identifier = detail::get_identifier(CurrentStream());
+      std::string identifier = detail::get_identifier(CurrentStream());
 
       if (identifier == "__FILE__") {
         const auto& file = CurrentFile();
@@ -355,7 +356,18 @@ std::string Preprocessor::GetNextProcessed() {
         return std::to_string(CurrentLine());
       }
       else if (definitions.contains(identifier)) {
-        PushMacro(identifier, definitions.at(identifier));
+        if (!macro_stack.empty()) {
+          const auto& current_macro = macro_stack.back();
+          if (!current_macro.ExpandingArgument() && current_macro.name == identifier) {
+            // cannot recursively expand macro identifiers in macro definition
+            // see 6.10.3.4 Rescanning and further replacement > 2
+            // in ISO/IEC 9899:1999
+            return identifier;
+          }
+        }
+        const auto& def = definitions.at(identifier);
+        PushMacro(std::move(identifier), def);
+        return "";
       }
       else {
         return identifier;
@@ -695,6 +707,11 @@ void Preprocessor::MacroStream::PrintLoc(std::ostream& out) const {
   // todo
 }
 
+bool Preprocessor::MacroStream::ExpandingArgument() const {
+  if (eos) return false;
+  return swl::holds_alternative<i32>(def.value[current_index]);
+}
+
 std::string Preprocessor::GetMacroArgumentValue(bool variadic) {
   cotyl::StringStream value{};
   SkipBlanks();
@@ -725,14 +742,12 @@ std::string Preprocessor::GetMacroArgumentValue(bool variadic) {
     }
     else {
       // process macro argument value, as they are unfolded properly in the definition anyway
-      for (const auto& n : GetNextProcessed()) {
-        value << n;
-      }
+      value << GetNextCharacter();
     }
   }
 }
 
-void Preprocessor::PushMacro(const std::string& name, const Definition& definition) {
+void Preprocessor::PushMacro(std::string&& name, const Definition& definition) {
   if (definition.value.empty()) {
     // no use pushing an empty macro
     return;
@@ -770,11 +785,11 @@ void Preprocessor::PushMacro(const std::string& name, const Definition& definiti
     EatNextCharacter(')');
 
     // definition value has already been cleaned on #define
-    macro_stack.emplace_back(name, definition, std::move(arg_values), std::move(va_args));
+    macro_stack.emplace_back(std::move(name), definition, std::move(arg_values), std::move(va_args));
   }
   else {
     // definition value has already been cleaned on #define
-    macro_stack.emplace_back(name, definition);
+    macro_stack.emplace_back(std::move(name), definition);
   }
 }
 
