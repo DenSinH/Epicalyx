@@ -32,6 +32,11 @@ using register_type_t = u32;
 using register_idx_t = u32;
 using register_t = std::pair<register_type_t, register_idx_t>;
 
+struct RegSpaceError : cotyl::Exception {
+  RegSpaceError(std::string&& message) : 
+      Exception("Register Space Error", std::move(message)) { }
+};
+
 struct RegisterSpace {
 
   template<typename T, typename... Args>

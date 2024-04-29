@@ -12,6 +12,11 @@
 namespace epi::ast {
 using ::epi::stringify;
 
+struct ASTError : cotyl::Exception {
+  ASTError(std::string&& message) : 
+      Exception("Bad AST", std::move(message)) { }
+};
+
 struct Node {
   virtual ~Node() = default;
 

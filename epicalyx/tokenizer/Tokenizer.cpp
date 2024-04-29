@@ -12,6 +12,11 @@ namespace epi {
 extern const cotyl::unordered_map<const std::string, TokenType> Punctuators;
 extern const cotyl::unordered_map<const std::string, TokenType> Keywords;
 
+struct TokenizerError : cotyl::Exception {
+  TokenizerError(std::string&& message) : 
+    cotyl::Exception("Tokenizer Error", std::move(message)) { }
+};
+
 
 template<typename T, typename ...Args>
 AnyToken Tokenizer::Make(Args&&... args) {
@@ -31,7 +36,7 @@ AnyToken Tokenizer::GetNew() {
   char c;
   SkipBlanks();
   if (!in_stream.Peek(c)) {
-    throw cotyl::EndOfFileException();
+    throw cotyl::EOSError();
   }
 
   if (detail::is_valid_ident_start(c)) {
@@ -114,7 +119,7 @@ AnyToken Tokenizer::GetNew() {
       return Make<KeywordToken>(Punctuators.at(str.finalize()));
     }
 
-    throw cotyl::EndOfFileException();
+    throw cotyl::EOSError();
   }
 }
 
@@ -175,7 +180,7 @@ cotyl::CString Tokenizer::ReadString(const char delimiter) {
           break;
         }
         default:
-          throw cotyl::FormatExcept("Invalid escape sequence: %c", c);
+          throw cotyl::FormatExcept<TokenizerError>("Invalid escape sequence: %c", c);
       }
     }
     else {
@@ -219,11 +224,11 @@ AnyToken Tokenizer::ReadNumericalConstant() {
 
     if (in_stream.IsAfter(0, '.')) {
       if (hex) {
-        throw std::runtime_error("No decimals allowed in hex float literal");
+        throw TokenizerError("No decimals allowed in hex float literal");
       }
 
       if (dot) {
-        throw std::runtime_error("Invalid float literal: double decimal point");
+        throw TokenizerError("Invalid float literal: double decimal point");
       }
 
       value << in_stream.Get();
@@ -232,11 +237,11 @@ AnyToken Tokenizer::ReadNumericalConstant() {
     }
     else if (in_stream.IsAfter(0, 'e', 'E')) {
       if (exponent) {
-        throw std::runtime_error("Invalid float literal: double exponent");
+        throw TokenizerError("Invalid float literal: double exponent");
       }
 
       if (hex) {
-        throw std::runtime_error("Invalid float literal: wrong exponent character for hex float");
+        throw TokenizerError("Invalid float literal: wrong exponent character for hex float");
       }
 
       value << in_stream.Get();
@@ -254,7 +259,7 @@ AnyToken Tokenizer::ReadNumericalConstant() {
     else if (in_stream.IsAfter(0, 'p', 'P')) {
       // hex float exponent
       if (!hex) {
-        throw std::runtime_error("Invalid float literal: wrong exponent character for decimal float");
+        throw TokenizerError("Invalid float literal: wrong exponent character for decimal float");
       }
       value << in_stream.Get();
 
@@ -324,7 +329,7 @@ AnyToken Tokenizer::ReadNumericalConstant() {
     if (octal) {
       for (auto c : value.finalize()) {
         if (c > '7') {
-          throw std::runtime_error("Invalid octal constant");
+          throw TokenizerError("Invalid octal constant");
         }
         val <<= 3;
         val |= c - '0';
@@ -348,7 +353,7 @@ AnyToken Tokenizer::ReadNumericalConstant() {
     if (octal) {
       for (auto c : value.finalize()) {
         if (c > '7') {
-          throw std::runtime_error("Invalid octal constant");
+          throw TokenizerError("Invalid octal constant");
         }
         val <<= 3;
         val |= c - '0';

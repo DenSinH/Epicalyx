@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ConstParser.h"
+#include "Exceptions.h"
 #include "Scope.h"
 #include "Containers.h"
 #include "types/AnyType.h"

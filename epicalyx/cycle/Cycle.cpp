@@ -10,6 +10,11 @@
 
 namespace epi::cycle {
 
+struct GraphvizError : cotyl::Exception {
+  GraphvizError(int error) : 
+      Exception("Graphviz Error", cotyl::Format("Error code %d", error)) { }
+};
+
 void VisualGraph::Visualize(const std::string& filename) {
   Agdesc_t desc = {
     .directed = directed,            /* if edges are asymmetric */
@@ -77,7 +82,7 @@ void VisualGraph::Visualize(const std::string& filename) {
   gvLayout(gvc, g, "dot");
   auto error = gvRenderFilename(gvc, g, "pdf", filename.c_str());
   if (error) {
-    throw cotyl::FormatExcept("Graphviz error %d", error);
+    throw GraphvizError(error);
   }
 
   gvFreeLayout(gvc, g);

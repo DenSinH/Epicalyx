@@ -147,7 +147,7 @@ UnopNode::UnopNode(TokenType op, pExpr&& left) :
         case TokenType::Tilde: return left->type->BinNot();
         case TokenType::Exclamation: return left->type->LogNot();
         default:
-          throw cotyl::FormatExceptStr("Bad AST (UnopNode: %s)", op);
+          throw cotyl::FormatExceptStr<ASTError>("UnopNode: %s", op);
       }
     }()},
     op(op),
@@ -193,7 +193,7 @@ BinopNode::BinopNode(pExpr&& left, TokenType op, pExpr&& right) :
         case TokenType::LogicalAnd: return left->type->LogAnd(right->type);
         case TokenType::LogicalOr: return left->type->LogOr(right->type);
         default:
-          throw cotyl::FormatExceptStr("Bad AST (BinopNode: %s)", op);
+          throw cotyl::FormatExceptStr<ASTError>("BinopNode: %s", op);
       }
     }()},
     left(std::move(left)),
@@ -238,7 +238,7 @@ AssignmentNode::AssignmentNode(pExpr&& left, TokenType op, pExpr&& right) :
     ExprNode{left->type.Cast([&] {
       const auto& left_t = left->type;
       if (!left_t->IsAssignable()) {
-        throw std::runtime_error("Cannot assign to expression");
+        throw type::TypeError("Cannot assign to expression");
       }
       const auto& right_t = right->type;
 
@@ -255,7 +255,7 @@ AssignmentNode::AssignmentNode(pExpr&& left, TokenType op, pExpr&& right) :
         case TokenType::IXor: return left_t->Xor(right_t);
         case TokenType::Assign: return right_t;
         default:
-          throw cotyl::FormatExceptStr("Bad AST (assign: %s)", op);
+          throw cotyl::FormatExceptStr<ASTError>("Assignment: %s", op);
       }
     }())},
     left(std::move(left)),

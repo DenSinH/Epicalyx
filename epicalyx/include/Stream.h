@@ -53,6 +53,16 @@ concept Comparable = requires(T t, U u) {
 
 }
 
+struct EOSError : Exception {
+  EOSError() : Exception("EOS Error", "Unexpected end of stream") { }
+};
+
+struct ExpectationError : Exception {
+  template<typename E, typename G>
+  ExpectationError(const E& expected, const G& got) : 
+      Exception("Unexpected", cotyl::FormatStr("Expected '%s', got '%s'", expected, got)) { }
+};
+
 template<typename T>
 struct Stream : public Locatable {
 
@@ -75,7 +85,7 @@ struct Stream : public Locatable {
 
   void Skip() {
     if (EOS()) {
-      throw cotyl::EndOfFileException();
+      throw EOSError();
     }
     [[maybe_unused]] T _ = Get();
   }
@@ -117,7 +127,7 @@ struct Stream : public Locatable {
   const base_t* ForcePeek(size_t amount = 0) {
     const base_t* value;
     if (!Peek(value, amount)) {
-      throw cotyl::EndOfFileException();
+      throw EOSError();
     }
     return value;
   }
@@ -139,7 +149,7 @@ struct Stream : public Locatable {
   requires detail::Comparable<base_t, S>
   T Expect(const S& expect) {
     if (!IsAfter(0, expect)) {
-      throw cotyl::FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, Get());
+      throw ExpectationError(expect, Get());
     }
     return Get();
   }
@@ -185,14 +195,10 @@ struct Stream : public Locatable {
   T Eat(const S& expect) {
     T got = Get();
     if constexpr(deref) {
-      if (!(*got == expect)) {
-        throw FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, got);
-      }
+      if (!(*got == expect)) throw ExpectationError(expect, got);
     }
     else {
-      if (!(got == expect)) {
-        throw FormatExceptStr("Invalid token: expected '%s', got '%s'", expect, got);
-      }
+      if (!(got == expect)) throw ExpectationError(expect, got);
     }
     return std::move(got);
   }

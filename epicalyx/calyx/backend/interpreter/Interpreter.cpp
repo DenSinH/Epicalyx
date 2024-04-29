@@ -13,6 +13,11 @@
 
 namespace epi::calyx {
 
+struct InterpreterError : cotyl::Exception {
+  InterpreterError(std::string&& message) : 
+      Exception("Interpreter Error", std::move(message)) { }
+};
+
 template<typename T>
 struct scalar_or_pointer {
   using type = Scalar<T>;
@@ -142,7 +147,7 @@ i32 Interpreter::Interpret(const Program& program) {
   }
 
   if (!returned.has_value()) {
-    throw std::runtime_error("Program 'main' function did not return a value");
+    throw InterpreterError("Program 'main' function did not return a value");
   }
   return returned.value();
 }
@@ -376,15 +381,15 @@ void Interpreter::Emit(const LoadFromPointer<T>& op) {
     else {
       const auto pval = swl::get<LabelOffset>(pointer);
       if (pval.offset != 0) {
-        throw std::runtime_error("Partial global data load");
+        throw InterpreterError("Partial global data load");
       }
 
       if (!globals.contains(pval.label)) {
-        throw std::runtime_error("Invalid symbol load");
+        throw InterpreterError("Invalid symbol load");
       }
       const auto& glob = globals.at(pval.label);
       if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
-        throw std::runtime_error("Invalid aliased global data load");
+        throw InterpreterError("Invalid aliased global data load");
       }
       value = swl::get<scalar_or_pointer_t<T>>(glob).value;
     }
@@ -417,15 +422,15 @@ void Interpreter::Emit(const StoreToPointer<T>& op) {
     else {
       const auto pval = swl::get<LabelOffset>(pointer);
       if (pval.offset != 0) {
-        throw std::runtime_error("Partial global data store");
+        throw InterpreterError("Partial global data store");
       }
 
       if (!globals.contains(pval.label)) {
-        throw std::runtime_error("Invalid symbol store");
+        throw InterpreterError("Invalid symbol store");
       }
       auto& glob = globals.at(pval.label);
       if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
-        throw std::runtime_error("Invalid aliased global data store");
+        throw InterpreterError("Invalid aliased global data store");
       }
       glob.template emplace<scalar_or_pointer_t<T>>(std::move(value));
     }
@@ -477,7 +482,7 @@ void Interpreter::Emit(const Return<T>& op) {
         }
       }
       else {
-        throw std::runtime_error("Invalid return type from 'main' symbol");
+        throw InterpreterError("Invalid return type from 'main' symbol");
       }
     }
     else {
@@ -514,7 +519,7 @@ void Interpreter::Emit(const Unop<T>& op) {
         vars.Set(op.idx, Scalar<T>{(T)~right}); break;
       }
       else {
-        throw std::runtime_error("floating point operand for binary not");
+        throw InterpreterError("floating point operand for binary not");
       }
   }
 }
@@ -543,7 +548,7 @@ void Interpreter::Emit(const Binop<T>& op) {
         break;
       }
       else {
-        throw std::runtime_error("Float operands for mod expression");
+        throw InterpreterError("Float operands for mod expression");
       }
     }
     case BinopType::BinAnd:{
@@ -552,7 +557,7 @@ void Interpreter::Emit(const Binop<T>& op) {
         break;
       }
       else {
-        throw std::runtime_error("Float operands for bin and expression");
+        throw InterpreterError("Float operands for bin and expression");
       }
     }
     case BinopType::BinOr: {
@@ -561,7 +566,7 @@ void Interpreter::Emit(const Binop<T>& op) {
         break;
       }
       else {
-        throw std::runtime_error("Float operands for bin or expression");
+        throw InterpreterError("Float operands for bin or expression");
       }
     }
     case BinopType::BinXor:{
@@ -570,7 +575,7 @@ void Interpreter::Emit(const Binop<T>& op) {
         break;
       }
       else {
-        throw std::runtime_error("Float operands for bin xor expression");
+        throw InterpreterError("Float operands for bin xor expression");
       }
     }
   }
@@ -636,7 +641,7 @@ void Interpreter::Emit(const Compare<T>& op) {
         result = false;
       }
       else {
-        throw std::runtime_error("Cannot compare pointers to different symbols with varying offsets");
+        throw InterpreterError("Cannot compare pointers to different symbols with varying offsets");
       }
     }
     else {
@@ -647,7 +652,7 @@ void Interpreter::Emit(const Compare<T>& op) {
           rval = swl::get<i64>(rptr);
         }
         else {
-          if (lval != 0) throw std::runtime_error("Comparing label to non-zero pointer");
+          if (lval != 0) throw InterpreterError("Comparing label to non-zero pointer");
           // 0 is ALWAYS less and not equal to label, regardless of the label
           rval = 1;
         }
@@ -655,7 +660,7 @@ void Interpreter::Emit(const Compare<T>& op) {
       else {
         // must have rptr = i64, lptr = LabelOffset
         rval = swl::get<i64>(rptr);
-        if (rval != 0) throw std::runtime_error("Comparing label to non-zero pointer");;
+        if (rval != 0) throw InterpreterError("Comparing label to non-zero pointer");;
         // 0 is ALWAYS less and not equal to label, regardless of the label
         lval = 1;
       }

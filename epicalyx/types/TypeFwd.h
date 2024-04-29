@@ -5,6 +5,8 @@
 
 
 namespace epi::type {
+  
+struct TypeError;
 
 using value_type_pack = cotyl::pack<
   i8, u8, 

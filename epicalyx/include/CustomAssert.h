@@ -1,15 +1,19 @@
 #pragma once
 
-#include <string>
-#include <stdexcept>
+#include "Exceptions.h"
 
 
 namespace epi::cotyl {
 
+struct AssertionError : Exception {
+  AssertionError(std::string&& message) : 
+      Exception("Assertion Error", std::move(message)) { }
+};
+
 #ifndef NDEBUG
-static void Assert(bool cond, const std::string& message = "") {
+static void Assert(bool cond, std::string&& message = "") {
   if (!cond) [[unlikely]] {
-    throw std::runtime_error("Assertion failed: " + message);
+    throw AssertionError(std::move(message));
   }
 }
 #else

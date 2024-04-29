@@ -9,6 +9,7 @@
  * */
 
 #include "Locatable.h"
+#include "Exceptions.h"
 #include "ast/NodeFwd.h"
 
 namespace epi {
@@ -21,6 +22,12 @@ struct Stream;
 struct CString;
 
 }
+
+struct ParserError : cotyl::Exception {
+  ParserError(std::string&& message) : 
+      Exception("Parser Error", std::move(message)) { }
+};
+
 
 struct AnyToken;
 enum class TokenType : u32;

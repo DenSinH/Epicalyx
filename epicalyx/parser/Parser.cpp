@@ -27,7 +27,7 @@ type::AnyType Parser::ResolveIdentifierType(const cotyl::CString& name) const {
     return variables.Get(name);
   }
   else {
-    throw cotyl::FormatExceptStr("Undeclared identifier: '%s'", name);
+    throw cotyl::FormatExceptStr<ParserError>("Undeclared identifier: '%s'", name);
   }
 }
 
@@ -58,7 +58,7 @@ void Parser::Parse() {
 
   for (const auto& label : unresolved_labels) {
     if (!labels.contains(label)) {
-      throw cotyl::FormatExceptStr("Unresolved label: %s", label);
+      throw cotyl::FormatExceptStr<ParserError>("Unresolved label: %s", label);
     }
   }
 }

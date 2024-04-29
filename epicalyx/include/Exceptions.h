@@ -5,21 +5,29 @@
  * */
 
 #include <stdexcept>
+#include <string>
 
 
 namespace epi::cotyl {
 
-struct EndOfFileException : public std::runtime_error {
-  EndOfFileException() : std::runtime_error("Unexpected end of file") {}
+struct Exception : public std::runtime_error {
+  Exception(std::string&& title, std::string&& body) : 
+      std::runtime_error(std::move(body)), title{std::move(title)} { }
+
+  std::string title;
 };
 
-struct UnexpectedIdentifierException : public std::runtime_error {
-  UnexpectedIdentifierException() : std::runtime_error("Unexpected identifier") {}
+struct UnreachableException : Exception {
+  UnreachableException() : 
+      Exception("Unreachable", "This code path is unreachable...") { }
 };
 
-struct UnimplementedException : public std::runtime_error {
-  UnimplementedException() : std::runtime_error("Unimplemented") {}
-  UnimplementedException(const std::string& message) : std::runtime_error("Unimplemented: " + message) {}
+struct UnimplementedException : Exception {
+  UnimplementedException(std::string&& message) : 
+      Exception("Unimplemented", std::move(message)) { }
+  
+  UnimplementedException() : 
+      UnimplementedException("This action is not implemented") { }
 };
 
 }

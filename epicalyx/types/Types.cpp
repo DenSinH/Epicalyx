@@ -21,7 +21,7 @@ using common_type_t = std::common_type_t<T1, T2>;
 using ::epi::stringify;
 
 [[noreturn]] static void InvalidOperands(const BaseType* ths, const std::string& op, const AnyType& other) {
-  throw cotyl::FormatExceptStr(
+  throw cotyl::FormatExceptStr<TypeError>(
     "Invalid operands for %s: %s and %s",
     op, *ths, other
   );
@@ -32,11 +32,11 @@ using ::epi::stringify;
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 AnyType VoidType::CommonTypeImpl(const AnyType& other) const {
-  throw std::runtime_error("Cannot determine common type of incomplete type");
+  throw TypeError("Cannot determine common type of incomplete type");
 }
 
 u64 VoidType::Sizeof() const { 
-  throw std::runtime_error("Cannot determine size of incomplete type");
+  throw TypeError("Cannot determine size of incomplete type");
 }
 
 std::string VoidType::ToString() const { 
@@ -233,7 +233,7 @@ template<typename T>
 requires (cotyl::pack_contains_v<T, value_type_pack>)
 AnyType ValueType<T>::BinNot() const {
   if constexpr(!std::is_integral_v<T>) {
-    throw std::runtime_error("Binary operation on non-integral type");
+    throw TypeError("Binary operation on non-integral type");
   }
   else {
     if (value.has_value()) {
@@ -352,7 +352,7 @@ AnyType PointerType::FunctionCall(const cotyl::vector<AnyType>& args) const {
       return func.FunctionCall(args);
     }, 
     [](const auto& contained) -> AnyType {
-      throw cotyl::FormatExceptStr("Invalid operand for call: (%s)*", contained);
+      throw cotyl::FormatExceptStr<TypeError>("Invalid operand for call: (%s)*", contained);
     }
   );
 }
@@ -434,7 +434,7 @@ bool FunctionType::TypeEqualImpl(const FunctionType& other) const {
 AnyType FunctionType::FunctionCall(const cotyl::vector<AnyType>& args) const {
   if (args.size() != arg_types.size()) {
     if (!variadic || args.size() < arg_types.size()) {
-      throw std::runtime_error("Not enough arguments for function call");
+      throw TypeError("Not enough arguments for function call");
     }
   }
 
@@ -527,7 +527,7 @@ std::string UnionType::ToString() const {
 u64 StructType::Sizeof() const {
   // todo: different for union
   if (fields.empty()) {
-    throw std::runtime_error("Cannot get size of incomplete struct definition");
+    throw TypeError("Cannot get size of incomplete struct definition");
   }
 
   u64 value = 0;
@@ -553,7 +553,7 @@ AnyType StructUnionType::MemberAccess(const cotyl::CString& member) const {
       return *field.type;
     }
   }
-  throw std::runtime_error("No field named " + member.str() + " in " + ToString());
+  throw TypeError("No field named " + member.str() + " in " + ToString());
 }
 
 AnyType StructUnionType::CommonTypeImpl(const AnyType& other) const {

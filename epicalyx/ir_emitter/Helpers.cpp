@@ -29,7 +29,7 @@ calyx::Global GetGlobalValue(const AnyType& type) {
       return calyx::Pointer{0}; 
     },
     [](const VoidType&) -> calyx::Global { 
-      throw std::runtime_error("Incomplete global type"); 
+      throw type::TypeError("Incomplete global type"); 
     },
     []<typename T>(const ValueType<T>& value) -> calyx::Global {
       return calyx::Scalar<T>{0};
@@ -57,7 +57,7 @@ constexpr auto calyx_loc_type_v = calyx_loc_type<T>::value;
 std::pair<calyx::Local::Type, u64> GetLocalType(const type::AnyType& type) {
   return type.visit<std::pair<calyx::Local::Type, u64>>(
     [](const VoidType&) -> std::pair<calyx::Local::Type, u64> {
-      throw std::runtime_error("Incomplete local type");
+      throw type::TypeError("Incomplete local type");
     },
     [](const StructType& strct) -> std::pair<calyx::Local::Type, u64> {
       return {calyx::Local::Type::Struct, strct.Sizeof()}; 

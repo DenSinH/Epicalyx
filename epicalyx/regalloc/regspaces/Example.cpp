@@ -18,7 +18,7 @@ std::size_t ExampleRegSpace::RegisterTypePopulation(const register_type_t& type)
   switch (static_cast<RegType>(type)) {
     case RegType::GPR: return 16;
     case RegType::FPR: return 16;
-    default: throw cotyl::FormatExcept("Invalid register type: %d", type);
+    default: throw cotyl::FormatExcept<RegSpaceError>("Invalid register type: %d", type);
   }
 }
 

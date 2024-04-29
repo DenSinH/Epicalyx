@@ -4,9 +4,15 @@
 
 #include "Default.h"
 #include "TypeFwd.h"
+#include "Exceptions.h"
 
 
 namespace epi::type {
+
+struct TypeError : cotyl::Exception {
+  TypeError(std::string&& message) : 
+      Exception("Type Error", std::move(message)) { }
+};
 
 enum Qualifier : u8 {
   Const = 0x1,

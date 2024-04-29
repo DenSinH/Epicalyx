@@ -5,6 +5,7 @@
 
 #include "Default.h"
 #include "Containers.h"
+#include "Exceptions.h"
 #include "swl/variant.hpp"
 
 #include <stack>
@@ -13,6 +14,11 @@
 
 
 namespace epi {
+
+struct PreprocessorError : cotyl::Exception {
+  PreprocessorError(std::string&& message) : 
+      Exception("Preprocessor Error", std::move(message)) { }
+};
 
 
 struct Preprocessor final : public cotyl::Stream<char> {
@@ -114,7 +120,7 @@ private:
 
     void Elif(bool cond) {
       if (type == Type::Else) {
-        throw std::runtime_error("Unexpected elif group");
+        throw PreprocessorError("Unexpected elif group");
       }
 
       // only enable group if no earlier chain was taken and the condition is true
@@ -125,7 +131,7 @@ private:
 
     void Else() {
       if (type == Type::Else) {
-        throw std::runtime_error("Unexpected else group");
+        throw PreprocessorError("Unexpected else group");
       }
 
       // only enable group if no earlier chain was taken

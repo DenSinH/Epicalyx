@@ -1,6 +1,7 @@
 #include "ASTWalker.h"
 #include "Default.h"
 #include "Decltype.h"
+#include "Exceptions.h"
 
 namespace epi {
 
@@ -31,11 +32,11 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(var_index_t left, var_inde
         return {left_v, left, current};
       case Emitter::Var::Type::Float:
       case Emitter::Var::Type::Double:
-        throw std::runtime_error("Invalid operands for binop: pointer and floating point type");
+        throw EmitterError("Invalid operands for binop: pointer and floating point type");
       case Emitter::Var::Type::Pointer:
         // should have been hit before
-        throw std::runtime_error("Unreachable");
-      default: throw std::runtime_error("Bad binop");
+        throw cotyl::UnreachableException();
+      default: throw EmitterError("Bad binop");
     }
   }
 
@@ -55,8 +56,8 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(var_index_t left, var_inde
         return {left_v, current, right};
       case Emitter::Var::Type::Float:
       case Emitter::Var::Type::Double:
-        throw std::runtime_error("Invalid operands for binop: floating point type and pointer");
-      default: throw std::runtime_error("Bad binop");
+        throw EmitterError("Invalid operands for binop: floating point type and pointer");
+      default: throw EmitterError("Bad binop");
     }
   }
 
@@ -78,7 +79,7 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(var_index_t left, var_inde
         case Emitter::Var::Type::Double:
           current = emitter.EmitExpr<calyx::Cast<double, i32>>({ right_t }, left);
           return {{right_t}, current, right};
-        default: throw std::runtime_error("Bad binop");
+        default: throw EmitterError("Bad binop");
       }
     }
     case Emitter::Var::Type::U32: {
@@ -98,7 +99,7 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(var_index_t left, var_inde
         case Emitter::Var::Type::Double:
           current = emitter.EmitExpr<calyx::Cast<double, u32>>({ right_t }, left);
           return {{right_t}, current, right};
-        default: throw std::runtime_error("Bad binop");
+        default: throw EmitterError("Bad binop");
       }
     }
     case Emitter::Var::Type::I64: {
@@ -118,7 +119,7 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(var_index_t left, var_inde
         case Emitter::Var::Type::Double:
           current = emitter.EmitExpr<calyx::Cast<double, i64>>({ right_t }, left);
           return {{right_t}, current, right};
-        default: throw std::runtime_error("Bad binop");
+        default: throw EmitterError("Bad binop");
       }
     }
     case Emitter::Var::Type::U64: {
@@ -138,7 +139,7 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(var_index_t left, var_inde
         case Emitter::Var::Type::Double:
           current = emitter.EmitExpr<calyx::Cast<double, u64>>({right_t}, left);
           return {{right_t}, current, right};
-        default: throw std::runtime_error("Bad binop");
+        default: throw EmitterError("Bad binop");
       }
     }
     case Emitter::Var::Type::Float: {
@@ -158,7 +159,7 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(var_index_t left, var_inde
         case Emitter::Var::Type::U64:
           current = emitter.EmitExpr<calyx::Cast<float, u64>>({left_t}, right);
           return {{left_t}, left, current};
-        default: throw std::runtime_error("Bad binop");
+        default: throw EmitterError("Bad binop");
       }
     }
     case Emitter::Var::Type::Double: {
@@ -178,10 +179,10 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(var_index_t left, var_inde
         case Emitter::Var::Type::Float:
           current = emitter.EmitExpr<calyx::Cast<double, float>>({left_t}, right);
           return {{left_t}, left, current};
-        default: throw std::runtime_error("Bad binop");
+        default: throw EmitterError("Bad binop");
       }
     }
-    default: throw std::runtime_error("Bad binop");
+    default: throw EmitterError("Bad binop");
   }
 }
 

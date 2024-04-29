@@ -30,7 +30,7 @@ pExpr ConstParser::EPrimary() {
   auto current = in_stream.Get();
   return current.visit<pExpr>(
     [](const IdentifierToken& ident) -> pExpr { 
-      throw cotyl::UnexpectedIdentifierException();
+      throw ParserError("Unexpected identifier");
     },
     [](StringConstantToken& str) -> pExpr {
       return std::make_unique<StringConstantNode>(std::move(str.value));
@@ -39,14 +39,14 @@ pExpr ConstParser::EPrimary() {
       // has to be (ternary), since in the BaseParser we do not expect assignment
       // type initializer caught in cast expression
       if (punc.type != TokenType::LParen) {
-        throw cotyl::FormatExceptStr("Invalid token: expected (, got %s", current);
+        throw cotyl::FormatExceptStr<ParserError>("Invalid token: expected (, got %s", current);
       }
       auto expr = ETernary();
       in_stream.Eat(TokenType::RParen);
       return ExprOrReduced(std::move(expr));
     },
     [](const KeywordToken& keyw) -> pExpr {
-      throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", keyw);
+      throw cotyl::FormatExceptStr<ParserError>("Unexpected token in primary expression: got %s", keyw);
     },
     []<typename T>(const NumericalConstantToken<T>& num) -> pExpr {
       return std::make_unique<NumericalConstantNode<T>>(num.value);
@@ -79,7 +79,7 @@ pExpr Parser::EPrimary() {
       // has to be (expression)
       // type initializer caught in cast expression
       if (punc.type != TokenType::LParen) {
-        throw cotyl::FormatExceptStr("Invalid token: expected (, got %s", punc);
+        throw cotyl::FormatExceptStr<ParserError>("Invalid token: expected (, got %s", punc);
       }
       // todo: is (expression), but the list part makes no sense
       auto expr = EExpression();
@@ -87,7 +87,7 @@ pExpr Parser::EPrimary() {
       return ExprOrReduced(std::move(expr));
     },
     [](const KeywordToken& keyw) -> pExpr {
-      throw cotyl::FormatExceptStr("Unexpected token in primary expression: got %s", keyw);
+      throw cotyl::FormatExceptStr<ParserError>("Unexpected token in primary expression: got %s", keyw);
     },
     []<typename T>(const NumericalConstantToken<T>& num) -> pExpr {
       return std::make_unique<NumericalConstantNode<T>>(num.value);
@@ -204,12 +204,12 @@ type::AnyType Parser::ETypeName() {
   auto ctype = DSpecifier();
 
   if (ctype.second != StorageClass::None) {
-    throw std::runtime_error("Storage class not allowed here");
+    throw ParserError("Storage class not allowed here");
   }
 
   auto decl = DDeclarator(ctype.first, StorageClass::None);
   if (!decl.name.empty()) {
-    throw std::runtime_error("Name not allowed in type name");
+    throw ParserError("Name not allowed in type name");
   }
   return std::move(decl.type);
 }

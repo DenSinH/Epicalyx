@@ -174,14 +174,6 @@ struct StructUnionType : BaseType {
   cotyl::vector<StructField> fields{};  // empty if struct was only declared but never defined
   AnyType MemberAccess(const cotyl::CString& member) const final;
 
-  // pType<> CastToImpl(const StructUnionType& other) const {
-  //   if (_EqualTypeImpl(other)) {
-  //     return other.Clone();
-  //   }
-  //   throw std::runtime_error("Bad struct or union cast");
-  // }
-  // bool _EqualTypeImpl(const StructUnionType& other) const;
-
   void ForgetConstInfo() const final; 
   AnyType CommonTypeImpl(const AnyType& other) const final;
   bool TypeEqualImpl(const StructUnionType& other) const;

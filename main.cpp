@@ -11,15 +11,14 @@
 #include "regalloc/regspaces/Example.h"
 #include "config/Info.h"
 #include "Decltype.h"
+#include "Exceptions.h"
 
 
 #include "Log.h"
 
 using ::epi::stringify;
 
-
-int main(int argc, char** argv) {
-  auto settings = epi::info::parse_args(argc, argv);
+int parse_program(const epi::info::ProgramSettings& settings) {
   auto rig_func_sym = epi::cotyl::CString(settings.rigfunc);
 
   std::unique_ptr<epi::Preprocessor> pp;
@@ -27,9 +26,9 @@ int main(int argc, char** argv) {
   try {
     pp = std::make_unique<epi::Preprocessor>(settings.filename);
   }
-  catch (std::runtime_error& e) {
+  catch (epi::cotyl::Exception& e) {
     if (!settings.catch_errors) throw;
-    std::cerr << "Initialization error:" << std::endl << std::endl;
+    std::cerr << e.title << ':' << std::endl << std::endl;
     std::cerr << e.what() << std::endl;
     std::exit(1);
   }
@@ -41,23 +40,23 @@ int main(int argc, char** argv) {
     parser.Parse();
     parser.Data();
   }
-  catch (std::runtime_error& e) {
+  catch (epi::cotyl::Exception& e) {
     if (!settings.catch_errors) throw;
-    std::cerr << "Parser error:" << std::endl << std::endl;
+    std::cerr << e.title << ':' << std::endl << std::endl;
     std::cerr << e.what() << std::endl;
     parser.PrintLoc(std::cerr);
-    return 1;
+    return -1;
   }
 
   auto emitter = epi::Emitter();
   try {
     emitter.MakeProgram(parser.declarations, parser.functions);
   }
-  catch (std::runtime_error& e) {
+  catch (epi::cotyl::Exception& e) {
     if (!settings.catch_errors) throw;
-    std::cerr << "Emitter error:" << std::endl << std::endl;
+    std::cerr << e.title << ':' << std::endl << std::endl;
     std::cerr << e.what() << std::endl;
-    return 1;
+    return -1;
   }
   
   auto program = std::move(emitter.program);
@@ -76,11 +75,11 @@ int main(int argc, char** argv) {
         if (func_hash == new_hash) break;
         func_hash = new_hash;
       }
-      catch (std::runtime_error& e) {
+      catch (epi::cotyl::Exception& e) {
         if (!settings.catch_errors) throw;
-        std::cerr << "Optimizer error:" << std::endl << std::endl;
+        std::cerr << e.title << ':' << std::endl << std::endl;
         std::cerr << e.what() << std::endl;
-        return 1;
+        return -1;
       }
     }
   }
@@ -120,11 +119,11 @@ int main(int argc, char** argv) {
       dependencies.VisualizeVars("output/vars.pdf");
     }
   }
-  catch (std::runtime_error& e) {
+  catch (epi::cotyl::Exception& e) {
     if (!settings.catch_errors) throw;
-    std::cerr << "Interpreter error:" << std::endl << std::endl;
+    std::cerr << e.title << ':' << std::endl << std::endl;
     std::cerr << e.what() << std::endl;
-    return 1;
+    return -1;
   }
 
   if (!program.functions.contains(rig_func_sym)) {
@@ -153,4 +152,18 @@ int main(int argc, char** argv) {
   }
 
   return returned;
+}
+
+
+int main(int argc, char** argv) {
+  auto settings = epi::info::parse_args(argc, argv);
+  try {
+    return parse_program(settings);
+  }
+  catch (std::runtime_error& e) {
+    if (!settings.catch_errors) throw;
+    std::cerr << "Uncaught exception:" << std::endl << std::endl;
+    std::cerr << e.what() << std::endl;
+    return -1;
+  }
 }

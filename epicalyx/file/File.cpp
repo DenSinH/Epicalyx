@@ -6,10 +6,14 @@
 
 namespace epi {
 
+struct IOError : cotyl::Exception {
+  IOError(std::string&& message) : Exception("IO Error", std::move(message)) { }
+};
+
 File::File(const std::string& filename) {
   file = std::ifstream(filename, std::ios::binary);
   if (!file.good()) {
-    throw std::runtime_error("Failed to open file!");
+    throw IOError("Failed to open file");
   }
   file.seekg(0, std::ios::beg);
 }
@@ -68,7 +72,7 @@ char File::GetNew() {
     line = file.tellg();
   }
   if (!value && file.eof()) {
-    throw cotyl::EndOfFileException();
+    throw cotyl::EOSError();
   }
   return value;
 }

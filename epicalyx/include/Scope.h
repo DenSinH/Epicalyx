@@ -3,12 +3,18 @@
 #include "Containers.h"
 #include "Format.h"
 #include "Vector.h"
+#include "Exceptions.h"
 
-#include <stdexcept>
 #include <ranges>
 #include <vector>
 
 namespace epi::cotyl {
+
+struct ScopeError : Exception {
+  ScopeError(std::string&& message) :
+      Exception("Scope Error", std::move(message)) { }
+};
+
 
 template<typename U>
 struct Scope {
@@ -49,7 +55,7 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
   void Set(const K& key, const V& value) {
     if constexpr(!allow_multiple_assignment) {
       if (HasTop(key)) {
-        throw cotyl::FormatExceptStr("Redefinition of %s", key);
+        throw cotyl::FormatExceptStr<ScopeError>("Redefinition of %s", key);
       }
       base::scope.back().emplace(key, value);
     }
@@ -61,7 +67,7 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
   void Set(const K& key, V&& value) {
     if constexpr(!allow_multiple_assignment) {
       if (HasTop(key)) {
-        throw cotyl::FormatExceptStr("Redefinition of %s", key);
+        throw cotyl::FormatExceptStr<ScopeError>("Redefinition of %s", key);
       }
       base::scope.back().emplace(key, std::move(value));
     }
@@ -73,7 +79,7 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
   void Set(K&& key, V&& value) {
     if constexpr(!allow_multiple_assignment) {
       if (HasTop(key)) {
-        throw cotyl::FormatExceptStr("Redefinition of %s", key);
+        throw cotyl::FormatExceptStr<ScopeError>("Redefinition of %s", key);
       }
       base::scope.back().emplace(std::move(key), std::move(value));
     }
@@ -85,7 +91,7 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
   void Set(K&& key, const V& value) {
     if constexpr(!allow_multiple_assignment) {
       if (HasTop(key)) {
-        throw cotyl::FormatExceptStr("Redefinition of %s", key);
+        throw cotyl::FormatExceptStr<ScopeError>("Redefinition of %s", key);
       }
       base::scope.back().emplace(std::move(key), value);
     }
@@ -113,7 +119,7 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
 //         return s.at(key);
 //       }
 //     }
-//     throw cotyl::FormatExceptStr("Invalid scope access: %s", key);
+//     throw cotyl::FormatExceptStr<ScopeError>("Invalid scope access: %s", key);
 //   }
 
   const V& Get(const K& key) const {
@@ -122,7 +128,7 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
         return s.at(key);
       }
     }
-    throw cotyl::FormatExceptStr("Invalid scope access: %s", key);
+    throw cotyl::FormatExceptStr<ScopeError>("Invalid scope access: %s", key);
   }
 };
 
@@ -133,7 +139,7 @@ struct SetScope : public Scope<cotyl::unordered_set<K>> {
 
   void Add(const K& key) {
     if (base::scope.back().contains(key)) {
-      throw cotyl::FormatExceptStr("Redefinition of %s", key);
+      throw cotyl::FormatExceptStr<ScopeError>("Redefinition of %s", key);
     }
     base::scope.back().insert(key);
   }

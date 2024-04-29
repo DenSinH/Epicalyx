@@ -22,7 +22,7 @@ static std::string get_identifier(cotyl::Stream<char>& stream) {
     }
   }
   else {
-    throw std::runtime_error("Expected identifier");
+    throw cotyl::Exception("identifier", " ");
   }
   return identifier.finalize();
 }

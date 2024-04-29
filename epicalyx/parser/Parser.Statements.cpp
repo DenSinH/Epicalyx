@@ -28,7 +28,7 @@ pNode<StatNode> Parser::SStatement() {
 
       // validation
       if (case_scope.HasTop(expr)) {
-        throw std::runtime_error("Duplicate case value");
+        throw ParserError("Duplicate case value");
       }
       case_scope.Add(expr);
 
@@ -151,7 +151,7 @@ pNode<StatNode> Parser::SStatement() {
     case TokenType::Continue: {
       in_stream.Skip();
       if (loop_scope.empty()) {
-        throw std::runtime_error("Cannot continue from here");
+        throw ParserError("Cannot continue from here");
       }
 
       return std::make_unique<ContinueNode>();
@@ -159,7 +159,7 @@ pNode<StatNode> Parser::SStatement() {
     case TokenType::Break: {
       in_stream.Skip();
       if (loop_scope.empty() && (case_scope.Depth() == 1)) {
-        throw std::runtime_error("Cannot break from here");
+        throw ParserError("Cannot break from here");
       }
       return std::make_unique<BreakNode>();
     }
@@ -191,7 +191,7 @@ pNode<StatNode> Parser::SStatement() {
         auto name = std::move(in_stream.Get().get<IdentifierToken>().name);
         in_stream.Skip();
         if (labels.contains(name)) {
-          throw cotyl::FormatExcept("Duplicate label: %s", name.c_str());
+          throw cotyl::FormatExcept<ParserError>("Duplicate label: %s", name.c_str());
         }
         labels.insert(name);
         return std::make_unique<LabelNode>(std::move(name), SStatement());
@@ -200,7 +200,7 @@ pNode<StatNode> Parser::SStatement() {
     default: {
       // expression or declaration
       if (IsDeclarationSpecifier()) {
-        throw std::runtime_error("Unexpected declaration");
+        throw ParserError("Unexpected declaration");
       }
       cotyl::vector<pExpr> exprlist{};
       EExpressionList(exprlist);

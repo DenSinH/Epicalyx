@@ -89,7 +89,7 @@ void ASTWalker::Visit(const IdentifierNode& decl) {
         break;
       }
       default: {
-        throw std::runtime_error("Bad declaration state");
+        throw EmitterError("Bad declaration state");
       }
     }
   }
@@ -125,7 +125,7 @@ void ASTWalker::Visit(const IdentifierNode& decl) {
         break;
       }
       default: {
-        throw std::runtime_error("Bad declaration state");
+        throw EmitterError("Bad declaration state");
       }
     }
   }
@@ -224,7 +224,7 @@ void ASTWalker::Visit(const ArrayAccessNode& expr) {
         break;
       }
       default: {
-        throw std::runtime_error("Bad state");
+        throw EmitterError("Bad state");
       }
     }
   }
@@ -242,7 +242,7 @@ void ASTWalker::Visit(const FunctionCallNode& expr) {
   const type::FunctionType& signature = expr.left->type.holds_alternative<type::FunctionType>() ? 
       expr.left->type.get<type::FunctionType>() :
       expr.left->type.get<type::PointerType>().contained->get<type::FunctionType>();
-      
+
   const auto num_args = signature.arg_types.size();
   calyx::ArgData args{};
 
@@ -307,7 +307,7 @@ void ASTWalker::Visit(const PostFixNode& expr) {
     EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, read, var.stride, imm);
   }
   else if (type == Emitter::Var::Type::Struct) {
-    throw cotyl::FormatExceptStr("Bad expression for %s: struct", expr.op);
+    throw cotyl::FormatExceptStr<EmitterError>("Bad expression for %s: struct", expr.op);
   }
   else {
     EmitArithExpr<calyx::Imm>(type, 1);
@@ -413,7 +413,7 @@ void ASTWalker::Visit(const UnopNode& expr) {
         EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, left, var.stride, imm);
       }
       else if (type == Emitter::Var::Type::Struct) {
-        throw std::runtime_error("Bad expression for pre-increment: struct");
+        throw EmitterError("Bad expression for pre-increment: struct");
       }
       else {
         auto left = current;
@@ -450,7 +450,7 @@ void ASTWalker::Visit(const UnopNode& expr) {
         EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, left, var.stride, imm);
       }
       else if (type == Emitter::Var::Type::Struct) {
-        throw std::runtime_error("Bad expression for pre-decrement: struct");
+        throw EmitterError("Bad expression for pre-decrement: struct");
       }
       else {
         auto left = current;
@@ -521,7 +521,7 @@ void ASTWalker::Visit(const UnopNode& expr) {
       break;
     }
     default: {
-      throw std::runtime_error("Bad unop");
+      throw EmitterError("Bad unop");
     }
   }
 
@@ -605,7 +605,7 @@ void ASTWalker::Visit(const BinopNode& expr) {
         }
       }
       else if (emitter.vars[right].type == Emitter::Var::Type::Pointer) {
-        throw std::runtime_error("Invalid right hand side operator for -: pointer");
+        throw EmitterError("Invalid right hand side operator for -: pointer");
       }
       else {
         BinopHelper(left, calyx::BinopType::Sub, right);
@@ -627,7 +627,7 @@ void ASTWalker::Visit(const BinopNode& expr) {
         case TokenType::Greater:      cmp_type = calyx::CmpType::Gt; break;
         case TokenType::Equal:        cmp_type = calyx::CmpType::Eq; break;
         case TokenType::NotEqual:     cmp_type = calyx::CmpType::Ne; break;
-        default: throw std::runtime_error("Unreachable");
+        default: throw cotyl::UnreachableException();
       }
 
       if (conditional_branch) {
@@ -660,7 +660,7 @@ void ASTWalker::Visit(const BinopNode& expr) {
         }
         case Emitter::Var::Type::U32: break;
         default: {
-          throw std::runtime_error("Bad operand type for shift amount");
+          throw EmitterError("Bad operand type for shift amount");
         }
       }
       if (expr.op == TokenType::LShift) {
@@ -755,7 +755,7 @@ void ASTWalker::Visit(const BinopNode& expr) {
       return;
     }
     default:
-      throw std::runtime_error("Bad binop");
+      throw EmitterError("Bad binop");
   }
 
   if (conditional_branch) {
@@ -883,7 +883,7 @@ void ASTWalker::Visit(const AssignmentNode& expr) {
         }
         case Emitter::Var::Type::U32: break;
         default: {
-          throw std::runtime_error("Bad operand type for shift amount");
+          throw EmitterError("Bad operand type for shift amount");
         }
       }
       if (expr.op == TokenType::ILShift) {
@@ -913,7 +913,7 @@ void ASTWalker::Visit(const AssignmentNode& expr) {
       return;
     }
     default: {
-      throw std::runtime_error("Invalid assignment statement");
+      throw EmitterError("Invalid assignment statement");
     }
   }
 
@@ -937,7 +937,7 @@ void ASTWalker::Visit(const AssignmentNode& expr) {
         break;
       }
       default:
-        throw std::runtime_error("Bad pointer binop in pointer assignment");
+        throw EmitterError("Bad pointer binop in pointer assignment");
     }
   }
   else {

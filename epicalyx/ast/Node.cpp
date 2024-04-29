@@ -27,7 +27,7 @@ bool ExprNode::IsConstexpr() const {
 bool ExprNode::ConstBoolVal() const {
   auto truthiness = type->Truthiness();
   if (!truthiness.value.has_value()) {
-    throw std::runtime_error("Expected constant expression");
+    throw cotyl::Exception("AST Error", "Expected constant expression");
   }
   return truthiness.value.value() ? true : false;
 }
@@ -36,12 +36,12 @@ i64 ExprNode::ConstIntVal() const {
   return type.visit<i64>(
     []<typename T>(const type::ValueType<T>& value) -> i64 {
       if (!value.value.has_value()) {
-        throw std::runtime_error("Expected constant expression");
+        throw cotyl::Exception("AST Error", "Expected constant expression");
       }
       return (i64)value.value.value();
     },
     [](const auto& value) -> i64 {
-      throw std::runtime_error("Expected constant expression");
+      throw cotyl::Exception("AST Error", "Expected constant expression");
     }
   );
 }

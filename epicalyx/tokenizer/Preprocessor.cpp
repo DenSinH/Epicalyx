@@ -28,7 +28,7 @@ cotyl::Stream<char>& Preprocessor::CurrentStream() const {
   if (!macro_stack.empty()) return macro_stack.back();
   if (expression.has_value()) return expression.value();
   if (file_stack.empty()) {
-    throw cotyl::EndOfFileException();
+    throw cotyl::EOSError();
   }
   return file_stack.back().stream;
 }
@@ -40,7 +40,7 @@ char Preprocessor::NextCharacter() const {
     }
     else if (expression.has_value()) {
       // parsing expression which is at the end, no next character
-      throw cotyl::EndOfFileException();
+      throw cotyl::EOSError();
     }
     else {
       // parsing from file stack, file is at end
@@ -50,7 +50,7 @@ char Preprocessor::NextCharacter() const {
   }
   char c;
   if (!CurrentStream().Peek(c)) {
-      throw cotyl::EndOfFileException();
+      throw cotyl::EOSError();
   }
   return c;
 }
@@ -96,7 +96,7 @@ void Preprocessor::SkipNextCharacterSimple() {
 void Preprocessor::EatNextCharacter(char c) {
   char got = GetNextCharacter();
   if (c != got) {
-    throw cotyl::FormatExcept("Unexpected character in preprocessor: got '%c', expected '%c'", got, c);
+    throw cotyl::FormatExcept<PreprocessorError>("Unexpected character in preprocessor: got '%c', expected '%c'", got, c);
   }
 }
 
@@ -271,7 +271,7 @@ bool Preprocessor::IsEOS() {
 void Preprocessor::EatNewline() {
   SkipBlanks();
   if (!is_newline) {
-    throw std::runtime_error("Expected newline");
+    throw PreprocessorError("Expected newline");
   }
 }
 
@@ -290,24 +290,15 @@ i64 Preprocessor::EatConstexpr() {
   // this saves us having to copy over the code for parsing
   // constant expressions
   auto parser = ConstParser(tokenizer);
+  auto result = parser.EConstexpr();
 
-  try {
-    auto result = parser.EConstexpr();
+  // we expect the bottom string (expression) to be fully parsed
+  cotyl::Assert(macro_stack.empty(), "Found unexpanded macros after expression");
+  expression.reset();
 
-    // we expect the bottom string (expression) to be fully parsed
-    cotyl::Assert(macro_stack.empty(), "Found unexpanded macros after expression");
-    expression.reset();
-
-    // we fetched the whole line, so we are always at a new line after this
-    is_newline = true;
-    return result;
-  }
-  catch (cotyl::EndOfFileException& e) {
-    throw std::runtime_error("Invalid expression");
-  }
-  catch (cotyl::UnexpectedIdentifierException& e) {
-    throw std::runtime_error("Unexpected identifier in constant expression");
-  }
+  // we fetched the whole line, so we are always at a new line after this
+  is_newline = true;
+  return result;
 }
 
 std::string Preprocessor::GetNextProcessed() {
@@ -325,7 +316,7 @@ std::string Preprocessor::GetNextProcessed() {
     if (c == '#') {
       // preprocessing directives can only occur at the start of a line
       if (!is_newline) {
-        throw cotyl::FormatExcept("Stray '#' in program");
+        throw cotyl::FormatExcept<PreprocessorError>("Stray '#' in program");
       }
       PreprocessorDirective();
 
@@ -483,7 +474,7 @@ void Preprocessor::PreprocessorDirective() {
   }
   else if (pp_token == "elif") {
     if (if_group_stack.empty()) {
-      throw std::runtime_error("Unexpected elif group");
+      throw PreprocessorError("Unexpected elif group");
     }
     SkipBlanks(false);
     if_group_stack.back().Elif(EatConstexpr() != 0);
@@ -492,7 +483,7 @@ void Preprocessor::PreprocessorDirective() {
   else if (pp_token == "elifdef") {
     // non-standard
     if (if_group_stack.empty()) {
-      throw std::runtime_error("Unexpected elif group");
+      throw PreprocessorError("Unexpected elif group");
     }
     SkipBlanks(false);
     auto identifier = detail::get_identifier(CurrentStream());
@@ -502,7 +493,7 @@ void Preprocessor::PreprocessorDirective() {
   else if (pp_token == "elifndef") {
     // non-standard
     if (if_group_stack.empty()) {
-      throw std::runtime_error("Unexpected elif group");
+      throw PreprocessorError("Unexpected elif group");
     }
     SkipBlanks(false);
     auto identifier = detail::get_identifier(CurrentStream());
@@ -511,14 +502,14 @@ void Preprocessor::PreprocessorDirective() {
   }
   else if (pp_token == "else") {
     if (if_group_stack.empty()) {
-      throw std::runtime_error("Unexpected else group");
+      throw PreprocessorError("Unexpected else group");
     }
     if_group_stack.back().Else();
     EatNewline();
   }
   else if (pp_token == "endif") {
     if (if_group_stack.empty()) {
-      throw std::runtime_error("Unexpected end if preprocessor if group");
+      throw PreprocessorError("Unexpected endif");
     }
     if_group_stack.pop_back();
     EatNewline();
@@ -558,7 +549,7 @@ void Preprocessor::PreprocessorDirective() {
           break;
         }
         else {
-          throw cotyl::FormatExceptStr("Unexpected character in macro argument list: %c", NextCharacter());
+          throw cotyl::FormatExceptStr<PreprocessorError>("Unexpected character in macro argument list: %c", NextCharacter());
         }
 
         SkipBlanks(false);
@@ -597,7 +588,7 @@ void Preprocessor::PreprocessorDirective() {
   }
   else if (pp_token == "error") {
     std::string message = FetchLine();
-    if (Enabled()) throw cotyl::FormatExcept("error: %s", message.c_str());
+    if (Enabled()) throw cotyl::FormatExcept<PreprocessorError>("error: %s", message.c_str());
   }
   else if (pp_token == "pragma") {
     // todo
@@ -608,7 +599,7 @@ void Preprocessor::PreprocessorDirective() {
     throw cotyl::UnimplementedException("#include preprocessing directive");
   }
   else {
-    throw cotyl::FormatExcept("Unexpected token after '#': %s", pp_token.c_str());
+    throw cotyl::FormatExcept<PreprocessorError>("Unexpected token after '#': %s", pp_token.c_str());
   }
   cotyl::Assert(is_newline, "Expect to be at newline after preprocessor directive");
 }
@@ -667,7 +658,7 @@ const std::string Preprocessor::MacroStream::InitialStream = " ";
 
 char Preprocessor::MacroStream::GetNew() {
   if (eos) {
-    throw cotyl::EndOfFileException();
+    throw cotyl::EOSError();
   }
   else if (current_stream.EOS()) {
     if (++current_index < def.value.size()) {

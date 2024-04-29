@@ -69,13 +69,13 @@ void Parser::RecordDeclaration(const cotyl::CString& name, const type::AnyType& 
   }
   // todo: check enum/struct/typdef
   if (typedefs.HasTop(name) || structdefs.HasTop(name) || uniondefs.HasTop(name) || enums.HasTop(name)) {
-    throw cotyl::FormatExcept("Redefinition of symbol %s", name.c_str());
+    throw cotyl::FormatExcept<ParserError>("Redefinition of symbol %s", name.c_str());
   }
   else if (variables.HasTop(name)) {
     // gets the first scoped value (which will be the top one)
     const auto& existing = variables.Get(name);
     if (!existing.TypeEquals(type) || existing->qualifiers != type->qualifiers) {
-      throw cotyl::FormatExcept("Redefinition of symbol %s", name.c_str());
+      throw cotyl::FormatExcept<ParserError>("Redefinition of symbol %s", name.c_str());
     }
   }
   else {
@@ -92,7 +92,7 @@ void Parser::DStaticAssert() {
   in_stream.EatSequence(TokenType::RParen, TokenType::SemiColon);
 
   if (!expr) {
-    throw cotyl::FormatExcept("Static assertion failed: %s", str.c_str());
+    throw cotyl::FormatExcept<ParserError>("Static assertion failed: %s", str.c_str());
   }
 }
 
@@ -108,7 +108,7 @@ type::AnyType Parser::DEnum() {
     if (!in_stream.EatIf(TokenType::LBrace)) {
       // check if enum was defined before
       if (!enums.Has(name)) {
-        throw cotyl::FormatExcept("Undefined enum %s", name.c_str());
+        throw cotyl::FormatExcept<ParserError>("Undefined enum %s", name.c_str());
       }
       return type::ValueType<enum_type>(type::LValue::Assignable);
     }
@@ -177,7 +177,7 @@ type::AnyType Parser::DStruct() {
         auto decl = DDeclarator(ctype.first, ctype.second);
         size_t size = 0;
         if (decl.storage != StorageClass::None) {
-          throw std::runtime_error("Invalid storage class specifier in struct definition");
+          throw ParserError("Invalid storage class specifier in struct definition");
         }
         if (in_stream.EatIf(TokenType::Colon)) {
           size = EConstexpr();
@@ -223,26 +223,26 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
 
   auto set_storage = [&storage](StorageClass s) {
     if (storage.has_value()) {
-      throw std::runtime_error("Double storage class specifier in declaration");
+      throw ParserError("Double storage class specifier in declaration");
     }
     storage = s;
   };
 
   auto assert_no_type = [&type]() {
     if (type.has_value()) {
-      throw std::runtime_error("Double type specifier in declaration");
+      throw ParserError("Double type specifier in declaration");
     }
   };
 
   auto assert_no_ctype = [&ctype]() {
     if (ctype.has_value()) {
-      throw std::runtime_error("Double type in declaration");
+      throw ParserError("Double type in declaration");
     }
   };
 
   auto assert_no_sign = [&sign]() {
     if (sign.has_value()) {
-      throw std::runtime_error("Double type specifier in declaration");
+      throw ParserError("Double type specifier in declaration");
     }
   };
 
@@ -295,7 +295,7 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
             case Type::Int: type = Type::LongInt; break;
             case Type::Long: type = Type::LongLong; break;
             case Type::LongInt: type = Type::LongLongInt; break;
-            case Type::Double: throw std::runtime_error("Unimplemented type: long double");
+            case Type::Double: throw cotyl::UnimplementedException("long double type");
             default:
               assert_no_type();
           }
@@ -366,13 +366,13 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
           if (type.has_value() && !cotyl::Is(type.value()).AnyOf<
                   Type::Char, Type::Short, Type::Int, Type::Long, Type::LongLong,
                   Type::ShortInt, Type::LongInt, Type::LongLongInt>()) {
-            throw std::runtime_error("Invalid sign specifier for type");
+            throw ParserError("Invalid sign specifier for type");
           }
           // warn: double sign specifier?
           sign = -1;
         }
         else {
-          throw std::runtime_error("Cannot use signed and unsigned in a single declaration");
+          throw ParserError("Cannot use signed and unsigned in a single declaration");
         }
         break;
       }
@@ -382,13 +382,13 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
           if (type.has_value() && !cotyl::Is(type.value()).AnyOf<
                   Type::Char, Type::Short, Type::Int, Type::Long, Type::LongLong,
                   Type::ShortInt, Type::LongInt, Type::LongLongInt>()) {
-            throw std::runtime_error("Invalid sign specifier for type");
+            throw ParserError("Invalid sign specifier for type");
           }
           // warn: double sign specifier?
           sign = 1;
         }
         else {
-          throw std::runtime_error("Cannot use signed and unsigned in a single declaration");
+          throw ParserError("Cannot use signed and unsigned in a single declaration");
         }
         break;
       }
@@ -422,7 +422,7 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
         const auto& ident_name = static_cast<const IdentifierToken*>(current)->name;
         if (typedefs.Has(ident_name)) {
           if (ctype) {
-            throw std::runtime_error("Bad declaration");
+            throw ParserError("Bad declaration");
           }
           ctype.emplace(typedefs.Get(ident_name));
           in_stream.Skip();
@@ -444,7 +444,7 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
   int _sign = -1;
   if (sign.has_value()) {
     if (ctype) {
-      throw std::runtime_error("Cannot specify sign for pointer type");
+      throw ParserError("Cannot specify sign for pointer type");
     }
     _sign = sign.value();
   }
@@ -463,7 +463,7 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
   else {
     if (ctype) {
       // ctype might have been set by a typedef name
-      throw std::runtime_error("Invalid type specifier");
+      throw ParserError("Invalid type specifier");
     }
 
     switch (type.value()) {
@@ -542,7 +542,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
             in_stream.Skip();
             auto _name = DDirectDeclaratorImpl(dest);
             if (!name.empty() && !_name.empty() ) {
-              throw cotyl::FormatExceptStr("Double name in declaration (%s and %s)", name, _name);
+              throw cotyl::FormatExceptStr<ParserError>("Double name in declaration (%s and %s)", name, _name);
             }
             else if (name.empty()) {
               name = std::move(_name);
@@ -554,7 +554,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
             // (*direct-declarator)
             auto _name = DDirectDeclaratorImpl(dest);
             if (!name.empty() && !_name.empty() ) {
-              throw cotyl::FormatExceptStr("Double name in declaration (%s and %s)", name, _name);
+              throw cotyl::FormatExceptStr<ParserError>("Double name in declaration (%s and %s)", name, _name);
             }
             else if (name.empty()) {
               name = std::move(_name);
@@ -568,7 +568,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
             if (!typedefs.Has(ident_name)) {
               // if not typdef name: direct declarator name
               if (!name.empty()) {
-                throw std::runtime_error("Double name in declaration");
+                throw ParserError("Double name in declaration");
               }
               name = std::move(ident_name);
               break;
@@ -583,7 +583,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
             do {
               auto arg_specifier = DSpecifier();
               if (arg_specifier.second != StorageClass::None) {
-                throw std::runtime_error("Bad storage specifier on function argument");
+                throw ParserError("Bad storage specifier on function argument");
               }
 
               auto arg = DDeclarator(std::move(arg_specifier.first), StorageClass::Auto);
@@ -607,7 +607,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
       }
       case TokenType::Identifier: {
         if (!name.empty()) {
-          throw std::runtime_error("Double name in declaration");
+          throw ParserError("Double name in declaration");
         }
         name = std::move(in_stream.Get().get<IdentifierToken>().name);
         break;
@@ -676,10 +676,10 @@ void Parser::StoreDeclaration(DeclarationNode&& decl, cotyl::vector<ast::Declara
   if (decl.storage == StorageClass::Typedef) {
     // store typedef names
     if (decl.name.empty()) {
-      throw std::runtime_error("Typedef declaration must have a name");
+      throw ParserError("Typedef declaration must have a name");
     }
     if (typedefs.HasTop(decl.name)) {
-      throw std::runtime_error("Redefinition of type alias");
+      throw ParserError("Redefinition of type alias");
     }
     typedefs.Set(decl.name, decl.type);
   }
@@ -688,7 +688,7 @@ void Parser::StoreDeclaration(DeclarationNode&& decl, cotyl::vector<ast::Declara
     if (in_stream.EatIf(TokenType::Assign)) {
       // type var = <expression> or {initializer list}
       if (decl.name.empty()) {
-        throw std::runtime_error("Cannot assign to nameless variable");
+        throw ParserError("Cannot assign to nameless variable");
       }
       decl.value = EInitializer();
       dest.emplace_back(std::move(decl));
@@ -716,14 +716,14 @@ void Parser::ExternalDeclaration() {
   // signature { body }
   if (in_stream.EatIf(TokenType::LBrace)) {
     if (!decl.type.holds_alternative<type::FunctionType>()) {
-      throw std::runtime_error("Unexpected compound statement after external declaration");
+      throw ParserError("Unexpected compound statement after external declaration");
     }
     type::FunctionType signature = std::move(decl.type.get<type::FunctionType>());
     signature.lvalue = type::LValue::None;
 
     auto symbol = std::move(decl.name);
     if (symbol.empty()) {
-      throw std::runtime_error("Missing name in function declaration");
+      throw ParserError("Missing name in function declaration");
     }
     
     // function has to be available within itself for recursion
@@ -733,7 +733,7 @@ void Parser::ExternalDeclaration() {
     variables.NewLayer();
     for (const auto& arg : signature.arg_types) {
       if (arg.name.empty()) {
-        throw std::runtime_error("Nameless argument in function definition");
+        throw ParserError("Nameless argument in function definition");
       }
       variables.Set(arg.name, *arg.type);
     }

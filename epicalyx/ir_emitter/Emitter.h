@@ -3,11 +3,17 @@
 #include "calyx/CalyxFwd.h"
 #include "ast/NodeFwd.h"
 #include "Containers.h"
+#include "Exceptions.h"
 #include "TypeTraits.h"
 #include "Vector.h"
 
 
 namespace epi {
+
+struct EmitterError : cotyl::Exception {
+  EmitterError(std::string&& message) : 
+      Exception("Emitter Error", std::move(message)) { }
+};
 
 struct Emitter {
 

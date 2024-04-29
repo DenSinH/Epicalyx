@@ -15,7 +15,7 @@ AnyType AnyType::Ref() const {
   // only for lvalues
   // not an lvalue after
   if ((*this)->lvalue == LValue::None) {
-    throw std::runtime_error("Cannot get reference to non-lvalue expression");
+    throw TypeError("Cannot get reference to non-lvalue expression");
   }
   // todo: handle function types
   return PointerType{std::make_shared<AnyType>(*this), LValue::None};
@@ -27,7 +27,7 @@ AnyType AnyType::Ref() const {
 AnyType AnyType::Cast(const AnyType& other, bool check_flags) const {
   if (!TypeEquals(other)) {
     if (other.holds_alternative<StructType>() || other.holds_alternative<UnionType>()) {
-      throw std::runtime_error("Bad cast");
+      throw TypeError("Bad cast");
     }
   }
   if (check_flags) {

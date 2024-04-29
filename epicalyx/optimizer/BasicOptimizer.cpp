@@ -13,6 +13,11 @@ namespace epi {
 
 using namespace calyx;
 
+struct OptimizerError : cotyl::Exception {
+  OptimizerError(std::string&& message ) :
+      Exception("Optimizer Error", std::move(message)) { }
+};
+
 
 template<typename T> 
 requires (calyx::is_directive_v<T>)
@@ -1217,7 +1222,7 @@ void BasicOptimizer::Emit(Select&& op) {
       return;
     }
     else {
-      throw std::runtime_error("Invalid switch selection with constant expression");
+      throw OptimizerError("Invalid switch selection with constant expression");
     }
   }
 

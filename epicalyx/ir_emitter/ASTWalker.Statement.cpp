@@ -217,7 +217,7 @@ void ASTWalker::Visit(const SwitchNode& stat) {
     }
     case Emitter::Var::Type::I64: break;
     default: {
-      throw std::runtime_error("Bad operand type for switch statement");
+      throw EmitterError("Bad operand type for switch statement");
     }
   }
 

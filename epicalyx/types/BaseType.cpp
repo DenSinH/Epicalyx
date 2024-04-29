@@ -7,14 +7,14 @@
 namespace epi::type {
 
 [[noreturn]] static void InvalidOperands(const BaseType* ths, const std::string& op, const AnyType& other) {
-  throw cotyl::FormatExceptStr(
+  throw cotyl::FormatExceptStr<TypeError>(
     "Invalid operands for %s: %s and %s",
     op, *ths, other
   );
 }
 
 [[noreturn]] static void InvalidOperand(const BaseType* ths, const std::string& op) {
-  throw cotyl::FormatExceptStr("Invalid operand for %s: %s", op, *ths);
+  throw cotyl::FormatExceptStr<TypeError>("Invalid operand for %s: %s", op, *ths);
 }
 
 
@@ -29,7 +29,7 @@ AnyType BaseType::BinOr(const AnyType& other) const { InvalidOperands(this, "|",
 
 
 BoolType BaseType::Truthiness() const {
-  throw cotyl::FormatExceptStr("%s has no truthiness");
+  throw cotyl::FormatExceptStr<TypeError>("%s has no truthiness");
 }
 
 BoolType BaseType::LogAnd(const AnyType& other) const { 
@@ -128,14 +128,14 @@ AnyType BaseType::BinNot() const { InvalidOperand(this, "~"); }
 
 AnyType BaseType::Incr() const { 
   if (lvalue != LValue::Assignable) {
-    throw std::runtime_error("Expression is not assignable");
+    throw TypeError("Expression is not assignable");
   }
   return Add(ValueType<i32>(1, LValue::None));
 }
 
 AnyType BaseType::Decr() const { 
   if (lvalue != LValue::Assignable) {
-    throw std::runtime_error("Expression is not assignable");
+    throw TypeError("Expression is not assignable");
   }
   return Sub(ValueType<i32>(1, LValue::None));
 }

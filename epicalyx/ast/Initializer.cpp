@@ -44,7 +44,7 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
         throw cotyl::UnimplementedException();
       },
       [&](const type::VoidType&) {
-        throw std::runtime_error("Initializer list for incomplete type");
+        throw type::TypeError("Initializer list for incomplete type");
       },
       [&](const type::PointerType& ptr) { 
         if (ptr.size == 0) {
@@ -92,7 +92,7 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
         throw cotyl::UnimplementedException();
       },
       [&](const type::VoidType&) {
-        throw std::runtime_error("Initializer for incomplete type");
+        throw type::TypeError("Initializer for incomplete type");
       },
       [&](const type::PointerType& ptr) {
         if (ptr.size == 0) {
@@ -101,19 +101,19 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
         }
         else {
           // array type
-          throw std::runtime_error("Expected initializer list");
+          throw type::TypeError("Expected initializer list");
         }
       },
       [&]<typename T>(const type::ValueType<T>& val) {
         // function type, value type
         if (!type.TypeEquals(has)) {
-          throw cotyl::FormatExceptStr("Cannot cast type %s to %s in initializer", has, type);
+          throw cotyl::FormatExceptStr<type::TypeError>("Cannot cast type %s to %s in initializer", has, type);
         }
       },
       [&](const type::FunctionType& val) {
         // function type, value type
         if (!type.TypeEquals(has)) {
-          throw cotyl::FormatExceptStr("Cannot cast type %s to %s in initializer", has, type);
+          throw cotyl::FormatExceptStr<type::TypeError>("Cannot cast type %s to %s in initializer", has, type);
         }
       },
       // exhaustive variant access
@@ -136,7 +136,7 @@ void InitializerList::ValidateAndReduceScalarType(const type::AnyType& type) {
     Log::Warn("Excess elements in initializer list");
   }
   if (!list[0].first.empty()) {
-    throw std::runtime_error("Bad initializer list: no declarators expected");
+    throw type::TypeError("Bad initializer list: no declarators expected");
   }
   list.resize(1);
   list[0].second.ValidateAndReduce(type);
@@ -151,7 +151,7 @@ void InitializerList::ValidateAndReduce(const type::AnyType& type) {
       throw cotyl::UnimplementedException();
     },
     [&](const type::VoidType&) {
-      throw std::runtime_error("Initializer list for incomplete type");
+      throw type::TypeError("Initializer list for incomplete type");
     },
     [&](const type::PointerType& ptr) { 
       if (ptr.size == 0) {

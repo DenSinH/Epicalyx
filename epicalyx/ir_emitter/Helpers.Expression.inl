@@ -123,7 +123,7 @@ void ASTWalker::EmitIntegralExpr(Emitter::Var::Type type, Args... args) {
     case Emitter::Var::Type::I64: current = emitter.EmitExpr<Op<i64>>({ type }, args...); break;
     case Emitter::Var::Type::U64: current = emitter.EmitExpr<Op<u64>>({ type }, args...); break;
     default:
-      throw std::runtime_error("Bad type for integral expression");
+      throw EmitterError("Bad type for integral expression");
   }
 }
 
@@ -137,7 +137,7 @@ void ASTWalker::EmitArithExpr(Emitter::Var::Type type, Args... args) {
     case Emitter::Var::Type::Float: current = emitter.EmitExpr<Op<float>>({ type }, args...); break;
     case Emitter::Var::Type::Double: current = emitter.EmitExpr<Op<double>>({ type }, args...); break;
     default:
-      throw std::runtime_error("Bad type for arithmetic expression");
+      throw EmitterError("Bad type for arithmetic expression");
   }
 }
 
@@ -149,7 +149,7 @@ void ASTWalker::EmitPointerIntegralExpr(Emitter::Var::Type type, u64 stride, Arg
     case Emitter::Var::Type::I64: current = emitter.EmitExpr<Op<i64>>({ Emitter::Var::Type::Pointer, stride }, args...); break;
     case Emitter::Var::Type::U64: current = emitter.EmitExpr<Op<u64>>({ Emitter::Var::Type::Pointer, stride }, args...); break;
     default:
-      throw std::runtime_error("Bad type for arithmetic expression");
+      throw EmitterError("Bad type for arithmetic expression");
   }
 }
 
@@ -164,7 +164,7 @@ void ASTWalker::EmitPointerExpr(Emitter::Var::Type type, u64 stride, Args... arg
     case Emitter::Var::Type::Double: current = emitter.EmitExpr<Op<double>>({ type, stride }, args...); break;
     case Emitter::Var::Type::Pointer: current = emitter.EmitExpr<Op<calyx::Pointer>>({ type, stride }, args...); break;
     default:
-      throw std::runtime_error("Bad type for arithmetic expression");
+      throw EmitterError("Bad type for arithmetic expression");
   }
 }
 
@@ -179,7 +179,7 @@ void ASTWalker::EmitCompare(Emitter::Var::Type type, Args... args) {
     case Emitter::Var::Type::Double: current = emitter.EmitExpr<Op<double>>({ Emitter::Var::Type::I32 }, args...); break;
     case Emitter::Var::Type::Pointer: current = emitter.EmitExpr<Op<calyx::Pointer>>({ Emitter::Var::Type::I32 }, args...); break;
     default:
-      throw std::runtime_error("Bad type for branch expression");
+      throw EmitterError("Bad type for branch expression");
   }
 }
 
@@ -194,7 +194,7 @@ void ASTWalker::EmitBranch(Emitter::Var::Type type, Args... args) {
     case Emitter::Var::Type::Double: emitter.Emit<Op<double>>(args...); break;
     case Emitter::Var::Type::Pointer: emitter.Emit<Op<calyx::Pointer>>(args...); break;
     default:
-      throw std::runtime_error("Bad type for branch expression");
+      throw EmitterError("Bad type for branch expression");
   }
 }
 

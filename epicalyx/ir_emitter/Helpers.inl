@@ -49,7 +49,7 @@ struct EmitterTypeVisitor {
   void Visit(const type::AnyType& type) {
     type.visit<void>(
       [](const type::VoidType&) {
-        throw std::runtime_error("Incomplete type");
+        throw type::TypeError("Incomplete type");
       },
       [&](const type::PointerType& ptr) {
         VisitPointerImpl(ptr.Stride());
@@ -142,7 +142,7 @@ struct CastToEmitter {
       case Emitter::Var::Type::Float: return walker.emitter.EmitExpr<calyx::Cast<T, float>>({ Emitter::Var::Type::Pointer, stride }, src);
       case Emitter::Var::Type::Double: return walker.emitter.EmitExpr<calyx::Cast<T, double>>({ Emitter::Var::Type::Pointer, stride }, src);
       case Emitter::Var::Type::Pointer: return walker.emitter.EmitExpr<calyx::Cast<T, calyx::Pointer>>({ Emitter::Var::Type::Pointer, stride }, src);
-      default: throw std::runtime_error("Bad pointer cast!");
+      default: throw EmitterError("Bad pointer cast");
     }
   }
 };
