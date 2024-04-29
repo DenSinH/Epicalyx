@@ -218,7 +218,7 @@ pNode<StatNode> Parser::SStatement() {
 }
 
 pNode<CompoundNode> Parser::SCompound() {
-  auto compound =  std::make_unique<CompoundNode>();
+  auto compound = std::make_unique<CompoundNode>();
   PushScope();
   while (!in_stream.IsAfter(0, TokenType::RBrace)) {
     if (in_stream.IsAfter(0, TokenType::StaticAssert)) {
@@ -226,10 +226,10 @@ pNode<CompoundNode> Parser::SCompound() {
     }
     else if (IsDeclarationSpecifier()) {
       cotyl::vector<DeclarationNode> decl_list{};
+      // stores and records declarations
       DInitDeclaratorList(decl_list);
       in_stream.Eat(TokenType::SemiColon);
       for (auto& decl : decl_list) {
-        RecordDeclaration(decl.name, decl.type);
         compound->AddNode(std::make_unique<DeclarationNode>(std::move(decl)));
       }
     }

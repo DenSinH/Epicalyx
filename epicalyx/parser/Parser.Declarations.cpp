@@ -7,7 +7,6 @@
 #include "ast/Statement.h"
 
 #include <optional>
-#include <iostream>
 
 
 namespace epi {
@@ -69,7 +68,10 @@ void Parser::RecordDeclaration(const cotyl::CString& name, const type::AnyType& 
     return;
   }
   // todo: check enum/struct/typdef
-  if (variables.HasTop(name)) {
+  if (typedefs.HasTop(name) || structdefs.HasTop(name) || uniondefs.HasTop(name) || enums.HasTop(name)) {
+    throw cotyl::FormatExcept("Redefinition of symbol %s", name.c_str());
+  }
+  else if (variables.HasTop(name)) {
     // gets the first scoped value (which will be the top one)
     const auto& existing = variables.Get(name);
     if (!existing.TypeEquals(type) || existing->qualifiers != type->qualifiers) {
@@ -673,6 +675,9 @@ void Parser::StoreDeclaration(DeclarationNode&& decl, cotyl::vector<ast::Declara
     if (decl.name.empty()) {
       throw std::runtime_error("Typedef declaration must have a name");
     }
+    if (typedefs.HasTop(decl.name)) {
+      throw std::runtime_error("Redefinition of type alias");
+    }
     typedefs.Set(decl.name, decl.type);
   }
   else {
@@ -744,12 +749,10 @@ void Parser::ExternalDeclaration() {
   }
   else {
     // normal declaration
-    RecordDeclaration(decl.name, decl.type);
     StoreDeclaration(std::move(decl), declarations);
     while (!in_stream.EatIf(TokenType::SemiColon)) {
       in_stream.Eat(TokenType::Comma);
       auto decl = DDeclarator(ctype, storage);
-      RecordDeclaration(decl.name, decl.type);
       StoreDeclaration(std::move(decl), declarations);
     }
   }

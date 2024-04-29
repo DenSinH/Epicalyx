@@ -1,7 +1,5 @@
 #include "SString.h"
 
-#include <iostream>
-
 
 namespace epi {
 
