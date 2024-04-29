@@ -59,8 +59,7 @@ private:
   void DInitDeclaratorList(cotyl::vector<ast::DeclarationNode>& dest);
   void StoreDeclaration(ast::DeclarationNode&& decl, cotyl::vector<ast::DeclarationNode>& dest);
   bool IsDeclarationSpecifier(int after = 0);
-  void RecordDeclaration(const ast::DeclarationNode& decl);
-  void RecordDeclaration(const ast::FunctionDefinitionNode& decl);
+  void RecordDeclaration(const cotyl::CString& name, const type::AnyType& type);
 
   ast::pNode<ast::StatNode> SStatement();
   ast::pNode<ast::CompoundNode> SCompound();

@@ -229,7 +229,7 @@ pNode<CompoundNode> Parser::SCompound() {
       DInitDeclaratorList(decl_list);
       in_stream.Eat(TokenType::SemiColon);
       for (auto& decl : decl_list) {
-        RecordDeclaration(decl);
+        RecordDeclaration(decl.name, decl.type);
         compound->AddNode(std::make_unique<DeclarationNode>(std::move(decl)));
       }
     }

@@ -7,7 +7,7 @@
         "cwd": "${workspaceRoot}",
         "args": [
           "-rigfunc", "main",
-          "C:/Projects/CProjects/Epicalyx/tests/suites/scctests/cc/execute/0139-ptr_ary.c"
+          "C:/Projects/CProjects/Epicalyx/tests/suites/scctests/cc/execute/0041-queen.c"
         ]
     },
     "editor.indentSize": 2,

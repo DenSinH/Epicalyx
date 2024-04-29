@@ -64,31 +64,18 @@ bool Parser::IsDeclarationSpecifier(int after) {
   }
 }
 
-void Parser::RecordDeclaration(const ast::DeclarationNode& decl) {
-  if (!decl.name.empty()) {
-    // todo: check enum/struct/typdef
-    if (variables.HasTop(decl.name)) {
-      // gets the first scoped value (which will be the top one)
-      const auto& existing = variables.Get(decl.name);
-      if (!existing.TypeEquals(decl.type) || existing->qualifiers != decl.type->qualifiers) {
-        throw cotyl::FormatExceptStr("Redefinition of symbol %s", decl.name);
-      }
-    }
-    else {
-      variables.Set(decl.name, decl.type);
-    }
-  }
-}
-
-void Parser::RecordDeclaration(const ast::FunctionDefinitionNode& decl) {
-  if (variables.Has(decl.symbol)) {
-    const auto& existing = variables.Get(decl.symbol);
-    if (!existing.TypeEquals(decl.signature) || existing->qualifiers != decl.signature.qualifiers) {
-      throw cotyl::FormatExceptStr("Redefinition of symbol %s", decl.symbol);
+void Parser::RecordDeclaration(const cotyl::CString& name, const type::AnyType& type) {
+  cotyl::Assert(!name.empty());
+  // todo: check enum/struct/typdef
+  if (variables.HasTop(name)) {
+    // gets the first scoped value (which will be the top one)
+    const auto& existing = variables.Get(name);
+    if (!existing.TypeEquals(type) || existing->qualifiers != type->qualifiers) {
+      throw cotyl::FormatExcept("Redefinition of symbol %s", name.c_str());
     }
   }
   else {
-    variables.Set(decl.symbol, decl.signature);
+    variables.Set(name, type);
   }
 }
 
@@ -687,7 +674,7 @@ void Parser::StoreDeclaration(DeclarationNode&& decl, cotyl::vector<ast::Declara
     typedefs.Set(decl.name, decl.type);
   }
   else {
-    RecordDeclaration(decl);
+    RecordDeclaration(decl.name, decl.type);
     if (in_stream.EatIf(TokenType::Assign)) {
       // type var = <expression> or {initializer list}
       if (decl.name.empty()) {
@@ -728,7 +715,11 @@ void Parser::ExternalDeclaration() {
     if (symbol.empty()) {
       throw std::runtime_error("Missing name in function declaration");
     }
+    
+    // function has to be available within itself for recursion
+    RecordDeclaration(symbol, signature);
 
+    // add new local layer for arguments
     variables.NewLayer();
     for (const auto& arg : signature.arg_types) {
       if (arg.name.empty()) {
@@ -747,17 +738,16 @@ void Parser::ExternalDeclaration() {
     auto func = FunctionDefinitionNode(
       std::move(signature), std::move(symbol), std::move(body)
     );
-    RecordDeclaration(func);
     functions.emplace_back(std::move(func));
   }
   else {
     // normal declaration
-    RecordDeclaration(decl);
+    RecordDeclaration(decl.name, decl.type);
     StoreDeclaration(std::move(decl), declarations);
     while (!in_stream.EatIf(TokenType::SemiColon)) {
       in_stream.Eat(TokenType::Comma);
       auto decl = DDeclarator(ctype, storage);
-      RecordDeclaration(decl);
+      RecordDeclaration(decl.name, decl.type);
       StoreDeclaration(std::move(decl), declarations);
     }
   }
