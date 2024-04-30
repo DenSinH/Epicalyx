@@ -54,6 +54,8 @@ AnyToken Tokenizer::GetNew() {
       else if (in_stream.IsAfter(1, '\'')) {
         // prefixed char literal
         bool is_unsigned = in_stream.IsAfter(0, 'u', 'U');
+        bool is_long = in_stream.IsAfter(0, 'L');
+        in_stream.Skip();
         auto char_string = ReadString('\'');
         u32 value = 0;
         for (auto k : char_string) {
@@ -168,7 +170,7 @@ cotyl::CString Tokenizer::ReadString(const char delimiter) {
         case '0': case '1': case '2': case '3':
         case '4': case '5': case '6': case '7': {
           // octal literal
-          char oct = c;
+          char oct = c - '0';
           for (int count = 0; in_stream.PredicateAfter(0, std::isdigit) && count < 3; count++) {
             if (in_stream.Peek(c) && c < '8') {
               c = in_stream.Get();
