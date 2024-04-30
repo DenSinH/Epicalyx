@@ -719,7 +719,7 @@ void Parser::ExternalDeclaration() {
       throw ParserError("Unexpected compound statement after external declaration");
     }
     type::FunctionType signature = std::move(decl.type.get<type::FunctionType>());
-    signature.lvalue = type::LValue::None;
+    signature.lvalue = type::LValue::LValue;
 
     auto symbol = std::move(decl.name);
     if (symbol.empty()) {

@@ -7,7 +7,7 @@
         "cwd": "${workspaceRoot}",
         "args": [
           "-rigfunc", "main",
-          "C:/Projects/CProjects/Epicalyx/tests/suites/scctests/cc/execute/0059-multistring.c"
+          "C:/Projects/CProjects/Epicalyx/tests/suites/scctests/cc/execute/0092-fptr.c"
         ]
     },
     "editor.indentSize": 2,
