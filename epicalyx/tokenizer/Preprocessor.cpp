@@ -29,6 +29,7 @@ void Preprocessor::PrintLoc(std::ostream& out) const {
 cotyl::Stream<char>& Preprocessor::CurrentStream() const {
   // macros go before the current expression, since expressions only
   // occur in #if statements, and the macro_stack is empty then
+  ClearEmptyMacroStreams();
   if (!macro_stack.empty()) return macro_stack.back();
   if (expression.has_value()) return expression.value();
   if (file_stack.empty()) {
@@ -61,6 +62,7 @@ char Preprocessor::NextCharacter() const {
 
 char Preprocessor::GetNextCharacter() {
   char c;
+  ClearEmptyMacroStreams();
   if (macro_stack.empty() && !expression.has_value()) {
     // parsing from file stack
     if (CurrentStream().EOS()) {
@@ -157,7 +159,7 @@ void Preprocessor::SkipEscapedNewline() {
 
 void Preprocessor::SkipBlanks(bool skip_newlines) {
   // we do not want to crash on an end of stream while skipping whitespace
-  while (!IsEOS()) {
+  while (!InternalIsEOS()) {
     char c = NextCharacter();
     if (c == '\\') {
       if (CurrentStream().PredicateAfter(1, std::isspace)) {
@@ -165,6 +167,7 @@ void Preprocessor::SkipBlanks(bool skip_newlines) {
       }
     }
     else if (c == '\n') {
+      // empty macro streams cleared in InternalIsEOS
       if (skip_newlines || !macro_stack.empty()) {
         // skip the newline in both cases
         SkipNextCharacter();
@@ -186,7 +189,7 @@ void Preprocessor::SkipLineComment() {
   EatNextCharacter('/');
   EatNextCharacter('/');
   is_newline = false;
-  while (!IsEOS() && !is_newline) {
+  while (!InternalIsEOS() && !is_newline) {
     if (NextCharacter() =='\\' && CurrentStream().PredicateAfter(1, std::isspace)) {
       SkipEscapedNewline();
     }
@@ -211,11 +214,11 @@ void Preprocessor::SkipMultilineComment() {
 }
 
 std::string Preprocessor::FetchLine() {
-  cotyl::Assert(macro_stack.empty(), "Expected empty string stack in preprocessor line fetch");
+  cotyl::Assert((ClearEmptyMacroStreams(), macro_stack.empty()), "Expected empty string stack in preprocessor line fetch");
   cotyl::Assert(!expression.has_value(), "Unexpected preprocessor line fetch while parsing expression");
   cotyl::StringStream line{};
 
-  while (!IsEOS()) {
+  while (!InternalIsEOS()) {
     char c = NextCharacter();
     if (c == '\\') {
 
@@ -262,12 +265,24 @@ bool Preprocessor::IsEOS() {
     // may be filled with characeters from an expression that should be parsed
     return false;
   }
-  if (expression.has_value()) {
-    return expression.value().EOS();
+  return InternalIsEOS();
+}
+
+void Preprocessor::ClearEmptyMacroStreams() const {
+  while (!macro_stack.empty() && macro_stack.back().EOS()) {
+    macro_stack.pop_back();
   }
+}
+
+bool Preprocessor::InternalIsEOS() {
+  ClearEmptyMacroStreams();
   if (!macro_stack.empty()) {
     // still string stack characters to be parsed
     return false;
+  }
+  if (expression.has_value()) {
+    // ignore file stack if we are parsing an expression
+    return expression.value().EOS();
   }
   return file_stack.size() == 1 && file_stack.back().stream.EOS();
 }
@@ -280,7 +295,7 @@ void Preprocessor::EatNewline() {
 }
 
 i64 Preprocessor::EatConstexpr() {
-  cotyl::Assert(macro_stack.empty() && !expression.has_value(), "Must start expression with empty macro stack and expression");
+  cotyl::Assert((ClearEmptyMacroStreams(), macro_stack.empty()) && !expression.has_value(), "Must start expression with empty macro stack and expression");
   cotyl::Assert(pre_processor_queue.empty(), "Must start preprocessor expression with empty pre_processor_queue");
   std::string line = FetchLine();
   ReplaceNewlines(line);
@@ -297,7 +312,7 @@ i64 Preprocessor::EatConstexpr() {
   auto result = parser.EConstexpr();
 
   // we expect the bottom string (expression) to be fully parsed
-  cotyl::Assert(macro_stack.empty(), "Found unexpanded macros after expression");
+  cotyl::Assert((ClearEmptyMacroStreams(), macro_stack.empty()), "Found unexpanded macros after expression");
   expression.reset();
 
   // we fetched the whole line, so we are always at a new line after this
@@ -357,7 +372,8 @@ std::string Preprocessor::GetNextProcessed() {
           throw PreprocessorError("Definition marked as standard: " + identifier);
         }
       }
-      else if (definitions.contains(identifier)) {
+      else if (definitions.contains(identifier)) {  
+        ClearEmptyMacroStreams();
         if (!macro_stack.empty()) {
           const auto& current_macro = macro_stack.back();
           if (!current_macro.ExpandingArgument() && current_macro.name == identifier) {
@@ -556,7 +572,7 @@ void Preprocessor::PreprocessorDirective() {
     SkipBlanks(false);
     auto name = detail::get_identifier(CurrentStream());
 
-    if (!IsEOS() && NextCharacter() == '(') {
+    if (!InternalIsEOS() && NextCharacter() == '(') {
       // functional macro
       cotyl::vector<std::string> arguments = {};
       bool variadic = false;
@@ -620,7 +636,8 @@ void Preprocessor::PreprocessorDirective() {
     EatNewline();
   }
   else if (pp_token == "line") {
-    CurrentLine() = EatConstexpr();
+    // correct for newline on this line
+    CurrentLine() = EatConstexpr() - 1;
     // newline eaten in EatConstexpr() >> FetchLine()
   }
   else if (pp_token == "error") {

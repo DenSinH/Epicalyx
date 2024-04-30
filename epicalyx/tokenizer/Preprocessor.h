@@ -31,8 +31,13 @@ struct Preprocessor final : public cotyl::Stream<char> {
 protected:
   char GetNew() final;
   bool IsEOS() final;
+  
 
 private:
+  // check if we are at EOS, WITHOUT accounting for
+  // the pre_processing_queue
+  bool InternalIsEOS();
+
   struct Definition;
   using MacroMap = cotyl::unordered_map<std::string, Definition>;
 
@@ -171,6 +176,7 @@ private:
   // we comment on the use whenever we do use it, except in the wrapper
   // functions that handle the state updates properly (...NextCharacter)
   cotyl::Stream<char>& CurrentStream() const;
+  void ClearEmptyMacroStreams() const;
   u64& CurrentLine();
   std::string CurrentFile();
 
