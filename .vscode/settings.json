@@ -7,7 +7,7 @@
         "cwd": "${workspaceRoot}",
         "args": [
           "-rigfunc", "main",
-          "C:/Projects/CProjects/Epicalyx/tests/suites/scctests/cc/execute/0101-wcharlit.c"
+          "${workspaceRoot}/tests/suites/scctests/cc/execute/0222-ifdef.c"
         ]
     },
     "editor.indentSize": 2,

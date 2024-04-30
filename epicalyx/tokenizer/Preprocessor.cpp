@@ -116,7 +116,7 @@ bool Preprocessor::Enabled() const {
   }
 
   // only enabled if all nested groups are enabled
-  return if_group_stack.empty() || std::all_of(
+  return std::all_of(
           if_group_stack.begin(),
           if_group_stack.end(),
           [](auto& group) { return group.enabled; }
@@ -454,56 +454,75 @@ void Preprocessor::PreprocessorDirective() {
 
   // read identifier
   const std::string pp_token = detail::get_identifier(CurrentStream());
-
-  if (pp_token == "if") {
+  bool enabled = Enabled();
+  
+  if (pp_token == "if" || pp_token == "ifdef" || pp_token == "ifndef") {
     SkipBlanks(false);
-    if_group_stack.emplace_back(IfGroup::If(EatConstexpr() != 0));
-    // newline eaten in EatConstexpr()
+    if (!enabled) {
+      FetchLine();
+      if_group_stack.emplace_back(IfGroup::If(false));
+    }
+    else {
+      if (pp_token == "if") {
+        if_group_stack.emplace_back(IfGroup::If(EatConstexpr() != 0));
+        // newline eaten in EatConstexpr() >> FetchLine()
+      }
+      else {
+        auto identifier = detail::get_identifier(CurrentStream());
+        if (pp_token == "ifdef") {
+          if_group_stack.emplace_back(IfGroup::If(definitions.contains(identifier)));
+        }
+        else {
+          cotyl::Assert(pp_token == "ifndef");
+          if_group_stack.emplace_back(IfGroup::If(!definitions.contains(identifier)));
+        }
+        EatNewline();
+      }
+    }
   }
-  else if (pp_token == "ifdef") {
-    SkipBlanks(false);
-    auto identifier = detail::get_identifier(CurrentStream());
-    if_group_stack.emplace_back(IfGroup::If(definitions.contains(identifier)));
-    EatNewline();
-  }
-  else if (pp_token == "ifndef") {
-    SkipBlanks(false);
-    auto identifier = detail::get_identifier(CurrentStream());
-    if_group_stack.emplace_back(IfGroup::If(!definitions.contains(identifier)));
-    EatNewline();
-  }
-  else if (pp_token == "elif") {
+  else if (pp_token == "elif" || pp_token == "elifdef" || pp_token == "elifndef") {
     if (if_group_stack.empty()) {
       throw PreprocessorError("Unexpected elif group");
     }
     SkipBlanks(false);
-    if_group_stack.back().Elif(EatConstexpr() != 0);
-    // newline eaten in EatConstexpr()
-  }
-  else if (pp_token == "elifdef") {
-    // non-standard
-    if (if_group_stack.empty()) {
-      throw PreprocessorError("Unexpected elif group");
+    if (enabled) {
+      // don't care about condition value, is false anyway
+      FetchLine();
     }
-    SkipBlanks(false);
-    auto identifier = detail::get_identifier(CurrentStream());
-    if_group_stack.back().Elif(definitions.contains(identifier));
-    EatNewline();
-  }
-  else if (pp_token == "elifndef") {
-    // non-standard
-    if (if_group_stack.empty()) {
-      throw PreprocessorError("Unexpected elif group");
+    else {
+      bool parent_disabled = if_group_stack.size() > 1 && std::any_of(
+          if_group_stack.begin(),
+          std::prev(if_group_stack.end()),
+          [](auto& group) { return group.enabled; }
+      );
+      if (parent_disabled) {
+        FetchLine();
+      }
+      else {
+        if (pp_token == "elif") {
+          if_group_stack.back().Elif(EatConstexpr() != 0);
+          // newline eaten in EatConstexpr()
+        }
+        else {
+          auto identifier = detail::get_identifier(CurrentStream());
+          if (pp_token == "elifdef") {
+            if_group_stack.back().Elif(definitions.contains(identifier));
+          }
+          else {
+            cotyl::Assert(pp_token == "elifndef");
+            if_group_stack.back().Elif(!definitions.contains(identifier));
+          }
+          EatNewline();
+        }
+      }
     }
-    SkipBlanks(false);
-    auto identifier = detail::get_identifier(CurrentStream());
-    if_group_stack.back().Elif(!definitions.contains(identifier));
-    EatNewline();
   }
   else if (pp_token == "else") {
     if (if_group_stack.empty()) {
       throw PreprocessorError("Unexpected else group");
     }
+    // no need to check current enabled status, 
+    // won't change if we are in a nested disabled group
     if_group_stack.back().Else();
     EatNewline();
   }
@@ -513,6 +532,11 @@ void Preprocessor::PreprocessorDirective() {
     }
     if_group_stack.pop_back();
     EatNewline();
+  }
+  else if (!enabled) {
+    // non-control flow preprocessing directives
+    // we ignore any of these if the current group is disabled
+    FetchLine();
   }
   else if (pp_token == "define") {
     SkipBlanks(false);
@@ -578,28 +602,26 @@ void Preprocessor::PreprocessorDirective() {
   else if (pp_token == "undef") {
     SkipBlanks(false);
     auto identifier = detail::get_identifier(CurrentStream());
-
     definitions.erase(identifier);
     EatNewline();
   }
   else if (pp_token == "line") {
     CurrentLine() = EatConstexpr();
-    // newline eaten in EatConstexpr()
+    // newline eaten in EatConstexpr() >> FetchLine()
   }
   else if (pp_token == "error") {
     std::string message = FetchLine();
-    if (Enabled()) throw cotyl::FormatExcept<PreprocessorError>("error: %s", message.c_str());
+    throw cotyl::FormatExcept<PreprocessorError>("error: %s", message.c_str());
   }
   else if (pp_token == "pragma") {
-    // todo
     throw cotyl::UnimplementedException("#pragma preprocessing directive");
   }
   else if (pp_token == "include") {
-    // todo
     throw cotyl::UnimplementedException("#include preprocessing directive");
   }
   else {
-    throw cotyl::FormatExcept<PreprocessorError>("Unexpected token after '#': %s", pp_token.c_str());
+    // garbage
+    FetchLine();
   }
   cotyl::Assert(is_newline, "Expect to be at newline after preprocessor directive");
 }
