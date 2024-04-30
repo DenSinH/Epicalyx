@@ -43,13 +43,13 @@ private:
   ast::pExpr EPostfix();
   ast::pExpr EUnary();
   ast::pExpr EAssignment() final;
+  ast::pExpr EExpressionList();
 
   type::AnyType ETypeName();
   ast::Initializer EInitializer();
   ast::InitializerList EInitializerList();
 
   type::AnyType ResolveIdentifierType(const cotyl::CString& name) const;
-  void EExpressionList(cotyl::vector<ast::pExpr>& dest);
 
   void DStaticAssert();
   std::pair<type::AnyType, ast::StorageClass> DSpecifier();

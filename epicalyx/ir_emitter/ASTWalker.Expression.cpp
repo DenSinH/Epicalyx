@@ -956,4 +956,17 @@ void ASTWalker::Visit(const AssignmentNode& expr) {
   // todo: conditional branch
 }
 
+void ASTWalker::Visit(const ExpressionListNode& expr) {
+  // state does not matter for first nodes (cast to void)
+  // this gets rid of any statements that have no effect
+  state.push({State::Empty, {}});
+  for (size_t i = 0; i < expr.exprs.size() - 1; i++) {
+    expr.exprs.at(i)->Visit(*this);
+  }
+  state.pop();
+
+  // visit last expression with current state
+  expr.exprs.back()->Visit(*this);
+}
+
 }

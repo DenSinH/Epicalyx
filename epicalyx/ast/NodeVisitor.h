@@ -31,6 +31,7 @@ struct NodeVisitor {
   virtual void Visit(const BinopNode& expr) = 0;
   virtual void Visit(const TernaryNode& expr) = 0;
   virtual void Visit(const AssignmentNode& expr) = 0;
+  virtual void Visit(const ExpressionListNode& expr) = 0;
   
   virtual void Visit(const EmptyNode& stat) = 0;
   virtual void Visit(const IfNode& stat) = 0;

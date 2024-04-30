@@ -270,6 +270,18 @@ std::string AssignmentNode::ToString() const {
 }
 
 
+ExpressionListNode::ExpressionListNode(cotyl::vector<pExpr>&& exprs) :
+    ExprNode{exprs.back()->type},
+    exprs{std::move(exprs)} {
+  // todo: this is too strict, should only forget constinfo
+  // if no statement has any effect
+  type->ForgetConstInfo();
+}
+
+std::string ExpressionListNode::ToString() const {
+  return cotyl::Join(", ", exprs);
+}
+
 template struct NumericalConstantNode<i8>;
 template struct NumericalConstantNode<u8>;
 template struct NumericalConstantNode<i16>;

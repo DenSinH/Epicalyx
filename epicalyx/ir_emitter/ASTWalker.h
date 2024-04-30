@@ -126,6 +126,7 @@ private:
   void Visit(const ast::BinopNode& expr) final;
   void Visit(const ast::TernaryNode& expr) final;
   void Visit(const ast::AssignmentNode& expr) final;
+  void Visit(const ast::ExpressionListNode& expr) final;
 
   void Visit(const ast::EmptyNode& stat) final;
   void Visit(const ast::IfNode& stat) final;

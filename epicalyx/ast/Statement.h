@@ -52,17 +52,17 @@ struct ForNode final : StatNode {
 
   ForNode(
       cotyl::vector<DeclarationNode>&& decls,
-      cotyl::vector<pExpr>&& inits,
+      pExpr&& init,
       pExpr&& cond,
-      cotyl::vector<pExpr>&& updates,
+      pExpr&& update,
       pStat&& stat
   );
 
 
   cotyl::vector<DeclarationNode> decls{};
-  cotyl::vector<pExpr> inits{};
+  pExpr init{};
   pExpr cond;
-  cotyl::vector<pExpr> updates{};
+  pExpr update{};
   pStat stat;
 
   std::string ToString() const final;

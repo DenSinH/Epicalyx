@@ -21,6 +21,7 @@ struct CastNode;
 struct BinopNode;
 struct TernaryNode;
 struct AssignmentNode;
+struct ExpressionListNode;
 
 struct EmptyNode;
 struct IfNode;

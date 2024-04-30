@@ -187,4 +187,15 @@ struct AssignmentNode final : ExprNode {
   VISIT_IMPL
 };
 
+
+struct ExpressionListNode final : ExprNode {
+  ~ExpressionListNode() final = default;
+
+  ExpressionListNode(cotyl::vector<pExpr>&& exprs);
+
+  cotyl::vector<pExpr> exprs;
+  std::string ToString() const final;
+  VISIT_IMPL
+};
+
 }

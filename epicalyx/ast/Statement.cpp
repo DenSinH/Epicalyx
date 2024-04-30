@@ -83,14 +83,14 @@ pStat DoWhileNode::Reduce() {
 
 ForNode::ForNode(
   cotyl::vector<DeclarationNode>&& decls,
-  cotyl::vector<pExpr>&& inits,
+  pExpr&& init,
   pExpr&& cond,
-  cotyl::vector<pExpr>&& updates,
+  pExpr&& update,
   pStat&& stat
 ) : decls{std::move(decls)},
-    inits{std::move(inits)},
+    init{std::move(init)},
     cond{std::move(cond)},
-    updates{std::move(updates)},
+    update{std::move(update)},
     stat{std::move(stat)} {
   if (this->cond) {
     this->cond->VerifyTruthiness();
@@ -101,11 +101,11 @@ std::string ForNode::ToString() const {
   cotyl::StringStream result{};
   result << "for (";
   result << cotyl::Join(", ", decls);
-  result << cotyl::Join(", ", inits);
+  if (init) result << stringify(init);
   result << "; ";
-  result << stringify(cond);
+  if (cond) result << stringify(cond);
   result << "; ";
-  result << cotyl::Join(", ", updates);
+  if (update) result << stringify(update);
   result << ") ";
   result << stringify(stat);
   return result.finalize();

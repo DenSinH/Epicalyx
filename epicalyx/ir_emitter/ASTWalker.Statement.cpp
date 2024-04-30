@@ -130,9 +130,7 @@ void ASTWalker::Visit(const ForNode& stat) {
   for (auto& decl : stat.decls) {
     Visit(decl);
   }
-  for (auto& init : stat.inits) {
-    init->Visit(*this);
-  }
+  if (stat.init) stat.init->Visit(*this);
 
   // loop entry is lowest block
   block_label_t cond_block;
@@ -169,9 +167,7 @@ void ASTWalker::Visit(const ForNode& stat) {
   // go to update and loop back to condition
   emitter.Emit<calyx::UnconditionalBranch>(update_block);
   emitter.SelectBlock(update_block);
-  for (auto& update : stat.updates) {
-    update->Visit(*this);
-  }
+  if (stat.update) stat.update->Visit(*this);
   if (stat.cond) emitter.Emit<calyx::UnconditionalBranch>(cond_block);
   else           emitter.Emit<calyx::UnconditionalBranch>(loop_block);
   // pop locals layer

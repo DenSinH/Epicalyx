@@ -91,8 +91,8 @@ pExpr Parser::EPrimary() {
       if (punc.type != TokenType::LParen) {
         throw cotyl::FormatExceptStr<ParserError>("Invalid token: expected (, got %s", punc);
       }
-      // todo: is (expression), but the list part makes no sense
-      auto expr = EExpression();
+      
+      auto expr = EExpressionList();
       in_stream.Eat(TokenType::RParen);
       return ExprOrReduced(std::move(expr));
     },
@@ -116,8 +116,7 @@ pExpr Parser::EPostfix() {
       case TokenType::LBracket: {
         // array access
         in_stream.Skip();
-        // todo: is EExpression, but the commas make no sense
-        auto right = EExpression();
+        auto right = EExpressionList();
         in_stream.Eat(TokenType::RBracket);
         node = std::make_unique<ArrayAccessNode>(std::move(node), std::move(right));
         break;
@@ -195,7 +194,7 @@ pExpr Parser::EUnary() {
         in_stream.Eat(TokenType::RParen);
         return std::make_unique<NumericalConstantNode<u64>>(type_name->Sizeof());
       }
-      return std::make_unique<NumericalConstantNode<u64>>(EExpression()->type->Sizeof());
+      return std::make_unique<NumericalConstantNode<u64>>(EUnary()->type->Sizeof());
     }
     case TokenType::Alignof: {
       // _Alignof(type-name)
@@ -389,10 +388,19 @@ i64 ConstParser::EConstexpr() {
   return expr->ConstIntVal();
 }
 
-void Parser::EExpressionList(cotyl::vector<pExpr>& dest) {
+ast::pExpr Parser::EExpressionList() {
+  cotyl::vector<pExpr> exprs{};
   do {
-    dest.emplace_back(EExpression());
+    exprs.emplace_back(ExprOrReduced(EExpression()));
   } while (in_stream.EatIf(TokenType::Comma));
+  
+  // expressions size is at least 1, since we use a do/while loop
+  if (exprs.size() == 1) {
+    return std::move(exprs[0]);
+  }
+  else {
+    return std::make_unique<ExpressionListNode>(std::move(exprs));
+  }
 }
 
 Initializer Parser::EInitializer() {

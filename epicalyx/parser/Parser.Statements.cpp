@@ -43,7 +43,7 @@ pNode<StatNode> Parser::SStatement() {
     }
     case TokenType::Switch: {
       in_stream.EatSequence(TokenType::Switch, TokenType::LParen);
-      auto expr = EExpression();
+      auto expr = EExpressionList();
       in_stream.Eat(TokenType::RParen);
 
       case_scope.NewLayer();
@@ -55,8 +55,7 @@ pNode<StatNode> Parser::SStatement() {
     }
     case TokenType::If: {
       in_stream.EatSequence(TokenType::If, TokenType::LParen);
-      // todo: commas?
-      auto cond = EExpression();
+      auto cond = EExpressionList();
       in_stream.Eat(TokenType::RParen);
 
       auto stat = SStatement();
@@ -71,7 +70,7 @@ pNode<StatNode> Parser::SStatement() {
     }
     case TokenType::While: {
       in_stream.EatSequence(TokenType::While, TokenType::LParen);
-      auto cond = EExpression();
+      auto cond = EExpressionList();
 
       in_stream.Eat(TokenType::RParen);
       loop_scope.push_back(Loop::While);
@@ -89,7 +88,7 @@ pNode<StatNode> Parser::SStatement() {
       loop_scope.pop_back();
 
       in_stream.EatSequence(TokenType::While, TokenType::LParen);
-      auto cond = EExpression();
+      auto cond = EExpressionList();
 
       in_stream.EatSequence(TokenType::RParen, TokenType::SemiColon);
       auto dowhile_stat = std::make_unique<DoWhileNode>(std::move(stat), std::move(cond));
@@ -101,24 +100,23 @@ pNode<StatNode> Parser::SStatement() {
 
       // new scope for for loop declarations
       PushScope();
-      cotyl::vector<DeclarationNode> decl_list;
+      cotyl::vector<DeclarationNode> decl_list{};
+      pExpr init = nullptr;
       if (IsDeclarationSpecifier()) {
         DInitDeclaratorList(decl_list);
       }
-
-      cotyl::vector<pExpr> init{};
-      if (!in_stream.IsAfter(0, TokenType::SemiColon)) {
-        EExpressionList(init);
+      else if (!in_stream.IsAfter(0, TokenType::SemiColon)) {
+        init = EExpressionList();
       }
       in_stream.Eat(TokenType::SemiColon);
-      pExpr cond{};
+      pExpr cond = nullptr;
       if (!in_stream.IsAfter(0, TokenType::SemiColon)) {
-        cond = EExpression();
+        cond = EExpressionList();
       }
-      cotyl::vector<pExpr> update{};
+      pExpr update = nullptr;
       in_stream.Eat(TokenType::SemiColon);
       if (!in_stream.IsAfter(0, TokenType::RParen)) {
-        EExpressionList(update);
+        update = EExpressionList();
       }
       in_stream.Eat(TokenType::RParen);
 
@@ -171,7 +169,7 @@ pNode<StatNode> Parser::SStatement() {
         in_stream.Skip();
         return std::make_unique<ReturnNode>();
       }
-      auto expr = EExpression();
+      auto expr = EExpressionList();
       in_stream.Eat(TokenType::SemiColon);
 
       // check function return type
@@ -204,16 +202,9 @@ pNode<StatNode> Parser::SStatement() {
       if (IsDeclarationSpecifier()) {
         throw ParserError("Unexpected declaration");
       }
-      cotyl::vector<pExpr> exprlist{};
-      EExpressionList(exprlist);
-      in_stream.Eat(TokenType::SemiColon);
-      if (exprlist.size() == 1) {
-        return std::move(exprlist[0]);
-      }
       auto compound = std::make_unique<CompoundNode>();
-      for (auto& expr : exprlist) {
-        compound->AddNode(std::move(expr));
-      }
+      compound->AddNode(EExpressionList());
+      in_stream.Eat(TokenType::SemiColon);
       return std::move(compound);
     }
   }
