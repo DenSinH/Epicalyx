@@ -4,18 +4,24 @@
 #include "Containers.h"
 #include "SStream.h"
 
+#ifndef NO_GRAPHVIZ
 #include <graphviz/cgraph.h>
 #include <graphviz/gvc.h>
+#endif
 
 
 namespace epi::cycle {
 
 struct GraphvizError : cotyl::Exception {
+  GraphvizError(std::string&& message) : 
+      Exception("Graphviz Error", std::move(message)) { }
+
   GraphvizError(int error) : 
-      Exception("Graphviz Error", cotyl::Format("Error code %d", error)) { }
+      GraphvizError(cotyl::Format("Error code %d", error)) { }
 };
 
 void VisualGraph::Visualize(const std::string& filename) {
+#ifndef NO_GRAPHVIZ
   Agdesc_t desc = {
     .directed = directed,            /* if edges are asymmetric */
     .strict = !allow_multi_edge,     /* if multi-edges forbidden */
@@ -87,6 +93,9 @@ void VisualGraph::Visualize(const std::string& filename) {
 
   gvFreeLayout(gvc, g);
   agclose(g);
+#else
+  throw GraphvizError("Graphviz is not installed");
+#endif
 }
 
 }

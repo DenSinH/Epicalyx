@@ -12,53 +12,67 @@
 #include "config/Info.h"
 #include "Decltype.h"
 #include "Exceptions.h"
+#include "Locatable.h"
 
 
 #include "Log.h"
 
 using ::epi::stringify;
 
-int parse_program(const epi::info::ProgramSettings& settings) {
+struct SafeRun {
+  SafeRun(bool catch_errors, const epi::cotyl::Locatable* loc = nullptr) : 
+      catch_errors{catch_errors}, loc{loc} { }
+
+  template<typename F>
+  void operator<<(F&& callable) {
+    if (!catch_errors) {
+      callable();
+    }
+    else {
+      try {
+        callable();
+      }
+      catch (epi::cotyl::Exception& e) {
+        std::cerr << e.title << ':' << std::endl << std::endl;
+        std::cerr << e.what() << std::endl;
+        if (loc) loc->PrintLoc(std::cerr);
+        std::exit(-1);
+      }
+      catch (std::runtime_error& e) {
+        std::cerr << "Compiler Error:" << std::endl << std::endl;
+        std::cerr << e.what() << std::endl;
+        std::exit(-1);
+      }
+    }
+  }
+
+private:
+  bool catch_errors = false;
+  const epi::cotyl::Locatable* loc = nullptr;
+};
+
+
+int main(int argc, char** argv) {
+  auto settings = epi::info::parse_args(argc, argv);
   auto rig_func_sym = epi::cotyl::CString(settings.rigfunc);
+  bool ce = settings.catch_errors;
 
-  std::unique_ptr<epi::Preprocessor> pp;
 
-  try {
-    pp = std::make_unique<epi::Preprocessor>(settings.filename);
-  }
-  catch (epi::cotyl::Exception& e) {
-    if (!settings.catch_errors) throw;
-    std::cerr << e.title << ':' << std::endl << std::endl;
-    std::cerr << e.what() << std::endl;
-    std::exit(1);
-  }
+  std::unique_ptr<epi::Preprocessor> pp; 
+  SafeRun(ce) << [&]{ pp = std::make_unique<epi::Preprocessor>(settings.filename); };
+  auto tokenizer = std::make_unique<epi::Tokenizer>(*pp);
+  auto parser = std::make_unique<epi::Parser>(*tokenizer);
 
-  auto tokenizer = epi::Tokenizer(*pp);
-  auto parser = epi::Parser(tokenizer);
-
-  try {
-    parser.Parse();
-    parser.Data();
-  }
-  catch (epi::cotyl::Exception& e) {
-    if (!settings.catch_errors) throw;
-    std::cerr << e.title << ':' << std::endl << std::endl;
-    std::cerr << e.what() << std::endl;
-    parser.PrintLoc(std::cerr);
-    return -1;
-  }
+  SafeRun(ce, parser.get()) << [&]{
+    parser->Parse();
+    parser->Data();
+  };
 
   auto emitter = epi::Emitter();
-  try {
-    emitter.MakeProgram(parser.declarations, parser.functions);
-  }
-  catch (epi::cotyl::Exception& e) {
-    if (!settings.catch_errors) throw;
-    std::cerr << e.title << ':' << std::endl << std::endl;
-    std::cerr << e.what() << std::endl;
-    return -1;
-  }
-  
+  SafeRun(ce) << [&]{
+    emitter.MakeProgram(parser->declarations, parser->functions);
+  };
+
   auto program = std::move(emitter.program);
 //   epi::calyx::PrintProgram(program);
 
@@ -67,20 +81,14 @@ int parse_program(const epi::info::ProgramSettings& settings) {
     auto func_hash = func.Hash();
     while (true) {
       std::cout << "Optimizing function " << sym.c_str() << " hash " << func_hash << "..." << std::endl;
-      try {
+      SafeRun(ce) << [&]{
         auto optimizer = epi::BasicOptimizer(std::move(func));
         func = optimizer.Optimize();
+      };
 
-        auto new_hash = func.Hash();
-        if (func_hash == new_hash) break;
-        func_hash = new_hash;
-      }
-      catch (epi::cotyl::Exception& e) {
-        if (!settings.catch_errors) throw;
-        std::cerr << e.title << ':' << std::endl << std::endl;
-        std::cerr << e.what() << std::endl;
-        return -1;
-      }
+      auto new_hash = func.Hash();
+      if (func_hash == new_hash) break;
+      func_hash = new_hash;
     }
   }
 
@@ -101,7 +109,7 @@ int parse_program(const epi::info::ProgramSettings& settings) {
   }
 
   int returned = -1;
-  try {
+  SafeRun(ce) << [&]{
     epi::calyx::Interpreter interpreter{};
     std::cout << std::endl << std::endl;
     std::cout << "-- interpreted" << std::endl;
@@ -118,52 +126,36 @@ int parse_program(const epi::info::ProgramSettings& settings) {
       auto dependencies = epi::ProgramDependencies::GetDependencies(program);
       dependencies.VisualizeVars("output/vars.pdf");
     }
-  }
-  catch (epi::cotyl::Exception& e) {
-    if (!settings.catch_errors) throw;
-    std::cerr << e.title << ':' << std::endl << std::endl;
-    std::cerr << e.what() << std::endl;
-    return -1;
-  }
+  };
 
   if (!program.functions.contains(rig_func_sym)) {
     std::cout << "No function " << rig_func_sym.view()
               << " exists, defaulting to 'main'..." << std::endl;
     rig_func_sym = epi::cotyl::CString("main");
   }
-  const auto& rig_func = program.functions.at(rig_func_sym);
-  auto rig = epi::RIG::GenerateRIG(rig_func);
+  if (program.functions.contains(rig_func_sym)) {
+    SafeRun(ce) << [&]{
+      const auto& rig_func = program.functions.at(rig_func_sym);
+      auto rig = epi::RIG::GenerateRIG(rig_func);
 
-  auto regspace = epi::RegisterSpace::GetRegSpace<epi::ExampleRegSpace>(rig_func);
-  for (const auto& [gvar, regtype] : regspace->register_type_map) {
-    if (gvar.is_local) std::cout << 'c';
-    else std::cout << 'v';
-    std::cout << gvar.idx << ' ';
-    switch (regtype) {
-      case epi::ExampleRegSpace::RegType::GPR: std::cout << "GPR"; break;
-      case epi::ExampleRegSpace::RegType::FPR: std::cout << "FPR"; break;
-    }
-    std::cout << std::endl;
-  }
+      auto regspace = epi::RegisterSpace::GetRegSpace<epi::ExampleRegSpace>(rig_func);
+      for (const auto& [gvar, regtype] : regspace->register_type_map) {
+        if (gvar.is_local) std::cout << 'c';
+        else std::cout << 'v';
+        std::cout << gvar.idx << ' ';
+        switch (regtype) {
+          case epi::ExampleRegSpace::RegType::GPR: std::cout << "GPR"; break;
+          case epi::ExampleRegSpace::RegType::FPR: std::cout << "FPR"; break;
+        }
+        std::cout << std::endl;
+      }
 
-  rig.Reduce(*regspace);
-  if (!settings.novisualize) {
-    rig.Visualize("output/rig.pdf");
+      rig.Reduce(*regspace);
+      if (!settings.novisualize) {
+        rig.Visualize("output/rig.pdf");
+      }
+    };
   }
 
   return returned;
-}
-
-
-int main(int argc, char** argv) {
-  auto settings = epi::info::parse_args(argc, argv);
-  try {
-    return parse_program(settings);
-  }
-  catch (std::runtime_error& e) {
-    if (!settings.catch_errors) throw;
-    std::cerr << "Uncaught exception:" << std::endl << std::endl;
-    std::cerr << e.what() << std::endl;
-    return -1;
-  }
 }
