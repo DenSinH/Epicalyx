@@ -133,6 +133,7 @@ add_custom_target(graphviz ALL
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_graphviz"
 )
 
+include(CTest)
 add_test(
     NAME scctests
     COMMAND 

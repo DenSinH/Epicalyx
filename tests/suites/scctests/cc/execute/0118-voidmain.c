@@ -1,5 +1,5 @@
 int main(void);
-int f();
+int f(int);
 
 int
 f(int a)

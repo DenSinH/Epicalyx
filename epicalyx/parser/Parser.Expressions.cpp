@@ -32,8 +32,13 @@ pExpr ConstParser::EPrimary() {
     [](const IdentifierToken& ident) -> pExpr { 
       throw ParserError("Unexpected identifier");
     },
-    [](StringConstantToken& str) -> pExpr {
-      return std::make_unique<StringConstantNode>(std::move(str.value));
+    [&](StringConstantToken& str) -> pExpr {
+      cotyl::StringStream string{};
+      string << str.value;
+      while (in_stream.IsAfter(0, TokenType::StringConstant)) {
+        string << in_stream.Get().get<StringConstantToken>().value;
+      }
+      return std::make_unique<StringConstantNode>(string.cfinalize());
     },
     [&](const PunctuatorToken& punc) -> pExpr {
       // has to be (ternary), since in the BaseParser we do not expect assignment
@@ -72,8 +77,13 @@ pExpr Parser::EPrimary() {
         std::move(type)
       );
     },
-    [](StringConstantToken& str) -> pExpr {
-      return std::make_unique<StringConstantNode>(std::move(str.value));
+    [&](StringConstantToken& str) -> pExpr {
+      cotyl::StringStream string{};
+      string << str.value;
+      while (in_stream.IsAfter(0, TokenType::StringConstant)) {
+        string << in_stream.Get().get<StringConstantToken>().value;
+      }
+      return std::make_unique<StringConstantNode>(string.cfinalize());
     },
     [&](const PunctuatorToken& punc) -> pExpr {
       // has to be (expression)
