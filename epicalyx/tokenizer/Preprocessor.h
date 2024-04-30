@@ -157,7 +157,12 @@ private:
 
   // stack of if groups that may or may not be enabled
   std::deque<IfGroup> if_group_stack{};
+
+  // macro definitions, and a set of default definitions
   MacroMap definitions{};
+  static const cotyl::unordered_set<std::string> StandardDefinitions;
+
+  // a set of parsed files for tracking #pragma once directives
   cotyl::unordered_set<std::string> parsed_files{};
 
   // we want to reduce the "CurrentStream" usage as much as possible,

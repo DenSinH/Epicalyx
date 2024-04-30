@@ -513,8 +513,15 @@ void ASTWalker::Visit(const UnopNode& expr) {
         expr.left->Visit(*this);
         state.pop();
 
-        auto visitor = detail::EmitterTypeVisitor<detail::LoadFromPointerEmitter>(*this, { current });
-        visitor.Visit(expr.left->type->Deref());
+        auto deref_type = expr.left->type->Deref();
+        // if dereferenced type is a function, don't dereference it
+        // current will be the pointer itself
+        // likely used for calls, i.e.
+        // result = (*func)(a0, a1, a2)
+        if (!deref_type.holds_alternative<type::FunctionType>()) {
+          auto visitor = detail::EmitterTypeVisitor<detail::LoadFromPointerEmitter>(*this, { current });
+          visitor.Visit(deref_type);
+        }
 
         // could be a conditional branch
       }

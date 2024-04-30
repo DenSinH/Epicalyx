@@ -14,6 +14,10 @@
 
 namespace epi {
 
+const cotyl::unordered_set<std::string> Preprocessor::StandardDefinitions = {
+  "__FILE__", "__LINE__", "__STDC__"
+};
+
 void Preprocessor::PrintLoc(std::ostream& out) const {
   for (const auto& file : file_stack) {
     out << "in " << file.name << ":" << file.line << std::endl;
@@ -338,12 +342,20 @@ std::string Preprocessor::GetNextProcessed() {
       // state changing boundaries
       std::string identifier = detail::get_identifier(CurrentStream());
 
-      if (identifier == "__FILE__") {
-        const auto& file = CurrentFile();
-        return cotyl::FormatStr("\"%s\"", file);
-      }
-      else if (identifier == "__LINE__") {
-        return std::to_string(CurrentLine());
+      if (StandardDefinitions.contains(identifier)) {
+        if (identifier == "__FILE__") {
+          const auto& file = CurrentFile();
+          return cotyl::FormatStr("\"%s\"", file);
+        }
+        else if (identifier == "__LINE__") {
+          return std::to_string(CurrentLine());
+        }
+        else if (identifier == "__STDC__") {
+          return "1";
+        }
+        else {
+          throw PreprocessorError("Definition marked as standard: " + identifier);
+        }
       }
       else if (definitions.contains(identifier)) {
         if (!macro_stack.empty()) {
@@ -469,12 +481,13 @@ void Preprocessor::PreprocessorDirective() {
       }
       else {
         auto identifier = detail::get_identifier(CurrentStream());
+        bool has_def = definitions.contains(identifier) || StandardDefinitions.contains(identifier);
         if (pp_token == "ifdef") {
-          if_group_stack.emplace_back(IfGroup::If(definitions.contains(identifier)));
+          if_group_stack.emplace_back(IfGroup::If(has_def));
         }
         else {
           cotyl::Assert(pp_token == "ifndef");
-          if_group_stack.emplace_back(IfGroup::If(!definitions.contains(identifier)));
+          if_group_stack.emplace_back(IfGroup::If(!has_def));
         }
         EatNewline();
       }
@@ -505,12 +518,13 @@ void Preprocessor::PreprocessorDirective() {
         }
         else {
           auto identifier = detail::get_identifier(CurrentStream());
+          bool has_def = definitions.contains(identifier) || StandardDefinitions.contains(identifier);
           if (pp_token == "elifdef") {
-            if_group_stack.back().Elif(definitions.contains(identifier));
+            if_group_stack.back().Elif(has_def);
           }
           else {
             cotyl::Assert(pp_token == "elifndef");
-            if_group_stack.back().Elif(!definitions.contains(identifier));
+            if_group_stack.back().Elif(!has_def);
           }
           EatNewline();
         }
