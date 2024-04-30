@@ -26,14 +26,6 @@ struct Scope {
   size_t Depth() const { return scope.size(); }
   void Reset() { scope = {{}}; }
 
-  template<typename T>
-  auto operator<<(const T& callable) {
-    NewLayer();
-    auto result = callable();
-    PopLayer();
-    return std::move(result);
-  }
-
   auto begin() { return scope.begin(); }
   auto end() { return scope.end(); }
   auto begin() const { return scope.begin(); }

@@ -46,7 +46,9 @@ pNode<StatNode> Parser::SStatement() {
       auto expr = EExpression();
       in_stream.Eat(TokenType::RParen);
 
-      auto stat = case_scope << [&]{ return SStatement(); };
+      case_scope.NewLayer();
+      auto stat = SStatement();
+      case_scope.PopLayer();
       auto switch_stat = std::make_unique<SwitchNode>(std::move(expr), std::move(stat));
 
       return switch_stat;
