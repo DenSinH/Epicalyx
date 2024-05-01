@@ -24,7 +24,9 @@ requires (cotyl::pack_contains_v<T, value_type_pack>)
 struct ValueType;
 using BoolType = ValueType<i32>;
 struct AnyPointerType;
+struct DataPointerType;
 struct PointerType;
+struct ArrayType;
 struct FunctionType;
 struct StructType;
 struct UnionType;

@@ -14,12 +14,16 @@
 
 #include "Helpers.inl"
 
+#undef DEBUG_GLOBAL_INITIALIZERS
+
+#ifdef DEBUG_GLOBAL_INITIALIZERS
+#include <iostream>
+#endif
 
 namespace epi {
 
 using namespace ast;
 
-#undef DEBUG_GLOBAL_INITIALIZERS
 
 #ifdef DEBUG_GLOBAL_INITIALIZERS
 namespace calyx {
@@ -65,9 +69,14 @@ void ASTWalker::EndFunction() {
 
 var_index_t ASTWalker::AddLocal(cotyl::CString&& name, const type::AnyType& type, std::optional<var_index_t> arg_index) {
   auto c_idx = emitter.c_counter++;
-  // guarantees the type is complete
-  size_t size = type->Sizeof();
-  auto& loc = emitter.current_function->locals.emplace(c_idx, calyx::Local{detail::GetLocalType(type).first, c_idx, size, std::move(arg_index)}).first->second;
+  auto local = detail::MakeLocal(c_idx, type);
+  if (arg_index.has_value()) {
+    if (local.type == calyx::Local::Type::Aggregate) {
+      throw cotyl::UnimplementedException("Aggregate argument types");
+    }
+    local.arg_idx = std::move(arg_index.value());
+  }
+  auto& loc = emitter.current_function->locals.emplace(c_idx, std::move(local)).first->second;
   locals.Set(std::move(name), LocalData{ &loc, type });
   return c_idx;
 }
@@ -107,6 +116,7 @@ void ASTWalker::Visit(const epi::DeclarationNode& decl) {
         auto global_block_return_visitor = detail::EmitterTypeVisitor<detail::ReturnEmitter>(*this, { current });
         global_block_return_visitor.Visit(decl.type);
 #ifdef DEBUG_GLOBAL_INITIALIZERS
+        std::cout << "Visualizing global initializer " << decl.name.c_str() << std::endl;
         VisualizeFunction(initializer, "output/init" + decl.name.str() + ".pdf");
 #endif
         calyx::InterpretGlobalInitializer(global, std::move(initializer));

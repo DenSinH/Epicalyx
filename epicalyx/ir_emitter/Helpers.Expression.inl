@@ -15,7 +15,7 @@ struct CallEmitter {
   }
 
   static var_index_t emit_pointer(ASTWalker& walker, u64 stride, var_index_t fn_idx, calyx::ArgData args) {
-    return walker.emitter.EmitExpr<calyx::Call<calyx::Pointer>>({Emitter::Var::Type::Pointer, stride }, fn_idx, std::move(args));
+    return walker.emitter.EmitExpr<calyx::Call<calyx::Pointer>>({ Emitter::Var::Type::Pointer, stride }, fn_idx, std::move(args));
   }
 };
 

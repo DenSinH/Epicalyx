@@ -233,8 +233,7 @@ bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const LocalData& loca
       AnyDirective::type_index_v<StoreToPointer<i64>>,    
       AnyDirective::type_index_v<StoreToPointer<u64>>,    
       AnyDirective::type_index_v<StoreToPointer<float>>,     
-      AnyDirective::type_index_v<StoreToPointer<double>>,      
-      AnyDirective::type_index_v<StoreToPointer<Struct>>,        
+      AnyDirective::type_index_v<StoreToPointer<double>>,         
       AnyDirective::type_index_v<StoreToPointer<Pointer>>,
       AnyDirective::type_index_v<LoadFromPointer<i8>>,     
       AnyDirective::type_index_v<LoadFromPointer<u8>>,     
@@ -246,7 +245,6 @@ bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const LocalData& loca
       AnyDirective::type_index_v<LoadFromPointer<u64>>,    
       AnyDirective::type_index_v<LoadFromPointer<float>>,  
       AnyDirective::type_index_v<LoadFromPointer<double>>, 
-      AnyDirective::type_index_v<LoadFromPointer<Struct>>, 
       AnyDirective::type_index_v<LoadFromPointer<Pointer>>,
       AnyDirective::type_index_v<Call<i32>>,     
       AnyDirective::type_index_v<Call<u32>>,     
@@ -255,7 +253,6 @@ bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const LocalData& loca
       AnyDirective::type_index_v<Call<float>>,   
       AnyDirective::type_index_v<Call<double>>,  
       AnyDirective::type_index_v<Call<Pointer>>, 
-      AnyDirective::type_index_v<Call<Struct>>,  
       AnyDirective::type_index_v<Call<void>>, 
       AnyDirective::type_index_v<CallLabel<i32>>,     
       AnyDirective::type_index_v<CallLabel<u32>>,     
@@ -263,8 +260,7 @@ bool BasicOptimizer::ShouldFlushLocal(var_index_t loc_idx, const LocalData& loca
       AnyDirective::type_index_v<CallLabel<u64>>,     
       AnyDirective::type_index_v<CallLabel<float>>,    
       AnyDirective::type_index_v<CallLabel<double>>,   
-      AnyDirective::type_index_v<CallLabel<Pointer>>,  
-      AnyDirective::type_index_v<CallLabel<Struct>>,   
+      AnyDirective::type_index_v<CallLabel<Pointer>>,
       AnyDirective::type_index_v<CallLabel<void>>,        
   };
 
@@ -388,11 +384,9 @@ template<typename T>
 void BasicOptimizer::TryReplaceOperand(Operand<T>& var) const {
   if (var.IsVar()) {
     TryReplaceVar(var.GetVar());
-    if constexpr(!std::is_same_v<T, Struct>) {
-      auto* var_imm = TryGetVarDirective<Imm<T>>(var.GetVar());
-      if (var_imm) {
-        var = Scalar<T>{var_imm->value};
-      }
+    auto* var_imm = TryGetVarDirective<Imm<T>>(var.GetVar());
+    if (var_imm) {
+      var = Scalar<T>{var_imm->value};
     }
   }
 }
@@ -648,13 +642,11 @@ void BasicOptimizer::Emit(LoadLocal<T>&& op) {
     else {
       // we can store this value to the locals, though without
       // a "store" directive
-      if constexpr(!std::is_same_v<T, Struct>) {
-        StoreLocalData(op.loc_idx, LocalData{
-            .aliases = 0,
-            .replacement = std::make_shared<AnyExpr>(Cast<T, calyx_op_type(op)::result_t>{0, op.idx}),
-            .store = {}
-        });
-      }
+      StoreLocalData(op.loc_idx, LocalData{
+          .aliases = 0,
+          .replacement = std::make_shared<AnyExpr>(Cast<T, calyx_op_type(op)::result_t>{0, op.idx}),
+          .store = {}
+      });
       OutputExpr(std::move(op));
     }
   }
@@ -669,37 +661,26 @@ void BasicOptimizer::Emit(StoreLocal<T>&& op) {
   if (op.src.IsVar()) {
     auto& src = op.src.GetVar();
     
-    if constexpr(!std::is_same_v<T, Struct>) {
-      // var alias stored to local (i.e. int var; int* al = &var; int* al2 = al;)
-      // this is 0 if the "src" variable does not alias a variable anyway
-      var_index_t aliases = old_deps.var_graph.at(src).aliases;
-
-      // overwrite current local state
-      const auto loc_idx = op.loc_idx;  // op will be moved when assigning
-      StoreLocalData(loc_idx, LocalData{
-              .aliases = aliases,
-              .replacement = std::make_shared<AnyExpr>(Cast<T, calyx_op_type(op)::src_t>{0, src}),
-              .store = std::make_unique<AnyDirective>(std::move(op))
-      });
-    }
-    else {
-      Output(std::move(op));
-    }
+    // var alias stored to local (i.e. int var; int* al = &var; int* al2 = al;)
+    // this is 0 if the "src" variable does not alias a variable anyway
+    var_index_t aliases = old_deps.var_graph.at(src).aliases;
+    
+    // overwrite current local state
+    const auto loc_idx = op.loc_idx;  // op will be moved when assigning
+    StoreLocalData(loc_idx, LocalData{
+            .aliases = aliases,
+            .replacement = std::make_shared<AnyExpr>(Cast<T, calyx_op_type(op)::src_t>{0, src}),
+            .store = std::make_unique<AnyDirective>(std::move(op))
+    });
   }
   else {
     const auto& src = op.src.GetScalar();
-    if constexpr(!std::is_same_v<T, Struct>) {
-      const auto loc_idx = op.loc_idx;  // op will be moved when assigning
-      StoreLocalData(loc_idx, LocalData{
-              .aliases = 0,
-              .replacement = std::make_shared<AnyExpr>(Imm<calyx_op_type(op)::src_t>{0, (T)src}),
-              .store = std::make_unique<AnyDirective>(std::move(op))
-      });
-      return;
-    }
-    else {
-      Output(std::move(op));
-    }
+    const auto loc_idx = op.loc_idx;  // op will be moved when assigning
+    StoreLocalData(loc_idx, LocalData{
+            .aliases = 0,
+            .replacement = std::make_shared<AnyExpr>(Imm<calyx_op_type(op)::src_t>{0, (T)src}),
+            .store = std::make_unique<AnyDirective>(std::move(op))
+    });
   }
 }
 
@@ -733,12 +714,13 @@ void BasicOptimizer::Emit(LoadFromPointer<T>&& op) {
       auto& repl = locals.at(alias).replacement;
       (*repl)->idx = op.idx;
       EmitExpr(*repl);
+      return;
     }
-    else {
+    else if (new_function.locals.at(alias).type != Local::Type::Aggregate) {
       // load aliased local directly
       EmitRepl<LoadLocal<T>>(op.idx, alias, op.offset);
+      return;
     }
-    return;
   }
 
   // this needs to happen, as we may be computing aliases wrong,

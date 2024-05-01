@@ -7,6 +7,7 @@
 #include "ast/Statement.h"
 
 #include <optional>
+#include <iostream>
 
 
 namespace epi {
@@ -626,7 +627,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
           }
         }
         in_stream.Eat(TokenType::RBracket);
-        layer.push(type::PointerType{type::PointerType::ArrayType(nullptr, size)});
+        layer.push(type::ArrayType{nullptr, size});
         break;
       }
       default: {

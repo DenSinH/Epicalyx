@@ -7,7 +7,7 @@
         "cwd": "${workspaceRoot}",
         "args": [
           "-rigfunc", "main",
-          "${workspaceRoot}/tests/suites/scctests/cc/execute/0174-decay.c"
+          "${workspaceRoot}/tests/suites/scctests/cc/execute/0046-inits.c"
         ]
     },
     "editor.indentSize": 2,

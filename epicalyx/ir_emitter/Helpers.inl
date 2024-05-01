@@ -13,7 +13,6 @@ template<> struct calyx_var_type<u64> { static constexpr auto value = Emitter::V
 template<> struct calyx_var_type<float> { static constexpr auto value = Emitter::Var::Type::Float; };
 template<> struct calyx_var_type<double> { static constexpr auto value = Emitter::Var::Type::Double; };
 template<> struct calyx_var_type<calyx::Pointer> { static constexpr auto value = Emitter::Var::Type::Pointer; };
-template<> struct calyx_var_type<calyx::Struct> { static constexpr auto value = Emitter::Var::Type::Struct; };
 template<typename T>
 constexpr auto calyx_var_type_v = calyx_var_type<T>::value;
 
@@ -52,6 +51,9 @@ struct EmitterTypeVisitor {
         throw type::TypeError("Incomplete type");
       },
       [&](const type::PointerType& ptr) {
+        VisitPointerImpl(ptr.Stride());
+      },
+      [&](const type::ArrayType& ptr) {
         VisitPointerImpl(ptr.Stride());
       },
       [&](const type::FunctionType& ptr) {

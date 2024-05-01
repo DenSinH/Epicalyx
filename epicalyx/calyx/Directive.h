@@ -84,8 +84,8 @@ enum class CmpType : u32 {
 
 template<typename To, typename From>
 requires (
-  is_calyx_arithmetic_ptr_type_v<From> && 
-  (is_calyx_arithmetic_ptr_type_v<To> || is_calyx_small_type_v<To>)
+  is_calyx_type_v<From> && 
+  (is_calyx_type_v<To> || is_calyx_small_type_v<To>)
 )
 struct Cast : Expr {
   using result_t = calyx_upcast_t<To>;
@@ -137,7 +137,7 @@ struct Shift : Expr {
 };
 
 template<typename T>
-requires (is_calyx_arithmetic_ptr_type_v<T>)
+requires (is_calyx_type_v<T>)
 struct Compare : Expr {
   using result_t = i32;
   using src_t = T;
@@ -164,7 +164,7 @@ struct UnconditionalBranch : Branch {
 };
 
 template<typename T>
-requires (is_calyx_arithmetic_ptr_type_v<T>)
+requires (is_calyx_type_v<T>)
 struct BranchCompare : Branch {
   using src_t = T;
 
@@ -443,26 +443,26 @@ using any_expr_helper = cotyl::Variant<Expr, Ts...>;
 using expr_pack = cotyl::flatten_pack<
   cotyl::map_types_t<Binop, calyx_arithmetic_types>,
   cotyl::map_types_t<Shift, calyx_integral_types>,
-  cotyl::map_types_t<Compare, calyx_arithmetic_ptr_types>,
+  cotyl::map_types_t<Compare, calyx_types>,
   cotyl::map_types_t<AddToPointer, calyx_integral_types>,
   cotyl::map_types_t<Unop, calyx_arithmetic_types>,
-  cotyl::map_types_t<Imm, calyx_arithmetic_ptr_types>,
+  cotyl::map_types_t<Imm, calyx_types>,
   cotyl::map_types_t<LoadLocal, calyx_memory_types>,
   LoadLocalAddr,
   cotyl::map_types_t<LoadGlobal, calyx_memory_types>,
   LoadGlobalAddr,
   cotyl::map_types_t<LoadFromPointer, calyx_memory_types>,
-  cotyl::map_types_t<detail::cast_to<i8>::type, calyx_arithmetic_ptr_types>,
-  cotyl::map_types_t<detail::cast_to<u8>::type, calyx_arithmetic_ptr_types>,
-  cotyl::map_types_t<detail::cast_to<i16>::type, calyx_arithmetic_ptr_types>,
-  cotyl::map_types_t<detail::cast_to<u16>::type, calyx_arithmetic_ptr_types>,
-  cotyl::map_types_t<detail::cast_to<i32>::type, calyx_arithmetic_ptr_types>,
-  cotyl::map_types_t<detail::cast_to<u32>::type, calyx_arithmetic_ptr_types>,
-  cotyl::map_types_t<detail::cast_to<i64>::type, calyx_arithmetic_ptr_types>,
-  cotyl::map_types_t<detail::cast_to<u64>::type, calyx_arithmetic_ptr_types>,
-  cotyl::map_types_t<detail::cast_to<float>::type, calyx_arithmetic_ptr_types>,
-  cotyl::map_types_t<detail::cast_to<double>::type, calyx_arithmetic_ptr_types>,
-  cotyl::map_types_t<detail::cast_to<Pointer>::type, calyx_arithmetic_ptr_types>
+  cotyl::map_types_t<detail::cast_to<i8>::type, calyx_types>,
+  cotyl::map_types_t<detail::cast_to<u8>::type, calyx_types>,
+  cotyl::map_types_t<detail::cast_to<i16>::type, calyx_types>,
+  cotyl::map_types_t<detail::cast_to<u16>::type, calyx_types>,
+  cotyl::map_types_t<detail::cast_to<i32>::type, calyx_types>,
+  cotyl::map_types_t<detail::cast_to<u32>::type, calyx_types>,
+  cotyl::map_types_t<detail::cast_to<i64>::type, calyx_types>,
+  cotyl::map_types_t<detail::cast_to<u64>::type, calyx_types>,
+  cotyl::map_types_t<detail::cast_to<float>::type, calyx_types>,
+  cotyl::map_types_t<detail::cast_to<double>::type, calyx_types>,
+  cotyl::map_types_t<detail::cast_to<Pointer>::type, calyx_types>
 >;
 
 using store_pack = cotyl::flatten_pack<
@@ -475,7 +475,7 @@ using directive_pack = cotyl::flatten_pack<
   NoOp,
   expr_pack,
   UnconditionalBranch,
-  cotyl::map_types_t<BranchCompare, calyx_arithmetic_ptr_types>,
+  cotyl::map_types_t<BranchCompare, calyx_types>,
   Select,
   store_pack,
   cotyl::map_types_t<Call, calyx_return_types>,

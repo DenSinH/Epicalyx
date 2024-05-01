@@ -9,7 +9,7 @@ namespace epi {
 struct ExampleRegSpace final : RegisterSpace {
   
   enum class RegType : register_type_t {
-    GPR, FPR
+    GPR, FPR, Stack
   };
   
   cotyl::unordered_map<GeneralizedVar, RegType> register_type_map{};

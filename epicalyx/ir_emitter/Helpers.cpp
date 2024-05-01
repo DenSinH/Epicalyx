@@ -18,12 +18,10 @@ calyx::Global GetGlobalValue(const AnyType& type) {
       throw cotyl::UnimplementedException("global union");
     },
     [](const PointerType& ptr) -> calyx::Global {
-      if (ptr.size == 0) {
-        return calyx::Pointer{0};
-      }
-      else {
-        throw cotyl::UnimplementedException("global array");
-      }
+      return calyx::Pointer{0};
+    },
+    [](const type::ArrayType& strct) -> calyx::Global {
+      throw cotyl::UnimplementedException("global array");
     },
     [](const FunctionType& func) -> calyx::Global { 
       return calyx::Pointer{0}; 
@@ -54,25 +52,33 @@ template<typename T>
 constexpr auto calyx_loc_type_v = calyx_loc_type<T>::value;
 
 
-std::pair<calyx::Local::Type, u64> GetLocalType(const type::AnyType& type) {
-  return type.visit<std::pair<calyx::Local::Type, u64>>(
-    [](const VoidType&) -> std::pair<calyx::Local::Type, u64> {
+calyx::Local MakeLocal(loc_index_t loc_idx, const type::AnyType& type) {
+  return type.visit<calyx::Local>(
+    [](const VoidType&) -> calyx::Local {
       throw type::TypeError("Incomplete local type");
     },
-    [](const StructType& strct) -> std::pair<calyx::Local::Type, u64> {
-      return {calyx::Local::Type::Struct, strct.Sizeof()}; 
+    [&](const StructType& strct) -> calyx::Local {
+      return calyx::Local::Aggregate(loc_idx, calyx::Aggregate{strct.Sizeof(), (u32)strct.Alignof()}); 
     },
-    [](const UnionType& strct) -> std::pair<calyx::Local::Type, u64> { 
-      return {calyx::Local::Type::Struct, strct.Sizeof()}; 
+    [&](const UnionType& strct) -> calyx::Local { 
+      return calyx::Local::Aggregate(loc_idx, calyx::Aggregate{strct.Sizeof(), (u32)strct.Alignof()}); 
     },
-    [](const PointerType& ptr) -> std::pair<calyx::Local::Type, u64> { 
-      return {calyx::Local::Type::Pointer, ptr.Stride()}; 
+    [&](const PointerType& ptr) -> calyx::Local {
+      return calyx::Local::Pointer(loc_idx, ptr.Stride()); 
     },
-    [](const FunctionType&) -> std::pair<calyx::Local::Type, u64> { 
-      return {calyx::Local::Type::Pointer, 0}; 
+    [&](const ArrayType& arr) -> calyx::Local {
+      if (arr.size) {
+        return calyx::Local::Aggregate(loc_idx, calyx::Aggregate{arr.Sizeof(), (u32)arr.Alignof()});
+      }
+      else {
+        return calyx::Local::Pointer(loc_idx, arr.Stride()); 
+      }         
     },
-    []<typename T>(const ValueType<T>& value) -> std::pair<calyx::Local::Type, u64> {
-      return {calyx_loc_type_v<T>, 0};
+    [&](const FunctionType&) -> calyx::Local { 
+      return calyx::Local::Pointer(loc_idx, 0);
+    },
+    [&]<typename T>(const ValueType<T>& value) -> calyx::Local {
+      return {calyx_loc_type_v<T>, loc_idx};
     },
     // exhaustive variant access
     [](const auto& invalid) { static_assert(!sizeof(invalid)); }

@@ -21,7 +21,7 @@ struct Emitter {
 
   struct Var {
     enum class Type {
-      I32, U32, I64, U64, Float, Double, Pointer, Struct
+      I32, U32, I64, U64, Float, Double, Pointer
     };
 
     Var(Type type, u64 stride = 0) :

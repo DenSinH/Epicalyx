@@ -31,9 +31,12 @@ STRINGIFY_METHOD(Pointer);
 
 static_assert(sizeof(Pointer) == sizeof(i64));
 
-struct Struct { };
+struct Aggregate {
+  u64 size;
+  u32 align;
+};
 
-STRINGIFY_METHOD(Struct);
+STRINGIFY_METHOD(Aggregate);
 
 template<typename T>
 struct Scalar {
@@ -93,23 +96,54 @@ struct Local {
   enum class Type : u32 {
     I8, U8, I16, U16, 
     I32, U32, I64, U64,
-    Float, Double, Pointer, Struct
+    Float, Double, Pointer, Aggregate
   };
 
-  Local(Type type, var_index_t idx, size_t size, std::optional<var_index_t>&& arg_idx) : 
-      type{type}, idx{idx}, size{size}, arg_idx{std::move(arg_idx)} {
+  // arguments can never be aggregates,
+  // converted to pointers
+  Local(Type type, loc_index_t idx, std::optional<var_index_t>&& arg_idx = {}) : 
+      type{type}, idx{idx}, arg_idx{std::move(arg_idx)} {
 
   }
 
-  Local(Type type, var_index_t idx, size_t size) : 
-      Local{type, idx, size, {}} {
+  static Local Aggregate(loc_index_t idx, calyx::Aggregate&& aggregate) {
+    return Local(Type::Aggregate, idx, std::move(aggregate));
+  }
 
+  static Local Pointer(loc_index_t idx, u64 stride, std::optional<var_index_t>&& arg_idx = {}) {
+    auto loc = Local(Type::Pointer, idx, std::move(arg_idx));
+    loc.stride = stride;
+    return loc;
+  }
+
+  u64 Size() const {
+    switch (type) {
+      case Type::I8: case Type::U8: return 1;
+      case Type::I16: case Type::U16: return 2;
+      case Type::I32: case Type::U32: return 4;
+      case Type::I64: case Type::U64: return 8;
+      case Type::Pointer: return 8;
+      case Type::Aggregate: return aggregate.size;
+    }
   }
 
   Type type;
-  var_index_t idx;
-  size_t size;
-  std::optional<var_index_t> arg_idx{};
+  loc_index_t idx;
+  union {
+    calyx::Aggregate aggregate;
+    struct {
+      std::optional<loc_index_t> arg_idx;
+      u64 stride;
+    };
+  };
+
+private:
+
+  Local(Type type, loc_index_t idx, calyx::Aggregate&& aggregate) : 
+      type{type}, idx{idx}, aggregate{std::move(aggregate)} {
+        
+  }
+
 };
 
 struct ArgData {

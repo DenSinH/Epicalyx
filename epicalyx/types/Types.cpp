@@ -128,7 +128,15 @@ AnyType ValueType<T>::Add(const AnyType& other) const {
         InvalidOperands(this, "+", other);
       }
       PointerType result = pointer;
-      result.size = 0;           // lose array status
+      result.ForgetConstInfo();  // forget constant info
+      return result;
+    },
+    [&](const ArrayType& pointer) -> AnyType { 
+      if (pointer.Stride() == 0) {
+        // can't add to pointer to incomplete type
+        InvalidOperands(this, "+", other);
+      }
+      PointerType result = pointer;
       result.ForgetConstInfo();  // forget constant info
       return result;
     },
@@ -256,7 +264,7 @@ template<typename T>
 requires (cotyl::pack_contains_v<T, value_type_pack>)
 AnyType ValueType<T>::CommonTypeImpl(const AnyType& other) const {
     auto result = other.visit<AnyType>(
-    [](const PointerType& pointer) -> AnyType {
+    [&](const PointerType& pointer) -> AnyType {
       return pointer; 
     },
     []<typename R>(const ValueType<R>& other) -> AnyType {
@@ -285,15 +293,38 @@ AnyType PointerType::Add(const AnyType& other) const {
     [&](const PointerType& other) -> AnyType { 
       InvalidOperands(this, "+", other);
     },
+    [&](const ArrayType& other) -> AnyType { 
+      InvalidOperands(this, "+", other);
+    },
     [&](const auto& other) {
       return other.Add(*this);
     }
   );
 }
 
-AnyType PointerType::Sub(const AnyType& other) const {
+AnyType ArrayType::Add(const AnyType& other) const {
+  return other.visit<AnyType>(
+    [&](const PointerType& other) -> AnyType { 
+      InvalidOperands(this, "+", other);
+    },
+    [&](const ArrayType& other) -> AnyType { 
+      InvalidOperands(this, "+", other);
+    },
+    [&](const auto& other) {
+      return other.Add(*this);
+    }
+  );
+}
+
+AnyType DataPointerType::Sub(const AnyType& other) const {
   return other.visit<AnyType>(
     [&](const PointerType& other) -> AnyType {
+      if (contained->TypeEquals(*other.contained)) {
+        return ValueType<u64>{LValue::None, 0};
+      }
+      InvalidOperands(this, "-", other);
+    },
+    [&](const ArrayType& other) -> AnyType {
       if (contained->TypeEquals(*other.contained)) {
         return ValueType<u64>{LValue::None, 0};
       }
@@ -308,9 +339,15 @@ AnyType PointerType::Sub(const AnyType& other) const {
   );
 }
 
-BoolType PointerType::Lt(const AnyType& other) const {
+BoolType DataPointerType::Lt(const AnyType& other) const {
   return other.visit<BoolType>(
     [&](const PointerType& other) {
+      if (!contained->TypeEquals(*other.contained)) {
+        Log::Warn(cotyl::FormatStr("Comparing pointers to different types: %s and %s", *contained, *other.contained).c_str());
+      }
+      return BoolType(LValue::None);
+    },
+    [&](const ArrayType& other) {
       if (!contained->TypeEquals(*other.contained)) {
         Log::Warn(cotyl::FormatStr("Comparing pointers to different types: %s and %s", *contained, *other.contained).c_str());
       }
@@ -323,9 +360,19 @@ BoolType PointerType::Lt(const AnyType& other) const {
   );
 }
 
-BoolType PointerType::Eq(const AnyType& other) const {
+BoolType DataPointerType::Eq(const AnyType& other) const {
   return other.visit<BoolType>(
     [&](const PointerType& other) {
+      if (contained->holds_alternative<VoidType>() || other.contained->holds_alternative<VoidType>()) {
+        // allowed
+        return BoolType(LValue::None);
+      }
+      if (!contained->TypeEquals(*other.contained)) {
+        Log::Warn(cotyl::FormatStr("Comparing pointers to different types: %s and %s", *contained, *other.contained).c_str());
+      }
+      return BoolType(LValue::None);
+    },
+    [&](const ArrayType& other) {
       if (contained->holds_alternative<VoidType>() || other.contained->holds_alternative<VoidType>()) {
         // allowed
         return BoolType(LValue::None);
@@ -342,7 +389,7 @@ BoolType PointerType::Eq(const AnyType& other) const {
   );
 }
 
-AnyType PointerType::Deref() const {
+AnyType DataPointerType::Deref() const {
   return *contained;
 }
 
@@ -357,7 +404,7 @@ AnyType PointerType::FunctionCall(const cotyl::vector<AnyType>& args) const {
   );
 }
 
-BoolType PointerType::Truthiness() const {
+BoolType DataPointerType::Truthiness() const {
   return BoolType{LValue::None};
 }
 
@@ -374,12 +421,28 @@ AnyType PointerType::CommonTypeImpl(const AnyType& other) const {
   );
 }
 
+AnyType ArrayType::CommonTypeImpl(const AnyType& other) const {
+  return other.visit<AnyType>(
+    [&]<std::integral T>(const ValueType<T>& other) {
+      PointerType result = *this;
+      result.ForgetConstInfo();
+      return std::move(result);
+    },
+    [&](const auto& other) -> AnyType {
+      InvalidOperands(this, "operation", other);
+    }
+  );
+}
+
 u64 PointerType::Sizeof() const {
-  if (size == 0) return sizeof(u64);
+  return sizeof(u64);
+}
+
+u64 ArrayType::Sizeof() const {
   return size * (*contained)->Sizeof();
 }
 
-u64 PointerType::Stride() const {
+u64 DataPointerType::Stride() const {
   // stride may be 0 for incomplete types
   return contained->visit<u64>(
     [](const VoidType&) -> u64 { return 0; },
@@ -388,8 +451,12 @@ u64 PointerType::Stride() const {
 }
 
 std::string PointerType::ToString() const {
-  if (size == 0) {
-    return cotyl::FormatStr("(%s)*", contained);
+  return cotyl::FormatStr("(%s)*", contained);
+}
+
+std::string ArrayType::ToString() const {
+  if (!size) {
+    return cotyl::FormatStr("(%s)[]", contained);
   }
   else {
     return cotyl::FormatStr("(%s)[%s]", contained, size);

@@ -36,6 +36,7 @@ struct Parser final : public ConstParser {
   using any_pointer_t = cotyl::Variant<
     type::AnyPointerType,
     type::PointerType,
+    type::ArrayType,
     type::FunctionType
   >;
 private:

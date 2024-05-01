@@ -142,8 +142,8 @@ i32 Interpreter::Interpret(const Program& program) {
   vars.Set(argv_idx, argv);
   calyx::ArgData main_args{
     .args={
-      {argc_idx, calyx::Local{calyx::Local::Type::I32,     argc_idx, 4,           0}},
-      {argv_idx, calyx::Local{calyx::Local::Type::Pointer, argv_idx, sizeof(u64), 1}},
+      {argc_idx, calyx::Local{calyx::Local::Type::I32, argc_idx, 0}},
+      {argv_idx, calyx::Local::Pointer(argv_idx, sizeof(u64), 1)},
     }
   };
   call_stack.emplace(program_counter_t{nullptr, {0, 0}}, -1, &main_args);
@@ -228,8 +228,8 @@ void Interpreter::LoadArg(const calyx::Local& loc) {
       std::memcpy(&stack[stack_loc], &value, sizeof(value));
       break;
     }
-    case Local::Type::Struct: {
-      throw cotyl::UnimplementedException("struct argument");
+    case Local::Type::Aggregate: {
+      throw cotyl::UnreachableException();
     }
   }
 }
@@ -244,8 +244,9 @@ void Interpreter::EnterFunction(const Function* function) {
   // allocate locals
   locals.NewLayer();
   for (const auto& [loc_idx, local] : pos.func->locals) {
-    locals.Set(loc_idx, std::make_pair(stack.size(), local.size));
-    stack.resize(stack.size() + local.size);
+    locals.Set(loc_idx, std::make_pair(stack.size(), local.Size()));
+    stack.resize(stack.size() + local.Size());
+
     if (local.arg_idx.has_value()) {
       LoadArg(local);
     }
@@ -307,17 +308,11 @@ void Interpreter::Emit(const Cast<To, From>& op) {
 
 template<typename T>
 void Interpreter::Emit(const LoadLocal<T>& op) {
-  // cotyl::Assert(!vars.Top().contains(op.idx), stringify(op));
-  if constexpr(std::is_same_v<T, Struct>) {
-    throw cotyl::UnimplementedException("load struct cvar");
-  }
-  else {
-    // works the same for pointers  
-    using result_t = calyx_op_type(op)::result_t;
-    T value;
-    memcpy(&value, &stack[locals.Get(op.loc_idx).first], sizeof(T));
-    vars.Set(op.idx, scalar_or_pointer_t<result_t>{(result_t)value});
-  }
+  // works the same for pointers  
+  using result_t = calyx_op_type(op)::result_t;
+  T value;
+  memcpy(&value, &stack[locals.Get(op.loc_idx).first], sizeof(T));
+  vars.Set(op.idx, scalar_or_pointer_t<result_t>{(result_t)value});
 }
 
 void Interpreter::Emit(const LoadLocalAddr& op) {
@@ -326,34 +321,24 @@ void Interpreter::Emit(const LoadLocalAddr& op) {
 
 template<typename T>
 void Interpreter::Emit(const StoreLocal<T>& op) {
-  if constexpr(std::is_same_v<T, Struct>) {
-    throw cotyl::UnimplementedException("store struct local");
+  // works the same for pointers
+  using src_t = calyx_op_type(op)::src_t;
+  T value;
+  if (op.src.IsVar()) {
+    value = (T)swl::get<scalar_or_pointer_t<src_t>>(vars.Get(op.src.GetVar())).value;
   }
   else {
-    // works the same for pointers
-    using src_t = calyx_op_type(op)::src_t;
-    T value;
-    if (op.src.IsVar()) {
-      value = (T)swl::get<scalar_or_pointer_t<src_t>>(vars.Get(op.src.GetVar())).value;
-    }
-    else {
-      value = (T)op.src.GetScalar();
-    }
-    memcpy(&stack[locals.Get(op.loc_idx).first], &value, sizeof(T));
+    value = (T)op.src.GetScalar();
   }
+  memcpy(&stack[locals.Get(op.loc_idx).first], &value, sizeof(T));
 }
 
 template<typename T>
 void Interpreter::Emit(const LoadGlobal<T>& op) {
-  if constexpr(std::is_same_v<T, Struct>) {
-    throw cotyl::UnimplementedException("load struct global");
-  }
-  else {
-    using result_t = calyx_op_type(op)::result_t;
-    cotyl::Assert(swl::holds_alternative<scalar_or_pointer_t<T>>(globals.at(op.symbol)));
-    result_t value = (T)swl::get<scalar_or_pointer_t<T>>(globals.at(op.symbol)).value;
-    vars.Set(op.idx, scalar_or_pointer_t<result_t>{std::move(value)});
-  }
+  using result_t = calyx_op_type(op)::result_t;
+  cotyl::Assert(swl::holds_alternative<scalar_or_pointer_t<T>>(globals.at(op.symbol)));
+  result_t value = (T)swl::get<scalar_or_pointer_t<T>>(globals.at(op.symbol)).value;
+  vars.Set(op.idx, scalar_or_pointer_t<result_t>{std::move(value)});
 }
 
 void Interpreter::Emit(const LoadGlobalAddr& op) {
@@ -362,92 +347,77 @@ void Interpreter::Emit(const LoadGlobalAddr& op) {
 
 template<typename T>
 void Interpreter::Emit(const StoreGlobal<T>& op) {
-  if constexpr(std::is_same_v<T, Struct>) {
-    throw cotyl::UnimplementedException("store struct global");
+  using src_t = calyx_op_type(op)::src_t;
+  cotyl::Assert(swl::holds_alternative<scalar_or_pointer_t<T>>(globals.at(op.symbol)));
+  T value;
+  if (op.src.IsVar()) {
+    value = (T)swl::get<scalar_or_pointer_t<src_t>>(vars.Get(op.src.GetVar())).value;
   }
   else {
-    using src_t = calyx_op_type(op)::src_t;
-    cotyl::Assert(swl::holds_alternative<scalar_or_pointer_t<T>>(globals.at(op.symbol)));
-    T value;
-    if (op.src.IsVar()) {
-      value = (T)swl::get<scalar_or_pointer_t<src_t>>(vars.Get(op.src.GetVar())).value;
-    }
-    else {
-      value = (T)op.src.GetScalar();
-    }
-    globals.at(op.symbol).template emplace<scalar_or_pointer_t<T>>(std::move(value));
+    value = (T)op.src.GetScalar();
   }
+  globals.at(op.symbol).template emplace<scalar_or_pointer_t<T>>(std::move(value));
 }
 
 template<typename T>
 void Interpreter::Emit(const LoadFromPointer<T>& op) {
   auto pointer = ReadPointer(swl::get<Pointer>(vars.Get(op.ptr_idx)).value);
-  if constexpr(std::is_same_v<T, Struct>) {
-    throw cotyl::UnimplementedException("load struct from pointer");
+  T value;
+  if (swl::holds_alternative<i64>(pointer)) {
+    const auto pval = swl::get<i64>(pointer);
+    cotyl::Assert(pval >= 0);
+    memcpy(&value, &stack[pval] + op.offset, sizeof(T));
   }
   else {
-    T value;
-    if (swl::holds_alternative<i64>(pointer)) {
-      const auto pval = swl::get<i64>(pointer);
-      cotyl::Assert(pval >= 0);
-      memcpy(&value, &stack[pval] + op.offset, sizeof(T));
+    const auto pval = swl::get<LabelOffset>(pointer);
+    if (pval.offset != 0) {
+      throw InterpreterError("Partial global data load");
     }
-    else {
-      const auto pval = swl::get<LabelOffset>(pointer);
-      if (pval.offset != 0) {
-        throw InterpreterError("Partial global data load");
-      }
 
-      if (!globals.contains(pval.label)) {
-        throw InterpreterError("Invalid symbol load");
-      }
-      const auto& glob = globals.at(pval.label);
-      if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
-        throw InterpreterError("Invalid aliased global data load");
-      }
-      value = swl::get<scalar_or_pointer_t<T>>(glob).value;
+    if (!globals.contains(pval.label)) {
+      throw InterpreterError("Invalid symbol load");
     }
-    using result_t = calyx_op_type(op)::result_t;
-    vars.Set(op.idx, scalar_or_pointer_t<result_t>{(result_t)value});
+    const auto& glob = globals.at(pval.label);
+    if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
+      throw InterpreterError("Invalid aliased global data load");
+    }
+    value = swl::get<scalar_or_pointer_t<T>>(glob).value;
   }
+  using result_t = calyx_op_type(op)::result_t;
+  vars.Set(op.idx, scalar_or_pointer_t<result_t>{(result_t)value});
 }
 
 template<typename T>
 void Interpreter::Emit(const StoreToPointer<T>& op) {
   auto pointer = ReadPointer(swl::get<Pointer>(vars.Get(op.ptr_idx)).value);
-  if constexpr(std::is_same_v<T, Struct>) {
-    throw cotyl::UnimplementedException("store struct to pointer");
+  using src_t = calyx_op_type(op)::src_t;
+  T value;
+  if (op.src.IsVar()) {
+    value = (T)swl::get<scalar_or_pointer_t<src_t>>(vars.Get(op.src.GetVar())).value;
   }
   else {
-    using src_t = calyx_op_type(op)::src_t;
-    T value;
-    if (op.src.IsVar()) {
-      value = (T)swl::get<scalar_or_pointer_t<src_t>>(vars.Get(op.src.GetVar())).value;
-    }
-    else {
-      value = (T)op.src.GetScalar();
+    value = (T)op.src.GetScalar();
+  }
+
+  if (swl::holds_alternative<i64>(pointer)) {
+    const auto pval = swl::get<i64>(pointer);
+    cotyl::Assert(pval >= 0);
+    memcpy(&stack[pval + op.offset], &value, sizeof(T));
+  }
+  else {
+    const auto pval = swl::get<LabelOffset>(pointer);
+    if (pval.offset != 0) {
+      throw InterpreterError("Partial global data store");
     }
 
-    if (swl::holds_alternative<i64>(pointer)) {
-      const auto pval = swl::get<i64>(pointer);
-      cotyl::Assert(pval >= 0);
-      memcpy(&stack[pval + op.offset], &value, sizeof(T));
+    if (!globals.contains(pval.label)) {
+      throw InterpreterError("Invalid symbol store");
     }
-    else {
-      const auto pval = swl::get<LabelOffset>(pointer);
-      if (pval.offset != 0) {
-        throw InterpreterError("Partial global data store");
-      }
-
-      if (!globals.contains(pval.label)) {
-        throw InterpreterError("Invalid symbol store");
-      }
-      auto& glob = globals.at(pval.label);
-      if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
-        throw InterpreterError("Invalid aliased global data store");
-      }
-      glob.template emplace<scalar_or_pointer_t<T>>(std::move(value));
+    auto& glob = globals.at(pval.label);
+    if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
+      throw InterpreterError("Invalid aliased global data store");
     }
+    glob.template emplace<scalar_or_pointer_t<T>>(std::move(value));
   }
 }
 
@@ -461,12 +431,10 @@ void Interpreter::Emit(const Call<T>& op) {
     throw cotyl::UnimplementedException("Interpreter call pointer value");
   }
   else {
-    auto pval = swl::get<LabelOffset>(pointer);
+    const auto& pval = swl::get<LabelOffset>(pointer);
     called = cotyl::CString(pval.label);
     cotyl::Assert(pval.offset == 0, "Cannot jump to offset label in call");
   }
-
-  EnterFunction(func);
 }
 
 template<typename T>
@@ -477,42 +445,37 @@ void Interpreter::Emit(const CallLabel<T>& op) {
 
 template<typename T>
 void Interpreter::Emit(const Return<T>& op) {
-  if constexpr(std::is_same_v<T, Struct>) {
-    throw cotyl::UnimplementedException("Struct return");
-  }
-  else {
-    auto top_vars = vars.Top();
-    auto top_locals = locals.Top();
-    locals.PopLayer();
-    vars.PopLayer();
+  auto top_vars = vars.Top();
+  auto top_locals = locals.Top();
+  locals.PopLayer();
+  vars.PopLayer();
 
-    auto [_pos, return_to, _] = call_stack.top();
-    call_stack.pop();
-    if (_pos.func == nullptr) {
-      // return from main
-      if constexpr(std::is_same_v<T, i32>) {
-        if (op.val.IsVar()) {
-          returned = swl::get<Scalar<i32>>(top_vars.at(op.val.GetVar())).value;
-        }
-        else {
-          returned = op.val.GetScalar();
-        }
+  auto [_pos, return_to, _] = call_stack.top();
+  call_stack.pop();
+  if (pos.func->symbol.str() == "main") {
+    // return from main
+    if constexpr(std::is_same_v<T, i32>) {
+      if (op.val.IsVar()) {
+        returned = swl::get<Scalar<i32>>(top_vars.at(op.val.GetVar())).value;
       }
       else {
-        throw InterpreterError("Invalid return type from 'main' symbol");
+        returned = op.val.GetScalar();
       }
     }
     else {
-      pos = _pos;
-      if constexpr(!std::is_same_v<T, void>) {
-        if (op.val.IsVar()) vars.Set(return_to, top_vars.at(op.val.GetVar()));
-        else vars.Set(return_to, scalar_or_pointer_t<T>{op.val.GetScalar()});
-      }
+      throw InterpreterError("Invalid return type from 'main' symbol");
     }
+  }
+  else {
+    pos = _pos;
+    if constexpr(!std::is_same_v<T, void>) {
+      if (op.val.IsVar()) vars.Set(return_to, top_vars.at(op.val.GetVar()));
+      else vars.Set(return_to, scalar_or_pointer_t<T>{op.val.GetScalar()});
+    }
+  }
 
-    for (const auto& [idx, local] : top_locals) {
-      stack.resize(stack.size() - local.second);
-    }
+  for (const auto& [idx, local] : top_locals) {
+    stack.resize(stack.size() - local.second);
   }
 }
 

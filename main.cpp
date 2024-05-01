@@ -43,6 +43,10 @@ struct SafeRun {
         std::cerr << e.what() << std::endl;
         std::exit(-1);
       }
+      catch (...) {
+        std::cerr << "Unknown Compiler Error" << std::endl;
+        std::exit(-1);
+      }
     }
   }
 
@@ -146,6 +150,7 @@ int main(int argc, char** argv) {
         switch (regtype) {
           case epi::ExampleRegSpace::RegType::GPR: std::cout << "GPR"; break;
           case epi::ExampleRegSpace::RegType::FPR: std::cout << "FPR"; break;
+          case epi::ExampleRegSpace::RegType::Stack: std::cout << "Stack"; break;
         }
         std::cout << std::endl;
       }

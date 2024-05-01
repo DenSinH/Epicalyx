@@ -30,8 +30,8 @@ template<> const std::string type_string<i64>::value = "i64";
 template<> const std::string type_string<u64>::value = "u64";
 template<> const std::string type_string<float>::value = "float";
 template<> const std::string type_string<double>::value = "double";
-template<> const std::string type_string<Struct>::value = "struct";
 template<> const std::string type_string<Pointer>::value = "pointer";
+template<> const std::string type_string<Aggregate>::value = "aggregate";
 
 std::string TypeString(const Local::Type& type) {
   switch (type) {
@@ -45,8 +45,8 @@ std::string TypeString(const Local::Type& type) {
     case Local::Type::U64: return type_string<u64>::value;
     case Local::Type::Float: return type_string<float>::value;
     case Local::Type::Double: return type_string<double>::value;
-    case Local::Type::Struct: return type_string<Struct>::value;
     case Local::Type::Pointer: return type_string<Pointer>::value;
+    case Local::Type::Aggregate: return type_string<Aggregate>::value;
   }
 }
 
@@ -58,8 +58,8 @@ std::string NoOp::ToString() const {
 
 template<typename To, typename From>
 requires (
-  is_calyx_arithmetic_ptr_type_v<From> && 
-  (is_calyx_arithmetic_ptr_type_v<To> || is_calyx_small_type_v<To>)
+  is_calyx_type_v<From> && 
+  (is_calyx_type_v<To> || is_calyx_small_type_v<To>)
 )
 std::string Cast<To, From>::ToString() const {
   return cotyl::FormatStr(
@@ -145,7 +145,7 @@ static std::string cmp_string(CmpType type) {
 }
 
 template<typename T>
-requires (is_calyx_arithmetic_ptr_type_v<T>)
+requires (is_calyx_type_v<T>)
 std::string Compare<T>::ToString() const {
   if (right.IsVar()) {
     return cotyl::FormatStr(
@@ -168,7 +168,7 @@ std::string UnconditionalBranch::ToString() const {
 }
 
 template<typename T>
-requires (is_calyx_arithmetic_ptr_type_v<T>)
+requires (is_calyx_type_v<T>)
 std::string BranchCompare<T>::ToString() const {
   if (right.IsVar()) {
     return cotyl::FormatStr(

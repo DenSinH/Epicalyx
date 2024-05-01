@@ -37,25 +37,23 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
     // this means we do not need to recurse the reduction
     // (for obtaining constant values / type values from initializer lists)
     type.visit<void>(
-      [&](const type::StructType& strct) {
+      [](const type::StructType& strct) {
         throw cotyl::UnimplementedException();
       },
-      [&](const type::UnionType& strct) {
+      [](const type::UnionType& strct) {
         throw cotyl::UnimplementedException();
       },
-      [&](const type::VoidType&) {
+      [](const type::VoidType&) {
         throw type::TypeError("Initializer list for incomplete type");
       },
       [&](const type::PointerType& ptr) { 
-        if (ptr.size == 0) {
-          if (list.list.empty()) return;  // nullptr
-          // list wil have size one by recursion above
-          cotyl::Assert(list.list.size() == 1);
-          value = std::move(list.list[0].second.value);
-        }
-        else {
-          // not implemented
-        }
+        if (list.list.empty()) return;  // nullptr
+        // list wil have size one by recursion above
+        cotyl::Assert(list.list.size() == 1);
+        value = std::move(list.list[0].second.value);
+      },
+      [](const type::ArrayType& strct) {
+        throw cotyl::UnimplementedException();
       },
       [&]<typename T>(const type::ValueType<T>& val) { 
         if (list.list.empty()) {
@@ -95,14 +93,11 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
         throw type::TypeError("Initializer for incomplete type");
       },
       [&](const type::PointerType& ptr) {
-        if (ptr.size == 0) {
-          // try to cast
-          type.Cast(has, false);
-        }
-        else {
-          // array type
-          throw type::TypeError("Expected initializer list");
-        }
+        // try to cast
+        type.Cast(has, false);
+      },
+      [](const type::ArrayType& strct) {
+        throw cotyl::UnimplementedException();
       },
       [&]<typename T>(const type::ValueType<T>& val) {
         // function type, value type
@@ -144,22 +139,20 @@ void InitializerList::ValidateAndReduceScalarType(const type::AnyType& type) {
 
 void InitializerList::ValidateAndReduce(const type::AnyType& type) {
   type.visit<void>(
-    [&](const type::StructType& strct) {
+    [](const type::StructType& strct) {
       throw cotyl::UnimplementedException();
     },
-    [&](const type::UnionType& strct) {
+    [](const type::UnionType& strct) {
       throw cotyl::UnimplementedException();
     },
-    [&](const type::VoidType&) {
+    [](const type::VoidType&) {
       throw type::TypeError("Initializer list for incomplete type");
     },
     [&](const type::PointerType& ptr) { 
-      if (ptr.size == 0) {
-        ValidateAndReduceScalarType(type);
-      }
-      else {
-        // not implemented
-      }
+      ValidateAndReduceScalarType(type);
+    },
+    [](const type::ArrayType& strct) {
+      throw cotyl::UnimplementedException();
     },
     [&]<typename T>(const type::ValueType<T>& val) {
       ValidateAndReduceScalarType(type);

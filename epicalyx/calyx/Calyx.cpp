@@ -164,8 +164,8 @@ STRINGIFY_METHOD(Pointer) {
   return cotyl::Format("%p", value.value); 
 }
 
-STRINGIFY_METHOD(Struct) { 
-  return "<struct type>"; 
+STRINGIFY_METHOD(Aggregate) { 
+  return cotyl::Format("aggregate[%d]", value.size); 
 }
 
 STRINGIFY_METHOD(Global) {

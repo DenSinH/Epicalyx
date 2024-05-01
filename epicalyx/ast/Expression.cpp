@@ -53,7 +53,7 @@ ArrayAccessNode::ArrayAccessNode(pExpr&& left, pExpr&& right) :
     ExprNode{left->type->ArrayAccess(right->type)},
     ptr{std::move(left)},
     offs{std::move(right)} {
-  if (!ptr->type.holds_alternative<type::PointerType>()) {
+  if (!(ptr->type.holds_alternative<type::PointerType>() || ptr->type.holds_alternative<type::ArrayType>())) {
     std::swap(ptr, offs);
   }
 }

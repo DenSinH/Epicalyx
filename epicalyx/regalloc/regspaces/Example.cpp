@@ -35,9 +35,6 @@ void ExampleRegSpace::OutputGVar(const GeneralizedVar& gvar) {
   else if constexpr(std::is_same_v<T, calyx::Pointer>) {
     type = RegType::GPR;
   }
-  else if constexpr(std::is_same_v<T, calyx::Struct>) {
-    throw cotyl::UnimplementedException("Struct register allocation");
-  }
   else {
     type = RegType::FPR;
   }
@@ -207,8 +204,9 @@ void ExampleRegSpace::Emit(var_index_t loc_idx, const Local& loc) {
     case Local::Type::Double:
       register_type_map.emplace(gvar, RegType::FPR);
       return;
-    case Local::Type::Struct:
-      throw cotyl::UnimplementedException("Not struct register type");
+    case Local::Type::Aggregate:
+      register_type_map.emplace(gvar, RegType::Stack);
+      return;
   }
 }
 

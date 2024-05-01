@@ -12,6 +12,7 @@ struct Function;
 }
 
 using var_index_t = u32;
+using loc_index_t = var_index_t;
 using block_label_t = u32;
 using func_pos_t = std::pair<block_label_t, int>;
 
@@ -23,13 +24,12 @@ struct program_pos_t {
 namespace calyx {
 
 struct Pointer;
-struct Struct;
+struct Aggregate;
 
 using calyx_small_types = cotyl::pack<i8, u8, i16, u16>;
 using calyx_integral_types = cotyl::pack<i32, u32, i64, u64>;
 using calyx_arithmetic_types = cotyl::flatten_pack<calyx_integral_types, float, double>;
-using calyx_arithmetic_ptr_types = cotyl::flatten_pack<calyx_arithmetic_types, calyx::Pointer>;
-using calyx_types = cotyl::flatten_pack<calyx_arithmetic_ptr_types, calyx::Struct>;
+using calyx_types = cotyl::flatten_pack<calyx_arithmetic_types, calyx::Pointer>;
 using calyx_return_types = cotyl::flatten_pack<calyx_types, void>;
 using calyx_memory_types = cotyl::flatten_pack<calyx_types, calyx_small_types>;
 
@@ -39,8 +39,6 @@ template<typename T>
 constexpr bool is_calyx_integral_type_v = cotyl::pack_contains_v<T, calyx_integral_types>;
 template<typename T>
 constexpr bool is_calyx_arithmetic_type_v = cotyl::pack_contains_v<T, calyx_arithmetic_types>;
-template<typename T>
-constexpr bool is_calyx_arithmetic_ptr_type_v = cotyl::pack_contains_v<T, calyx_arithmetic_ptr_types>;
 template<typename T>
 constexpr bool is_calyx_type_v = cotyl::pack_contains_v<T, calyx_types>;
 
@@ -82,8 +80,8 @@ struct NoOp;
 
 template<typename To, typename From>
 requires (
-  is_calyx_arithmetic_ptr_type_v<From> && 
-  (is_calyx_arithmetic_ptr_type_v<To> || is_calyx_small_type_v<To>)
+  is_calyx_type_v<From> && 
+  (is_calyx_type_v<To> || is_calyx_small_type_v<To>)
 )
 struct Cast;
 
@@ -96,13 +94,13 @@ requires (is_calyx_integral_type_v<T>)
 struct Shift;
 
 template<typename T>
-requires (is_calyx_arithmetic_ptr_type_v<T>)
+requires (is_calyx_type_v<T>)
 struct Compare;
 
 struct UnconditionalBranch;
 
 template<typename T>
-requires (is_calyx_arithmetic_ptr_type_v<T>)
+requires (is_calyx_type_v<T>)
 struct BranchCompare;
 
 template<typename T>

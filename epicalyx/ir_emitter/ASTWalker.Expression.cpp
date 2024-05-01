@@ -61,7 +61,7 @@ void ASTWalker::Visit(const IdentifierNode& decl) {
     const auto& cvar = *locals.Get(decl.name).loc;
     switch (state.top().first) {
       case State::Read: {
-        if (type.holds_alternative<type::PointerType>() && type.get<type::PointerType>().size) {
+        if (type.holds_alternative<type::ArrayType>()) {
           current = emitter.EmitExpr<calyx::LoadLocalAddr>({Emitter::Var::Type::Pointer, type.get<type::PointerType>().Stride() }, cvar.idx);
         }
         else {
@@ -97,7 +97,7 @@ void ASTWalker::Visit(const IdentifierNode& decl) {
     // global symbol
     switch (state.top().first) {
       case State::Read: {
-        if (type.holds_alternative<type::PointerType>() && type.get<type::PointerType>().size > 0) {
+        if (type.holds_alternative<type::ArrayType>()) {
           current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, type->Deref()->Sizeof() }, cotyl::CString{decl.name});
         }
         else if (type.holds_alternative<type::FunctionType>()) {
@@ -171,16 +171,19 @@ void ASTWalker::Visit(const ArrayAccessNode& expr) {
     return;
   }
   cotyl::Assert(cotyl::Is(state.top().first).AnyOf<State::Read, State::ConditionalBranch, State::Assign, State::Address>());
-  cotyl::Assert(expr.ptr->type.holds_alternative<type::PointerType>());
-  const auto& ptrtype = expr.ptr->type.get<type::PointerType>();
+  const auto& ptrtype = expr.ptr->type;
+  u64 stride = 0;
   var_index_t ptr_idx, offs_idx;
-  if (ptrtype.size != 0) {
+  if (ptrtype.holds_alternative<type::ArrayType>()) {
     // pointer to array, load address again
     state.push({State::Address, {}});
+    stride = ptrtype.get<type::ArrayType>().Stride();
   }
   else {
+    cotyl::Assert(ptrtype.holds_alternative<type::PointerType>());
     // pointer to pointer, load pointer
     state.push({State::Read, {}});
+    stride = ptrtype.get<type::PointerType>().Stride();
   }
 
   expr.ptr->Visit(*this);
@@ -194,7 +197,6 @@ void ASTWalker::Visit(const ArrayAccessNode& expr) {
   state.pop();
 
   auto ptr_var = emitter.vars[ptr_idx];
-  auto stride = ptrtype.Stride();
   EmitPointerIntegralExpr<calyx::AddToPointer>(
           emitter.vars[offs_idx].type, stride, ptr_idx, stride, offs_idx
   );
@@ -233,7 +235,7 @@ void ASTWalker::Visit(const ArrayAccessNode& expr) {
 void ASTWalker::Visit(const FunctionCallNode& expr) {
   state.push({State::Read, {}});
   expr.left->Visit(*this);
-  state.pop();
+  // keep reading for arguments
 
   // regardless of whether the left type is a pointer to a function
   // or a function itself, "current" will hold a pointer to the
@@ -251,10 +253,11 @@ void ASTWalker::Visit(const FunctionCallNode& expr) {
     auto cast_arg_visitor = detail::EmitterTypeVisitor<detail::CastToEmitter>(*this, { current });
     cast_arg_visitor.Visit(*signature.arg_types[i].type);
 
-    auto arg_type = detail::GetLocalType(*signature.arg_types[i].type);
-    auto arg = calyx::Local{
-      arg_type.first, current, arg_type.second, i
-    };
+    auto arg = detail::MakeLocal(0, *signature.arg_types[i].type);
+    if (arg.type == calyx::Local::Type::Aggregate) {
+      throw cotyl::UnimplementedException("Aggregate function argument type");
+    }
+    arg.arg_idx = i;
     args.args.emplace_back(current, std::move(arg));
   }
 
@@ -262,14 +265,17 @@ void ASTWalker::Visit(const FunctionCallNode& expr) {
     for (int i = num_args; i < expr.args.size(); i++) {
       expr.args[i]->Visit(*this);
 
-      auto arg_type = detail::GetLocalType(expr.args[i]->type);
-      auto arg = calyx::Local{
-        arg_type.first, current, arg_type.second, i
-      };
+      auto arg = detail::MakeLocal(0, expr.args[i]->type);
+      if (arg.type == calyx::Local::Type::Aggregate) {
+        throw cotyl::UnimplementedException("Aggregate function argument type");
+      }
 
       args.var_args.emplace_back(current, std::move(arg));
     }
   }
+
+  // stop reading for arguments
+  state.pop();
 
   if (signature.contained->holds_alternative<type::VoidType>()) {
     emitter.Emit<calyx::Call<void>>(var_index_t{0}, fn, std::move(args));
@@ -305,9 +311,6 @@ void ASTWalker::Visit(const PostFixNode& expr) {
     auto value = expr.op == TokenType::Incr ? 1 : -1;
     auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, value);
     EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, read, var.stride, imm);
-  }
-  else if (type == Emitter::Var::Type::Struct) {
-    throw cotyl::FormatExceptStr<EmitterError>("Bad expression for %s: struct", expr.op);
   }
   else {
     EmitArithExpr<calyx::Imm>(type, 1);
@@ -412,9 +415,6 @@ void ASTWalker::Visit(const UnopNode& expr) {
         auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, 1);
         EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, left, var.stride, imm);
       }
-      else if (type == Emitter::Var::Type::Struct) {
-        throw EmitterError("Bad expression for pre-increment: struct");
-      }
       else {
         auto left = current;
         EmitArithExpr<calyx::Imm>(type, 1);
@@ -448,9 +448,6 @@ void ASTWalker::Visit(const UnopNode& expr) {
         auto var = emitter.vars[left];
         auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, -1);
         EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, left, var.stride, imm);
-      }
-      else if (type == Emitter::Var::Type::Struct) {
-        throw EmitterError("Bad expression for pre-decrement: struct");
       }
       else {
         auto left = current;
@@ -518,7 +515,13 @@ void ASTWalker::Visit(const UnopNode& expr) {
         // current will be the pointer itself
         // likely used for calls, i.e.
         // result = (*func)(a0, a1, a2)
-        if (!deref_type.holds_alternative<type::FunctionType>()) {
+        if (deref_type.holds_alternative<type::FunctionType>()) {
+          // do nothing
+        }
+        else if (deref_type.holds_alternative<type::ArrayType>()) {
+          // do nothing
+        }
+        else {
           auto visitor = detail::EmitterTypeVisitor<detail::LoadFromPointerEmitter>(*this, { current });
           visitor.Visit(deref_type);
         }
@@ -650,8 +653,8 @@ void ASTWalker::Visit(const BinopNode& expr) {
     }
     case TokenType::LShift:
     case TokenType::RShift: {
-      cotyl::Assert(!cotyl::Is(emitter.vars[left].type).AnyOf<Emitter::Var::Type::Float, Emitter::Var::Type::Double, Emitter::Var::Type::Pointer, Emitter::Var::Type::Struct>());
-      cotyl::Assert(!cotyl::Is(emitter.vars[right].type).AnyOf<Emitter::Var::Type::Float, Emitter::Var::Type::Double, Emitter::Var::Type::Pointer, Emitter::Var::Type::Struct>());
+      cotyl::Assert(!cotyl::Is(emitter.vars[left].type).AnyOf<Emitter::Var::Type::Float, Emitter::Var::Type::Double, Emitter::Var::Type::Pointer>());
+      cotyl::Assert(!cotyl::Is(emitter.vars[right].type).AnyOf<Emitter::Var::Type::Float, Emitter::Var::Type::Double, Emitter::Var::Type::Pointer>());
       switch (emitter.vars[right].type) {
         case Emitter::Var::Type::I32: {
           right = emitter.EmitExpr<calyx::Cast<u32, i32>>({ Emitter::Var::Type::U32 }, right);
@@ -873,7 +876,7 @@ void ASTWalker::Visit(const AssignmentNode& expr) {
       state.pop();
 
       auto left = current;
-      cotyl::Assert(!cotyl::Is(emitter.vars[left].type).AnyOf<Emitter::Var::Type::Float, Emitter::Var::Type::Double, Emitter::Var::Type::Pointer, Emitter::Var::Type::Struct>());
+      cotyl::Assert(!cotyl::Is(emitter.vars[left].type).AnyOf<Emitter::Var::Type::Float, Emitter::Var::Type::Double, Emitter::Var::Type::Pointer>());
       cotyl::Assert(!cotyl::Is(emitter.vars[right].type).AnyOf<Emitter::Var::Type::Float, Emitter::Var::Type::Double>());
       switch (emitter.vars[right].type) {
         case Emitter::Var::Type::I32: {

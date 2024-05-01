@@ -86,30 +86,50 @@ struct AnyPointerType : BaseType {
   nested_type_t contained;
 };
 
-struct PointerType final : AnyPointerType {
-  
-  PointerType(nested_type_t&& contained, LValue lvalue, u8 flags = 0, std::size_t size = 0) :
-      AnyPointerType{std::move(contained), lvalue, flags}, size{size} { }
+struct DataPointerType : AnyPointerType {
+  using AnyPointerType::AnyPointerType;
 
-  static PointerType ArrayType(nested_type_t&& contained, std::size_t size, u8 flags = 0) {
-    return PointerType{std::move(contained), LValue::LValue, flags, size};
-  }
-
-
-  // size == 0 ==> "normal" pointer
-  std::size_t size;
-
-  std::string ToString() const final;  //  { return cotyl::FormatStr("(%s)*", contained); }
-
-  AnyType Add(const AnyType& other) const final;
   AnyType Sub(const AnyType& other) const final;
   BoolType Lt(const AnyType& other) const final;
   BoolType Eq(const AnyType& other) const final;
   AnyType Deref() const final;
 
   BoolType Truthiness() const final;
-  u64 Sizeof() const final;
   u64 Stride() const;
+};
+
+struct ArrayType final : DataPointerType {
+
+  ArrayType(nested_type_t&& contained, std::size_t size) :
+      DataPointerType{std::move(contained), LValue::LValue, Qualifier::Const}, size{size} { 
+    // todo: typecheck this
+    // if (!(*this->contained)->Sizeof()) {
+    //   throw TypeError("Incomplete type for array");
+    // }
+  }
+
+  // size == 0 ==> unspecified size
+  std::size_t size;
+
+  AnyType Add(const AnyType& other) const final;
+  std::string ToString() const final;
+
+  u64 Sizeof() const final;
+  AnyType CommonTypeImpl(const AnyType& other) const final;
+};
+
+struct PointerType final : DataPointerType {
+
+  PointerType(nested_type_t&& contained, LValue lvalue, u8 flags = 0) :
+      DataPointerType{std::move(contained), lvalue, flags} { }
+
+  PointerType(const ArrayType& arr) :
+      PointerType(nested_type_t{arr.contained}, arr.lvalue, arr.qualifiers) { }
+
+  std::string ToString() const final;
+
+  AnyType Add(const AnyType& other) const final;
+  u64 Sizeof() const final;
 
   AnyType FunctionCall(const cotyl::vector<AnyType>& args) const final;
   

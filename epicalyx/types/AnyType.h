@@ -12,6 +12,11 @@ namespace detail {
 
 using any_type_t = cotyl::Variant<BaseType,
   VoidType,
+  PointerType,
+  ArrayType,
+  FunctionType,
+  StructType,
+  UnionType,
   ValueType<i8>,
   ValueType<u8>,
   ValueType<i16>,
@@ -21,11 +26,7 @@ using any_type_t = cotyl::Variant<BaseType,
   ValueType<i64>,
   ValueType<u64>,
   ValueType<float>,
-  ValueType<double>,
-  PointerType,
-  FunctionType,
-  StructType,
-  UnionType
+  ValueType<double>
 >;
 
 }
