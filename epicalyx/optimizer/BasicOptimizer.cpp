@@ -750,37 +750,44 @@ void BasicOptimizer::Emit(LoadFromPointer<T>&& op) {
 template<typename T>
 void BasicOptimizer::Emit(StoreToPointer<T>&& op) {
   TryReplaceVar(op.ptr_idx);
-  if constexpr(!std::is_same_v<T, Struct>) {
-    if (old_deps.var_graph.at(op.ptr_idx).aliases && op.offset == 0) {
-      auto alias = old_deps.var_graph.at(op.ptr_idx).aliases;
 
-      if (op.src.IsVar()) {
-        auto src = op.src.GetVar();
-        // storing aliased variable to another alias
-        // i.e. int* zalias1 = &z; int** zaliasptr; *zaliasptr = zalias1;
-        // this is 0 if the "src" variable does not alias a local anyway
-        var_index_t aliases = old_deps.var_graph.at(src).aliases;
+  // todo: do this safely for array types
+  // in 0174-decay.c, the store to an array "v" in the program
+  // causes this to add a replacement for the "v" local
+  // this in turn makes a consequent load from a pointer to
+  // "v" replace it by loading the stored value, which is
+  // not of the correct type (expects pointer, gets array base type (int))
+  // if constexpr(!std::is_same_v<T, Struct>) {
+  //   if (old_deps.var_graph.at(op.ptr_idx).aliases && op.offset == 0) {
+  //     auto alias = old_deps.var_graph.at(op.ptr_idx).aliases;
 
-        // replace alias
-        StoreLocalData(alias, LocalData{
-                .aliases = aliases,
-                .replacement = std::make_shared<AnyExpr>(Cast<T, calyx_op_type(op)::src_t>{0, src}),
-                .store = std::make_unique<AnyDirective>(StoreLocal<T>{alias, typename Operand<calyx_op_type(op)::src_t>::Var{src}})
-        });
-      }
-      else {
-        T src = (T)op.src.GetScalar();
+  //     if (op.src.IsVar()) {
+  //       auto src = op.src.GetVar();
+  //       // storing aliased variable to another alias
+  //       // i.e. int* zalias1 = &z; int** zaliasptr; *zaliasptr = zalias1;
+  //       // this is 0 if the "src" variable does not alias a local anyway
+  //       var_index_t aliases = old_deps.var_graph.at(src).aliases;
 
-        // replace alias
-        StoreLocalData(alias, LocalData{
-                .aliases = 0,
-                .replacement = std::make_shared<AnyExpr>(Imm<calyx_op_type(op)::src_t>{0, src}),
-                .store = std::make_unique<AnyDirective>(StoreLocal<T>{alias, Scalar<calyx_op_type(op)::src_t>{src}})
-        });
-      }
-      return;
-    }
-  }
+  //       // replace alias
+  //       StoreLocalData(alias, LocalData{
+  //               .aliases = aliases,
+  //               .replacement = std::make_shared<AnyExpr>(Cast<T, calyx_op_type(op)::src_t>{0, src}),
+  //               .store = std::make_unique<AnyDirective>(StoreLocal<T>{alias, typename Operand<calyx_op_type(op)::src_t>::Var{src}})
+  //       });
+  //     }
+  //     else {
+  //       T src = (T)op.src.GetScalar();
+
+  //       // replace alias
+  //       StoreLocalData(alias, LocalData{
+  //               .aliases = 0,
+  //               .replacement = std::make_shared<AnyExpr>(Imm<calyx_op_type(op)::src_t>{0, src}),
+  //               .store = std::make_unique<AnyDirective>(StoreLocal<T>{alias, Scalar<calyx_op_type(op)::src_t>{src}})
+  //       });
+  //     }
+  //     return;
+  //   }
+  // }
 
   // need to flush local writes on pointer write
   FlushAliasedLocals();

@@ -134,8 +134,22 @@ i32 Interpreter::Interpret(const Program& program) {
     );
   }
 
+  auto argc = Scalar<i32>{1};
+  auto argv = MakePointer(0);
+  static constexpr var_index_t argc_idx = 1;
+  static constexpr var_index_t argv_idx = 2;
+  vars.Set(argc_idx, argc);
+  vars.Set(argv_idx, argv);
+  calyx::ArgData main_args{
+    .args={
+      {argc_idx, calyx::Local{calyx::Local::Type::I32,     argc_idx, 4,           0}},
+      {argv_idx, calyx::Local{calyx::Local::Type::Pointer, argv_idx, sizeof(u64), 1}},
+    }
+  };
+  call_stack.emplace(program_counter_t{nullptr, {0, 0}}, -1, &main_args);
   EnterFunction(&program.functions.at(cotyl::CString("main")));
   returned.reset();
+
   while (!returned.has_value()) {
     const auto& directive = pos.func->blocks.at(pos.pos.first).at(pos.pos.second);
     pos.pos.second++;
@@ -472,7 +486,10 @@ void Interpreter::Emit(const Return<T>& op) {
     locals.PopLayer();
     vars.PopLayer();
 
-    if (call_stack.empty()) {
+    auto [_pos, return_to, _] = call_stack.top();
+    call_stack.pop();
+    if (_pos.func == nullptr) {
+      // return from main
       if constexpr(std::is_same_v<T, i32>) {
         if (op.val.IsVar()) {
           returned = swl::get<Scalar<i32>>(top_vars.at(op.val.GetVar())).value;
@@ -486,8 +503,6 @@ void Interpreter::Emit(const Return<T>& op) {
       }
     }
     else {
-      auto [_pos, return_to, _] = call_stack.top();
-      call_stack.pop();
       pos = _pos;
       if constexpr(!std::is_same_v<T, void>) {
         if (op.val.IsVar()) vars.Set(return_to, top_vars.at(op.val.GetVar()));
