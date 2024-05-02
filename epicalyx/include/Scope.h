@@ -44,51 +44,51 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
     base::scope.emplace_back();
   }
 
-  void Set(const K& key, const V& value) {
+  V& Set(const K& key, const V& value) {
     if constexpr(!allow_multiple_assignment) {
       if (HasTop(key)) {
         throw cotyl::FormatExceptStr<ScopeError>("Redefinition of %s", key);
       }
-      base::scope.back().emplace(key, value);
+      return base::scope.back().emplace(key, value).first->second;
     }
     else {
-      base::scope.back().insert_or_assign(key, value);
+      return base::scope.back().insert_or_assign(key, value).first->second;
     }
   }
   
-  void Set(const K& key, V&& value) {
+  V& Set(const K& key, V&& value) {
     if constexpr(!allow_multiple_assignment) {
       if (HasTop(key)) {
         throw cotyl::FormatExceptStr<ScopeError>("Redefinition of %s", key);
       }
-      base::scope.back().emplace(key, std::move(value));
+      return base::scope.back().emplace(key, std::move(value)).first->second;
     }
     else {
-      base::scope.back().insert_or_assign(key, std::move(value));
+      return base::scope.back().insert_or_assign(key, std::move(value)).first->second;
     }
   }
   
-  void Set(K&& key, V&& value) {
+  V& Set(K&& key, V&& value) {
     if constexpr(!allow_multiple_assignment) {
       if (HasTop(key)) {
         throw cotyl::FormatExceptStr<ScopeError>("Redefinition of %s", key);
       }
-      base::scope.back().emplace(std::move(key), std::move(value));
+      return base::scope.back().emplace(std::move(key), std::move(value)).first->second;
     }
     else {
-      base::scope.back().insert_or_assign(std::move(key), std::move(value));
+      return base::scope.back().insert_or_assign(std::move(key), std::move(value)).first->second;
     }
   }
   
-  void Set(K&& key, const V& value) {
+  V& Set(K&& key, const V& value) {
     if constexpr(!allow_multiple_assignment) {
       if (HasTop(key)) {
         throw cotyl::FormatExceptStr<ScopeError>("Redefinition of %s", key);
       }
-      base::scope.back().emplace(std::move(key), value);
+      return base::scope.back().emplace(std::move(key), value).first->second;
     }
     else {
-      base::scope.back().insert_or_assign(std::move(key), value);
+      return base::scope.back().insert_or_assign(std::move(key), value).first->second;
     }
   }
 
@@ -105,14 +105,14 @@ struct MapScope : public Scope<cotyl::unordered_map<K, V>> {
     return base::scope.back().contains(key);
   }
 
-//   V& Get(const K& key) {
-//     for (const auto& s : std::ranges::reverse_view(base::scope)) {
-//       if (s.contains(key)) {
-//         return s.at(key);
-//       }
-//     }
-//     throw cotyl::FormatExceptStr<ScopeError>("Invalid scope access: %s", key);
-//   }
+  V& Get(const K& key) {
+    for (auto& s : std::ranges::reverse_view(base::scope)) {
+      if (s.contains(key)) {
+        return s.at(key);
+      }
+    }
+    throw cotyl::FormatExceptStr<ScopeError>("Invalid scope access: %s", key);
+  }
 
   const V& Get(const K& key) const {
     for (const auto& s : std::ranges::reverse_view(base::scope)) {

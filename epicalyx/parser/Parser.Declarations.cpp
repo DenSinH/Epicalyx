@@ -155,9 +155,21 @@ type::AnyType Parser::DStruct() {
     name = std::move(in_stream.Get().get<IdentifierToken>().name);
     if (!in_stream.EatIf(TokenType::LBrace)) {
       if (is_struct) {
+        if (!structdefs.Has(name)) {
+          auto fwddef = type::StructType{
+            std::move(name), {}, type::LValue::Assignable
+          };
+          return structdefs.Set(fwddef.name, std::move(fwddef));
+        }
         return structdefs.Get(name);
       }
       else {
+        if (!structdefs.Has(name)) {
+          auto fwddef = type::UnionType{
+            std::move(name), {}, type::LValue::Assignable
+          };
+          return uniondefs.Set(fwddef.name, std::move(fwddef));
+        }
         return uniondefs.Get(name);
       }
     }
@@ -195,8 +207,25 @@ type::AnyType Parser::DStruct() {
       std::move(fields),
       type::LValue::Assignable
     };
-    if (!result_type.name.empty()) structdefs.Set(result_type.name, result_type);
-    return result_type;
+    if (!result_type.name.empty()) {
+      if (structdefs.HasTop(result_type.name)) {
+        auto& existing = structdefs.Get(result_type.name);
+        if (existing.fields.empty()) {
+          existing.fields = std::move(result_type.fields);
+        }
+        else {
+          if (!existing.TypeEqualImpl(result_type)) {
+            throw cotyl::FormatExcept<ParserError>("Redefinition of struct %s", result_type.name.c_str());
+          }
+        }
+        return existing;
+      }
+      else {
+        structdefs.Set(result_type.name, result_type);
+        return result_type;
+      }
+    }
+    return std::move(result_type);
   }
   else {
     auto result_type = type::UnionType{
@@ -204,8 +233,25 @@ type::AnyType Parser::DStruct() {
       std::move(fields),
       type::LValue::Assignable
     };
-    if (!result_type.name.empty()) uniondefs.Set(result_type.name, result_type);
-    return result_type;
+    if (!result_type.name.empty()) {
+      if (uniondefs.HasTop(result_type.name)) {
+        auto& existing = uniondefs.Get(result_type.name);
+        if (existing.fields.empty()) {
+          existing.fields = std::move(result_type.fields);
+        }
+        else {
+          if (!existing.TypeEqualImpl(result_type)) {
+            throw cotyl::FormatExcept<ParserError>("Redefinition of union %s", result_type.name.c_str());
+          }
+        }
+        return existing;
+      }
+      else {
+        uniondefs.Set(result_type.name, result_type);
+        return result_type;
+      }
+    }
+    return std::move(result_type);
   }
 }
 
