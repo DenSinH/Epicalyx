@@ -8,15 +8,64 @@
 #include "SStream.h"
 #include "CustomAssert.h"
 #include "Decltype.h"
+#include "Escape.h"
 
 #include <ranges>
+#include <ctime>
 
 
 namespace epi {
 
-const cotyl::unordered_set<std::string> Preprocessor::StandardDefinitions = {
-  "__FILE__", "__LINE__", "__STDC__"
+const cotyl::unordered_map<std::string, std::string (Preprocessor::*)() const> Preprocessor::StandardDefinitions = {
+  {"__FILE__", &Preprocessor::FILE}, 
+  {"__LINE__", &Preprocessor::LINE}, 
+  {"__DATE__", &Preprocessor::DATE},
+  {"__TIME__", &Preprocessor::TIME},
+  {"__STDC__", &Preprocessor::STDC},
+  {"__STDC_HOSTED__", &Preprocessor::STDC_HOSTED},
 };
+
+std::string Preprocessor::FILE() const {
+  auto escaped = cotyl::Escape(file_stack.back().name.c_str());
+  return cotyl::Format("\"%s\"", escaped.c_str());
+}
+
+std::string Preprocessor::LINE() const {
+  return std::to_string(file_stack.back().line);
+}
+
+// localtime is deprecated
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+std::string Preprocessor::DATE() const {
+  std::string result = "??? ?? ????";
+  auto datetime = std::time({});
+  std::strftime(result.data(), result.size(), "%b %d %Y", std::localtime(&datetime));
+  return cotyl::Format("\"%s\"", result.c_str());
+}
+
+std::string Preprocessor::TIME() const {
+  std::string result = "??:??:??";
+  auto datetime = std::time({});
+  std::strftime(result.data(), result.size(), "%H:%M:%S", std::localtime(&datetime));
+  return cotyl::Format("\"%s\"", result.c_str());
+}
+#pragma GCC diagnostic pop
+
+std::string Preprocessor::STDC() const {
+  // In normal operation, this macro expands to the constant 1,
+  // to signify that this compiler conforms to ISO Standard C. 
+  return "1";
+}
+
+std::string Preprocessor::STDC_HOSTED() const {
+  // This macro is defined, with value 1, if the compiler’s target 
+  // is a hosted environment. A hosted environment has the complete 
+  // facilities of the standard C library available.
+
+  // we don't, but we'll just say we do
+  return "1";
+}
 
 void Preprocessor::PrintLoc(std::ostream& out) const {
   for (const auto& file : file_stack) {
@@ -358,19 +407,7 @@ std::string Preprocessor::GetNextProcessed() {
       std::string identifier = detail::get_identifier(CurrentStream());
 
       if (StandardDefinitions.contains(identifier)) {
-        if (identifier == "__FILE__") {
-          const auto& file = CurrentFile();
-          return cotyl::FormatStr("\"%s\"", file);
-        }
-        else if (identifier == "__LINE__") {
-          return std::to_string(CurrentLine());
-        }
-        else if (identifier == "__STDC__") {
-          return "1";
-        }
-        else {
-          throw PreprocessorError("Definition marked as standard: " + identifier);
-        }
+        return (this->*StandardDefinitions.at(identifier))();
       }
       else if (definitions.contains(identifier)) {  
         ClearEmptyMacroStreams();

@@ -7,7 +7,7 @@
         "cwd": "${workspaceRoot}",
         "args": [
           "-rigfunc", "main",
-          "${workspaceRoot}/tests/suites/scctests/cc/execute/0045-struct.c"
+          "${workspaceRoot}/tests/suites/scctests/cc/execute/0155-struct_compl.c"
         ]
     },
     "editor.indentSize": 2,

@@ -165,7 +165,13 @@ private:
 
   // macro definitions, and a set of default definitions
   MacroMap definitions{};
-  static const cotyl::unordered_set<std::string> StandardDefinitions;
+  static const cotyl::unordered_map<std::string, std::string (Preprocessor::*)() const> StandardDefinitions;
+  std::string FILE() const;
+  std::string LINE() const;
+  std::string DATE() const;
+  std::string TIME() const;
+  std::string STDC() const;
+  std::string STDC_HOSTED() const;
 
   // a set of parsed files for tracking #pragma once directives
   cotyl::unordered_set<std::string> parsed_files{};

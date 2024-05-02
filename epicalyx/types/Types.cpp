@@ -629,12 +629,17 @@ AnyType StructUnionType::CommonTypeImpl(const AnyType& other) const {
 }
 
 bool StructUnionType::TypeEqualImpl(const StructUnionType& other) const {
-  if (fields.size() != other.fields.size()) {
+  if (!(name == other.name)) {
     return false;
   }
 
   // incomplete type
-  if (fields.empty()) {
+  if (fields.empty() || other.fields.empty()) {
+    return true;
+  }
+
+  // not the same fields
+  if (fields.size() != other.fields.size()) {
     return false;
   }
 

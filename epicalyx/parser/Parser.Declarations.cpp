@@ -74,9 +74,19 @@ void Parser::RecordDeclaration(const cotyl::CString& name, const type::AnyType& 
   }
   else if (variables.HasTop(name)) {
     // gets the first scoped value (which will be the top one)
-    const auto& existing = variables.Get(name);
+    auto& existing = variables.Get(name);
     if (!existing.TypeEquals(type) || existing->qualifiers != type->qualifiers) {
       throw cotyl::FormatExcept<ParserError>("Redefinition of symbol %s", name.c_str());
+    }
+    
+    // override incomplete struct definition
+    if (existing.holds_alternative<type::StructType>() && existing.get<type::StructType>().fields.empty()) {
+      auto& src = type.get<type::StructType>().fields;
+      std::copy(src.begin(), src.end(), std::back_inserter(existing.get<type::StructType>().fields));
+    }
+    if (existing.holds_alternative<type::UnionType>() && existing.get<type::UnionType>().fields.empty()) {
+            auto& src = type.get<type::UnionType>().fields;
+      std::copy(src.begin(), src.end(), std::back_inserter(existing.get<type::UnionType>().fields));
     }
   }
   else {
