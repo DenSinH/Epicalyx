@@ -89,7 +89,8 @@ const type::AnyType& ASTWalker::GetSymbolType(const cotyl::CString& symbol) cons
 }
 
 void ASTWalker::Visit(const epi::DeclarationNode& decl) {
-  if (locals.Depth() == 1) {
+  // function types forward declare global symbols within scopes
+  if (locals.Depth() == 1 || decl.type.holds_alternative<type::FunctionType>()) {
     // global symbols
     AddGlobal(decl.name, decl.type);
 
