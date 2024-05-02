@@ -384,11 +384,18 @@ std::string Preprocessor::GetNextProcessed() {
           }
         }
         const auto& def = definitions.at(identifier);
+        if (def.arguments.has_value()) {
+          SkipBlanks();
+          if (!CurrentStream().IsAfter(0, '(')) {
+            // callable macro that was not called
+            return std::move(identifier);
+          }
+        }
         PushMacro(std::move(identifier), def);
         return "";
       }
       else {
-        return identifier;
+        return std::move(identifier);
       }
     }
     else if (c == '/' && CurrentStream().SequenceAfter(0, '/', '/')) {
