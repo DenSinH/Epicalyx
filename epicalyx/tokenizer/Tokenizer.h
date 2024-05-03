@@ -34,10 +34,13 @@ protected:
   cotyl::Stream<char>& in_stream;
 
 private:
+  // for accessing ReadString
+  friend struct Preprocessor;
+
   template<typename T, typename ...Args>
   static AnyToken Make(Args&&... args);
 
-  cotyl::CString ReadString(const char delimiter);
+  cotyl::CString ReadString(char delimiter = 0);
   AnyToken ReadNumericalConstant();
 };
 

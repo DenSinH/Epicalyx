@@ -183,7 +183,7 @@ private:
   // we comment on the use whenever we do use it, except in the wrapper
   // functions that handle the state updates properly (...NextCharacter)
   cotyl::Stream<char>& CurrentStream() const;
-  void ClearEmptyMacroStreams() const;
+  void ClearEmptyStreams() const;
   u64& CurrentLine();
   std::string CurrentFile();
 
@@ -207,6 +207,8 @@ private:
   void PushMacro(std::string&& name, const Definition& definition);
   void EatNewline();
   i64 EatConstexpr();
+  void Include();
+  std::string FindFile(const cotyl::CString& name, bool system);
 
   void PreprocessorDirective();
 };

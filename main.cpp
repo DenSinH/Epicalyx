@@ -64,6 +64,10 @@ int main(int argc, char** argv) {
 
   std::unique_ptr<epi::Preprocessor> pp; 
   SafeRun(ce) << [&]{ pp = std::make_unique<epi::Preprocessor>(settings.filename); };
+
+  // while (!pp->EOS()) std::cout << pp->Get();
+  // return 0;
+
   auto tokenizer = std::make_unique<epi::Tokenizer>(*pp);
   auto parser = std::make_unique<epi::Parser>(*tokenizer);
 

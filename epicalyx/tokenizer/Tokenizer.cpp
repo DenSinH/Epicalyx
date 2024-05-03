@@ -137,10 +137,26 @@ static constexpr std::array<i32, 0x100> ASCIIHexToInt = {
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 };
 
-cotyl::CString Tokenizer::ReadString(const char delimiter) {
+cotyl::CString Tokenizer::ReadString(char _delimiter) {
   cotyl::StringStream str{};
 
-  in_stream.Eat(delimiter);
+  char delimiter;
+  if (_delimiter) {
+    in_stream.Eat(_delimiter);
+    delimiter = _delimiter;
+  }
+  else {
+    // automatic deduction
+    delimiter = in_stream.Get();
+    if (delimiter == '<') {
+      delimiter = '>';
+    }
+    // todo: should I allow '\'' here for completeness?
+    else if (delimiter != '\"') {
+      throw cotyl::FormatExcept<TokenizerError>("Unexpected string delimiter: %c", delimiter);
+    }
+  }
+  
   char c;
   for (c = in_stream.Get(); c != delimiter; c = in_stream.Get()) {
     if (c == '\\') {
