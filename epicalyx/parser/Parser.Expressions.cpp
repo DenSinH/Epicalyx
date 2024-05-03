@@ -67,6 +67,12 @@ pExpr Parser::EPrimary() {
     [&](IdentifierToken& ident) -> pExpr { 
       // identifier might be enum value
       auto& name = ident.name;
+      if (name == cotyl::CString("__func__")) {
+        if (!function_symbol) {
+          throw ParserError("Use of reserved identifier '__func__' outside of function");
+        }
+        return std::make_unique<StringConstantNode>(cotyl::CString{function_symbol});
+      }
       if (enum_values.Has(name)) {
         // replace enum values with constants immediately
         return std::make_unique<NumericalConstantNode<enum_type>>(enum_values.Get(name));

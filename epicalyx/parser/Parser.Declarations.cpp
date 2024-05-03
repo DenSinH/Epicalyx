@@ -826,10 +826,12 @@ void Parser::ExternalDeclaration() {
       variables.Set(arg.name, *arg.type);
     }
     
-    cotyl::Assert(!function_return);
+    cotyl::Assert(!function_return && !function_symbol);
     function_return = signature.contained.get();
+    function_symbol = symbol.c_str();
     auto body = SCompound();
     function_return = nullptr;
+    function_symbol = nullptr;
     variables.PopLayer();
     in_stream.Eat(TokenType::RBrace);
     

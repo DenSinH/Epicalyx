@@ -82,6 +82,7 @@ private:
   cotyl::MapScope<cotyl::CString, type::UnionType> uniondefs{};
 
   const type::AnyType* function_return{};
+  const char* function_symbol{};
 
   std::deque<Loop> loop_scope{};
   cotyl::SetScope<i64> case_scope{};
