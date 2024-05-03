@@ -62,7 +62,7 @@ void ASTWalker::Visit(const IdentifierNode& decl) {
     switch (state.top().first) {
       case State::Read: {
         if (type.holds_alternative<type::ArrayType>()) {
-          current = emitter.EmitExpr<calyx::LoadLocalAddr>({Emitter::Var::Type::Pointer, type.get<type::PointerType>().Stride() }, cvar.idx);
+          current = emitter.EmitExpr<calyx::LoadLocalAddr>({Emitter::Var::Type::Pointer, type.get<type::ArrayType>().Stride() }, cvar.idx);
         }
         else {
           auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalEmitter>(

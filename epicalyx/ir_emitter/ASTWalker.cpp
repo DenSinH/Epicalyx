@@ -44,16 +44,16 @@ ASTWalker::BinopCastResult ASTWalker::BinopCastHelper(var_index_t left, var_inde
     switch (left_t) {
       case Emitter::Var::Type::I32:
         current = emitter.EmitExpr<calyx::Cast<calyx::Pointer, i32>>(right_v, left);
-        return {left_v, current, right};
+        return {right_t, current, right};
       case Emitter::Var::Type::U32:
         current = emitter.EmitExpr<calyx::Cast<calyx::Pointer, u32>>(right_v, left);
-        return {left_v, current, right};
+        return {right_t, current, right};
       case Emitter::Var::Type::I64:
         current = emitter.EmitExpr<calyx::Cast<calyx::Pointer, i64>>(right_v, left);
-        return {left_v, current, right};
+        return {right_t, current, right};
       case Emitter::Var::Type::U64:
         current = emitter.EmitExpr<calyx::Cast<calyx::Pointer, u64>>(right_v, left);
-        return {left_v, current, right};
+        return {right_t, current, right};
       case Emitter::Var::Type::Float:
       case Emitter::Var::Type::Double:
         throw EmitterError("Invalid operands for binop: floating point type and pointer");

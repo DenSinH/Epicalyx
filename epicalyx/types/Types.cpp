@@ -82,6 +82,9 @@ AnyType NonAdditiveBinopHelper(const ValueType<T>& one, const char* op_str, cons
 template<template<typename S> class handler, typename T>
 BoolType BooleanBinopHelper(const ValueType<T>& one, const char* op_str, const AnyType& other) {
   auto result = other.visit<BoolType>(
+    [](const PointerType&) { return BoolType(LValue::None); },
+    [](const FunctionType&) { return BoolType(LValue::None); },
+    [](const ArrayType&) { return BoolType(LValue::None); },
     [&]<typename R>(const ValueType<R>& other) {
       using common_t = common_type_t<T, R>;
       if (one.value.has_value() && other.value.has_value()) {
@@ -446,6 +449,14 @@ u64 DataPointerType::Stride() const {
   // stride may be 0 for incomplete types
   return contained->visit<u64>(
     [](const VoidType&) -> u64 { return 0; },
+    [](const StructType& strct) -> u64 {
+      if (strct.fields.empty()) return 0;
+      return strct.Sizeof();
+    },
+    [](const UnionType& strct) -> u64 {
+      if (strct.fields.empty()) return 0;
+      return strct.Sizeof();
+    },
     [](const auto& type) -> u64 { return type.Sizeof(); }
   );
 }
