@@ -33,12 +33,11 @@ std::string NumericalConstantNode<T>::ToString() const {
 
 
 StringConstantNode::StringConstantNode(cotyl::CString&& value) :
-    ExprNode{type::PointerType{
+    ExprNode{type::ArrayType{
       std::make_shared<type::AnyType>(
         type::ValueType<i8>(type::LValue::LValue, type::Qualifier::Const)
       ),
-      type::LValue::LValue,
-      type::Qualifier::Const
+      value.size() + 1  // include \0 terminator
     }}, 
     value(std::move(value)) { 
 
