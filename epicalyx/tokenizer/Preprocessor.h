@@ -172,6 +172,7 @@ private:
   std::string TIME() const;
   std::string STDC() const;
   std::string STDC_HOSTED() const;
+  std::string STDC_VERSION() const;
 
   // a set of parsed files for tracking #pragma once directives
   cotyl::unordered_set<std::string> parsed_files{};

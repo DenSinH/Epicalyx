@@ -64,7 +64,46 @@ bool Parser::IsDeclarationSpecifier(int after) {
   }
 }
 
-void Parser::RecordDeclaration(const cotyl::CString& name, const type::AnyType& type) {
+static void MergeStructUnionDef(type::StructUnionType& dest, type::StructUnionType&& src) {
+  if (dest.fields.empty()) {
+    dest.fields = std::move(src.fields);
+  }
+  else {
+    if (!dest.TypeEqualImpl(src)) {
+      throw cotyl::FormatExcept<ParserError>("Redefinition of struct %s", dest.name.c_str());
+    }
+  }
+}
+
+static void MergeStructUnionDefs(type::StructUnionType& dest, type::StructUnionType& src) {
+  if (dest.fields.empty()) {
+    std::copy(src.fields.begin(), src.fields.end(), std::back_inserter(dest.fields));
+  }
+  else if (src.fields.empty()) {
+    std::copy(dest.fields.begin(), dest.fields.end(), std::back_inserter(src.fields));
+  }
+  else {
+    if (!dest.TypeEqualImpl(src)) {
+      throw cotyl::FormatExcept<ParserError>("Redefinition of struct %s", dest.name.c_str());
+    }
+  }
+}
+
+static void MergeTypes(type::AnyType& existing, type::AnyType& found) {
+  if (!existing.TypeEquals(found) || existing->qualifiers != found->qualifiers) {
+    throw cotyl::FormatExceptStr<ParserError>("Type mismatch: %s vs %s", existing, found);
+  }
+  
+  // override incomplete struct definition
+  if (existing.holds_alternative<type::StructType>() && existing.get<type::StructType>().fields.empty()) {
+    MergeStructUnionDefs(existing.get<type::StructType>(), found.get<type::StructType>());
+  }
+  if (existing.holds_alternative<type::UnionType>() && existing.get<type::UnionType>().fields.empty()) {
+    MergeStructUnionDefs(existing.get<type::UnionType>(), found.get<type::UnionType>());
+  }
+}
+
+void Parser::RecordDeclaration(const cotyl::CString& name, type::AnyType& type) {
   if (name.empty()) {
     return;
   }
@@ -75,19 +114,7 @@ void Parser::RecordDeclaration(const cotyl::CString& name, const type::AnyType& 
   else if (variables.HasTop(name)) {
     // gets the first scoped value (which will be the top one)
     auto& existing = variables.Get(name);
-    if (!existing.TypeEquals(type) || existing->qualifiers != type->qualifiers) {
-      throw cotyl::FormatExcept<ParserError>("Redefinition of symbol %s", name.c_str());
-    }
-    
-    // override incomplete struct definition
-    if (existing.holds_alternative<type::StructType>() && existing.get<type::StructType>().fields.empty()) {
-      auto& src = type.get<type::StructType>().fields;
-      std::copy(src.begin(), src.end(), std::back_inserter(existing.get<type::StructType>().fields));
-    }
-    if (existing.holds_alternative<type::UnionType>() && existing.get<type::UnionType>().fields.empty()) {
-            auto& src = type.get<type::UnionType>().fields;
-      std::copy(src.begin(), src.end(), std::back_inserter(existing.get<type::UnionType>().fields));
-    }
+    MergeTypes(existing, type);
   }
   else {
     variables.Set(name, type);
@@ -220,14 +247,7 @@ type::AnyType Parser::DStruct() {
     if (!result_type.name.empty()) {
       if (structdefs.HasTop(result_type.name)) {
         auto& existing = structdefs.Get(result_type.name);
-        if (existing.fields.empty()) {
-          existing.fields = std::move(result_type.fields);
-        }
-        else {
-          if (!existing.TypeEqualImpl(result_type)) {
-            throw cotyl::FormatExcept<ParserError>("Redefinition of struct %s", result_type.name.c_str());
-          }
-        }
+        MergeStructUnionDef(existing, std::move(result_type));
         return existing;
       }
       else {
@@ -246,14 +266,7 @@ type::AnyType Parser::DStruct() {
     if (!result_type.name.empty()) {
       if (uniondefs.HasTop(result_type.name)) {
         auto& existing = uniondefs.Get(result_type.name);
-        if (existing.fields.empty()) {
-          existing.fields = std::move(result_type.fields);
-        }
-        else {
-          if (!existing.TypeEqualImpl(result_type)) {
-            throw cotyl::FormatExcept<ParserError>("Redefinition of union %s", result_type.name.c_str());
-          }
-        }
+        MergeStructUnionDef(existing, std::move(result_type));
         return existing;
       }
       else {
@@ -479,10 +492,13 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
         const auto& ident_name = static_cast<const IdentifierToken*>(current)->name;
         if (typedefs.Has(ident_name)) {
           if (ctype) {
-            throw ParserError("Bad declaration");
+            // repeat typedef declaration
+            was_specifier = false;
           }
-          ctype.emplace(typedefs.Get(ident_name));
-          in_stream.Skip();
+          else {
+            ctype.emplace(typedefs.Get(ident_name));
+            in_stream.Skip();
+          }
         }
         else {
           // otherwise: name is detected in declarator, was not a specifier
@@ -733,12 +749,16 @@ void Parser::StoreDeclaration(DeclarationNode&& decl, cotyl::vector<ast::Declara
   if (decl.storage == StorageClass::Typedef) {
     // store typedef names
     if (decl.name.empty()) {
-      throw ParserError("Typedef declaration must have a name");
+      // Log::Warn("Useless typedef storage class declaration");
+      return;
     }
     if (typedefs.HasTop(decl.name)) {
-      throw ParserError("Redefinition of type alias");
+      auto& existing = typedefs.Get(decl.name);
+      MergeTypes(existing, decl.type);
     }
-    typedefs.Set(decl.name, decl.type);
+    else {
+      typedefs.Set(decl.name, decl.type);
+    }
   }
   else {
     RecordDeclaration(decl.name, decl.type);
@@ -784,7 +804,18 @@ void Parser::ExternalDeclaration() {
     }
     
     // function has to be available within itself for recursion
-    RecordDeclaration(symbol, signature);
+    // we don't use RecordDeclaration because function types are special
+    // and because we do not need to merge type type
+    if (variables.HasTop(symbol)) {
+      // gets the first scoped value (which will be the top one)
+      auto& existing = variables.Get(symbol);
+      if (!existing.TypeEquals(signature) || existing->qualifiers != signature.qualifiers) {
+        throw cotyl::FormatExceptStr<ParserError>("Type mismatch: %s vs %s", existing, signature);
+      }
+    }
+    else {
+      variables.Set(symbol, signature);
+    }
 
     // add new local layer for arguments
     variables.NewLayer();

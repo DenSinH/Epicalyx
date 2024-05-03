@@ -23,6 +23,7 @@ const cotyl::unordered_map<std::string, std::string (Preprocessor::*)() const> P
   {"__TIME__", &Preprocessor::TIME},
   {"__STDC__", &Preprocessor::STDC},
   {"__STDC_HOSTED__", &Preprocessor::STDC_HOSTED},
+  {"__STDC_VERSION__", &Preprocessor::STDC_VERSION},
 };
 
 std::string Preprocessor::FILE() const {
@@ -65,6 +66,16 @@ std::string Preprocessor::STDC_HOSTED() const {
 
   // we don't, but we'll just say we do
   return "1";
+}
+
+std::string Preprocessor::STDC_VERSION() const {
+  // This macro expands to the C Standard’s version number, 
+  // a long integer constant of the form yyyymmL where yyyy 
+  // and mm are the year and month of the Standard version.
+  // ...
+  // the value 201112L signifies the 2011 revision of the 
+  // C standard
+  return "201112L";
 }
 
 void Preprocessor::PrintLoc(std::ostream& out) const {
