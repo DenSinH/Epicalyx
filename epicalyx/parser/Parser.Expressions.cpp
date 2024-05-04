@@ -16,7 +16,7 @@ pExpr ExprOrReduced(pExpr&& expr);
 
 pExpr Parser::ResolveIdentifier(cotyl::CString&& name) const {
   // identifier might be enum value
-  if (name == cotyl::CString("__func__")) {
+  if (name.streq("__func__")) {
     if (!function_symbol) {
       throw ParserError("Use of reserved identifier '__func__' outside of function");
     }

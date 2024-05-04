@@ -3,7 +3,7 @@
 #include "Tokenizer.h"
 #include "Identifier.h"
 
-#include "parser/ExpressionParser.h"
+#include "ast/Expression.h"
 
 #include "SStream.h"
 #include "CustomAssert.h"
@@ -17,6 +17,20 @@
 
 
 namespace epi {
+
+Preprocessor::Preprocessor(const std::string& in_stream) :
+    this_tokenizer{*this},
+    ExpressionParser{this_tokenizer} {
+  file_stack.emplace_back(in_stream);
+}
+
+void Preprocessor::PrintLoc(std::ostream& out) const {
+  for (const auto& file : file_stack) {
+    out << "in " << file.name << ":" << file.line << std::endl;
+  }
+  out << std::endl;
+  file_stack.back().stream.PrintLoc(out);
+}
 
 const cotyl::unordered_map<std::string, std::string (Preprocessor::*)() const> Preprocessor::StandardDefinitions = {
   {"__FILE__", &Preprocessor::FILE}, 
@@ -81,13 +95,6 @@ std::string Preprocessor::STDC_VERSION() const {
   return "201112L";
 }
 
-void Preprocessor::PrintLoc(std::ostream& out) const {
-  for (const auto& file : file_stack) {
-    out << "in " << file.name << ":" << file.line << std::endl;
-  }
-  out << std::endl;
-  file_stack.back().stream.PrintLoc(out);
-}
 
 cotyl::Stream<char>& Preprocessor::CurrentStream() const {
   // macros go before the current expression, since expressions only
@@ -360,6 +367,27 @@ void Preprocessor::EatNewline() {
   }
 }
 
+ast::pExpr Preprocessor::ResolveIdentifier(cotyl::CString&& name) const {
+  // this MUST be an identifier that is not a defined macro
+  // for example, the "defined" preprocessing directive
+  if (name.streq("defined")) {
+    int parens;
+    block_macro_expansion = true;
+    for (parens = 0; this_tokenizer.EatIf(TokenType::LParen); parens++);
+    auto ident = this_tokenizer.Expect(TokenType::Identifier);
+    auto macro = std::move(ident.get<IdentifierToken>().name);
+    bool has_macro = (StandardDefinitions.contains(macro.str()) || definitions.contains(macro.str()));
+    auto expr = std::make_unique<ast::NumericalConstantNode<i32>>(has_macro ? 1 : 0);
+    for (; parens > 0; parens--) {
+      this_tokenizer.Eat(TokenType::RParen);
+    }
+    block_macro_expansion = false;
+    return std::move(expr);
+  }
+  // unresolved identifier, i.e. unexpanded macro evaluates to false
+  return std::make_unique<ast::NumericalConstantNode<i32>>(0);
+}
+
 i64 Preprocessor::EatConstexpr() {
   cotyl::Assert((ClearEmptyStreams(), macro_stack.empty()) && !expression.has_value(), "Must start expression with empty macro stack and expression");
   cotyl::Assert(pre_processor_queue.empty(), "Must start preprocessor expression with empty pre_processor_queue");
@@ -367,15 +395,7 @@ i64 Preprocessor::EatConstexpr() {
   ReplaceNewlines(line);
 
   expression = {line};
-
-  // the Tokenizer class does not allocate any memory anyway
-  auto tokenizer = Tokenizer(*this);
-
-  // ExpressionParser does not take up any memory (besides the vtable)
-  // this saves us having to copy over the code for parsing
-  // constant expressions
-  auto parser = ExpressionParser(tokenizer);
-  auto result = parser.EConstexpr();
+  auto result = EConstexpr();
 
   // we expect the bottom string (expression) to be fully parsed
   cotyl::Assert((ClearEmptyStreams(), macro_stack.empty()), "Found unexpanded macros after expression");
@@ -422,6 +442,12 @@ std::string Preprocessor::GetNextProcessed() {
       // we can always fetch identifiers from the current stream, as it does not cross any
       // state changing boundaries
       std::string identifier = detail::get_identifier(CurrentStream());
+      
+      // we may block macro expansion if we are checking a 
+      // #if defined statement
+      if (block_macro_expansion) {
+        return std::move(identifier);
+      }
 
       if (StandardDefinitions.contains(identifier)) {
         return (this->*StandardDefinitions.at(identifier))();

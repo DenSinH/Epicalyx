@@ -73,8 +73,13 @@ struct CString {
   }
 
   bool operator==(const CString& other) const {
-      if (size_ != other.size_) return false;
-      return std::memcmp(data.get(), other.data.get(), size_) == 0;
+    if (size_ != other.size_) return false;
+    return std::memcmp(data.get(), other.data.get(), size_) == 0;
+  }
+
+  bool streq(const char* other) const {
+    if (size_ != strlen(other)) return false;
+    return std::memcmp(data.get(), other, size_) == 0;
   }
 
 private:

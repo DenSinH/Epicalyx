@@ -36,7 +36,7 @@ struct ExpressionParser : public cotyl::Locatable {
 
   ExpressionParser(cotyl::Stream<AnyToken>& in_stream);
 
-  void PrintLoc(std::ostream& out) const final;
+  void PrintLoc(std::ostream& out) const override;
   i64 EConstexpr();
 
   // needs public access for shorthand parsing Binop Expressions
@@ -45,7 +45,7 @@ struct ExpressionParser : public cotyl::Locatable {
   ast::pExpr EBinopImpl();
 
 protected:
-  virtual ast::pExpr ResolveIdentifier(cotyl::CString&& name) const;
+  virtual ast::pExpr ResolveIdentifier(cotyl::CString&& name) const = 0;
   virtual ast::pExpr EPrimary();
   virtual ast::pExpr EBinopBase();
   ast::pExpr EBinop();

@@ -3,6 +3,9 @@
 #include "file/File.h"
 #include "file/SString.h"
 
+#include "Tokenizer.h"
+#include "parser/ExpressionParser.h"
+
 #include "Default.h"
 #include "Containers.h"
 #include "Exceptions.h"
@@ -21,12 +24,11 @@ struct PreprocessorError : cotyl::Exception {
 };
 
 
-struct Preprocessor final : public cotyl::Stream<char> {
-  Preprocessor(const std::string& in_stream) {
-    file_stack.emplace_back(in_stream);
-  }
+struct Preprocessor final : cotyl::Stream<char>, ExpressionParser {
+  Preprocessor(const std::string& in_stream);
 
   void PrintLoc(std::ostream& out) const final;
+  ast::pExpr ResolveIdentifier(cotyl::CString&& name) const;
 
 protected:
   char GetNew() final;
@@ -34,6 +36,9 @@ protected:
   
 
 private:
+  mutable bool block_macro_expansion = false;
+  mutable Tokenizer this_tokenizer;
+
   // check if we are at EOS, WITHOUT accounting for
   // the pre_processing_queue
   bool InternalIsEOS();

@@ -30,10 +30,6 @@ pExpr ExprOrReduced(pExpr&& expr) {
   return std::move(expr);
 }
 
-pExpr ExpressionParser::ResolveIdentifier(cotyl::CString&& name) const {
-  throw ParserError("Unexprected identifier");
-}
-
 pExpr ExpressionParser::EPrimary() {
   auto current = in_stream.Get();
   return current.visit<pExpr>(
@@ -194,7 +190,7 @@ ast::pExpr ExpressionParser::EExpressionList() {
 }
 
 i64 ExpressionParser::EConstexpr() {
-  auto expr = EExpressionList();
+  auto expr = EExpression();
   return expr->ConstIntVal();
 }
 

@@ -7,7 +7,7 @@
         "cwd": "${workspaceRoot}",
         "args": [
           "-rigfunc", "main",
-          "${workspaceRoot}/tests/suites/scctests/cc/execute/0175-defined.c"
+          "${workspaceRoot}/tests/suites/scctests/cc/execute/0183-negenum.c"
         ]
     },
     "editor.indentSize": 2,
