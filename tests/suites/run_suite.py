@@ -34,6 +34,7 @@ def run_tests(base_command, root, output_file, error_file):
     
     passed = 0
     failed = 0
+    unimplemented = 0
     for test in tests:
         stdout, stderr = test.proc.communicate()
         print(f"{test.file: <30} {test.proc.returncode}", file=output, flush=True)
@@ -43,15 +44,18 @@ def run_tests(base_command, root, output_file, error_file):
             print(f"When testing {test.file}", file=errors)
             print(f"Command \"{' '.join(test.cmd)}\"", file=errors)
             err = stderr.decode("utf-8", errors="ignore").strip()
+            if err.lower().startswith("unimplemented"):
+                unimplemented += 1
             print(err)
             print(err, file=errors, flush=True)
             failed += 1
         else:
             passed += 1
     print("=" * 50, file=output)
-    print(f"Total tests: {passed + failed}", file=output)
-    print(f"Passed:      {passed}", file=output)
-    print(f"Failed:      {failed}", file=output)
+    print(f"Total tests:   {passed + failed}", file=output)
+    print(f"Passed:        {passed}", file=output)
+    print(f"Failed:        {failed}", file=output)
+    print(f"Unimplemented: {unimplemented}", file=output)
     print("=" * 50, file=output, flush=True)
     
 

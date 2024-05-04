@@ -126,6 +126,16 @@ char Preprocessor::MacroStream::GetNew() {
   }
   else if (current_stream.EOS()) {
     if (++current_index < def.value.size()) {
+      bool concat = false;
+      if (swl::holds_alternative<Definition::HashHash>(def.value[current_index])) {
+        concat = true;
+        while (swl::holds_alternative<Definition::HashHash>(def.value[current_index])) {
+          current_index++;
+          if (current_index >= def.value.size()) {
+            throw PreprocessorError("Expected term after ## operator");
+          }
+        }
+      }
       swl::visit(
         swl::overloaded{
           [&](const cotyl::CString& seg) {
@@ -151,13 +161,19 @@ char Preprocessor::MacroStream::GetNew() {
             current_stream = parsed_holder.view();
           },
           [&](const Definition::HashHash& hash) {
-            throw cotyl::UnimplementedException("## operator");
+            // go to the next stream, and return "GetNew()" recursively,
+            // we made sure this happens above. We do this
+            // as to not return any whitespace after this token
+            // since the current stream is at EOS, this will
+            // automatically increment the current_stream value
           },
           // exhaustive variant access
           [](const auto& invalid) { static_assert(!sizeof(invalid)); }
         },
         def.value[current_index]
       );
+
+      if (concat) return GetNew();
     }
     else {
       eos = true;
