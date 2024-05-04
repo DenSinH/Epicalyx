@@ -1,5 +1,6 @@
 #include "Preprocessor.h"
 #include "Escape.h"
+#include "SStream.h"
 
 #include <filesystem>
 #include <ctime>
@@ -8,67 +9,74 @@
 
 namespace epi {
 
-const cotyl::unordered_map<std::string, std::string (Preprocessor::*)() const> Preprocessor::StandardDefinitions = {
-  {"__FILE__", &Preprocessor::FILE}, 
-  {"__LINE__", &Preprocessor::LINE}, 
-  {"__DATE__", &Preprocessor::DATE},
-  {"__TIME__", &Preprocessor::TIME},
-  {"__STDC__", &Preprocessor::STDC},
-  {"__STDC_HOSTED__", &Preprocessor::STDC_HOSTED},
-  {"__STDC_VERSION__", &Preprocessor::STDC_VERSION},
+const cotyl::unordered_map<cotyl::CString, cotyl::CString (Preprocessor::*)() const> Preprocessor::StandardDefinitions = {
+  {cotyl::CString{"__FILE__"}, &Preprocessor::FILE}, 
+  {cotyl::CString{"__LINE__"}, &Preprocessor::LINE}, 
+  {cotyl::CString{"__DATE__"}, &Preprocessor::DATE},
+  {cotyl::CString{"__TIME__"}, &Preprocessor::TIME},
+  {cotyl::CString{"__STDC__"}, &Preprocessor::STDC},
+  {cotyl::CString{"__STDC_HOSTED__"}, &Preprocessor::STDC_HOSTED},
+  {cotyl::CString{"__STDC_VERSION__"}, &Preprocessor::STDC_VERSION},
 };
 
-std::string Preprocessor::FILE() const {
-  auto full_path = std::filesystem::canonical(file_stack.back().name).string();
-  auto escaped = cotyl::Escape(full_path.c_str());
-  return cotyl::Format("\"%s\"", escaped.c_str());
+template<typename T>
+static cotyl::CString quoted(T&& string) {
+  auto stream = cotyl::StringStream{};
+  stream << '\"' << string << '\"';
+  return stream.cfinalize();
 }
 
-std::string Preprocessor::LINE() const {
-  return std::to_string(file_stack.back().line);
+cotyl::CString Preprocessor::FILE() const {
+  auto full_path = std::filesystem::canonical(file_stack.back().name).string();
+  auto escaped = cotyl::Escape(full_path.c_str());
+  return quoted(std::move(escaped));
+}
+
+cotyl::CString Preprocessor::LINE() const {
+  return cotyl::CString{std::to_string(file_stack.back().line)};
 }
 
 // localtime is deprecated
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-std::string Preprocessor::DATE() const {
-  std::string result = "??? ?? ????";
+cotyl::CString Preprocessor::DATE() const {
+  auto result = cotyl::CString{"??? ?? ????"};
   auto datetime = std::time({});
-  std::strftime(result.data(), result.size(), "%b %d %Y", std::localtime(&datetime));
-  return cotyl::Format("\"%s\"", result.c_str());
+  std::strftime(result.c_str(), result.size(), "%b %d %Y", std::localtime(&datetime));
+  return quoted(std::move(result));
 }
 
-std::string Preprocessor::TIME() const {
-  std::string result = "??:??:??";
+cotyl::CString Preprocessor::TIME() const {
+  auto result = cotyl::CString{"??:??:??"};
   auto datetime = std::time({});
-  std::strftime(result.data(), result.size(), "%H:%M:%S", std::localtime(&datetime));
-  return cotyl::Format("\"%s\"", result.c_str());
+  std::strftime(result.c_str(), result.size(), "%H:%M:%S", std::localtime(&datetime));
+  return quoted(std::move(result));
 }
 #pragma GCC diagnostic pop
 
-std::string Preprocessor::STDC() const {
+cotyl::CString Preprocessor::STDC() const {
   // In normal operation, this macro expands to the constant 1,
   // to signify that this compiler conforms to ISO Standard C. 
-  return "1";
+  return cotyl::CString{"1"};
 }
 
-std::string Preprocessor::STDC_HOSTED() const {
+cotyl::CString Preprocessor::STDC_HOSTED() const {
   // This macro is defined, with value 1, if the compiler’s target 
   // is a hosted environment. A hosted environment has the complete 
   // facilities of the standard C library available.
 
   // we don't, but we'll just say we do
-  return "1";
+  return cotyl::CString{"1"};
 }
 
-std::string Preprocessor::STDC_VERSION() const {
+cotyl::CString Preprocessor::STDC_VERSION() const {
   // This macro expands to the C Standard’s version number, 
   // a long integer constant of the form yyyymmL where yyyy 
   // and mm are the year and month of the Standard version.
   // ...
   // the value 201112L signifies the 2011 revision of the 
   // C standard
-  return "201112L";
+  return cotyl::CString{"201112L"};
 }
 
 }

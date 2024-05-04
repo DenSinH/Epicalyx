@@ -5,12 +5,12 @@
 namespace epi {
 
 Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
-  const cotyl::vector<std::string>& args,
+  cotyl::vector<cotyl::CString>&& args,
   bool variadic,
-  const std::string& value
+  cotyl::CString&& value
 ) {
   value_t result{};
-  auto valstream = SString(value);
+  auto valstream = SString(value.view());
   cotyl::StringStream current_val{};
   char c;
 
@@ -19,9 +19,9 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
   while (valstream.Peek(c, 0)) {
     if (detail::is_valid_ident_start(c)) {
       auto ident = detail::get_identifier(valstream);
-      if (variadic && ident == "__VA_ARGS__") {
+      if (variadic && ident.streq("__VA_ARGS__")) {
         // variadic argument, emplace current intermediate text and reset
-        result.emplace_back(current_val.finalize());
+        result.emplace_back(current_val.cfinalize());
         current_val.clear();
         result.emplace_back(-1);
       }
@@ -29,7 +29,7 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
         auto arg_idx = std::find(args.begin(), args.end(), ident);
         if (arg_idx != args.end()) {
           // argument id, emplace current intermediate text and reset
-          result.emplace_back(current_val.finalize());
+          result.emplace_back(current_val.cfinalize());
           current_val.clear();
           result.emplace_back((i32)(arg_idx - args.begin()));
         }
@@ -45,12 +45,12 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
   }
 
   if (!current_val.empty()) {
-    result.emplace_back(current_val.finalize());
+    result.emplace_back(current_val.cfinalize());
   }
   return result;
 }
 
-const std::string Preprocessor::MacroStream::InitialStream = " ";
+const cotyl::CString Preprocessor::MacroStream::InitialStream = cotyl::CString{" "};
 
 char Preprocessor::MacroStream::GetNew() {
   if (eos) {
@@ -60,15 +60,15 @@ char Preprocessor::MacroStream::GetNew() {
     if (++current_index < def.value.size()) {
       swl::visit(
         swl::overloaded{
-          [&](const std::string& seg) {
-            current_stream = SString(seg);
+          [&](const cotyl::CString& seg) {
+            current_stream = SString(seg.view());
           },
           [&](const i32 seg) {
             if (seg == -1) {
-              current_stream = SString(va_args);
+              current_stream = SString(va_args.view());
             }
             else {
-              current_stream = SString(arguments[seg]);
+              current_stream = SString(arguments[seg].view());
             }
           },
           // exhaustive variant access
@@ -98,7 +98,7 @@ bool Preprocessor::MacroStream::ExpandingArgument() const {
   return swl::holds_alternative<i32>(def.value[current_index]);
 }
 
-std::string Preprocessor::GetMacroArgumentValue(bool variadic) {
+cotyl::CString Preprocessor::GetMacroArgumentValue(bool variadic) {
   cotyl::StringStream value{};
   SkipBlanks();
 
@@ -108,11 +108,11 @@ std::string Preprocessor::GetMacroArgumentValue(bool variadic) {
     const char next = NextCharacter();
     if (next == ',' && !variadic && paren_count == 0) {
       // next argument
-      return value.finalize();
+      return value.cfinalize();
     }
     else if (next == ')') {
       // if paren_count is 0 there are no more arguments and this argument is done
-      if (paren_count == 0) return value.finalize();
+      if (paren_count == 0) return value.cfinalize();
       else {
         // otherwise, track the parenthesis
         paren_count--;
@@ -133,7 +133,7 @@ std::string Preprocessor::GetMacroArgumentValue(bool variadic) {
   }
 }
 
-void Preprocessor::PushMacro(std::string&& name, const Definition& definition) {
+void Preprocessor::PushMacro(cotyl::CString&& name, const Definition& definition) {
   if (definition.value.empty()) {
     // no use pushing an empty macro
     return;
@@ -141,8 +141,8 @@ void Preprocessor::PushMacro(std::string&& name, const Definition& definition) {
 
   if (definition.arguments.has_value()) {
     const auto& arguments = definition.arguments.value();
-    cotyl::vector<std::string> arg_values{};
-    std::string va_args{};
+    cotyl::vector<cotyl::CString> arg_values{};
+    cotyl::CString va_args{};
 
     // when parsing macro usage, newlines can be skipped just fine
     SkipBlanks();

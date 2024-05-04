@@ -7,7 +7,7 @@
 
 namespace epi::cotyl {
 
-static std::string Escape(const char* in) {
+static cotyl::CString Escape(const char* in) {
   cotyl::StringStream result{};
   for (auto c = in; *c; c++) {
     switch (*c) {
@@ -25,7 +25,7 @@ static std::string Escape(const char* in) {
       default: result << *c; break;
     }
   }
-  return result.finalize();
+  return result.cfinalize();
 }
 
 }

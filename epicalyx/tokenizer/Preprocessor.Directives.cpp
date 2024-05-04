@@ -18,7 +18,7 @@ ast::pExpr Preprocessor::ResolveIdentifier(cotyl::CString&& name) const {
     for (parens = 0; this_tokenizer.EatIf(TokenType::LParen); parens++);
     auto ident = this_tokenizer.Expect(TokenType::Identifier);
     auto macro = std::move(ident.get<IdentifierToken>().name);
-    bool has_macro = (StandardDefinitions.contains(macro.str()) || definitions.contains(macro.str()));
+    bool has_macro = (StandardDefinitions.contains(macro) || definitions.contains(macro));
     auto expr = std::make_unique<ast::NumericalConstantNode<i32>>(has_macro ? 1 : 0);
     for (; parens > 0; parens--) {
       this_tokenizer.Eat(TokenType::RParen);
@@ -33,10 +33,10 @@ ast::pExpr Preprocessor::ResolveIdentifier(cotyl::CString&& name) const {
 i64 Preprocessor::EatConstexpr() {
   cotyl::Assert((ClearEmptyStreams(), macro_stack.empty()) && !expression.has_value(), "Must start expression with empty macro stack and expression");
   cotyl::Assert(pre_processor_queue.empty(), "Must start preprocessor expression with empty pre_processor_queue");
-  std::string line = FetchLine();
+  auto line = FetchLine();
   ReplaceNewlines(line);
 
-  expression = {line};
+  expression = {line.view()};
   auto result = EConstexpr();
 
   // we expect the bottom string (expression) to be fully parsed
@@ -68,10 +68,10 @@ void Preprocessor::Include() {
   // we parse it by creating a tokenizer and requesting a string constant
   cotyl::Assert((ClearEmptyStreams(), macro_stack.empty()) && !expression.has_value(), "Must start expression with empty macro stack and expression");
   cotyl::Assert(pre_processor_queue.empty(), "Must start preprocessor include directive with empty pre_processor_queue");
-  std::string line = FetchLine();
+  auto line = FetchLine();
   ReplaceNewlines(line);
 
-  expression = {line};
+  expression = {line.view()};
 
   cotyl::CString filename;
   // skip whitespace
@@ -103,35 +103,35 @@ void Preprocessor::PreprocessorDirective() {
   }
 
   // read identifier
-  const std::string pp_token = detail::get_identifier(CurrentStream());
+  const cotyl::CString pp_token = detail::get_identifier(CurrentStream());
   bool enabled = Enabled();
   
-  if (pp_token == "if" || pp_token == "ifdef" || pp_token == "ifndef") {
+  if (pp_token.streq("if") || pp_token.streq("ifdef") || pp_token.streq("ifndef")) {
     SkipBlanks(false);
     if (!enabled) {
       FetchLine();
       if_group_stack.emplace_back(IfGroup::If(false));
     }
     else {
-      if (pp_token == "if") {
+      if (pp_token.streq("if")) {
         if_group_stack.emplace_back(IfGroup::If(EatConstexpr() != 0));
         // newline eaten in EatConstexpr() >> FetchLine()
       }
       else {
         auto identifier = detail::get_identifier(CurrentStream());
         bool has_def = definitions.contains(identifier) || StandardDefinitions.contains(identifier);
-        if (pp_token == "ifdef") {
+        if (pp_token.streq("ifdef")) {
           if_group_stack.emplace_back(IfGroup::If(has_def));
         }
         else {
-          cotyl::Assert(pp_token == "ifndef");
+          cotyl::Assert(pp_token.streq("ifndef"));
           if_group_stack.emplace_back(IfGroup::If(!has_def));
         }
         EatNewline();
       }
     }
   }
-  else if (pp_token == "elif" || pp_token == "elifdef" || pp_token == "elifndef") {
+  else if (pp_token.streq("elif") || pp_token.streq("elifdef") || pp_token.streq("elifndef")) {
     if (if_group_stack.empty()) {
       throw PreprocessorError("Unexpected elif group");
     }
@@ -150,18 +150,18 @@ void Preprocessor::PreprocessorDirective() {
         FetchLine();
       }
       else {
-        if (pp_token == "elif") {
+        if (pp_token.streq("elif")) {
           if_group_stack.back().Elif(EatConstexpr() != 0);
           // newline eaten in EatConstexpr()
         }
         else {
           auto identifier = detail::get_identifier(CurrentStream());
           bool has_def = definitions.contains(identifier) || StandardDefinitions.contains(identifier);
-          if (pp_token == "elifdef") {
+          if (pp_token.streq("elifdef")) {
             if_group_stack.back().Elif(has_def);
           }
           else {
-            cotyl::Assert(pp_token == "elifndef");
+            cotyl::Assert(pp_token.streq("elifndef"));
             if_group_stack.back().Elif(!has_def);
           }
           EatNewline();
@@ -169,7 +169,7 @@ void Preprocessor::PreprocessorDirective() {
       }
     }
   }
-  else if (pp_token == "else") {
+  else if (pp_token.streq("else")) {
     if (if_group_stack.empty()) {
       throw PreprocessorError("Unexpected else group");
     }
@@ -178,7 +178,7 @@ void Preprocessor::PreprocessorDirective() {
     if_group_stack.back().Else();
     EatNewline();
   }
-  else if (pp_token == "endif") {
+  else if (pp_token.streq("endif")) {
     if (if_group_stack.empty()) {
       throw PreprocessorError("Unexpected endif");
     }
@@ -190,13 +190,13 @@ void Preprocessor::PreprocessorDirective() {
     // we ignore any of these if the current group is disabled
     FetchLine();
   }
-  else if (pp_token == "define") {
+  else if (pp_token.streq("define")) {
     SkipBlanks(false);
     auto name = detail::get_identifier(CurrentStream());
 
     if (!InternalIsEOS() && NextCharacter() == '(') {
       // functional macro
-      cotyl::vector<std::string> arguments = {};
+      cotyl::vector<cotyl::CString> arguments = {};
       bool variadic = false;
       SkipNextCharacterSimple();  // skip ( character
 
@@ -232,16 +232,16 @@ void Preprocessor::PreprocessorDirective() {
       }
       EatNextCharacter(')');
 
-      std::string value = FetchLine() + " ";  // end macros in whitespace as to not glue preprocessing tokens
+      auto value = FetchLine();
       ReplaceNewlines(value);
 
       // only save definitions if current group is enabled
       if (Enabled()) {
-        definitions.emplace(name, Definition(arguments, variadic, value));
+        definitions.emplace(name, Definition(std::move(arguments), variadic, std::move(value)));
       }
     }
     else {
-      std::string value = FetchLine() + " ";  // end macros in whitespace as to not glue preprocessing tokens
+      auto value = FetchLine();
       ReplaceNewlines(value);
 
       // only save definitions if current group is enabled
@@ -251,25 +251,25 @@ void Preprocessor::PreprocessorDirective() {
     }
     // newline eaten in FetchLine()
   }
-  else if (pp_token == "undef") {
+  else if (pp_token.streq("undef")) {
     SkipBlanks(false);
     auto identifier = detail::get_identifier(CurrentStream());
     definitions.erase(identifier);
     EatNewline();
   }
-  else if (pp_token == "line") {
+  else if (pp_token.streq("line")) {
     // correct for newline on this line
     CurrentLine() = EatConstexpr() - 1;
     // newline eaten in EatConstexpr() >> FetchLine()
   }
-  else if (pp_token == "error") {
-    std::string message = FetchLine();
+  else if (pp_token.streq("error")) {
+    auto message = FetchLine();
     throw cotyl::FormatExcept<PreprocessorError>("error: %s", message.c_str());
   }
-  else if (pp_token == "pragma") {
+  else if (pp_token.streq("pragma")) {
     throw cotyl::UnimplementedException("#pragma preprocessing directive");
   }
-  else if (pp_token == "include") {
+  else if (pp_token.streq("include")) {
     Include();
   }
   else {

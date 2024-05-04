@@ -71,7 +71,7 @@ AnyToken Tokenizer::GetNew() {
     }
 
     // identifier or keyword
-    auto identifier = detail::get_identifier(in_stream);
+    auto identifier = detail::get_identifier(in_stream).str();
     if (Keywords.contains(identifier)) {
       return Make<KeywordToken>(Keywords.at(identifier));
     }

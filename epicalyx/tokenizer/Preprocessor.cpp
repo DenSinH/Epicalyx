@@ -206,7 +206,7 @@ void Preprocessor::SkipMultilineComment() {
   is_newline = true;
 }
 
-std::string Preprocessor::FetchLine() {
+cotyl::CString Preprocessor::FetchLine() {
   cotyl::Assert((ClearEmptyStreams(), macro_stack.empty()), "Expected empty string stack in preprocessor line fetch");
   cotyl::Assert(!expression.has_value(), "Unexpected preprocessor line fetch while parsing expression");
   cotyl::StringStream line{};
@@ -232,13 +232,13 @@ std::string Preprocessor::FetchLine() {
       EatNextCharacter('\n');
 
       // it is okay if allow_newline is false here because we do not eat the newline
-      return line.finalize();
+      return line.cfinalize();
     }
     else if (CurrentStream().SequenceAfter(0, '/', '/')) {
       // CurrentStream() usage okay, since we EatNextCharacter within the handler function
       // state should have been handled properly anyway
       SkipLineComment();
-      return line.finalize();
+      return line.cfinalize();
     }
     else if (CurrentStream().SequenceAfter(0, '/', '*')) {
       // CurrentStream() usage okay, since we EatNextCharacter within the handler function
@@ -249,7 +249,7 @@ std::string Preprocessor::FetchLine() {
       line << GetNextCharacter();
     }
   }
-  return line.finalize();
+  return line.cfinalize();
 }
 
 bool Preprocessor::IsEOS() {
@@ -292,7 +292,7 @@ void Preprocessor::EatNewline() {
   }
 }
 
-std::string Preprocessor::GetNextProcessed() {
+cotyl::CString Preprocessor::GetNextProcessed() {
   // no need to check end of stream, since it is expected a new character even exists
   while (true) {
     char c = NextCharacter();
@@ -300,7 +300,7 @@ std::string Preprocessor::GetNextProcessed() {
     // parse whitespace normally to count newlines properly when current group is not enabled
     if (std::isspace(c)) {
       SkipBlanks();
-      return " ";  // the exact whitespace character does not matter
+      return cotyl::CString{" "};  // the exact whitespace character does not matter
     }
 
     // potential new if group
@@ -313,7 +313,7 @@ std::string Preprocessor::GetNextProcessed() {
 
       // insert newline after preprocessing directive
       is_newline = true;
-      return "\n";
+      return cotyl::CString{"\n"};
     }
 
     if (!Enabled()) {
@@ -327,7 +327,7 @@ std::string Preprocessor::GetNextProcessed() {
       // possible identifier, process entire identifier
       // we can always fetch identifiers from the current stream, as it does not cross any
       // state changing boundaries
-      std::string identifier = detail::get_identifier(CurrentStream());
+      cotyl::CString identifier = detail::get_identifier(CurrentStream());
       
       // we may block macro expansion if we are checking a 
       // #if defined statement
@@ -358,7 +358,7 @@ std::string Preprocessor::GetNextProcessed() {
           }
         }
         PushMacro(std::move(identifier), def);
-        return "";
+        return cotyl::CString{""};
       }
       else {
         return std::move(identifier);
@@ -372,7 +372,7 @@ std::string Preprocessor::GetNextProcessed() {
 
       // expect newline after comment
       cotyl::Assert(is_newline);
-      return "\n";
+      return cotyl::CString{"\n"};
     }
     else if (c == '/' && CurrentStream().SequenceAfter(0, '/', '*')) {
       /* multi-line comment */
@@ -404,7 +404,7 @@ std::string Preprocessor::GetNextProcessed() {
       // end string
       EatNextCharacter(quote);
       string << quote;
-      return string.finalize();
+      return string.cfinalize();
     }
     else {
       // other character
@@ -418,11 +418,11 @@ std::string Preprocessor::GetNextProcessed() {
         while (CurrentStream().PredicateAfter(0, detail::is_valid_ident_char)) {
           ident_char_string << CurrentStream().Get();
         }
-        return ident_char_string.finalize();
+        return ident_char_string.cfinalize();
       }
       else {
         EatNextCharacter(c);
-        return std::string{c};
+        return cotyl::CString{c};
       }
     }
   }
@@ -443,7 +443,7 @@ char Preprocessor::GetNew() {
   }
 }
 
-void Preprocessor::ReplaceNewlines(std::string& value) {
+void Preprocessor::ReplaceNewlines(cotyl::CString& value) {
   std::replace(value.begin(), value.end(), '\n', ' ');
 }
 

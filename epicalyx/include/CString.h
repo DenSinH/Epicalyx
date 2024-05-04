@@ -15,6 +15,12 @@ struct CString {
 
   CString() : size_{0}, data{nullptr} { }
 
+  explicit CString(char c) : 
+      size_{1},
+      data(std::make_unique<char[]>(size_ + 1)) {
+    data.get()[0] = c;
+  }
+
   explicit CString(const char* str) : 
       size_{(size_type)strlen(str)},
       data(std::make_unique<char[]>(size_ + 1)) {
@@ -57,11 +63,15 @@ struct CString {
   ~CString() = default;
 
   const char* c_str() const { return data.get(); }
+  char* c_str() { return data.get(); }
 
   using const_iterator = const char*;
+  using iterator = char*;
 
   const_iterator begin() const { return data.get(); }
   const_iterator end() const { return data.get() + size_; }
+  iterator begin() { return data.get(); }
+  iterator end() { return data.get() + size_; }
   std::size_t size() const { return size_; }
   bool empty() const { return size_ == 0; }
 

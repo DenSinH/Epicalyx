@@ -8,6 +8,7 @@
 
 #include "Default.h"
 #include "Containers.h"
+#include "CString.h"
 #include "Exceptions.h"
 #include "swl/variant.hpp"
 
@@ -25,7 +26,7 @@ struct PreprocessorError : cotyl::Exception {
 
 
 struct Preprocessor final : cotyl::Stream<char>, ExpressionParser {
-  Preprocessor(const std::string& in_stream);
+  Preprocessor(const std::string& filename);
 
   void PrintLoc(std::ostream& out) const final;
   ast::pExpr ResolveIdentifier(cotyl::CString&& name) const;
@@ -44,7 +45,7 @@ private:
   bool InternalIsEOS();
 
   struct Definition;
-  using MacroMap = cotyl::unordered_map<std::string, Definition>;
+  using MacroMap = cotyl::unordered_map<cotyl::CString, Definition>;
 
   struct FileStream {
     FileStream(const std::string& name) : stream{name}, name{name} { }
@@ -56,36 +57,36 @@ private:
 
   struct Definition {
     // a segment is either a string or an argument index
-    using segment_t = swl::variant<std::string, i32>;
+    using segment_t = swl::variant<cotyl::CString, i32>;
     using value_t = cotyl::vector<segment_t>;
     struct Arguments {
       size_t count;
       bool variadic;
     };
 
-    Definition(const cotyl::vector<std::string>& args, bool variadic, const std::string& val) :
+    Definition(cotyl::vector<cotyl::CString>&& args, bool variadic, cotyl::CString&& val) :
         arguments{Arguments{args.size(), variadic}},
-        value{Parse(args, variadic, val)} { }
+        value{Parse(std::move(args), variadic, std::move(val))} { }
 
-    Definition(std::string&& value) : arguments{}, value{std::move(value)} { }
+    Definition(cotyl::CString&& value) : arguments{}, value{std::move(value)} { }
 
-    static value_t Parse(const cotyl::vector<std::string>& args, bool variadic, const std::string& value);
+    static value_t Parse(cotyl::vector<cotyl::CString>&& args, bool variadic, cotyl::CString&& value);
 
     value_t value;
     std::optional<Arguments> arguments{};
   };
 
   struct MacroStream final : public cotyl::Stream<char> {
-    MacroStream(std::string&& name, const Definition& def, cotyl::vector<std::string>&& arguments, std::string&& va_args) :
+    MacroStream(cotyl::CString&& name, const Definition& def, cotyl::vector<cotyl::CString>&& arguments, cotyl::CString&& va_args) :
         name{std::move(name)}, 
         def{def}, 
         arguments{std::move(arguments)},
         va_args{std::move(va_args)},
-        current_stream{InitialStream},
+        current_stream{InitialStream.view()},
         current_index{-1} {
         
     }
-    MacroStream(std::string&& name, const Definition& def) : MacroStream{std::move(name), def, {}, ""} { }
+    MacroStream(cotyl::CString&& name, const Definition& def) : MacroStream{std::move(name), def, {}, cotyl::CString{""}} { }
     ~MacroStream() = default;
 
     void PrintLoc(std::ostream& out) const final;
@@ -94,17 +95,17 @@ private:
     // argument or a literal
     bool ExpandingArgument() const;
 
-    std::string name;
+    cotyl::CString name;
   protected:
     char GetNew() final;
     bool IsEOS() final;
   
   private:
-    const static std::string InitialStream;  // " "
+    const static cotyl::CString InitialStream;  // " "
 
     const Definition& def; // value
-    cotyl::vector<std::string> arguments{};  // argument values
-    std::string va_args{};
+    cotyl::vector<cotyl::CString> arguments{};  // argument values
+    cotyl::CString va_args{};
 
     bool eos = false;
     SString current_stream;
@@ -170,17 +171,17 @@ private:
 
   // macro definitions, and a set of default definitions
   MacroMap definitions{};
-  static const cotyl::unordered_map<std::string, std::string (Preprocessor::*)() const> StandardDefinitions;
-  std::string FILE() const;
-  std::string LINE() const;
-  std::string DATE() const;
-  std::string TIME() const;
-  std::string STDC() const;
-  std::string STDC_HOSTED() const;
-  std::string STDC_VERSION() const;
+  static const cotyl::unordered_map<cotyl::CString, cotyl::CString (Preprocessor::*)() const> StandardDefinitions;
+  cotyl::CString FILE() const;
+  cotyl::CString LINE() const;
+  cotyl::CString DATE() const;
+  cotyl::CString TIME() const;
+  cotyl::CString STDC() const;
+  cotyl::CString STDC_HOSTED() const;
+  cotyl::CString STDC_VERSION() const;
 
   // a set of parsed files for tracking #pragma once directives
-  cotyl::unordered_set<std::string> parsed_files{};
+  cotyl::unordered_set<cotyl::CString> parsed_files{};
 
   // we want to reduce the "CurrentStream" usage as much as possible,
   // since it may introduce erroneous tracking of global preprocessor state
@@ -198,18 +199,18 @@ private:
   void SkipBlanks(bool skip_newlines = true);
   void SkipLineComment();
   void SkipMultilineComment();
-  std::string FetchLine();
+  cotyl::CString FetchLine();
   char NextCharacter() const;
   char GetNextCharacter();
   void SkipNextCharacter();
   void EatNextCharacter(char c);
   // if it is known that no extra checks are needed, we use this faster version
   void SkipNextCharacterSimple();
-  std::string GetNextProcessed();
+  cotyl::CString GetNextProcessed();
 
-  std::string GetMacroArgumentValue(bool variadic);
-  static void ReplaceNewlines(std::string& value);
-  void PushMacro(std::string&& name, const Definition& definition);
+  cotyl::CString GetMacroArgumentValue(bool variadic);
+  static void ReplaceNewlines(cotyl::CString& value);
+  void PushMacro(cotyl::CString&& name, const Definition& definition);
   void EatNewline();
   i64 EatConstexpr();
   void Include();
