@@ -582,18 +582,17 @@ void Preprocessor::Include() {
 
   expression = {line};
 
-  auto tokenizer = Tokenizer(*this);
   cotyl::CString filename;
   // skip whitespace
-  tokenizer.SkipBlanks();
+  this_tokenizer.SkipBlanks();
   auto delimiter = ForcePeek();
   bool system_include = *delimiter == '<';
-  filename = tokenizer.ReadString();
+  filename = this_tokenizer.ReadString();
   file_stack.emplace_back(FindFile(filename, system_include));
   
   // same as in EatConstexpr()
   // we expect the bottom string (expression) to be fully parsed
-  tokenizer.SkipBlanks();
+  this_tokenizer.SkipBlanks();
   cotyl::Assert((ClearEmptyStreams(), macro_stack.empty()), "Found unexpanded macros after expression");
   expression.reset();
 
