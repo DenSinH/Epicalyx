@@ -30,18 +30,26 @@ ast::pExpr Preprocessor::ResolveIdentifier(cotyl::CString&& name) const {
   return std::make_unique<ast::NumericalConstantNode<i32>>(0);
 }
 
-i64 Preprocessor::EatConstexpr() {
+void Preprocessor::StartExpression(SString&& stream) {
   cotyl::Assert((ClearEmptyStreams(), macro_stack.empty()) && !expression.has_value(), "Must start expression with empty macro stack and expression");
   cotyl::Assert(pre_processor_queue.empty(), "Must start preprocessor expression with empty pre_processor_queue");
+  
+  expression = std::move(stream);
+}
+
+void Preprocessor::EndExpression() {
+  // we expect the string (expression) to be fully parsed
+  cotyl::Assert((ClearEmptyStreams(), macro_stack.empty()), "Found unexpanded macros after expression");
+  expression.reset();
+}
+
+i64 Preprocessor::EatConstexpr() {
   auto line = FetchLine();
   ReplaceNewlines(line);
 
-  expression = {line.view()};
+  StartExpression(line.view());
   auto result = EConstexpr();
-
-  // we expect the bottom string (expression) to be fully parsed
-  cotyl::Assert((ClearEmptyStreams(), macro_stack.empty()), "Found unexpanded macros after expression");
-  expression.reset();
+  EndExpression();
 
   // we fetched the whole line, so we are always at a new line after this
   is_newline = true;
@@ -66,13 +74,10 @@ void Preprocessor::Include() {
   // parse include directive
   // the file name may be constructed from macro expansion
   // we parse it by creating a tokenizer and requesting a string constant
-  cotyl::Assert((ClearEmptyStreams(), macro_stack.empty()) && !expression.has_value(), "Must start expression with empty macro stack and expression");
-  cotyl::Assert(pre_processor_queue.empty(), "Must start preprocessor include directive with empty pre_processor_queue");
   auto line = FetchLine();
   ReplaceNewlines(line);
 
-  expression = {line.view()};
-
+  StartExpression(line.view());
   cotyl::CString filename;
   // skip whitespace
   this_tokenizer.SkipBlanks();
@@ -84,8 +89,7 @@ void Preprocessor::Include() {
   // same as in EatConstexpr()
   // we expect the bottom string (expression) to be fully parsed
   this_tokenizer.SkipBlanks();
-  cotyl::Assert((ClearEmptyStreams(), macro_stack.empty()), "Found unexpanded macros after expression");
-  expression.reset();
+  EndExpression();
 
   // we fetched the whole line, we are at a new line at this point
   // the status might not reflect it though, as we parsed the filename expression

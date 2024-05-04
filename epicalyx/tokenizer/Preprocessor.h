@@ -219,6 +219,8 @@ private:
   static void ReplaceNewlines(cotyl::CString& value);
   void PushMacro(cotyl::CString&& name, const Definition& definition);
   void EatNewline();
+  void StartExpression(SString&& stream);
+  void EndExpression();
   i64 EatConstexpr();
   void Include();
   std::string FindFile(const cotyl::CString& name, bool system);

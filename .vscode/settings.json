@@ -7,7 +7,7 @@
         "cwd": "${workspaceRoot}",
         "args": [
           "-rigfunc", "main",
-          "${workspaceRoot}/tests/suites/scctests/cc/execute/0152-cat.c"
+          "${workspaceRoot}/tests/suites/scctests/cc/execute/0200-cpp.c"
         ]
     },
     "editor.indentSize": 2,
