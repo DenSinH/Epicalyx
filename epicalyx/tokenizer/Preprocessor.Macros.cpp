@@ -1,5 +1,6 @@
 #include "Preprocessor.h"
 #include "Identifier.h"
+#include "Escape.h"
 
 
 namespace epi {
@@ -14,24 +15,74 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
   cotyl::StringStream current_val{};
   char c;
 
+  auto end_segment = [&] {
+    if (!current_val.empty()) {
+      result.emplace_back(current_val.cfinalize());
+      current_val.clear();
+    }
+  };
+
   // any time we encounter a macro argument, we KNOW that current_val will be non-empty
   // so we can append a new string to the result
   while (valstream.Peek(c, 0)) {
-    if (detail::is_valid_ident_start(c)) {
+    if (c == '\"') {
+      // strings in macro values must be taken literally, as to 
+      // not expand macro arguments or #/## operators within them
+      current_val << valstream.Expect(c);
+      for (char k = valstream.Get(); k != '\"'; k = valstream.Get()) {
+        current_val << k;
+        if (k == '\\') {
+          current_val << valstream.Get();
+        }
+      }
+      current_val << '\"';
+    }
+    else if (std::isspace(c)) {
+      end_segment();
+      valstream.SkipWhile(std::isspace);
+    }
+    else if (c == '#') {
+      end_segment();
+      valstream.Expect(c);
+
+      if (valstream.EatIf('#')) {
+        result.emplace_back(HashHash{});
+      }
+      else {
+        // get consequent macro argument value
+        valstream.SkipWhile(std::isspace);
+        auto ident = detail::get_identifier(valstream);
+
+        i32 arg_idx;
+        if (variadic && ident.streq("__VA_ARGS__")) {
+          arg_idx = -1;
+        }
+        else {
+          auto arg_it = std::find(args.begin(), args.end(), ident);
+          if (arg_it != args.end()) {
+            arg_idx = (i32)(arg_it - args.begin());
+          }
+          else {
+            throw PreprocessorError("Expected macro argument after # operator");
+          }
+        }
+
+        result.emplace_back(Hash{arg_idx});
+      }
+    }
+    else if (detail::is_valid_ident_start(c)) {
       auto ident = detail::get_identifier(valstream);
       if (variadic && ident.streq("__VA_ARGS__")) {
         // variadic argument, emplace current intermediate text and reset
-        result.emplace_back(current_val.cfinalize());
-        current_val.clear();
-        result.emplace_back(-1);
+        end_segment();
+        result.emplace_back(Argument{-1});
       }
       else {
         auto arg_idx = std::find(args.begin(), args.end(), ident);
         if (arg_idx != args.end()) {
           // argument id, emplace current intermediate text and reset
-          result.emplace_back(current_val.cfinalize());
-          current_val.clear();
-          result.emplace_back((i32)(arg_idx - args.begin()));
+          end_segment();
+          result.emplace_back(Argument{(i32)(arg_idx - args.begin())});
         }
         else {
           // just append the identifier
@@ -40,7 +91,7 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
       }
     }
     else {
-      current_val << valstream.Get();
+      current_val << valstream.Expect(c);
     }
   }
 
@@ -51,6 +102,23 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
 }
 
 const cotyl::CString Preprocessor::MacroStream::InitialStream = cotyl::CString{" "};
+
+template<typename T>
+static cotyl::CString quoted(T&& string) {
+  auto stream = cotyl::StringStream{};
+  stream << '\"' << string << '\"';
+  return stream.cfinalize();
+}
+
+
+std::string_view Preprocessor::MacroStream::ArgValue(i32 seg) const {
+  if (seg == -1) {
+    return va_args.view();
+  }
+  else {
+    return arguments[seg].view();
+  }
+}
 
 char Preprocessor::MacroStream::GetNew() {
   if (eos) {
@@ -63,13 +131,27 @@ char Preprocessor::MacroStream::GetNew() {
           [&](const cotyl::CString& seg) {
             current_stream = SString(seg.view());
           },
-          [&](const i32 seg) {
-            if (seg == -1) {
-              current_stream = SString(va_args.view());
+          [&](const Definition::Argument& seg) {
+            current_stream = SString{ArgValue(seg.arg_index)};
+          },
+          [&](const Definition::Hash& hash) {
+            // unescape argument value
+            cotyl::StringStream escaped{};
+            auto argvalue = SString{ArgValue(hash.arg_index)};
+            while (!argvalue.EOS()) {
+              char c = argvalue.Get();
+              if (c == '\\') cotyl::Unescape(escaped, argvalue);
+              else escaped << c;
             }
-            else {
-              current_stream = SString(arguments[seg].view());
-            }
+
+            // re-escape argument value and turn into string
+            // store in the holder since it needs to be kept alive until
+            // we finish parsing this string
+            parsed_holder = quoted(cotyl::Escape(escaped.cfinalize().c_str()));
+            current_stream = parsed_holder.view();
+          },
+          [&](const Definition::HashHash& hash) {
+            throw cotyl::UnimplementedException("## operator");
           },
           // exhaustive variant access
           [](const auto& invalid) { static_assert(!sizeof(invalid)); }
@@ -95,7 +177,7 @@ void Preprocessor::MacroStream::PrintLoc(std::ostream& out) const {
 
 bool Preprocessor::MacroStream::ExpandingArgument() const {
   if (eos) return false;
-  return swl::holds_alternative<i32>(def.value[current_index]);
+  return swl::holds_alternative<Definition::Argument>(def.value[current_index]);
 }
 
 cotyl::CString Preprocessor::GetMacroArgumentValue(bool variadic) {

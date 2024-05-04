@@ -57,7 +57,11 @@ private:
 
   struct Definition {
     // a segment is either a string or an argument index
-    using segment_t = swl::variant<cotyl::CString, i32>;
+    struct Argument { i32 arg_index; };
+    struct Hash { i32 arg_index; };
+    struct HashHash { };
+
+    using segment_t = swl::variant<cotyl::CString, Argument, Hash, HashHash>;
     using value_t = cotyl::vector<segment_t>;
     struct Arguments {
       size_t count;
@@ -101,6 +105,8 @@ private:
     bool IsEOS() final;
   
   private:
+    std::string_view ArgValue(i32 index) const;
+
     const static cotyl::CString InitialStream;  // " "
 
     const Definition& def; // value
@@ -108,6 +114,7 @@ private:
     cotyl::CString va_args{};
 
     bool eos = false;
+    cotyl::CString parsed_holder;
     SString current_stream;
     int current_index;
   };

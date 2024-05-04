@@ -4,8 +4,8 @@
 #include "Identifier.h"
 #include "SStream.h"
 #include "Containers.h"
+#include "Escape.h"
 
-#include <array>
 
 namespace epi {
 
@@ -125,21 +125,7 @@ AnyToken Tokenizer::GetNew() {
   }
 }
 
-static constexpr std::array<i32, 0x100> ASCIIHexToInt = {
-        // ASCII
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-         0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
-        -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-};
-
 cotyl::CString Tokenizer::ReadString(char _delimiter) {
-  cotyl::StringStream str{};
-
   char delimiter;
   if (_delimiter) {
     in_stream.Eat(_delimiter);
@@ -156,54 +142,12 @@ cotyl::CString Tokenizer::ReadString(char _delimiter) {
       throw cotyl::FormatExcept<TokenizerError>("Unexpected string delimiter: %c", delimiter);
     }
   }
-  
+
+  cotyl::StringStream str{};
   char c;
   for (c = in_stream.Get(); c != delimiter; c = in_stream.Get()) {
-    if (c == '\\') {
-      // escape sequence
-      c = in_stream.Get();
-      switch (c) {
-        case '\'': case '\"': case '\\': str << c; break;
-        case 'a': str << '\a'; break;
-        case 'b': str << '\b'; break;
-        case 'f': str << '\f'; break;
-        case 'n': str << '\n'; break;
-        case 'r': str << '\r'; break;
-        case 't': str << '\t'; break;
-        case 'v': str << '\v'; break;
-        case '?': str << '\?'; break;
-        case 'x': {
-          // hex literal
-          char hex = 0;
-          while (in_stream.PredicateAfter(0, std::isxdigit)) {
-            c = in_stream.Get();
-            hex <<= 4;
-            hex |= ASCIIHexToInt[c];
-          }
-          str << hex;
-          break;
-        }
-        case '0': case '1': case '2': case '3':
-        case '4': case '5': case '6': case '7': {
-          // octal literal
-          char oct = c - '0';
-          for (int count = 0; in_stream.PredicateAfter(0, std::isdigit) && count < 3; count++) {
-            if (in_stream.Peek(c) && c < '8') {
-              c = in_stream.Get();
-              oct <<= 3;
-              oct |= c - '0';
-            }
-          }
-          str << oct;
-          break;
-        }
-        default:
-          throw cotyl::FormatExcept<TokenizerError>("Invalid escape sequence: %c", c);
-      }
-    }
-    else {
-      str << c;
-    }
+    if (c == '\\') cotyl::Unescape(str, in_stream);
+    else str << c;
   }
 
   return str.cfinalize();
