@@ -151,7 +151,12 @@ UnopNode::UnopNode(TokenType op, pExpr&& left) :
     }()},
     op(op),
     left(std::move(left)) {
-
+  switch (op) {
+    case TokenType::Incr: case TokenType::Decr:
+    case TokenType::Ampersand: case TokenType::Asterisk:
+      type->ForgetConstInfo();
+    default: break;
+  }
 }
 
 std::string UnopNode::ToString() const { 

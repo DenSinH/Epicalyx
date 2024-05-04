@@ -3,7 +3,7 @@
 #include "Tokenizer.h"
 #include "Identifier.h"
 
-#include "parser/ConstParser.h"
+#include "parser/ExpressionParser.h"
 
 #include "SStream.h"
 #include "CustomAssert.h"
@@ -371,10 +371,10 @@ i64 Preprocessor::EatConstexpr() {
   // the Tokenizer class does not allocate any memory anyway
   auto tokenizer = Tokenizer(*this);
 
-  // ConstParser does not take up any memory (besides the vtable)
+  // ExpressionParser does not take up any memory (besides the vtable)
   // this saves us having to copy over the code for parsing
   // constant expressions
-  auto parser = ConstParser(tokenizer);
+  auto parser = ExpressionParser(tokenizer);
   auto result = parser.EConstexpr();
 
   // we expect the bottom string (expression) to be fully parsed

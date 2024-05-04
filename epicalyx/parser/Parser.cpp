@@ -14,23 +14,6 @@ namespace epi {
 
 using namespace ast;
 
-
-type::AnyType Parser::ResolveIdentifierType(const cotyl::CString& name) const {
-  if (enum_values.Has(name)) {
-    return type::ValueType<Parser::enum_type>(
-            enum_values.Get(name),
-            type::LValue::None,
-            type::Qualifier::Const
-    );
-  }
-  else if (variables.Has(name)) {
-    return variables.Get(name);
-  }
-  else {
-    throw cotyl::FormatExceptStr<ParserError>("Undeclared identifier: '%s'", name);
-  }
-}
-
 void Parser::PushScope() {
   variables.NewLayer();
   typedefs.NewLayer();

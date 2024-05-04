@@ -7,7 +7,7 @@
         "cwd": "${workspaceRoot}",
         "args": [
           "-rigfunc", "main",
-          "${workspaceRoot}/tests/suites/scctests/cc/execute/0139-ptr_ary.c"
+          "${workspaceRoot}/tests/suites/scctests/cc/execute/0175-defined.c"
         ]
     },
     "editor.indentSize": 2,

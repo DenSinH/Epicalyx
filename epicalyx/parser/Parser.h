@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ConstParser.h"
+#include "ExpressionParser.h"
 #include "Exceptions.h"
 #include "Scope.h"
 #include "Containers.h"
@@ -15,15 +15,10 @@
 namespace epi {
 
 
-struct Parser final : public ConstParser {
-  using ConstParser::ConstParser;
+struct Parser final : public ExpressionParser {
+  using ExpressionParser::ExpressionParser;
 
   using enum_type = i32;
-
-  ast::pExpr EExpression();
-
-  // needs to be available publicly for shorthand binop parsing
-  ast::pExpr ECast() final;
 
   // external results
   void Parse();
@@ -40,18 +35,17 @@ struct Parser final : public ConstParser {
     type::FunctionType
   >;
 private:
-  ast::pExpr EPrimary() final;
+  ast::pExpr EBinopBase() final;
+  ast::pExpr ResolveIdentifier(cotyl::CString&& name) const final;
   ast::pExpr EPostfix();
   ast::pExpr EUnary();
+  ast::pExpr ECast();
   ast::pExpr EAssignment() final;
-  ast::pExpr EExpressionList();
 
   type::AnyType ETypeName();
   ast::Initializer EInitializer();
   ast::InitializerList EInitializerList();
-
-  type::AnyType ResolveIdentifierType(const cotyl::CString& name) const;
-
+  
   void DStaticAssert();
   std::pair<type::AnyType, ast::StorageClass> DSpecifier();
   type::AnyType DEnum();

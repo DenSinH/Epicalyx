@@ -32,23 +32,27 @@ struct ParserError : cotyl::Exception {
 struct AnyToken;
 enum class TokenType : u32;
 
-struct ConstParser : public cotyl::Locatable {
+struct ExpressionParser : public cotyl::Locatable {
 
-  ConstParser(cotyl::Stream<AnyToken>& in_stream);
+  ExpressionParser(cotyl::Stream<AnyToken>& in_stream);
 
   void PrintLoc(std::ostream& out) const final;
   i64 EConstexpr();
 
   // needs public access for shorthand parsing Binop Expressions
-  virtual ast::pExpr ECast();
-  template<ast::pExpr (ConstParser::*SubNode)(), enum TokenType... types>
+  ast::pExpr EBinopBaseVCall();
+  template<ast::pExpr (ExpressionParser::*SubNode)(), enum TokenType... types>
   ast::pExpr EBinopImpl();
 
 protected:
+  virtual ast::pExpr ResolveIdentifier(cotyl::CString&& name) const;
   virtual ast::pExpr EPrimary();
+  virtual ast::pExpr EBinopBase();
   ast::pExpr EBinop();
   ast::pExpr ETernary();
   virtual ast::pExpr EAssignment();
+  ast::pExpr EExpression();
+  ast::pExpr EExpressionList();
 
   cotyl::Stream<AnyToken>& in_stream;
 };

@@ -12,107 +12,39 @@ namespace epi {
 
 using namespace ast;
 
-static pExpr ExprOrReduced(pExpr&& expr) {
-  pExpr reduced = expr->type.visit<pExpr>(
-    []<typename T>(const type::ValueType<T>& value) -> pExpr {
-      if (value.value.has_value()) {
-        return std::make_unique<NumericalConstantNode<T>>(value.value.value());
-      }
-      return nullptr;
-    },
-    [](const auto&) -> pExpr { return nullptr; }
-  );
-  if (reduced) return std::move(reduced);
-  return std::move(expr);
+pExpr ExprOrReduced(pExpr&& expr);
+
+pExpr Parser::ResolveIdentifier(cotyl::CString&& name) const {
+  // identifier might be enum value
+  if (name == cotyl::CString("__func__")) {
+    if (!function_symbol) {
+      throw ParserError("Use of reserved identifier '__func__' outside of function");
+    }
+    return std::make_unique<StringConstantNode>(cotyl::CString{function_symbol});
+  }
+  if (enum_values.Has(name)) {
+    // replace enum values with constants immediately
+    return std::make_unique<NumericalConstantNode<enum_type>>(enum_values.Get(name));
+  }
+  if (enum_values.Has(name)) {
+    return std::make_unique<NumericalConstantNode<Parser::enum_type>>(enum_values.Get(name));
+  }
+  else if (variables.Has(name)) {
+    return std::make_unique<IdentifierNode>(
+      std::move(name),
+      type::AnyType{variables.Get(name)}
+    );
+  }
+  else {
+    throw cotyl::FormatExceptStr<ParserError>("Undeclared identifier: '%s'", name);
+  }
 }
 
-pExpr ConstParser::EPrimary() {
-  auto current = in_stream.Get();
-  return current.visit<pExpr>(
-    [](const IdentifierToken& ident) -> pExpr { 
-      throw ParserError("Unexpected identifier");
-    },
-    [&](StringConstantToken& str) -> pExpr {
-      cotyl::StringStream string{};
-      string << str.value;
-      while (in_stream.IsAfter(0, TokenType::StringConstant)) {
-        string << in_stream.Get().get<StringConstantToken>().value;
-      }
-      return std::make_unique<StringConstantNode>(string.cfinalize());
-    },
-    [&](const PunctuatorToken& punc) -> pExpr {
-      // has to be (ternary), since in the BaseParser we do not expect assignment
-      // type initializer caught in cast expression
-      if (punc.type != TokenType::LParen) {
-        throw cotyl::FormatExceptStr<ParserError>("Invalid token: expected (, got %s", current);
-      }
-      auto expr = ETernary();
-      in_stream.Eat(TokenType::RParen);
-      return ExprOrReduced(std::move(expr));
-    },
-    [](const KeywordToken& keyw) -> pExpr {
-      throw cotyl::FormatExceptStr<ParserError>("Unexpected token in primary expression: got %s", keyw);
-    },
-    []<typename T>(const NumericalConstantToken<T>& num) -> pExpr {
-      return std::make_unique<NumericalConstantNode<T>>(num.value);
-    },
-    // exhaustive variant access
-    [](const auto& invalid) { static_assert(!sizeof(invalid)); }
-  );
+ast::pExpr Parser::EBinopBase() {
+  // for the "regular" parser, the base for a binop expression is a cast expression
+  return ECast();
 }
-
-pExpr Parser::EPrimary() {
-  auto current = in_stream.Get();
-  return current.visit<pExpr>(
-    [&](IdentifierToken& ident) -> pExpr { 
-      // identifier might be enum value
-      auto& name = ident.name;
-      if (name == cotyl::CString("__func__")) {
-        if (!function_symbol) {
-          throw ParserError("Use of reserved identifier '__func__' outside of function");
-        }
-        return std::make_unique<StringConstantNode>(cotyl::CString{function_symbol});
-      }
-      if (enum_values.Has(name)) {
-        // replace enum values with constants immediately
-        return std::make_unique<NumericalConstantNode<enum_type>>(enum_values.Get(name));
-      }
-      auto type = ResolveIdentifierType(ident.name);
-      return std::make_unique<IdentifierNode>(
-        std::move(ident.name),
-        std::move(type)
-      );
-    },
-    [&](StringConstantToken& str) -> pExpr {
-      cotyl::StringStream string{};
-      string << str.value;
-      while (in_stream.IsAfter(0, TokenType::StringConstant)) {
-        string << in_stream.Get().get<StringConstantToken>().value;
-      }
-      return std::make_unique<StringConstantNode>(string.cfinalize());
-    },
-    [&](const PunctuatorToken& punc) -> pExpr {
-      // has to be (expression)
-      // type initializer caught in cast expression
-      if (punc.type != TokenType::LParen) {
-        throw cotyl::FormatExceptStr<ParserError>("Invalid token: expected (, got %s", punc);
-      }
-      
-      auto expr = EExpressionList();
-      in_stream.Eat(TokenType::RParen);
-      return ExprOrReduced(std::move(expr));
-    },
-    [](const KeywordToken& keyw) -> pExpr {
-      throw cotyl::FormatExceptStr<ParserError>("Unexpected token in primary expression: got %s", keyw);
-    },
-    []<typename T>(const NumericalConstantToken<T>& num) -> pExpr {
-      return std::make_unique<NumericalConstantNode<T>>(num.value);
-    },
-    // exhaustive variant access
-    [](const auto& invalid) { static_assert(!sizeof(invalid)); }
-  );
-}
-
+  
 pExpr Parser::EPostfix() {
   const Token* current;
 
@@ -229,48 +161,6 @@ type::AnyType Parser::ETypeName() {
   return std::move(decl.type);
 }
 
-pExpr ConstParser::ECast() {
-  // cast expressions are not allowed in BaseParser expressions
-  // we instead parse a unary expression with 
-  // valid constexpr values
-  auto type = in_stream.ForcePeek()->type;
-  switch (type) {
-    case TokenType::Plus:        // +expr
-    case TokenType::Minus:       // -expr
-    case TokenType::Tilde:       // ~expr
-    case TokenType::Exclamation: // !expr
-    {
-      in_stream.Skip();
-      auto right = ECast();
-      auto expr = std::make_unique<UnopNode>(type, std::move(right));
-      return ExprOrReduced(std::move(expr));
-    }
-    case TokenType::Sizeof: {
-      // sizeof(expr) / sizeof(type-name)
-      in_stream.Skip();
-      if (in_stream.IsAfter(0, TokenType::LParen) /* && IsDeclarationSpecifier(1) */) {
-        throw cotyl::UnimplementedException("Constparser typename");
-        // in_stream.Eat(TokenType::LParen);
-        // auto type_name = ETypeName();
-        // in_stream.Eat(TokenType::RParen);
-        // return std::make_unique<NumericalConstantNode<u64>>(type_name->Sizeof());
-      }
-      return std::make_unique<NumericalConstantNode<u64>>(ETernary()->type->Sizeof());
-    }
-    case TokenType::Alignof: {
-      // _Alignof(type-name)
-      in_stream.EatSequence(TokenType::Alignof, TokenType::LParen);
-      throw cotyl::UnimplementedException("Constparser typename");
-      // auto type_name = ETypeName();
-      // in_stream.Eat(TokenType::RParen);
-      // return std::make_unique<NumericalConstantNode<u64>>(type_name->Alignof());
-    }
-    default: {
-      return this->ConstParser::EPrimary();
-    }
-  }
-}
-
 pExpr Parser::ECast() {
   const Token* current = in_stream.ForcePeek();
   if (current->type == TokenType::LParen) {
@@ -294,62 +184,6 @@ pExpr Parser::ECast() {
     }
   }
   return EUnary();
-}
-
-template<pExpr (ConstParser::*SubNode)(), enum TokenType... types>
-pExpr ConstParser::EBinopImpl() {
-  pExpr node = (this->*SubNode)();
-  const Token* current;
-  while (in_stream.Peek(current) && ((current->type == types) || ...)) {
-    auto type = in_stream.Get()->type;
-    node = std::make_unique<BinopNode>(std::move(node), type, (this->*SubNode)());
-  }
-  return ExprOrReduced(std::move(node));
-}
-
-constexpr auto EMul = &ConstParser::EBinopImpl<&ConstParser::ECast, TokenType::Asterisk, TokenType::Div, TokenType::Mod>;
-constexpr auto EAdd = &ConstParser::EBinopImpl<EMul, TokenType::Plus, TokenType::Minus>;
-constexpr auto EShift = &ConstParser::EBinopImpl<EAdd, TokenType::LShift, TokenType::RShift>;
-constexpr auto ERelational = &ConstParser::EBinopImpl<EShift, TokenType::Less, TokenType::Greater, TokenType::LessEqual, TokenType::GreaterEqual>;
-constexpr auto EEquality = &ConstParser::EBinopImpl<ERelational, TokenType::Equal, TokenType::NotEqual>;
-constexpr auto EAnd = &ConstParser::EBinopImpl<EEquality, TokenType::Ampersand>;
-constexpr auto EOr = &ConstParser::EBinopImpl<EAnd, TokenType::BinOr>;
-constexpr auto EXor = &ConstParser::EBinopImpl<EOr, TokenType::BinXor>;
-constexpr auto ELogAnd = &ConstParser::EBinopImpl<EXor, TokenType::LogicalAnd>;
-constexpr auto ELogOr = &ConstParser::EBinopImpl<ELogAnd, TokenType::LogicalOr>;
-
-pExpr ConstParser::EBinop() {
-  return (this->*ELogOr)();
-}
-
-pExpr ConstParser::ETernary() {
-  auto left = EBinop();
-  if (in_stream.IsAfter(0, TokenType::Question)) {
-    in_stream.Skip();
-    auto _true = EAssignment();
-    in_stream.Eat(TokenType::Colon);
-    auto _false = ETernary();
-
-    // insert casts if true or false do not have the same type
-    const auto& true_t = _true->type;
-    const auto& false_t = _false->type;
-    auto common_t = true_t.CommonType(false_t);
-
-    if (!true_t.TypeEquals(common_t)) {
-      _true = std::make_unique<CastNode>(type::AnyType(common_t), std::move(_true));
-    }
-    if (!false_t.TypeEquals(common_t)) {
-      _false = std::make_unique<CastNode>(std::move(common_t), std::move(_false));
-    }
-    auto expr = std::make_unique<TernaryNode>(std::move(left), std::move(_true), std::move(_false));
-    return ExprOrReduced(std::move(expr));
-  }
-  return ExprOrReduced(std::move(left));
-}
-
-pExpr ConstParser::EAssignment() {
-  // Assignment expressions are not allowed in BaseParser expressions
-  return ETernary();
 }
 
 pExpr Parser::EAssignment() {
@@ -381,32 +215,6 @@ pExpr Parser::EAssignment() {
     }
   }
   return ExprOrReduced(std::move(left));
-}
-
-pExpr Parser::EExpression() {
-  // todo: commas
-  auto expr = EAssignment();
-  return ExprOrReduced(std::move(expr));
-}
-
-i64 ConstParser::EConstexpr() {
-  auto expr = ETernary();
-  return expr->ConstIntVal();
-}
-
-ast::pExpr Parser::EExpressionList() {
-  cotyl::vector<pExpr> exprs{};
-  do {
-    exprs.emplace_back(ExprOrReduced(EExpression()));
-  } while (in_stream.EatIf(TokenType::Comma));
-  
-  // expressions size is at least 1, since we use a do/while loop
-  if (exprs.size() == 1) {
-    return std::move(exprs[0]);
-  }
-  else {
-    return std::make_unique<ExpressionListNode>(std::move(exprs));
-  }
 }
 
 Initializer Parser::EInitializer() {
