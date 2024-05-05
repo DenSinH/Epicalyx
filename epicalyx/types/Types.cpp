@@ -625,13 +625,35 @@ u64 UnionType::Sizeof() const {
   throw cotyl::UnimplementedException();
 }
 
-AnyType StructUnionType::MemberAccess(const cotyl::CString& member) const {
-  for (auto& field : fields) {
+const AnyType* StructUnionType::HasMember(const cotyl::CString& member) const {
+  for (const auto& field : fields) {
     if (field.name == member) {
-      return *field.type;
+      return field.type.get();
     }
   }
-  throw TypeError("No field named " + member.str() + " in " + ToString());
+  for (const auto& field : fields) {
+    if (field.name.empty()) {
+      auto nested = field.type->visit<const AnyType*>(
+        [&](const StructType& strct) {
+          return strct.HasMember(member);
+        },
+        [&](const UnionType& strct) {
+          return strct.HasMember(member);
+        },
+        [](const auto&) -> const AnyType* { return nullptr; }
+      );
+      if (nested) return nested;
+    }
+  }
+  return nullptr;
+}
+
+AnyType StructUnionType::MemberAccess(const cotyl::CString& member) const {
+  auto mem = HasMember(member);
+  if (!mem) {
+    throw cotyl::FormatExceptStr<TypeError>("No field named %s in %s", member.c_str(), *this);
+  }
+  return *mem;
 }
 
 AnyType StructUnionType::CommonTypeImpl(const AnyType& other) const {

@@ -192,6 +192,7 @@ struct StructUnionType : BaseType {
 
   cotyl::CString name;
   cotyl::vector<StructField> fields{};  // empty if struct was only declared but never defined
+  const AnyType* HasMember(const cotyl::CString& member) const;
   AnyType MemberAccess(const cotyl::CString& member) const final;
 
   void ForgetConstInfo() const final; 
