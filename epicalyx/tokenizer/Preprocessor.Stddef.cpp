@@ -21,9 +21,7 @@ const cotyl::unordered_map<cotyl::CString, cotyl::CString (Preprocessor::*)() co
 
 cotyl::CString Preprocessor::FILE() const {
   auto full_path = std::filesystem::canonical(file_stack.back().name).string();
-  cotyl::StringStream escaped{};
-  cotyl::QuotedEscapeTo(escaped, full_path.c_str());
-  return escaped.cfinalize();
+  return cotyl::QuotedEscape(full_path.c_str()).cfinalize();
 }
 
 cotyl::CString Preprocessor::LINE() const {

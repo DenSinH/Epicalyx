@@ -32,9 +32,7 @@ STRINGIFY_METHOD(NumericalConstantToken<T>) {
 }
 
 STRINGIFY_METHOD(StringConstantToken) {
-  cotyl::StringStream escaped{};
-  cotyl::QuotedEscapeTo(escaped, value.value.c_str());
-  return escaped.finalize();
+  return cotyl::QuotedEscape(value.value.c_str()).finalize();
 }
 
 STRINGIFY_METHOD(AnyToken) {

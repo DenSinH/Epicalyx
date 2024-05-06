@@ -44,9 +44,7 @@ StringConstantNode::StringConstantNode(cotyl::CString&& value) :
 }
 
 std::string StringConstantNode::ToString() const { 
-  cotyl::StringStream escaped{};
-  cotyl::QuotedEscapeTo(escaped, value.c_str());
-  return escaped.finalize(); 
+  return cotyl::QuotedEscape(value.c_str()).finalize();
 }
 
 

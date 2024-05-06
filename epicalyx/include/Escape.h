@@ -10,7 +10,8 @@
 
 namespace epi::cotyl {
 
-static void QuotedEscapeTo(cotyl::StringStream& out, const char* in) {
+static cotyl::StringStream QuotedEscape(const char* in) {
+  cotyl::StringStream out{};
   out << '\"';
   for (auto c = in; *c; c++) {
     switch (*c) {
@@ -29,6 +30,7 @@ static void QuotedEscapeTo(cotyl::StringStream& out, const char* in) {
     }
   }
   out << '\"';
+  return std::move(out);
 }
 
 static constexpr std::array<i32, 0x100> ASCIIHexToInt = {
