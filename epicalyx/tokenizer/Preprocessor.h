@@ -56,11 +56,14 @@ private:
 
   struct Definition {
     // a segment is either a string or an argument index
-    struct Argument { i32 arg_index; };
+    struct Argument { 
+      i32 arg_index;
+      bool expand = true;
+      bool concat_next = false; 
+    };
     struct Hash { i32 arg_index; };
-    struct HashHash { };
 
-    using segment_t = swl::variant<cotyl::CString, Argument, Hash, HashHash>;
+    using segment_t = swl::variant<cotyl::CString, Argument, Hash>;
     using value_t = cotyl::vector<segment_t>;
     struct Arguments {
       size_t count;

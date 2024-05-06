@@ -16,10 +16,17 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
   cotyl::StringStream current_val{};
   char c;
 
+  // expand an encountered argument
+  // set to false when we encounter a ## operator
+  bool concat_next = false;
+
   auto end_segment = [&] {
     if (!current_val.empty()) {
       result.emplace_back(current_val.cfinalize());
       current_val.clear();
+
+      // reset concatenation state
+      concat_next = false;
     }
   };
 
@@ -60,8 +67,17 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
       valstream.Expect(c);
 
       if (valstream.EatIf('#')) {
-        // ## operator is handled when an argument is encountered
-        result.emplace_back(HashHash{});
+        if (result.empty()) {
+          throw PreprocessorError("Unexpected '##' operator at the start of macro definition");
+        }
+
+        // don't expand previous argument
+        if (swl::holds_alternative<Argument>(result.back())) {
+          swl::get<Argument>(result.back()).concat_next = true;
+        }
+
+        // concat next section
+        concat_next = true;
       }
       else {
         // get consequent macro argument value
@@ -71,7 +87,11 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
         if (!arg.has_value()) {
           throw PreprocessorError("Expected macro argument after # operator");
         }
+        // argument will not be expanded
         result.emplace_back(Hash{arg.value()});
+
+        // reset concatenation state
+        concat_next = false;
       }
     }
     else if (detail::is_valid_ident_start(c)) {
@@ -79,7 +99,12 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
       auto arg = get_argument(ident);
       if (arg.has_value()) {
         end_segment();
-        result.emplace_back(Argument{arg.value()});
+
+        // expand argument only if it is not concatenated
+        result.emplace_back(Argument{.arg_index = arg.value(), .expand = !concat_next});
+
+        // reset concatenation state
+        concat_next = false;
       }
       else {
         // normal identifier, just append it
@@ -100,13 +125,8 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
 
   // end potential last segment
   end_segment();
-  if (!result.empty()) {
-    if (swl::holds_alternative<Definition::HashHash>(result[0])) {
-      throw PreprocessorError("Unexpected '##' operator at the start of macro definition");
-    }
-    if (swl::holds_alternative<Definition::HashHash>(result.back())) {
-      throw PreprocessorError("Unexpected '##' operator at the end of macro definition");
-    }
+  if (concat_next) {
+    throw PreprocessorError("Unexpected '##' operator at the end of macro definition");
   }
   return result;
 }
@@ -205,12 +225,7 @@ cotyl::CString Preprocessor::ExpandMacro(const Definition& def, cotyl::vector<co
   };
 
   for (int i = 0; i < def.value.size(); i++) {
-    bool concat_next = 
-        (i + 1 < def.value.size()) 
-        && swl::holds_alternative<Definition::HashHash>(def.value[i + 1]);
-    bool concat_prev = 
-        (i > 0) 
-        && swl::holds_alternative<Definition::HashHash>(def.value[i - 1]);
+    bool concat_next = false;
 
     swl::visit(
       swl::overloaded{
@@ -218,7 +233,9 @@ cotyl::CString Preprocessor::ExpandMacro(const Definition& def, cotyl::vector<co
           value << seg;
         },
         [&](const Definition::Argument& seg) {
-          if (concat_next || concat_prev) {
+          if (seg.concat_next || !seg.expand) {
+            // don't expand when concatenated
+            concat_next = seg.concat_next;
             value << arg_value(seg.arg_index);
           }
           else {
@@ -239,15 +256,6 @@ cotyl::CString Preprocessor::ExpandMacro(const Definition& def, cotyl::vector<co
           // store in the holder since it needs to be kept alive until
           // we finish parsing this string
           value << quoted(cotyl::Escape(escaped.cfinalize().c_str()));
-        },
-        [&](const Definition::HashHash& hash) {
-          // concatenate argument values
-          // from the parsing, they do not start or end with
-          // whitespace, so we can just append them both
-          // we do this outside the visitor pattern
-          // we have also made sure this is not at the end
-          // of a macro value when we parsed the definition
-          concat_next = true;
         },
         // exhaustive variant access
         [](const auto& invalid) { static_assert(!sizeof(invalid)); }
