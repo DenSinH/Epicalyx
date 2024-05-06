@@ -96,8 +96,8 @@ void Preprocessor::Include() {
 }
 
 void Preprocessor::PreprocessorDirective() {
+  // newline state is updated in EatNextCharacter
   EatNextCharacter('#');
-  is_newline = false;
 
   SkipBlanks();
   if (is_newline) {

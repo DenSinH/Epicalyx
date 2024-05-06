@@ -82,10 +82,8 @@ char Preprocessor::GetNextCharacter() {
 }
 
 void Preprocessor::SkipNextCharacter() {
+  // newline state is updated in GetNextCharacter
   char c = GetNextCharacter();
-  if (!std::isspace(c)) {
-    is_newline = false;
-  }
 }
 
 void Preprocessor::EatNextCharacter(char c) {
@@ -175,9 +173,10 @@ void Preprocessor::SkipBlanks(bool skip_newlines) {
 }
 
 void Preprocessor::SkipLineComment() {
+  // newline status updated in EatNextCharacter
   EatNextCharacter('/');
   EatNextCharacter('/');
-  is_newline = false;
+  
   while (!InternalIsEOS() && !is_newline) {
     if (NextCharacter() =='\\' && CurrentStream().PredicateAfter(1, std::isspace)) {
       SkipEscapedNewline();
@@ -189,6 +188,7 @@ void Preprocessor::SkipLineComment() {
 }
 
 void Preprocessor::SkipMultilineComment() {
+  bool old_is_newline = is_newline;
   EatNextCharacter('/');
   EatNextCharacter('*');
   while (!CurrentStream().SequenceAfter(0, '*', '/')) {
@@ -198,8 +198,9 @@ void Preprocessor::SkipMultilineComment() {
   // skip */ characters
   EatNextCharacter('*');
   EatNextCharacter('/');
-  // always on newline after multiline comment
-  is_newline = true;
+
+  // multiline comment does not affect newline status
+  is_newline = old_is_newline;
 }
 
 cotyl::CString Preprocessor::FetchLine() {
@@ -306,8 +307,7 @@ cotyl::CString Preprocessor::GetNextProcessed() {
       }
       PreprocessorDirective();
 
-      // insert newline after preprocessing directive
-      is_newline = true;
+      // newline state is asserted after the preprocessing directive
       return cotyl::CString{"\n"};
     }
 
@@ -319,7 +319,7 @@ cotyl::CString Preprocessor::GetNextProcessed() {
 
     if (detail::is_valid_ident_start(c)) {
       is_newline = false;
-      // possible identifier, process entire identifier
+      // identifier, process entire identifier
       // we can always fetch identifiers from the current stream, as it does not cross any
       // state changing boundaries
       cotyl::CString identifier = detail::get_identifier(CurrentStream());
@@ -406,9 +406,10 @@ cotyl::CString Preprocessor::GetNextProcessed() {
     }
     else {
       // other character
-      is_newline = false;
 
       if (detail::is_valid_ident_char(c)) {
+        // newline state is not updated anywhere else
+        is_newline = false;
         cotyl::StringStream ident_char_string{};
         // to prevent stuff like 1macro to parse as 1<macro definition>
         // we need to eat all valid identifier characters until we find one that is not

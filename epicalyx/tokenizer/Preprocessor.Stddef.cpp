@@ -57,7 +57,7 @@ cotyl::CString Preprocessor::TIME() const {
 cotyl::CString Preprocessor::STDC() const {
   // In normal operation, this macro expands to the constant 1,
   // to signify that this compiler conforms to ISO Standard C. 
-  return cotyl::CString{"1"};
+  return cotyl::CString{'1'};
 }
 
 cotyl::CString Preprocessor::STDC_HOSTED() const {
@@ -66,7 +66,7 @@ cotyl::CString Preprocessor::STDC_HOSTED() const {
   // facilities of the standard C library available.
 
   // we don't, but we'll just say we do
-  return cotyl::CString{"1"};
+  return cotyl::CString{'1'};
 }
 
 cotyl::CString Preprocessor::STDC_VERSION() const {
