@@ -208,42 +208,9 @@ cotyl::CString Preprocessor::FetchLine() {
   cotyl::Assert(!state.expression.has_value(), "Unexpected preprocessor line fetch while parsing expression");
   cotyl::StringStream line{};
 
-  while (!InternalIsEOS()) {
-    char c = NextCharacter();
-    if (c == '\\') {
-      // possible escaped newline (no newline, do increment line number)
-      if (CurrentStream().PredicateAfter(1, std::isspace)) {
-        SkipEscapedNewline();
-
-        // add single whitespace character to line
-        line << ' ';
-      }
-      else {
-        CurrentStream().Skip();  // skip \ character
-        line << '\\';
-      }
-    }
-    else if (c == '\n') {
-      // end of line
-      EatNextCharacter('\n');
-
-      // it is okay if allow_newline is false here because we do not eat the newline
-      return line.cfinalize();
-    }
-    else if (CurrentStream().SequenceAfter(0, '/', '/')) {
-      // CurrentStream() usage okay, since we EatNextCharacter within the handler function
-      // state should have been handled properly anyway
-      SkipLineComment();
-      return line.cfinalize();
-    }
-    else if (CurrentStream().SequenceAfter(0, '/', '*')) {
-      // CurrentStream() usage okay, since we EatNextCharacter within the handler function
-      // state should have been handled properly anyway
-      SkipMultilineComment();
-    }
-    else {
-      line << GetNextCharacter();
-    }
+  is_newline = false;
+  while (!InternalIsEOS() && !is_newline) {
+    line << GetNextChunk(false);
   }
   return line.cfinalize();
 }
@@ -288,7 +255,7 @@ void Preprocessor::EatNewline() {
   }
 }
 
-cotyl::CString Preprocessor::GetNextProcessed() {
+cotyl::CString Preprocessor::GetNextChunk(bool do_preprocessing) {
   // no need to check end of stream, since it is expected a new character even exists
   while (true) {
     char c = NextCharacter();
@@ -301,6 +268,9 @@ cotyl::CString Preprocessor::GetNextProcessed() {
 
     // potential new if group
     if (c == '#') {
+      if (!do_preprocessing) {
+        return cotyl::CString{GetNextCharacter()};
+      }
       // preprocessing directives can only occur at the start of a line
       if (!is_newline) {
         throw cotyl::FormatExcept<PreprocessorError>("Stray '#' in program");
@@ -308,10 +278,10 @@ cotyl::CString Preprocessor::GetNextProcessed() {
       PreprocessorDirective();
 
       // newline state is asserted after the preprocessing directive
-      return cotyl::CString{"\n"};
+      return cotyl::CString{'\n'};
     }
 
-    if (!Enabled()) {
+    if (do_preprocessing && !Enabled()) {
       // skip non-macros and non-whitespace if current group is not enabled
       SkipNextCharacter();
       continue;
@@ -326,7 +296,7 @@ cotyl::CString Preprocessor::GetNextProcessed() {
       
       // we may block macro expansion if we are checking a 
       // #if defined statement, or fetching macro arguments
-      if (block_macro_expansion) {
+      if (!do_preprocessing || block_macro_expansion) {
         return std::move(identifier);
       }
 
@@ -356,7 +326,7 @@ cotyl::CString Preprocessor::GetNextProcessed() {
           }
         }
         PushMacro(std::move(identifier), def);
-        return cotyl::CString{""};
+        return GetNextChunk(do_preprocessing);
       }
       else {
         return std::move(identifier);
@@ -370,7 +340,7 @@ cotyl::CString Preprocessor::GetNextProcessed() {
 
       // expect newline after comment
       cotyl::Assert(is_newline);
-      return cotyl::CString{"\n"};
+      return cotyl::CString{'\n'};
     }
     else if (c == '/' && CurrentStream().SequenceAfter(0, '/', '*')) {
       /* multi-line comment */
@@ -436,7 +406,7 @@ char Preprocessor::GetNew() {
       return c;
     }
 
-    for (const auto& c : GetNextProcessed()) {
+    for (const auto& c : GetNextChunk()) {
       state.pre_processor_queue.push(c);
     }
   }

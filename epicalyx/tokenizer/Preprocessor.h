@@ -195,7 +195,8 @@ private:
   char GetNextCharacter();
   void SkipNextCharacter();
   void EatNextCharacter(char c);
-  cotyl::CString GetNextProcessed();
+
+  cotyl::CString GetNextChunk(bool do_preprocessing = true);
 
   static void ReplaceNewlines(cotyl::CString& value);
   

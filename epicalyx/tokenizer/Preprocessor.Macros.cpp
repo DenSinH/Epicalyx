@@ -150,11 +150,9 @@ std::pair<cotyl::CString, char> Preprocessor::GetMacroArgumentValue(bool variadi
   SkipBlanks();
 
   unsigned paren_count = 0;
-  block_macro_expansion = true;
   while (true) {
     // a comma or a brace is a part of a string if and only if the pre_processor_queue is not empty
-    auto next = GetNextProcessed();
-    if (next.empty()) continue;
+    auto next = GetNextChunk(false);
     if (next.size() == 1) {
       // single characters may be parseable
       char c = next[0];
@@ -191,7 +189,6 @@ std::pair<cotyl::CString, char> Preprocessor::GetMacroArgumentValue(bool variadi
     }
   }
 
-  block_macro_expansion = false;
   return {cotyl::CString{value.trim_view()}, separator};
 }
 
@@ -204,8 +201,7 @@ void Preprocessor::ExpandArgumentTo(cotyl::StringStream& dest, const cotyl::CStr
   state.expression = {arg.view()};
 
   while (!InternalIsEOS()) {
-    auto next = GetNextProcessed();
-    dest << std::move(next);
+    dest << GetNextChunk();
     ClearEmptyStreams();
   }
 
