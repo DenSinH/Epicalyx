@@ -21,6 +21,21 @@ void Preprocessor::PrintLoc(std::ostream& out) const {
   file_stack.back().stream.PrintLoc(out);
 }
 
+Preprocessor::State Preprocessor::StartExpression(const cotyl::CString& expr) {
+  auto old_state = std::move(state);
+  state = {};
+  state.expression = {expr.view()};
+  return std::move(old_state);
+}
+
+void Preprocessor::EndExpression(State&& old_state) {
+  // we expect the string (expression) to be fully parsed
+  cotyl::Assert((ClearEmptyStreams(), state.macro_stack.empty()), "Found unexpanded macros after expression");
+  cotyl::Assert(state.pre_processor_queue.empty());
+  cotyl::Assert(state.expression.value().EOS());
+  state = std::move(old_state);
+}
+
 cotyl::Stream<char>& Preprocessor::CurrentStream() const {
   // macros go before the current expression, since expressions only
   // occur in #if statements, and the macro_stack is empty then
@@ -323,7 +338,7 @@ cotyl::CString Preprocessor::GetNextChunk(bool do_preprocessing) {
           }
         }
         PushMacro(std::move(identifier), def);
-        return GetNextChunk(do_preprocessing);
+        continue;
       }
       else {
         return std::move(identifier);
