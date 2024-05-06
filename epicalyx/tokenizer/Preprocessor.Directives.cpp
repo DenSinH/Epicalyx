@@ -9,6 +9,21 @@
 
 namespace epi {
 
+Preprocessor::State Preprocessor::StartExpression(const cotyl::CString& expr) {
+  auto old_state = std::move(state);
+  state = {};
+  state.expression = {expr.view()};
+  return std::move(old_state);
+}
+
+void Preprocessor::EndExpression(State&& old_state) {
+  // we expect the string (expression) to be fully parsed
+  cotyl::Assert((ClearEmptyStreams(), state.macro_stack.empty()), "Found unexpanded macros after expression");
+  cotyl::Assert(state.pre_processor_queue.empty());
+  cotyl::Assert(state.expression.value().EOS());
+  state = std::move(old_state);
+}
+
 ast::pExpr Preprocessor::ResolveIdentifier(cotyl::CString&& name) const {
   // this MUST be an identifier that is not a defined macro
   // for example, the "defined" preprocessing directive
@@ -28,21 +43,6 @@ ast::pExpr Preprocessor::ResolveIdentifier(cotyl::CString&& name) const {
   }
   // unresolved identifier, i.e. unexpanded macro evaluates to false
   return std::make_unique<ast::NumericalConstantNode<i32>>(0);
-}
-
-Preprocessor::State Preprocessor::StartExpression(const cotyl::CString& expr) {
-  auto old_state = std::move(state);
-  state = {};
-  state.expression = {expr.view()};
-  return std::move(old_state);
-}
-
-void Preprocessor::EndExpression(State&& old_state) {
-  // we expect the string (expression) to be fully parsed
-  cotyl::Assert((ClearEmptyStreams(), state.macro_stack.empty()), "Found unexpanded macros after expression");
-  cotyl::Assert(state.pre_processor_queue.empty());
-  cotyl::Assert(state.expression.value().EOS());
-  state = std::move(old_state);
 }
 
 i64 Preprocessor::EatConstexpr() {

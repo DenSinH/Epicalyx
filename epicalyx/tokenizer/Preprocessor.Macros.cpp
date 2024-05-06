@@ -136,7 +136,6 @@ void Preprocessor::MacroStream::PrintLoc(std::ostream& out) const {
 }
 
 std::pair<cotyl::CString, char> Preprocessor::GetMacroArgumentValue(bool variadic) {
-  cotyl::Assert(!block_macro_expansion, "Invalid macro state in preprocessor");  
   cotyl::StringStream value{};
   char separator = '\0';
   SkipBlanks();
@@ -185,9 +184,7 @@ std::pair<cotyl::CString, char> Preprocessor::GetMacroArgumentValue(bool variadi
 }
 
 void Preprocessor::ExpandArgumentTo(cotyl::StringStream& dest, const cotyl::CString& arg) {
-  cotyl::Assert(!block_macro_expansion);
-  
-  // we may be parsing an expression or expanding a macro
+ // we may be parsing an expression or expanding a macro
   auto old_state = StartExpression(arg);
 
   while (!InternalIsEOS()) {

@@ -3,9 +3,6 @@
 #include "Stream.h"
 #include "Token.h"
 
-#include <memory>
-#include <queue>
-
 namespace epi {
 
 struct AnyToken;
@@ -23,7 +20,9 @@ public:
       in_stream(in_stream) {
 
   }
-  void PrintLoc(std::ostream& out) const final { in_stream.PrintLoc(out); };
+  void PrintLoc(std::ostream& out) const final { 
+    in_stream.PrintLoc(out); 
+  };
 
 protected:
   AnyToken GetNew() override;

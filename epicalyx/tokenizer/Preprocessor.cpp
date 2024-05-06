@@ -222,15 +222,15 @@ bool Preprocessor::IsEOS() {
 }
 
 void Preprocessor::ClearEmptyStreams() const {
-  while (!state.macro_stack.empty() && state.macro_stack.back().EOS()) {
+  while (!state.macro_stack.empty() && state.macro_stack.back().EOS()) [[unlikely]] {
     state.macro_stack.pop_back();
   }
-  while (!file_stack.empty() && file_stack.back().stream.EOS()) {
+  while (!file_stack.empty() && file_stack.back().stream.EOS()) [[unlikely]] {
     file_stack.pop_back();
   }
 }
 
-bool Preprocessor::InternalIsEOS() {
+bool Preprocessor::InternalIsEOS() const {
   ClearEmptyStreams();
   if (!state.macro_stack.empty()) {
     // still string stack characters to be parsed
