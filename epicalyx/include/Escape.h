@@ -10,25 +10,25 @@
 
 namespace epi::cotyl {
 
-static cotyl::CString Escape(const char* in) {
-  cotyl::StringStream result{};
+static void QuotedEscapeTo(cotyl::StringStream& out, const char* in) {
+  out << '\"';
   for (auto c = in; *c; c++) {
     switch (*c) {
-      case '\n': result << "\\n"; break;
-      case '\r': result << "\\r"; break;
-      case '\t': result << "\\t"; break;
-      case '\'': result << "\\'"; break;
-      case '\"': result << "\\\""; break;
-      case '\\': result << "\\\\"; break;
-      case '\a': result << "\\a"; break;
-      case '\b': result << "\\b"; break;
-      case '\f': result << "\\f"; break;
-      case '\?': result << "\\?"; break;
-      case '\v': result << "\\v"; break;
-      default: result << *c; break;
+      case '\n': out << "\\n"; break;
+      case '\r': out << "\\r"; break;
+      case '\t': out << "\\t"; break;
+      case '\'': out << "\\'"; break;
+      case '\"': out << "\\\""; break;
+      case '\\': out << "\\\\"; break;
+      case '\a': out << "\\a"; break;
+      case '\b': out << "\\b"; break;
+      case '\f': out << "\\f"; break;
+      case '\?': out << "\\?"; break;
+      case '\v': out << "\\v"; break;
+      default: out << *c; break;
     }
   }
-  return result.cfinalize();
+  out << '\"';
 }
 
 static constexpr std::array<i32, 0x100> ASCIIHexToInt = {

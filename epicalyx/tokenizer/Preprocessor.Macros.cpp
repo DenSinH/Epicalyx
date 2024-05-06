@@ -1,6 +1,5 @@
 #include "Preprocessor.h"
 #include "Identifier.h"
-#include "Escape.h"
 #include "CustomAssert.h"
 
 
@@ -131,13 +130,6 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
   return result;
 }
 
-template<typename T>
-static cotyl::CString quoted(T&& string) {
-  auto stream = cotyl::StringStream{};
-  stream << '\"' << string << '\"';
-  return stream.cfinalize();
-}
-
 void Preprocessor::MacroStream::PrintLoc(std::ostream& out) const {
   out << "In expansion of macro " << name.c_str() << std::endl;
   this->SString::PrintLoc(out);
@@ -240,18 +232,15 @@ cotyl::CString Preprocessor::ExpandMacro(const Definition& def, cotyl::vector<co
         },
         [&](const Definition::Hash& hash) {
           // stringify UNEXPANDED argument value
-          cotyl::StringStream escaped{};
+          value << '\"';
           auto argvalue = SString{arg_value(hash.arg_index).view()};
           while (!argvalue.EOS()) {
             char c = argvalue.Get();
-            if (c == '\\') cotyl::Unescape(escaped, argvalue);
-            else escaped << c;
+            if (c == '\\') value << c << argvalue.Get();
+            else if (c == '\"') value << '\\' << c;
+            else value << c;
           }
-
-          // re-escape argument value and turn into string
-          // store in the holder since it needs to be kept alive until
-          // we finish parsing this string
-          value << quoted(cotyl::Escape(escaped.cfinalize().c_str()));
+          value << '\"';
         },
         // exhaustive variant access
         [](const auto& invalid) { static_assert(!sizeof(invalid)); }

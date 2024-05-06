@@ -19,17 +19,11 @@ const cotyl::unordered_map<cotyl::CString, cotyl::CString (Preprocessor::*)() co
   {cotyl::CString{"__STDC_VERSION__"}, &Preprocessor::STDC_VERSION},
 };
 
-template<typename T>
-static cotyl::CString quoted(T&& string) {
-  auto stream = cotyl::StringStream{};
-  stream << '\"' << string << '\"';
-  return stream.cfinalize();
-}
-
 cotyl::CString Preprocessor::FILE() const {
   auto full_path = std::filesystem::canonical(file_stack.back().name).string();
-  auto escaped = cotyl::Escape(full_path.c_str());
-  return quoted(std::move(escaped));
+  cotyl::StringStream escaped{};
+  cotyl::QuotedEscapeTo(escaped, full_path.c_str());
+  return escaped.cfinalize();
 }
 
 cotyl::CString Preprocessor::LINE() const {
@@ -40,17 +34,19 @@ cotyl::CString Preprocessor::LINE() const {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 cotyl::CString Preprocessor::DATE() const {
-  auto result = cotyl::CString{"??? ?? ????"};
+  auto result = cotyl::CString{"\"??? ?? ????\""};
   auto datetime = std::time({});
-  std::strftime(result.c_str(), result.size(), "%b %d %Y", std::localtime(&datetime));
-  return quoted(std::move(result));
+  // account for quotes
+  std::strftime(result.c_str() + 1, result.size() - 2, "%b %d %Y", std::localtime(&datetime));
+  return std::move(result);
 }
 
 cotyl::CString Preprocessor::TIME() const {
-  auto result = cotyl::CString{"??:??:??"};
+  auto result = cotyl::CString{"\"??:??:??\""};
   auto datetime = std::time({});
-  std::strftime(result.c_str(), result.size(), "%H:%M:%S", std::localtime(&datetime));
-  return quoted(std::move(result));
+  // account for quotes
+  std::strftime(result.c_str() + 1, result.size() - 2, "%H:%M:%S", std::localtime(&datetime));
+  return std::move(result);
 }
 #pragma GCC diagnostic pop
 
