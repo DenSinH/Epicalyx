@@ -55,7 +55,6 @@ char Preprocessor::NextCharacter() const {
 
 char Preprocessor::GetNextCharacter() {
   char c;
-  ClearEmptyStreams();
   if (state.macro_stack.empty() && !state.expression.has_value()) {
     // parsing from file stack
     if (CurrentStream().EOS()) {
@@ -189,15 +188,13 @@ void Preprocessor::SkipLineComment() {
 
 void Preprocessor::SkipMultilineComment() {
   bool old_is_newline = is_newline;
-  EatNextCharacter('/');
-  EatNextCharacter('*');
+  CurrentStream().EatSequence('/', '*');
   while (!CurrentStream().SequenceAfter(0, '*', '/')) {
-    // we DO check for newline state updates here
+    // we do it this way to track the __LINE__ macro properly
     SkipNextCharacter();
   }
   // skip */ characters
-  EatNextCharacter('*');
-  EatNextCharacter('/');
+  CurrentStream().EatSequence('*', '/');
 
   // multiline comment does not affect newline status
   is_newline = old_is_newline;
