@@ -204,6 +204,7 @@ private:
   cotyl::CString ExpandMacro(const Definition& definition, cotyl::vector<cotyl::CString>&& args, cotyl::CString&& va_args);
   
   void EatNewline();
+  State StartExpression(const cotyl::CString& expr);
   void EndExpression(State&& old_state);
   i64 EatConstexpr();
   void Include();

@@ -188,9 +188,7 @@ void Preprocessor::ExpandArgumentTo(cotyl::StringStream& dest, const cotyl::CStr
   cotyl::Assert(!block_macro_expansion);
   
   // we may be parsing an expression or expanding a macro
-  auto old_state = std::move(state);
-  state = {};
-  state.expression = {arg.view()};
+  auto old_state = StartExpression(arg);
 
   while (!InternalIsEOS()) {
     dest << GetNextChunk();
@@ -274,8 +272,8 @@ void Preprocessor::PushMacro(cotyl::CString&& name, const Definition& definition
     SkipBlanks();
     char sep = '\0';
     for (int i = 0; i < arguments.count; i++) {
-      auto [arg_val, _sep] = GetMacroArgumentValue(false);
-      sep = _sep;
+      cotyl::CString arg_val;
+      std::tie(arg_val, sep) = GetMacroArgumentValue(false);
       arg_values.emplace_back(std::move(arg_val));
 
       if ((i != (arguments.count - 1))) {
@@ -292,9 +290,7 @@ void Preprocessor::PushMacro(cotyl::CString&& name, const Definition& definition
         // no , if variadic arguments are first arguments
         SkipBlanks();
       }
-      auto [_va_args, _sep] = GetMacroArgumentValue(true);
-      va_args = std::move(_va_args);
-      sep = _sep;
+      std::tie(va_args, sep) = GetMacroArgumentValue(true);
     }
     
     if (sep == '\0') {

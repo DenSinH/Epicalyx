@@ -30,6 +30,13 @@ ast::pExpr Preprocessor::ResolveIdentifier(cotyl::CString&& name) const {
   return std::make_unique<ast::NumericalConstantNode<i32>>(0);
 }
 
+Preprocessor::State Preprocessor::StartExpression(const cotyl::CString& expr) {
+  auto old_state = std::move(state);
+  state = {};
+  state.expression = {expr.view()};
+  return std::move(old_state);
+}
+
 void Preprocessor::EndExpression(State&& old_state) {
   // we expect the string (expression) to be fully parsed
   cotyl::Assert((ClearEmptyStreams(), state.macro_stack.empty()), "Found unexpanded macros after expression");
@@ -41,9 +48,7 @@ void Preprocessor::EndExpression(State&& old_state) {
 i64 Preprocessor::EatConstexpr() {
   auto line = FetchLine();
 
-  State old_state = std::move(state);
-  state = {};
-  state.expression = {line.view()};
+  State old_state = StartExpression(line);
   auto result = EConstexpr();
   EndExpression(std::move(old_state));
 
