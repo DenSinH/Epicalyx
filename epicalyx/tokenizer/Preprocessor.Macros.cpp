@@ -61,42 +61,25 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
 
       if (valstream.EatIf('#')) {
         // ## operator is handled when an argument is encountered
-        throw PreprocessorError("Unexpected '##' operator");
+        result.emplace_back(HashHash{});
       }
-      
-      // get consequent macro argument value
-      valstream.SkipWhile(std::isspace);
-      auto ident = detail::get_identifier(valstream);
-      auto arg = get_argument(ident);
-      if (!arg.has_value()) {
-        throw PreprocessorError("Expected macro argument after # operator");
+      else {
+        // get consequent macro argument value
+        valstream.SkipWhile(std::isspace);
+        auto ident = detail::get_identifier(valstream);
+        auto arg = get_argument(ident);
+        if (!arg.has_value()) {
+          throw PreprocessorError("Expected macro argument after # operator");
+        }
+        result.emplace_back(Hash{arg.value()});
       }
-      result.emplace_back(Hash{arg.value()});
     }
     else if (detail::is_valid_ident_start(c)) {
       auto ident = detail::get_identifier(valstream);
       auto arg = get_argument(ident);
       if (arg.has_value()) {
         end_segment();
-        
-        // check for ## operator
-        valstream.SkipWhile(std::isspace);
-        if (valstream.IsAfter(0, '#', '#')) {
-          valstream.EatSequence('#', '#');
-          valstream.SkipWhile(std::isspace);
-          auto ident = detail::get_identifier(valstream);
-          auto rarg = get_argument(ident);
-
-          if (!rarg.value()) {
-            throw PreprocessorError("Expected macro argument name after '##' operator");
-          }
-
-          result.emplace_back(HashHash{arg.value(), rarg.value()});
-        }
-        else {
-          // just an argument
-          result.emplace_back(Argument{arg.value()});
-        }
+        result.emplace_back(Argument{arg.value()});
       }
       else {
         // normal identifier, just append it
@@ -117,6 +100,14 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
 
   // end potential last segment
   end_segment();
+  if (!result.empty()) {
+    if (swl::holds_alternative<Definition::HashHash>(result[0])) {
+      throw PreprocessorError("Unexpected '##' operator at the start of macro definition");
+    }
+    if (swl::holds_alternative<Definition::HashHash>(result.back())) {
+      throw PreprocessorError("Unexpected '##' operator at the end of macro definition");
+    }
+  }
   return result;
 }
 
@@ -213,14 +204,26 @@ cotyl::CString Preprocessor::ExpandMacro(const Definition& def, cotyl::vector<co
     return args[arg_index];
   };
 
-  for (const auto& seg : def.value) {
+  for (int i = 0; i < def.value.size(); i++) {
+    bool concat_next = 
+        (i + 1 < def.value.size()) 
+        && swl::holds_alternative<Definition::HashHash>(def.value[i + 1]);
+    bool concat_prev = 
+        (i > 0) 
+        && swl::holds_alternative<Definition::HashHash>(def.value[i - 1]);
+
     swl::visit(
       swl::overloaded{
         [&](const cotyl::CString& seg) {
           value << seg;
         },
         [&](const Definition::Argument& seg) {
-          ExpandArgumentTo(value, arg_value(seg.arg_index));
+          if (concat_next || concat_prev) {
+            value << arg_value(seg.arg_index);
+          }
+          else {
+            ExpandArgumentTo(value, arg_value(seg.arg_index));
+          }
         },
         [&](const Definition::Hash& hash) {
           // stringify UNEXPANDED argument value
@@ -241,16 +244,21 @@ cotyl::CString Preprocessor::ExpandMacro(const Definition& def, cotyl::vector<co
           // concatenate argument values
           // from the parsing, they do not start or end with
           // whitespace, so we can just append them both
-          value << arg_value(hash.larg) << arg_value(hash.rarg);
+          // we do this outside the visitor pattern
+          // we have also made sure this is not at the end
+          // of a macro value when we parsed the definition
+          concat_next = true;
         },
         // exhaustive variant access
         [](const auto& invalid) { static_assert(!sizeof(invalid)); }
       },
-      seg
+      def.value[i]
     );
 
-    // insert whitespace after arguments
-    value << ' ';
+    if (!concat_next && i != def.value.size() - 1) {
+      // insert whitespace after arguments
+      value << ' ';
+    }
   }
 
   return value.cfinalize();

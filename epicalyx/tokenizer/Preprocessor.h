@@ -58,7 +58,7 @@ private:
     // a segment is either a string or an argument index
     struct Argument { i32 arg_index; };
     struct Hash { i32 arg_index; };
-    struct HashHash { i32 larg, rarg; };
+    struct HashHash { };
 
     using segment_t = swl::variant<cotyl::CString, Argument, Hash, HashHash>;
     using value_t = cotyl::vector<segment_t>;
