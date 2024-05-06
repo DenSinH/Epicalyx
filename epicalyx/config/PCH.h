@@ -15,7 +15,6 @@
 #include <boost/unordered_set.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/container/vector.hpp>
-
 #include <boost/container_hash/hash.hpp>
 
 #else
@@ -31,4 +30,6 @@
 #include <type_traits>
 #include <utility>
 #include <stdexcept>
+
+#include "Stream.h"
 #include "Vector.h"

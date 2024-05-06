@@ -28,7 +28,7 @@ protected:
   AnyToken GetNew() override;
   bool IsEOS() override;
 
-  virtual void SkipBlanks();
+  void SkipBlanks();
 
   cotyl::Stream<char>& in_stream;
 
