@@ -30,26 +30,23 @@ ast::pExpr Preprocessor::ResolveIdentifier(cotyl::CString&& name) const {
   return std::make_unique<ast::NumericalConstantNode<i32>>(0);
 }
 
-void Preprocessor::StartExpression(SString&& stream) {
-  cotyl::Assert((ClearEmptyStreams(), macro_stack.empty()) && !expression.has_value(), "Must start expression with empty macro stack and expression");
-  cotyl::Assert(pre_processor_queue.empty(), "Must start preprocessor expression with empty pre_processor_queue");
-  
-  expression = std::move(stream);
-}
-
-void Preprocessor::EndExpression() {
+void Preprocessor::EndExpression(State&& old_state) {
   // we expect the string (expression) to be fully parsed
-  cotyl::Assert((ClearEmptyStreams(), macro_stack.empty()), "Found unexpanded macros after expression");
-  expression.reset();
+  cotyl::Assert((ClearEmptyStreams(), state.macro_stack.empty()), "Found unexpanded macros after expression");
+  cotyl::Assert(state.pre_processor_queue.empty());
+  cotyl::Assert(state.expression.value().EOS());
+  state = std::move(old_state);
 }
 
 i64 Preprocessor::EatConstexpr() {
   auto line = FetchLine();
   ReplaceNewlines(line);
 
-  StartExpression(line.view());
+  State old_state = std::move(state);
+  state = {};
+  state.expression = {line.view()};
   auto result = EConstexpr();
-  EndExpression();
+  EndExpression(std::move(old_state));
 
   // we fetched the whole line, so we are always at a new line after this
   is_newline = true;
@@ -77,7 +74,9 @@ void Preprocessor::Include() {
   auto line = FetchLine();
   ReplaceNewlines(line);
 
-  StartExpression(line.view());
+  State old_state = std::move(state);
+  state = {};
+  state.expression = {line.view()};
   cotyl::CString filename;
   // skip whitespace
   this_tokenizer.SkipBlanks();
@@ -89,7 +88,7 @@ void Preprocessor::Include() {
   // same as in EatConstexpr()
   // we expect the bottom string (expression) to be fully parsed
   this_tokenizer.SkipBlanks();
-  EndExpression();
+  EndExpression(std::move(old_state));
 
   // we fetched the whole line, we are at a new line at this point
   // the status might not reflect it though, as we parsed the filename expression
@@ -202,7 +201,7 @@ void Preprocessor::PreprocessorDirective() {
       // functional macro
       cotyl::vector<cotyl::CString> arguments = {};
       bool variadic = false;
-      SkipNextCharacterSimple();  // skip ( character
+      CurrentStream().Skip();  // skip ( character
 
       SkipBlanks(false);
       // we do end of stream cannot happen here,

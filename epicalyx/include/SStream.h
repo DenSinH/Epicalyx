@@ -41,6 +41,16 @@ struct StringStream {
     return CString{std::move(buffer)};
   }
 
+  std::string_view trim_view() {
+    if (buffer.empty()) return {nullptr, 0};
+    // go to first non-space character
+    char* data = buffer.data();
+    char* end = &buffer.back();
+    while (data < end && std::isspace(*data)) data++;
+    while (end > data && std::isspace(*end)) end--;
+    return {data, end - data + 1};
+  }
+
   bool empty() const {
     return buffer.empty();
   }

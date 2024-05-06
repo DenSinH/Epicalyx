@@ -1,22 +1,33 @@
 #pragma once
 
 #include "Stream.h"
-#include <string>
+#include "CString.h"
 
 namespace epi {
 
-struct SString final : public cotyl::Stream<char> {
+template<typename T>
+struct SString : public cotyl::Stream<char> {
+  static SString Empty;
 
-  SString(std::string_view&& string) : string(std::move(string)) { };
+  SString(T&& string) : string(std::move(string)) { };
 
-  void PrintLoc(std::ostream& out) const final;
+  void PrintLoc(std::ostream& out) const override {
+    size_t error_pos = position - BufSize();
+    const auto view = (std::string_view)string;
+    out << "..." << view.substr(std::max(0ull, error_pos - 20), 40) << "..." << std::endl;
+    for (auto i = 0; i < 3 + std::min(error_pos, 20ull) - 1; i++) {
+      // - 1 because we are already advanced past the error the moment we catch it
+      out << ' ';
+    }
+    out << '^' << std::endl;
+  }
 
 protected:
-  char GetNew() final { return (string)[position++]; }
-  bool IsEOS() final { return position == string.length(); }
+  char GetNew() final { return string[position++]; }
+  bool IsEOS() final { return position == string.size(); }
 
 private:
-  std::string_view string;
+  T string;
   int position = 0;
 };
 

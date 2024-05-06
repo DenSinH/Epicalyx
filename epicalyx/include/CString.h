@@ -39,6 +39,12 @@ struct CString {
     std::memcpy(data.get(), str.c_str(), size_);
   }
 
+  explicit CString(const std::string_view& str) : 
+      size_{(size_type)str.size()},
+      data(std::make_unique<char[]>(size_ + 1)) {
+    std::memcpy(data.get(), str.data(), size_);
+  }
+
   explicit CString(const CString& other) :
       size_{other.size_},
       data(std::make_unique<char[]>(size_ + 1)) {
@@ -78,8 +84,21 @@ struct CString {
   std::string_view view() const {
     return {data.get(), size_};
   }
+
+  operator std::string_view() const {
+    return view();
+  }
+
   std::string str() const {
     return std::string(view());
+  }
+
+  char& operator[](size_type pos) {
+    return data.get()[pos];
+  }
+  
+  const char& operator[](size_type pos) const {
+    return data.get()[pos];
   }
 
   bool operator==(const CString& other) const {

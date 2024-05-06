@@ -45,7 +45,6 @@ private:
   bool InternalIsEOS();
 
   struct Definition;
-  using MacroMap = cotyl::unordered_map<cotyl::CString, Definition>;
 
   struct FileStream {
     FileStream(const std::string& name) : stream{name}, name{name} { }
@@ -59,7 +58,7 @@ private:
     // a segment is either a string or an argument index
     struct Argument { i32 arg_index; };
     struct Hash { i32 arg_index; };
-    struct HashHash { };
+    struct HashHash { i32 larg, rarg; };
 
     using segment_t = swl::variant<cotyl::CString, Argument, Hash, HashHash>;
     using value_t = cotyl::vector<segment_t>;
@@ -72,7 +71,10 @@ private:
         arguments{Arguments{args.size(), variadic}},
         value{Parse(std::move(args), variadic, std::move(val))} { }
 
-    Definition(cotyl::CString&& value) : arguments{}, value{std::move(value)} { }
+    // parse value as non-variadic functional macro with no arguments
+    Definition(cotyl::CString&& value) : 
+        arguments{}, 
+        value{Parse({}, false, std::move(value))} { }
 
     static value_t Parse(cotyl::vector<cotyl::CString>&& args, bool variadic, cotyl::CString&& value);
 
@@ -80,43 +82,16 @@ private:
     std::optional<Arguments> arguments{};
   };
 
-  struct MacroStream final : public cotyl::Stream<char> {
-    MacroStream(cotyl::CString&& name, const Definition& def, cotyl::vector<cotyl::CString>&& arguments, cotyl::CString&& va_args) :
-        name{std::move(name)}, 
-        def{def}, 
-        arguments{std::move(arguments)},
-        va_args{std::move(va_args)},
-        current_stream{InitialStream.view()},
-        current_index{-1} {
+  struct MacroStream final : public SString<cotyl::CString> {
+    MacroStream(cotyl::CString&& name, cotyl::CString&& expanded) :
+        SString{std::move(expanded)},
+        name{std::move(name)} {
         
     }
-    MacroStream(cotyl::CString&& name, const Definition& def) : MacroStream{std::move(name), def, {}, cotyl::CString{""}} { }
-    ~MacroStream() = default;
 
     void PrintLoc(std::ostream& out) const final;
 
-    // check whether stream is currently expanding an
-    // argument or a literal
-    bool ExpandingArgument() const;
-
     cotyl::CString name;
-  protected:
-    char GetNew() final;
-    bool IsEOS() final;
-  
-  private:
-    std::string_view ArgValue(i32 index) const;
-
-    const static cotyl::CString InitialStream;  // " "
-
-    const Definition& def; // value
-    cotyl::vector<cotyl::CString> arguments{};  // argument values
-    cotyl::CString va_args{};
-
-    bool eos = false;
-    cotyl::CString parsed_holder;
-    SString current_stream;
-    int current_index;
   };
 
   struct IfGroup {
@@ -158,16 +133,21 @@ private:
       type = Type::Else;
     }
   };
+  
+  // for saving / restoring state when preprocessing subexpressions
+  struct State {
+    // contains queued up characters to be processed
+    // used to handle strings, identifiers and strings of alphanumerical characters
+    std::queue<char> pre_processor_queue{};
 
-  // contains queued up characters to be processed
-  // used to handle strings, identifiers and strings of alphanumerical characters
-  std::queue<char> pre_processor_queue{};
+    // current expression being parsed for #if condition
+    std::optional<SString<std::string_view>> expression{};
 
-  // current expression being parsed for #if condition
-  mutable std::optional<SString> expression{};
+    // stack of macros and arguments to be processed before anything else
+    std::deque<Preprocessor::MacroStream> macro_stack{};
+  };
 
-  // stack of macros and arguments to be processed before anything else
-  mutable std::deque<MacroStream> macro_stack{};
+  mutable State state{};
 
   // stack of included files to be processed
   mutable std::deque<FileStream> file_stack{};
@@ -177,8 +157,9 @@ private:
   std::deque<IfGroup> if_group_stack{};
 
   // macro definitions, and a set of default definitions
-  MacroMap definitions{};
+  cotyl::unordered_map<cotyl::CString, Definition> definitions{};
   static const cotyl::unordered_map<cotyl::CString, cotyl::CString (Preprocessor::*)() const> StandardDefinitions;
+  
   cotyl::CString FILE() const;
   cotyl::CString LINE() const;
   cotyl::CString DATE() const;
@@ -211,16 +192,17 @@ private:
   char GetNextCharacter();
   void SkipNextCharacter();
   void EatNextCharacter(char c);
-  // if it is known that no extra checks are needed, we use this faster version
-  void SkipNextCharacterSimple();
   cotyl::CString GetNextProcessed();
 
-  cotyl::CString GetMacroArgumentValue(bool variadic);
   static void ReplaceNewlines(cotyl::CString& value);
+  
   void PushMacro(cotyl::CString&& name, const Definition& definition);
+  std::pair<cotyl::CString, char> GetMacroArgumentValue(bool variadic);
+  void ExpandArgumentTo(cotyl::StringStream& dest, const cotyl::CString& arg);
+  cotyl::CString ExpandMacro(const Definition& definition, cotyl::vector<cotyl::CString>&& args, cotyl::CString&& va_args);
+  
   void EatNewline();
-  void StartExpression(SString&& stream);
-  void EndExpression();
+  void EndExpression(State&& old_state);
   i64 EatConstexpr();
   void Include();
   std::string FindFile(const cotyl::CString& name, bool system);

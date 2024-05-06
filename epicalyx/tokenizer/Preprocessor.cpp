@@ -25,18 +25,18 @@ cotyl::Stream<char>& Preprocessor::CurrentStream() const {
   // macros go before the current expression, since expressions only
   // occur in #if statements, and the macro_stack is empty then
   ClearEmptyStreams();
-  if (!macro_stack.empty()) return macro_stack.back();
-  if (expression.has_value()) return expression.value();
+  if (!state.macro_stack.empty()) return state.macro_stack.back();
+  if (state.expression.has_value()) return state.expression.value();
   if (file_stack.empty()) throw cotyl::EOSError();
   return file_stack.back().stream;
 }
 
 char Preprocessor::NextCharacter() const {
   while (CurrentStream().EOS()) {
-    if (!macro_stack.empty()) {
-      macro_stack.pop_back();
+    if (!state.macro_stack.empty()) {
+      state.macro_stack.pop_back();
     }
-    else if (expression.has_value()) {
+    else if (state.expression.has_value()) {
       // parsing expression which is at the end, no next character
       throw cotyl::EOSError();
     }
@@ -56,7 +56,7 @@ char Preprocessor::NextCharacter() const {
 char Preprocessor::GetNextCharacter() {
   char c;
   ClearEmptyStreams();
-  if (macro_stack.empty() && !expression.has_value()) {
+  if (state.macro_stack.empty() && !state.expression.has_value()) {
     // parsing from file stack
     if (CurrentStream().EOS()) {
       // insert newline
@@ -88,10 +88,6 @@ void Preprocessor::SkipNextCharacter() {
   }
 }
 
-void Preprocessor::SkipNextCharacterSimple() {
-  CurrentStream().Skip();
-}
-
 void Preprocessor::EatNextCharacter(char c) {
   char got = GetNextCharacter();
   if (c != got) {
@@ -110,7 +106,7 @@ std::string Preprocessor::CurrentFile() {
 
 bool Preprocessor::Enabled() const {
   // always enabled when parsing expressions
-  if (expression.has_value()) {
+  if (state.expression.has_value()) {
     return true;
   }
 
@@ -161,7 +157,7 @@ void Preprocessor::SkipBlanks(bool skip_newlines) {
     }
     else if (c == '\n') {
       // empty macro streams cleared in InternalIsEOS
-      if (skip_newlines || !macro_stack.empty()) {
+      if (skip_newlines || !state.macro_stack.empty()) {
         // skip the newline in both cases
         SkipNextCharacter();
       }
@@ -207,14 +203,13 @@ void Preprocessor::SkipMultilineComment() {
 }
 
 cotyl::CString Preprocessor::FetchLine() {
-  cotyl::Assert((ClearEmptyStreams(), macro_stack.empty()), "Expected empty string stack in preprocessor line fetch");
-  cotyl::Assert(!expression.has_value(), "Unexpected preprocessor line fetch while parsing expression");
+  cotyl::Assert((ClearEmptyStreams(), state.macro_stack.empty()), "Expected empty string stack in preprocessor line fetch");
+  cotyl::Assert(!state.expression.has_value(), "Unexpected preprocessor line fetch while parsing expression");
   cotyl::StringStream line{};
 
   while (!InternalIsEOS()) {
     char c = NextCharacter();
     if (c == '\\') {
-
       // possible escaped newline (no newline, do increment line number)
       if (CurrentStream().PredicateAfter(1, std::isspace)) {
         SkipEscapedNewline();
@@ -223,7 +218,7 @@ cotyl::CString Preprocessor::FetchLine() {
         line << ' ';
       }
       else {
-        SkipNextCharacterSimple();  // skip \ character
+        CurrentStream().Skip();  // skip \ character
         line << '\\';
       }
     }
@@ -253,7 +248,7 @@ cotyl::CString Preprocessor::FetchLine() {
 }
 
 bool Preprocessor::IsEOS() {
-  if (!pre_processor_queue.empty()) {
+  if (!state.pre_processor_queue.empty()) {
     // still processed characters to be fetched
     // may be filled with characeters from an expression that should be parsed
     return false;
@@ -262,8 +257,8 @@ bool Preprocessor::IsEOS() {
 }
 
 void Preprocessor::ClearEmptyStreams() const {
-  while (!macro_stack.empty() && macro_stack.back().EOS()) {
-    macro_stack.pop_back();
+  while (!state.macro_stack.empty() && state.macro_stack.back().EOS()) {
+    state.macro_stack.pop_back();
   }
   while (!file_stack.empty() && file_stack.back().stream.EOS()) {
     file_stack.pop_back();
@@ -272,13 +267,13 @@ void Preprocessor::ClearEmptyStreams() const {
 
 bool Preprocessor::InternalIsEOS() {
   ClearEmptyStreams();
-  if (!macro_stack.empty()) {
+  if (!state.macro_stack.empty()) {
     // still string stack characters to be parsed
     return false;
   }
-  if (expression.has_value()) {
+  if (state.expression.has_value()) {
     // ignore file stack if we are parsing an expression
-    return expression.value().EOS();
+    return state.expression.value().EOS();
   }
 
   // file streams will have been removed in ClearEmptyStreams()
@@ -300,7 +295,7 @@ cotyl::CString Preprocessor::GetNextProcessed() {
     // parse whitespace normally to count newlines properly when current group is not enabled
     if (std::isspace(c)) {
       SkipBlanks();
-      return cotyl::CString{" "};  // the exact whitespace character does not matter
+      return cotyl::CString{' '};  // the exact whitespace character does not matter
     }
 
     // potential new if group
@@ -330,7 +325,7 @@ cotyl::CString Preprocessor::GetNextProcessed() {
       cotyl::CString identifier = detail::get_identifier(CurrentStream());
       
       // we may block macro expansion if we are checking a 
-      // #if defined statement
+      // #if defined statement, or fetching macro arguments
       if (block_macro_expansion) {
         return std::move(identifier);
       }
@@ -340,9 +335,12 @@ cotyl::CString Preprocessor::GetNextProcessed() {
       }
       else if (definitions.contains(identifier)) {  
         ClearEmptyStreams();
-        if (!macro_stack.empty()) {
-          const auto& current_macro = macro_stack.back();
-          if (!current_macro.ExpandingArgument() && current_macro.name == identifier) {
+        if (!state.macro_stack.empty()) {
+          const auto& current_macro = state.macro_stack.back();
+
+          // arguments are already expanded where needed,
+          // so we check whether the identifier should be used recursively
+          if (current_macro.name == identifier) {
             // cannot recursively expand macro identifiers in macro definition
             // see 6.10.3.4 Rescanning and further replacement > 2
             // in ISO/IEC 9899:1999
@@ -431,14 +429,14 @@ cotyl::CString Preprocessor::GetNextProcessed() {
 char Preprocessor::GetNew() {
   // no need to check end of stream, since it is expected a new character even exists
   while (true) {
-    if (!pre_processor_queue.empty()) {
-      char c = pre_processor_queue.front();
-      pre_processor_queue.pop();
+    if (!state.pre_processor_queue.empty()) {
+      char c = state.pre_processor_queue.front();
+      state.pre_processor_queue.pop();
       return c;
     }
 
     for (const auto& c : GetNextProcessed()) {
-      pre_processor_queue.push(c);
+      state.pre_processor_queue.push(c);
     }
   }
 }
