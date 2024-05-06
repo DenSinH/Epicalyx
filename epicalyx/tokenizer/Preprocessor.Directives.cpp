@@ -206,8 +206,8 @@ void Preprocessor::PreprocessorDirective() {
       SkipBlanks(false);
       // we do end of stream cannot happen here,
       // since the macro needs to be complete
-      while (NextCharacter() != ')') {
-        if (detail::is_valid_ident_start(NextCharacter())) {
+      for (char c = NextCharacter(); c != ')'; c = NextCharacter()) {
+        if (detail::is_valid_ident_start(c)) {
           auto arg = detail::get_identifier(CurrentStream());
           arguments.emplace_back(std::move(arg));
           SkipBlanks(false);
@@ -217,11 +217,9 @@ void Preprocessor::PreprocessorDirective() {
             EatNextCharacter(',');
           }
         }
-        else if (NextCharacter() == '.') {
+        else if (c == '.') {
           // variadic macro: #define variadic(arg1, arg2, ...)
-          EatNextCharacter('.');
-          EatNextCharacter('.');
-          EatNextCharacter('.');
+          CurrentStream().EatSequence('.', '.', '.');
           SkipBlanks(false);
           variadic = true;
           // there cannot be any more arguments after this
@@ -239,7 +237,7 @@ void Preprocessor::PreprocessorDirective() {
       ReplaceNewlines(value);
 
       // only save definitions if current group is enabled
-      if (Enabled()) {
+      if (enabled) {
         definitions.emplace(name, Definition(std::move(arguments), variadic, std::move(value)));
       }
     }
@@ -248,7 +246,7 @@ void Preprocessor::PreprocessorDirective() {
       ReplaceNewlines(value);
 
       // only save definitions if current group is enabled
-      if (Enabled()) {
+      if (enabled) {
         definitions.emplace(name, Definition(std::move(value)));
       }
     }
