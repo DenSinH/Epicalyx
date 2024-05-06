@@ -40,7 +40,6 @@ void Preprocessor::EndExpression(State&& old_state) {
 
 i64 Preprocessor::EatConstexpr() {
   auto line = FetchLine();
-  ReplaceNewlines(line);
 
   State old_state = std::move(state);
   state = {};
@@ -72,7 +71,6 @@ void Preprocessor::Include() {
   // the file name may be constructed from macro expansion
   // we parse it by creating a tokenizer and requesting a string constant
   auto line = FetchLine();
-  ReplaceNewlines(line);
 
   State old_state = std::move(state);
   state = {};
@@ -234,7 +232,6 @@ void Preprocessor::PreprocessorDirective() {
       EatNextCharacter(')');
 
       auto value = FetchLine();
-      ReplaceNewlines(value);
 
       // only save definitions if current group is enabled
       if (enabled) {
@@ -243,7 +240,6 @@ void Preprocessor::PreprocessorDirective() {
     }
     else {
       auto value = FetchLine();
-      ReplaceNewlines(value);
 
       // only save definitions if current group is enabled
       if (enabled) {

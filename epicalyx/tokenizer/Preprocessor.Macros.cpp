@@ -287,7 +287,6 @@ void Preprocessor::PushMacro(cotyl::CString&& name, const Definition& definition
     for (int i = 0; i < arguments.count; i++) {
       auto [arg_val, _sep] = GetMacroArgumentValue(false);
       sep = _sep;
-      ReplaceNewlines(arg_val);
       arg_values.emplace_back(std::move(arg_val));
 
       if ((i != (arguments.count - 1))) {
@@ -307,7 +306,6 @@ void Preprocessor::PushMacro(cotyl::CString&& name, const Definition& definition
       auto [_va_args, _sep] = GetMacroArgumentValue(true);
       va_args = std::move(_va_args);
       sep = _sep;
-      ReplaceNewlines(va_args);
     }
     
     if (sep == '\0') {

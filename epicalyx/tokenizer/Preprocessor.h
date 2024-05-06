@@ -197,8 +197,6 @@ private:
   void EatNextCharacter(char c);
 
   cotyl::CString GetNextChunk(bool do_preprocessing = true);
-
-  static void ReplaceNewlines(cotyl::CString& value);
   
   void PushMacro(cotyl::CString&& name, const Definition& definition);
   std::pair<cotyl::CString, char> GetMacroArgumentValue(bool variadic);

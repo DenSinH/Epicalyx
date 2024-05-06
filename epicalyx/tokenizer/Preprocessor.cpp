@@ -412,8 +412,4 @@ char Preprocessor::GetNew() {
   }
 }
 
-void Preprocessor::ReplaceNewlines(cotyl::CString& value) {
-  std::replace(value.begin(), value.end(), '\n', ' ');
-}
-
 }
