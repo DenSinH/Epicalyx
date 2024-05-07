@@ -73,7 +73,8 @@ private:
   void SkipEscapedNewline();
 
   // skip whitespace, and optionally skip newlines as well
-  void SkipBlanks(bool skip_newlines = true);
+  // return whether a newline was skipped
+  bool SkipBlanks(bool skip_newlines = true);
 
   // skip comments
   void SkipLineComment();

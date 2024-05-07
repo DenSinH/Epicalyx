@@ -76,6 +76,11 @@ char Preprocessor::GetNextCharacter() {
       // insert newline
       file_stack.pop_back();
       c = '\n';
+
+      // don't actually increment the line count, but do update
+      // newline state
+      // if we don't, this breaks when files end in line comments
+      is_newline = true;
     }
     else {
       c = CurrentStream().Get();
@@ -158,8 +163,9 @@ void Preprocessor::SkipEscapedNewline() {
   });
 }
 
-void Preprocessor::SkipBlanks(bool skip_newlines) {
+bool Preprocessor::SkipBlanks(bool skip_newlines) {
   // we do not want to crash on an end of stream while skipping whitespace
+  bool skipped_newline = false;
   while (!InternalIsEOS()) {
     char c = NextCharacter();
     if (c == '\\') {
@@ -172,6 +178,7 @@ void Preprocessor::SkipBlanks(bool skip_newlines) {
       if (skip_newlines || !state.macro_stack.empty()) {
         // skip the newline in both cases
         SkipNextCharacter();
+        skipped_newline = true;
       }
       else {
         break;
@@ -184,6 +191,7 @@ void Preprocessor::SkipBlanks(bool skip_newlines) {
       break;
     }
   }
+  return skipped_newline;
 }
 
 void Preprocessor::SkipLineComment() {
@@ -240,9 +248,10 @@ void Preprocessor::ClearEmptyStreams() const {
   while (!state.macro_stack.empty() && state.macro_stack.back().EOS()) [[unlikely]] {
     state.macro_stack.pop_back();
   }
-  while (!file_stack.empty() && file_stack.back().stream.EOS()) [[unlikely]] {
-    file_stack.pop_back();
-  }
+
+  // don't clear file streams
+  // if file streams are done, we append a \n character
+  // so they should not be popped here
 }
 
 bool Preprocessor::InternalIsEOS() const {
@@ -274,7 +283,9 @@ cotyl::CString Preprocessor::GetNextChunk(bool do_preprocessing) {
 
     // parse whitespace normally to count newlines properly when current group is not enabled
     if (std::isspace(c)) {
-      SkipBlanks();
+      if (SkipBlanks()) {
+        return cotyl::CString{'\n'};
+      }
       return cotyl::CString{' '};  // the exact whitespace character does not matter
     }
 
