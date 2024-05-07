@@ -70,6 +70,7 @@ char File::GetNew() {
   if (value == '\n') {
     prev = line;
     line = file.tellg();
+    lineno++;
   }
   if (!value && file.eof()) {
     throw cotyl::EOSError();

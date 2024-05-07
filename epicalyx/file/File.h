@@ -5,12 +5,15 @@
 
 namespace epi {
 
-struct File final : public cotyl::Stream<char> {
+struct File : public cotyl::Stream<char> {
 
+  File(File&& other) = default;
   File(const std::string& filename);
   ~File();
 
   void PrintLoc(std::ostream& out) const final;
+
+  u64 lineno = 1;
 
 protected:
   char GetNew() final;

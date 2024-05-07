@@ -9,8 +9,9 @@ namespace epi {
 
 Preprocessor::Preprocessor(const std::string& in_stream) :
     this_tokenizer{*this},
-    ExpressionParser{this_tokenizer} {
-  file_stack.emplace_back(in_stream);
+    ExpressionParser{this_tokenizer},
+    file_stack{FileStream{in_stream}, '\n'} {
+  
 }
 
 void Preprocessor::PrintLoc(std::ostream& out) const {
@@ -18,7 +19,7 @@ void Preprocessor::PrintLoc(std::ostream& out) const {
     out << "in " << file.name << ":" << file.line << std::endl;
   }
   out << std::endl;
-  file_stack.back().stream.PrintLoc(out);
+  file_stack.Top().PrintLoc(out);
 }
 
 Preprocessor::State Preprocessor::StartExpression(const cotyl::CString& expr) {
@@ -42,8 +43,8 @@ cotyl::Stream<char>& Preprocessor::CurrentStream() const {
   ClearEmptyStreams();
   if (!state.macro_stack.empty()) return state.macro_stack.back();
   if (state.expression.has_value()) return state.expression.value();
-  if (file_stack.empty()) throw cotyl::EOSError();
-  return file_stack.back().stream;
+  if (file_stack.EOS()) throw cotyl::EOSError();
+  return file_stack;
 }
 
 char Preprocessor::NextCharacter() const {
@@ -56,9 +57,8 @@ char Preprocessor::NextCharacter() const {
       throw cotyl::EOSError();
     }
     else {
-      // parsing from file stack, file is at end
-      // insert newline character when file ends (for #include safety)
-      return '\n';
+      // parsing from file stack, handles EOS internally
+      throw cotyl::EOSError();
     }
   }
   char c;
@@ -72,22 +72,9 @@ char Preprocessor::GetNextCharacter() {
   char c;
   if (state.macro_stack.empty() && !state.expression.has_value()) {
     // parsing from file stack
-    if (CurrentStream().EOS()) {
-      // insert newline
-      file_stack.pop_back();
-      c = '\n';
-
-      // don't actually increment the line count, but do update
-      // newline state
-      // if we don't, this breaks when files end in line comments
+    c = file_stack.Get();
+    if (c == '\n') {
       is_newline = true;
-    }
-    else {
-      c = CurrentStream().Get();
-      if (c == '\n') {
-        is_newline = true;
-        CurrentLine()++;
-      }
     }
   }
   else {
@@ -113,12 +100,12 @@ void Preprocessor::EatNextCharacter(char c) {
 }
 
 u64& Preprocessor::CurrentLine() {
-  return file_stack.back().line;
+  return file_stack.Top().lineno;
 }
 
 std::string Preprocessor::CurrentFile() {
   // todo: full file path (escape backslashes)
-  return file_stack.back().name;
+  return file_stack.Top().name;
 }
 
 bool Preprocessor::Enabled() const {
@@ -151,10 +138,7 @@ void Preprocessor::SkipEscapedNewline() {
   CurrentStream().SkipWhile([&](char c) -> bool {
     if (c == '\n') {
       if (first_newline) {
-        first_newline = false;  // only skip one line with escaped newline
-        // by assertion, we are not scanning a macro
-        // newlines have been stripped from macro definitions anyway
-        CurrentLine()++;
+        first_newline = false;
         return true;
       }
       return false;  // don't skip multiple newlines
@@ -266,7 +250,7 @@ bool Preprocessor::InternalIsEOS() const {
   }
 
   // file streams will have been removed in ClearEmptyStreams()
-  return file_stack.empty();
+  return file_stack.EOS();
 }
 
 void Preprocessor::EatNewline() {

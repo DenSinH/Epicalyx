@@ -13,7 +13,7 @@ template<template<typename...> class TT, typename... Ts>
 struct is_instantiation_of<TT, TT<Ts...>> : std::true_type { };
 
 template<template<typename...> class TT, typename T>
-constexpr bool is_instantiation_of_v = is_instantiation_of<TT, T>::value; 
+static constexpr bool is_instantiation_of_v = is_instantiation_of<TT, T>::value; 
 
 template <typename T, typename... Ts>
 struct type_index;
@@ -25,6 +25,6 @@ template <typename T, typename U, typename... Ts>
 struct type_index<T, U, Ts...> : std::integral_constant<std::size_t, 1 + type_index<T, Ts...>::value> {};
 
 template <typename T, typename... Ts>
-constexpr std::size_t type_index_v = type_index<T, Ts...>::value;
+static constexpr std::size_t type_index_v = type_index<T, Ts...>::value;
 
 }

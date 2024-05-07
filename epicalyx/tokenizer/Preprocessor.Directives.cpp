@@ -54,7 +54,7 @@ i64 Preprocessor::EatConstexpr() {
 std::string Preprocessor::FindFile(const cotyl::CString& name, bool system) {
   if (!system) {
     // first search in current file's directory
-    const auto& current = file_stack.back().name;
+    const auto& current = file_stack.Top().name;
     auto full_path = std::filesystem::canonical(current);
     auto parent = full_path.parent_path();
     auto search_path = parent / name.c_str();
@@ -86,7 +86,7 @@ void Preprocessor::Include() {
   auto delimiter = ForcePeek();
   bool system_include = *delimiter == '<';
   filename = this_tokenizer.ReadString();
-  file_stack.emplace_back(FindFile(filename, system_include));
+  file_stack.Push(FindFile(filename, system_include));
   
   // same as in EatConstexpr()
   // we expect the bottom string (expression) to be fully parsed

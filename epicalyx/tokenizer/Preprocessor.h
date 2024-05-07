@@ -9,10 +9,10 @@
 #include "Default.h"
 #include "Containers.h"
 #include "CString.h"
+#include "StreamStack.h"
 #include "Exceptions.h"
 #include "swl/variant.hpp"
 
-#include <stack>
 #include <queue>
 #include <utility>
 
@@ -198,10 +198,9 @@ private:
 
   // wrapper around File cotyl::Stream, including
   // current line number and filename
-  struct FileStream {
-    FileStream(const std::string& name) : stream{name}, name{name} { }
+  struct FileStream : File {
+    FileStream(const std::string& name) : File{name}, name{name} { }
 
-    File stream;
     std::string name;
     u64 line = 1;  // line indexing starts at 1
   };
@@ -264,7 +263,7 @@ private:
   mutable State state{};
 
   // stack of included files to be processed
-  mutable std::deque<FileStream> file_stack{};
+  mutable cotyl::StreamStack<FileStream, char> file_stack;
   bool is_newline = true;
 
   // stack of if groups that may or may not be enabled

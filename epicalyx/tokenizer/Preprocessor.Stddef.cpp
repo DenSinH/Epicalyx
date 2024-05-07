@@ -20,12 +20,12 @@ const cotyl::unordered_map<cotyl::CString, cotyl::CString (Preprocessor::*)() co
 };
 
 cotyl::CString Preprocessor::FILE() const {
-  auto full_path = std::filesystem::canonical(file_stack.back().name).string();
+  auto full_path = std::filesystem::canonical(file_stack.Top().name).string();
   return cotyl::QuotedEscape(full_path.c_str()).cfinalize();
 }
 
 cotyl::CString Preprocessor::LINE() const {
-  return cotyl::CString{std::to_string(file_stack.back().line)};
+  return cotyl::CString{std::to_string(file_stack.Top().line)};
 }
 
 // localtime is deprecated

@@ -51,6 +51,7 @@ set(INCLUDE_HEADERS
   ${PROJECT_SOURCE_DIR}/epicalyx/include/CString.h
   ${PROJECT_SOURCE_DIR}/epicalyx/include/Decltype.h
   ${PROJECT_SOURCE_DIR}/epicalyx/include/Stream.h
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/StreamStack.h
   ${PROJECT_SOURCE_DIR}/epicalyx/include/TypeTraits.h
   ${PROJECT_SOURCE_DIR}/epicalyx/include/Variant.h
   ${PROJECT_SOURCE_DIR}/epicalyx/include/TypeName.h
