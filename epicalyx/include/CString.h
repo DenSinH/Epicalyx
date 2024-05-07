@@ -12,77 +12,80 @@ namespace epi::cotyl {
 struct CString {
 
   using size_type = std::size_t;
-
-  CString() : size_{0}, data{nullptr} { }
+  
+  CString() : size_{0}, direct{} { }
 
   explicit CString(char c) : 
-      size_{1},
-      data(std::make_unique<char[]>(size_ + 1)) {
-    data.get()[0] = c;
+      size_{1}, direct{c} { }
+
+  explicit CString(size_type size, const char* str) : size_{size} {
+    if (!is_direct()) {
+      indirect = std::make_unique<char[]>(size_ + 1);
+    }
+    std::memcpy(c_str(), str, size_);
+  }
+
+  ~CString() {
+    if (!is_direct()) {
+      indirect.~unique_ptr();
+    }
   }
 
   explicit CString(const char* str) : 
-      size_{(size_type)strlen(str)},
-      data(std::make_unique<char[]>(size_ + 1)) {
-    std::memcpy(data.get(), str, size_);
-  }
+      CString{(size_type)strlen(str), str} { }
   
   explicit CString(std::string&& str) : 
-      size_{(size_type)str.size()},
-      data(std::make_unique<char[]>(size_ + 1)) {
-    std::memcpy(data.get(), str.c_str(), size_);
-  }
+      CString{(size_type)str.size(), str.c_str()} { }
 
   explicit CString(const std::string& str) : 
-      size_{(size_type)str.size()},
-      data(std::make_unique<char[]>(size_ + 1)) {
-    std::memcpy(data.get(), str.c_str(), size_);
-  }
+      CString{(size_type)str.size(), str.c_str()} { }
 
   explicit CString(const std::string_view& str) : 
-      size_{(size_type)str.size()},
-      data(std::make_unique<char[]>(size_ + 1)) {
-    std::memcpy(data.get(), str.data(), size_);
-  }
+      CString{(size_type)str.size(), str.data()} { }
 
   explicit CString(const CString& other) :
-      size_{other.size_},
-      data(std::make_unique<char[]>(size_ + 1)) {
-    std::memcpy(data.get(), other.data.get(), size_);
+      CString{other.size_, other.c_str()} { }
 
-  }
-
-  CString(CString&& other) : 
-      size_{other.size_}, 
-      data(std::move(other.data)) {
-
+  CString(CString&& other) : size_{other.size_} {
+    if (is_direct()) {
+      // copying all data may compile to a single mov
+      std::memcpy(c_str(), other.c_str(), direct_data_size);
+    }
+    else {
+      indirect = std::move(other.indirect);
+    }
   }
 
   CString& operator=(const CString& other) = delete;
-
-  CString& operator=(CString&& other) noexcept {
-    size_ = other.size_;
-    data = std::move(other.data);
+  CString& operator=(CString&& other) {
+    // destruct self 
+    this->~CString();
+    new (this) CString{std::move(other)};
     return *this;
   }
 
-  ~CString() = default;
-
-  const char* c_str() const { return data.get(); }
-  char* c_str() { return data.get(); }
+  const char* c_str() const {
+    if (is_direct()) return direct;
+    return indirect.get(); 
+  }
+  
+  char* c_str() { 
+    if (is_direct()) return direct;
+    return indirect.get(); 
+  }
 
   using const_iterator = const char*;
   using iterator = char*;
 
-  const_iterator begin() const { return data.get(); }
-  const_iterator end() const { return data.get() + size_; }
-  iterator begin() { return data.get(); }
-  iterator end() { return data.get() + size_; }
+  const_iterator begin() const { return c_str(); }
+  const_iterator end() const { return c_str() + size_; }
+  iterator begin() { return c_str(); }
+  iterator end() { return c_str() + size_; }
   std::size_t size() const { return size_; }
   bool empty() const { return size_ == 0; }
 
   std::string_view view() const {
-    return {data.get(), size_};
+    return {c_str(), size_};
   }
 
   operator std::string_view() const {
@@ -94,27 +97,35 @@ struct CString {
   }
 
   char& operator[](size_type pos) {
-    return data.get()[pos];
+    return c_str()[pos];
   }
   
   const char& operator[](size_type pos) const {
-    return data.get()[pos];
+    return c_str()[pos];
   }
 
   bool operator==(const CString& other) const {
     if (size_ != other.size_) return false;
-    return std::memcmp(data.get(), other.data.get(), size_) == 0;
+    return std::memcmp(c_str(), other.c_str(), size_) == 0;
   }
 
-  bool streq(const char* other) const {
-    if (size_ != strlen(other)) return false;
-    return std::memcmp(data.get(), other, size_) == 0;
+  bool streq(const std::string& other) const {
+    if (size_ != other.size()) return false;
+    return std::memcmp(c_str(), other.c_str(), size_) == 0;
   }
 
 private:
-
+  static constexpr size_type direct_data_size = (size_type)(sizeof(std::unique_ptr<char[]>));
+  
+  bool is_direct() const {
+    return size_ < direct_data_size;
+  }
+  
+  union {
+    std::unique_ptr<char[]> indirect;
+    char direct[direct_data_size]{};
+  };
   size_type size_;
-  std::unique_ptr<char[]> data;
 };
 
 }
