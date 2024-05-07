@@ -6,9 +6,7 @@
  *  that I haven't explored fully.
  *  - Tom Duff
  */
-send(to, from, count)
-        register short *to, *from;
-        register count;
+send(register short *to, register short *from, register count)
 {
         register n=(count+7)/8;
         switch(count%8){

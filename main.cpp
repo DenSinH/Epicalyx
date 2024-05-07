@@ -70,8 +70,8 @@ int main(int argc, char** argv) {
     } 
   };
 
-  // while (!pp->EOS()) std::cout << pp->Get() << std::flush;
-  // return 0;
+  while (!pp->EOS()) std::cout << pp->Get() << std::flush;
+  return 0;
 
   auto tokenizer = std::make_unique<epi::Tokenizer>(*pp);
   auto parser = std::make_unique<epi::Parser>(*tokenizer);

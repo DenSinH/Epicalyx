@@ -200,6 +200,9 @@ void Preprocessor::PreprocessorDirective() {
     SkipBlanks(false);
     auto name = detail::get_identifier(CurrentStream());
 
+    // erase any exising definition
+    if (enabled) definitions.erase(name);
+
     if (!InternalIsEOS() && NextCharacter() == '(') {
       // functional macro
       cotyl::vector<cotyl::CString> arguments = {};

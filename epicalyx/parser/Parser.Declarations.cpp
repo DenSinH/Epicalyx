@@ -648,7 +648,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
 
             do {
               auto arg_specifier = DSpecifier();
-              if (arg_specifier.second != StorageClass::None) {
+              if (!cotyl::Is(arg_specifier.second).AnyOf<StorageClass::None, StorageClass::Register>()) {
                 throw ParserError("Bad storage specifier on function argument");
               }
 
