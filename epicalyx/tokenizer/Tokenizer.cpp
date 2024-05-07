@@ -287,6 +287,12 @@ AnyToken Tokenizer::ReadNumericalConstant() {
       return Make<NumericalConstantToken<float>>((float)val);
     }
   }
+
+  // see ISO/IEC 9899:201x 6.4.4.1 for integral constant types
+  // basically:
+  // if unsigned is specified: try uint, then ulong, then ulonglong
+  // otherwise: if hex / oct, try int, uint, long, ulong, lonlong, ulonlong
+  //            if dec, try int, long, long long
   if (is_unsigned) {
     u64 val = 0;
     if (octal) {
