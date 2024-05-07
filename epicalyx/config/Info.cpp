@@ -38,6 +38,11 @@ ProgramSettings parse_args(int argc, char** argv) {
          .metavar("FUNCTION")
          .default_value("main")
          .store_into(settings.rigfunc);
+  program.add_argument("-stl")
+         .help("Standard library header location")
+         .metavar("STL_PATH")
+         .default_value(std::string{})
+         .store_into(settings.stl);
   program.add_argument("filename")
          .help("C file to compile")
          .metavar("FILENAME")

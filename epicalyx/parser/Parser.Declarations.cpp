@@ -514,16 +514,9 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
     }
   } while (was_specifier);
 
-  int _sign = -1;
-  if (sign.has_value()) {
-    if (ctype) {
-      throw ParserError("Cannot specify sign for pointer type");
-    }
-    _sign = sign.value();
-  }
 
   auto make = [=]<typename T>() -> type::AnyType {
-    if (_sign == -1) return type::ValueType<T>(type::LValue::Assignable, qualifiers);
+    if (sign.value_or(-1) == -1) return type::ValueType<T>(type::LValue::Assignable, qualifiers);
     return type::ValueType<std::make_unsigned_t<T>>(type::LValue::Assignable, qualifiers);
   };
 

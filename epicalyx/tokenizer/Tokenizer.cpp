@@ -162,14 +162,15 @@ AnyToken Tokenizer::ReadNumericalConstant() {
   bool is_float = false;
 
   if (in_stream.IsAfter(0, '0')) {
-    if (in_stream.IsAfter(1, 'x', 'X')) {
+    value << '0';
+    in_stream.Skip();
+    if (in_stream.IsAfter(0, 'x', 'X')) {
       // hexadecimal
       hex = true;
-      in_stream.Skip(2);
+      in_stream.Skip();
     }
     else {
       octal = true;
-      in_stream.Skip();
     }
   }
   else if (in_stream.IsAfter(0, '.')) {
@@ -289,13 +290,7 @@ AnyToken Tokenizer::ReadNumericalConstant() {
   if (is_unsigned) {
     u64 val = 0;
     if (octal) {
-      for (auto c : value.finalize()) {
-        if (c > '7') {
-          throw TokenizerError("Invalid octal constant");
-        }
-        val <<= 3;
-        val |= c - '0';
-      }
+      val = std::stoull(value.finalize(), nullptr, 8);
     }
     else if (hex) {
       val = std::stoull(value.finalize(), nullptr, 16);
@@ -311,28 +306,35 @@ AnyToken Tokenizer::ReadNumericalConstant() {
     }
   }
   else {
-    i64 val = 0;
-    if (octal) {
-      for (auto c : value.finalize()) {
-        if (c > '7') {
-          throw TokenizerError("Invalid octal constant");
-        }
-        val <<= 3;
-        val |= c - '0';
+    if (octal || hex) {
+      u64 val;
+      if (octal) {
+        val = std::stoull(value.finalize(), nullptr, 8);
       }
-    }
-    else if (hex) {
-      val = (i64)std::stoull(value.finalize(), nullptr, 16);
+      else {
+        val = std::stoull(value.finalize(), nullptr, 16);
+      }
+      if (is_long < 2) {
+        if (val <= INT32_MAX) {
+          return Make<NumericalConstantToken<i32>>((i32)val);
+        }
+        else if (val <= UINT32_MAX) {
+          return Make<NumericalConstantToken<u32>>((u32)val);
+        }
+      }
+      if (val <= INT64_MAX) {
+        return Make<NumericalConstantToken<i64>>((i64)val);
+      }
+      return Make<NumericalConstantToken<u64>>(val);
     }
     else {
-      val = std::stoll(value.finalize());
-    }
-
-    if (is_long == 2 || val > INT32_MAX || val < INT32_MIN) {
-      return Make<NumericalConstantToken<i64>>(val);
-    }
-    else {
-      return Make<NumericalConstantToken<i32>>((i32)val);
+      i64 val = stoll(value.finalize());
+      if (is_long == 2 || val >= INT32_MAX || val <= INT32_MIN) {
+        return Make<NumericalConstantToken<i64>>(val);
+      }
+      else {
+        return Make<NumericalConstantToken<i32>>((i32)val);
+      }
     }
   }
 }

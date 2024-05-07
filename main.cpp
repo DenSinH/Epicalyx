@@ -63,7 +63,12 @@ int main(int argc, char** argv) {
 
 
   std::unique_ptr<epi::Preprocessor> pp; 
-  SafeRun(ce) << [&]{ pp = std::make_unique<epi::Preprocessor>(settings.filename); };
+  SafeRun(ce) << [&]{ 
+    pp = std::make_unique<epi::Preprocessor>(settings.filename);
+    if (!settings.stl.empty()) {
+      pp->SetSTLPath(settings.stl);
+    } 
+  };
 
   // while (!pp->EOS()) std::cout << pp->Get() << std::flush;
   // return 0;

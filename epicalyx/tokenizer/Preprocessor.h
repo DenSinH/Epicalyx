@@ -38,6 +38,14 @@ struct Preprocessor final : cotyl::Stream<char>, ExpressionParser {
   Preprocessor(const std::string& filename);
 
   void PrintLoc(std::ostream& out) const final;
+  
+  /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+   * CONFIG
+   * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+  void SetSTLPath(const std::string& stl_path);
+
+private:
+  std::string stl_path{};
 
 protected:
   // overridable inherited methods
@@ -56,7 +64,6 @@ private:
   // a macro from being expanded
   mutable bool block_macro_expansion = false;
   mutable Tokenizer this_tokenizer;
-  
 
   /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
    * INPUT HANDLING

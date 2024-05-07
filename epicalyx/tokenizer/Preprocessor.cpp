@@ -261,8 +261,8 @@ bool Preprocessor::InternalIsEOS() const {
 }
 
 void Preprocessor::EatNewline() {
-  SkipBlanks();
-  if (!is_newline) {
+  auto line = FetchLine();
+  if (!std::all_of(line.begin(), line.end(), std::isspace)) {
     throw PreprocessorError("Expected newline");
   }
 }

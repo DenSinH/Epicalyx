@@ -139,6 +139,7 @@ add_test(
     COMMAND 
     python "run_suite.py" 
           "$<TARGET_FILE:epicalyx>"
+          "${PROJECT_SOURCE_DIR}/epicalyx/stl"
           "./scctests/cc/execute"
           "./scctests/output.txt"
           "./scctests/errors.txt"

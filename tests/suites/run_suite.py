@@ -61,9 +61,14 @@ def run_tests(base_command, root, output_file, error_file):
 
 
 if __name__ == "__main__":
-    _, epicalyx_path, suite_root, output_file, error_file = sys.argv 
+    _, epicalyx_path, stl_path, suite_root, output_file, error_file = sys.argv 
     run_tests(
-        [epicalyx_path, "-novisualize", "-catch-errors"],
+        [
+          epicalyx_path, 
+          "-stl", stl_path,
+          "-novisualize", 
+          "-catch-errors"
+        ],
         suite_root,
         output_file,
         error_file

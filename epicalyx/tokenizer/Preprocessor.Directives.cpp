@@ -9,6 +9,15 @@
 
 namespace epi {
 
+  
+void Preprocessor::SetSTLPath(const std::string& stl) {
+  auto full_path = std::filesystem::canonical(stl);
+  if (!std::filesystem::is_directory(full_path)) {
+    throw PreprocessorError("Invalid STL path: " + stl);
+  }
+  stl_path = full_path.string();
+}
+
 ast::pExpr Preprocessor::ResolveIdentifier(cotyl::CString&& name) const {
   // this MUST be an identifier that is not a defined macro
   // for example, the "defined" preprocessing directive
@@ -49,6 +58,12 @@ std::string Preprocessor::FindFile(const cotyl::CString& name, bool system) {
     auto full_path = std::filesystem::canonical(current);
     auto parent = full_path.parent_path();
     auto search_path = parent / name.c_str();
+    if (std::filesystem::is_regular_file(search_path)) {
+      return search_path.string();
+    }
+  }
+  else {
+    auto search_path = std::filesystem::path(stl_path) / name.c_str();
     if (std::filesystem::is_regular_file(search_path)) {
       return search_path.string();
     }
