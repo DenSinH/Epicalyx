@@ -9,6 +9,8 @@
 #include <boost/unordered_set.hpp>
 #include <boost/unordered_map.hpp>
 
+#include "Hash.h"
+
 namespace epi::cotyl {
 
 template<typename T>

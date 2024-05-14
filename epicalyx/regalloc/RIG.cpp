@@ -87,7 +87,7 @@ RIG RIG::GenerateRIG(const Function& function) {
       }
     }
 
-    if (function.locals.at(loc_idx).arg_idx.has_value()) {
+    if (function.locals.at(loc_idx).non_aggregate.arg_idx.has_value()) {
       // defined in entry
       liveliness.at(Function::Entry).def.emplace(gvar);
     }

@@ -102,7 +102,7 @@ struct Local {
   // arguments can never be aggregates,
   // converted to pointers
   Local(Type type, loc_index_t idx, std::optional<var_index_t>&& arg_idx = {}) : 
-      type{type}, idx{idx}, arg_idx{std::move(arg_idx)} {
+      type{type}, idx{idx}, non_aggregate{std::move(arg_idx)} {
 
   }
 
@@ -112,7 +112,7 @@ struct Local {
 
   static Local Pointer(loc_index_t idx, u64 stride, std::optional<var_index_t>&& arg_idx = {}) {
     auto loc = Local(Type::Pointer, idx, std::move(arg_idx));
-    loc.stride = stride;
+    loc.non_aggregate.stride = stride;
     return loc;
   }
 
@@ -134,7 +134,7 @@ struct Local {
     struct {
       std::optional<loc_index_t> arg_idx;
       u64 stride;
-    };
+    } non_aggregate;
   };
 
 private:

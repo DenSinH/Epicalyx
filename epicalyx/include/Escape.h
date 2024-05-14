@@ -6,6 +6,7 @@
 #include "CString.h"
 
 #include <array>
+#include <cctype>
 
 
 namespace epi::cotyl {
@@ -60,7 +61,7 @@ static void Unescape(cotyl::StringStream& dest, cotyl::Stream<char>& src) {
     case 'x': {
       // hex literal
       char hex = 0;
-      while (src.PredicateAfter(0, std::isxdigit)) {
+      while (src.PredicateAfter(0, isxdigit)) {
         c = src.Get();
         hex <<= 4;
         hex |= ASCIIHexToInt[c];
@@ -72,7 +73,7 @@ static void Unescape(cotyl::StringStream& dest, cotyl::Stream<char>& src) {
     case '4': case '5': case '6': case '7': {
       // octal literal
       char oct = c - '0';
-      for (int count = 0; src.PredicateAfter(0, std::isdigit) && count < 3; count++) {
+      for (int count = 0; src.PredicateAfter(0, isdigit) && count < 3; count++) {
         if (src.Peek(c) && c < '8') {
           c = src.Get();
           oct <<= 3;

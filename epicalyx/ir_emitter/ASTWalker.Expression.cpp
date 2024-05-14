@@ -257,7 +257,7 @@ void ASTWalker::Visit(const FunctionCallNode& expr) {
     if (arg.type == calyx::Local::Type::Aggregate) {
       throw cotyl::UnimplementedException("Aggregate function argument type");
     }
-    arg.arg_idx = i;
+    arg.non_aggregate.arg_idx = i;
     args.args.emplace_back(current, std::move(arg));
   }
 

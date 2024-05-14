@@ -393,9 +393,10 @@ void BasicOptimizer::TryReplaceOperand(Operand<T>& var) const {
 
 template<typename T, class F>
 bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
+  using directive_t = cotyl::base_t<T>;
   for (const auto& [var_idx, loc] : vars_found) {
     auto& directive = new_function.blocks.at(loc.first).at(loc.second);
-    if (IsType<cotyl::base_t<T>>(directive)) {
+    if (IsType<directive_t>(directive)) {
       auto candidate_block = loc.first;
       // todo: make generic, call on new_block_graph
       auto ancestor = CommonBlockAncestor(candidate_block, current_new_block_idx);
@@ -403,7 +404,7 @@ bool BasicOptimizer::FindExprResultReplacement(T& op, F predicate) {
       // todo: shift directives back for earlier ancestor blocks
       // todo: improve this
       if (ancestor == current_new_block_idx && ancestor == candidate_block) {
-        const auto& candidate = directive.get<cotyl::base_t<T>>();
+        const auto& candidate = directive.template get<directive_t>();
         if (predicate(candidate, op)) {
           var_replacement[op.idx] = candidate.idx;
           return true;

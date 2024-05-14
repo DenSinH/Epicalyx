@@ -171,7 +171,7 @@ void Interpreter::LoadArg(const calyx::Local& loc) {
 
   // locals have already been allocated on function entry
   const auto stack_loc = locals.Get(loc.idx).first;
-  const auto arg_idx = loc.arg_idx.value();
+  const auto arg_idx = loc.non_aggregate.arg_idx.value();
   switch (loc.type) {
     case Local::Type::I8: {
       i8 value = swl::get<Scalar<i32>>(vars.Get(args->args[arg_idx].first)).value;
@@ -247,7 +247,7 @@ void Interpreter::EnterFunction(const Function* function) {
     locals.Set(loc_idx, std::make_pair(stack.size(), local.Size()));
     stack.resize(stack.size() + local.Size());
 
-    if (local.arg_idx.has_value()) {
+    if (local.non_aggregate.arg_idx.has_value()) {
       LoadArg(local);
     }
   }
