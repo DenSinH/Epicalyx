@@ -272,8 +272,13 @@ cotyl::vector<Preprocessor::MacroStream::Segment> Preprocessor::ExpandMacro(cons
             auto argvalue = SString{arg_value(hash.arg_index).view()};
             while (!argvalue.EOS()) {
               char c = argvalue.Get();
-              if (c == '\\') value << c << argvalue.Get();
+              if (c == '\\') value << '\\' << c << argvalue.Get();
               else if (c == '\"') value << '\\' << c;
+              else if (std::isspace(c)) {
+                // todo: resolve this in arg_value?
+                argvalue.SkipWhile(isspace);
+                value << ' ';
+              }
               else value << c;
             }
             value << '\"';
