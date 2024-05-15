@@ -319,37 +319,50 @@ cotyl::CString Preprocessor::GetNextChunk(bool do_preprocessing) {
       
       // we may block macro expansion if we are checking a 
       // #if defined statement, or fetching macro arguments
-      if (!do_preprocessing || block_macro_expansion) {
+      if (!do_preprocessing || !state.expand_any_macros) {
         return std::move(identifier);
       }
 
       if (StandardDefinitions.contains(identifier)) {
         return (this->*StandardDefinitions.at(identifier))();
       }
-      else if (definitions.contains(identifier)) {  
-        ClearEmptyStreams();
-        if (!state.macro_stack.empty()) {
-          const auto& current_macro = state.macro_stack.back();
-
-          // arguments are already expanded where needed,
-          // so we check whether the identifier should be used recursively
-          if (current_macro.name == identifier) {
-            // cannot recursively expand macro identifiers in macro definition
-            // see 6.10.3.4 Rescanning and further replacement > 2
-            // in ISO/IEC 9899:1999
-            return identifier;
-          }
+      else if (definitions.contains(identifier)) { 
+        // never call nested expansions 
+        if (IsNestedExpansion(identifier)) {
+          return std::move(identifier);
         }
+
         const auto& def = definitions.at(identifier);
         if (def.arguments.has_value()) {
+          if (!state.expand_callable_macros) {
+            return std::move(identifier);
+          }
           SkipBlanks();
           if (!CurrentStream().IsAfter(0, '(')) {
             // callable macro that was not called
             return std::move(identifier);
           }
+
+          // functional macros may be called if the arguments 
+          // were not expanded yet
+          if (!state.macro_stack.empty() && state.macro_stack.back().IsExpanded()) {
+            return std::move(identifier);
+          }
+
+          // always expand callable macros if not nested
+          PushMacro(std::move(identifier), def);
+          continue;
         }
-        PushMacro(std::move(identifier), def);
-        continue;
+        else if (state.macro_stack.empty() || !state.macro_stack.back().IsExpanded()) {
+          // only expand non-callable macros if macro stack is empty
+          // this is because non-callable macros will already be fully
+          // expanded when their "calling macro" is pushed
+          PushMacro(std::move(identifier), def);
+          continue;
+        }
+        else {
+          return std::move(identifier);
+        }
       }
       else {
         return std::move(identifier);

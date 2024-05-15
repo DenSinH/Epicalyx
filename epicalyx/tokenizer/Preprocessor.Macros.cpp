@@ -15,17 +15,11 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
   cotyl::StringStream current_val{};
   char c;
 
-  // expand an encountered argument
-  // set to false when we encounter a ## operator
-  bool concat_next = false;
-
   auto end_segment = [&] {
     if (!current_val.empty()) {
-      result.emplace_back(current_val.cfinalize());
+      auto current = cotyl::CString{current_val.trim_view()};
+      if (!current.empty()) result.emplace_back(Definition::Literal{std::move(current)});
       current_val.clear();
-
-      // reset concatenation state
-      concat_next = false;
     }
   };
 
@@ -58,7 +52,6 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
       current_val << '\"';
     }
     else if (std::isspace(c)) {
-      end_segment();
       valstream.SkipWhile(std::isspace);
     }
     else if (c == '#') {
@@ -70,13 +63,11 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
           throw PreprocessorError("Unexpected '##' operator at the start of macro definition");
         }
 
-        // don't expand previous argument
-        if (swl::holds_alternative<Argument>(result.back())) {
-          swl::get<Argument>(result.back()).concat_next = true;
+        // concat previous segment
+        if (swl::holds_alternative<Hash>(result.back().seg)) {
+          throw PreprocessorError("Concatenating a stringified macro will not produce a valid preprocessing token"); 
         }
-
-        // concat next section
-        concat_next = true;
+        result.back().concat_next = true;
       }
       else {
         // get consequent macro argument value
@@ -88,9 +79,6 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
         }
         // argument will not be expanded
         result.emplace_back(Hash{arg.value()});
-
-        // reset concatenation state
-        concat_next = false;
       }
     }
     else if (detail::is_valid_ident_start(c)) {
@@ -100,10 +88,11 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
         end_segment();
 
         // expand argument only if it is not concatenated
-        result.emplace_back(Argument{.arg_index = arg.value(), .expand = !concat_next});
-
-        // reset concatenation state
-        concat_next = false;
+        result.emplace_back(Argument{.arg_index = arg.value()});
+      }
+      else if (ident == name) {
+        end_segment();
+        result.emplace_back(Definition::ThisName{});
       }
       else {
         // normal identifier, just append it
@@ -124,7 +113,9 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
 
   // end potential last segment
   end_segment();
-  if (concat_next) {
+
+  // check whether we ended with a ## operator
+  if (!result.empty() && result.back().concat_next) {
     throw PreprocessorError("Unexpected '##' operator at the end of macro definition");
   }
   return result;
@@ -132,7 +123,24 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
 
 void Preprocessor::MacroStream::PrintLoc(std::ostream& out) const {
   out << "In expansion of macro " << name.c_str() << std::endl;
-  this->SString::PrintLoc(out);
+  value.at(current).value.PrintLoc(out);
+}
+
+char Preprocessor::MacroStream::GetNew() {
+  if (value[current].value.EOS()) {
+    if (++current == value.size()) {
+      throw cotyl::EOSError();
+    }
+    return ' ';
+  }
+  return value[current].value.Get();
+}
+
+bool Preprocessor::MacroStream::IsEOS() {
+  if (current < value.size() - 1) {
+    return false;
+  }
+  return value.back().value.EOS();
 }
 
 std::pair<cotyl::CString, char> Preprocessor::GetMacroArgumentValue(bool variadic) {
@@ -183,10 +191,11 @@ std::pair<cotyl::CString, char> Preprocessor::GetMacroArgumentValue(bool variadi
   return {cotyl::CString{value.trim_view()}, separator};
 }
 
-void Preprocessor::ExpandArgumentTo(cotyl::StringStream& dest, const cotyl::CString& arg) {
- // we may be parsing an expression or expanding a macro
+cotyl::CString Preprocessor::ExpandArgument(const cotyl::CString& arg) {
+  // we may be parsing an expression or expanding a macro
   auto old_state = StartExpression(arg);
 
+  cotyl::StringStream dest{};
   while (!InternalIsEOS()) {
     dest << GetNextChunk();
     ClearEmptyStreams();
@@ -194,11 +203,12 @@ void Preprocessor::ExpandArgumentTo(cotyl::StringStream& dest, const cotyl::CStr
 
   // restore state
   EndExpression(std::move(old_state));
+  return dest.cfinalize();
 }
 
-cotyl::CString Preprocessor::ExpandMacro(const Definition& def, cotyl::vector<cotyl::CString>&& args, cotyl::CString&& va_args) {
+cotyl::vector<Preprocessor::MacroStream::Segment> Preprocessor::ExpandMacro(const Definition& def, cotyl::vector<cotyl::CString>&& args, cotyl::CString&& va_args) {
   cotyl::Assert(args.size() == def.arguments.value_or(Definition::Arguments{}).count);
-  cotyl::StringStream value{};
+  cotyl::vector<Preprocessor::MacroStream::Segment> result{};
 
   auto arg_value = [&](i32 arg_index) -> const cotyl::CString& {
     if (arg_index == -1) {
@@ -208,48 +218,83 @@ cotyl::CString Preprocessor::ExpandMacro(const Definition& def, cotyl::vector<co
   };
 
   for (int i = 0; i < def.value.size(); i++) {
-    bool concat_next = false;
+    const auto& seg = def.value[i];
+    if (seg.concat_next) {
+      cotyl::StringStream concatenated{};
+      do {
+        swl::visit(
+          swl::overloaded{
+            [&](const Definition::Argument& arg) {
+              concatenated << arg_value(arg.arg_index);
+            },
+            [&](const Definition::Literal& lit) {
+              concatenated << lit.value;
+            },
+            [&](const Definition::ThisName&) {
+              concatenated << def.name;
+            },
+            [](const Definition::Hash&) {
+              throw cotyl::UnreachableException();
+            },
+            // exhaustive variant access
+            [](const auto& invalid) { static_assert(!sizeof(invalid)); }
+          },
+          def.value[i].seg
+        );
 
-    swl::visit(
-      swl::overloaded{
-        [&](const cotyl::CString& seg) {
-          value << seg;
+        // we will not read past the end of the array,
+        // this is checked upon definition
+      } while (def.value[i++].concat_next);
+      // don't skip past the last attached
+      i--;
+      result.emplace_back(ExpandArgument(concatenated.cfinalize()), true);
+    }
+    else {
+      swl::visit(
+        swl::overloaded{
+          [&](const Definition::Literal& lit) {
+            // unexpanded
+            result.emplace_back(cotyl::CString{lit.value}, false);
+          },
+          [&](const Definition::Argument& arg) {
+            result.emplace_back(ExpandArgument(arg_value(arg.arg_index)), true);
+          },
+          [&](const Definition::ThisName&) {
+            // unexpanded name
+            result.emplace_back(cotyl::CString{def.name}, true);
+          },
+          [&](const Definition::Hash& hash) {
+            // stringify UNEXPANDED argument value
+            cotyl::StringStream value{};
+            value << '\"';
+            auto argvalue = SString{arg_value(hash.arg_index).view()};
+            while (!argvalue.EOS()) {
+              char c = argvalue.Get();
+              if (c == '\\') value << c << argvalue.Get();
+              else if (c == '\"') value << '\\' << c;
+              else value << c;
+            }
+            value << '\"';
+            result.emplace_back(value.cfinalize(), true);
+          },
+          // exhaustive variant access
+          [](const auto& invalid) { static_assert(!sizeof(invalid)); }
         },
-        [&](const Definition::Argument& seg) {
-          if (seg.concat_next || !seg.expand) {
-            // don't expand when concatenated
-            concat_next = seg.concat_next;
-            value << arg_value(seg.arg_index);
-          }
-          else {
-            ExpandArgumentTo(value, arg_value(seg.arg_index));
-          }
-        },
-        [&](const Definition::Hash& hash) {
-          // stringify UNEXPANDED argument value
-          value << '\"';
-          auto argvalue = SString{arg_value(hash.arg_index).view()};
-          while (!argvalue.EOS()) {
-            char c = argvalue.Get();
-            if (c == '\\') value << c << argvalue.Get();
-            else if (c == '\"') value << '\\' << c;
-            else value << c;
-          }
-          value << '\"';
-        },
-        // exhaustive variant access
-        [](const auto& invalid) { static_assert(!sizeof(invalid)); }
-      },
-      def.value[i]
-    );
-
-    if (!concat_next && i != def.value.size() - 1) {
-      // insert whitespace after arguments
-      value << ' ';
+        seg.seg
+      );
     }
   }
 
-  return value.cfinalize();
+  return result;
+}
+
+bool Preprocessor::IsNestedExpansion(const cotyl::CString& name) const {
+  return std::any_of(
+    state.macro_stack.begin(), state.macro_stack.end(),
+    [&](const auto& macro) {
+      return macro.name == name;
+    }
+  );
 }
 
 void Preprocessor::PushMacro(cotyl::CString&& name, const Definition& definition) {

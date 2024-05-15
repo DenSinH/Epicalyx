@@ -59,10 +59,7 @@ private:
   // the pre_processing_queue
   bool InternalIsEOS() const;
   
-  // we will block macro expansion when parsing 
-  // constant expressions, in order to prevent
-  // a macro from being expanded
-  mutable bool block_macro_expansion = false;
+  // tokenizer for parsing constant expressions
   mutable Tokenizer this_tokenizer;
 
   /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
@@ -115,46 +112,63 @@ private:
   // the value is built up of either:
   // literal strings, argument values and stringified argument values
   struct Definition {
-    // a segment is either a string or an argument index
-    struct Argument { 
-      i32 arg_index;
-      bool expand = true;
-      bool concat_next = false; 
-    };
+    struct Literal { cotyl::CString value; };
+    struct ThisName { };
+    struct Argument {  i32 arg_index; };
     struct Hash { i32 arg_index; };
 
-    using segment_t = swl::variant<cotyl::CString, Argument, Hash>;
-    using value_t = cotyl::vector<segment_t>;
+    struct Segment {
+      swl::variant<Literal, ThisName, Argument, Hash> seg;
+      bool concat_next = false;
+    };
+
+    using value_t = cotyl::vector<Segment>;
+
     struct Arguments {
       size_t count;
       bool variadic;
     };
 
-    Definition(cotyl::vector<cotyl::CString>&& args, bool variadic, cotyl::CString&& val) :
+    Definition(
+      cotyl::CString&& name, 
+      cotyl::vector<cotyl::CString>&& args, 
+      bool variadic, 
+      cotyl::CString&& val
+    ) : name{std::move(name)},
         arguments{Arguments{args.size(), variadic}},
         value{Parse(std::move(args), variadic, std::move(val))} { }
 
     // parse value as non-variadic functional macro with no arguments
-    Definition(cotyl::CString&& value) : 
+    Definition(cotyl::CString&& name, cotyl::CString&& value) : 
+        name{std::move(name)},
         arguments{}, 
         value{Parse({}, false, std::move(value))} { }
 
     // parse definition from argument names, variadic status and raw string definition
-    static value_t Parse(cotyl::vector<cotyl::CString>&& args, bool variadic, cotyl::CString&& value);
-
-    value_t value;
+    value_t Parse(
+      cotyl::vector<cotyl::CString>&& args, 
+      bool variadic, 
+      cotyl::CString&& value
+    );
 
     // no value means not callable
+    cotyl::CString name;
     std::optional<Arguments> arguments{};
+    value_t value;
   };
 
   // expanded macro stream
   // include name to prevent recursive macro expansion:
   // #define f(a) f(a)
   // expands f(1) to f(1)
-  struct MacroStream final : public SString<cotyl::CString> {
-    MacroStream(cotyl::CString&& name, cotyl::CString&& expanded) :
-        SString{std::move(expanded)},
+  struct MacroStream final : cotyl::Stream<char> {
+    struct Segment {
+      SString<cotyl::CString> value;
+      bool expanded;
+    };
+
+    MacroStream(cotyl::CString&& name, cotyl::vector<Segment>&& expanded) :
+        value{std::move(expanded)},
         name{std::move(name)} {
         
     }
@@ -162,7 +176,16 @@ private:
     // override PrintLoc to display current macro name
     void PrintLoc(std::ostream& out) const final;
 
+    bool IsExpanded() const { return value[current].expanded; };
+
     cotyl::CString name;
+
+  protected:
+    cotyl::vector<Segment> value;
+    std::size_t current = 0;
+
+    char GetNew() final;
+    bool IsEOS() final;
   };
   
   // macro definitions, and a set of default definitions
@@ -178,6 +201,9 @@ private:
   cotyl::CString STDC_HOSTED() const;
   cotyl::CString STDC_VERSION() const;
 
+  // check if macro is currently being expanded
+  bool IsNestedExpansion(const cotyl::CString& name) const;
+
   // expand and push a new macro
   void PushMacro(cotyl::CString&& name, const Definition& definition);
   
@@ -187,10 +213,10 @@ private:
   
   // expand macro argument to some StringStream by pushing
   // a new state and parsing an expression
-  void ExpandArgumentTo(cotyl::StringStream& dest, const cotyl::CString& arg);
+  cotyl::CString ExpandArgument(const cotyl::CString& arg);
   
   // expand a macro definition and return the expanded value
-  cotyl::CString ExpandMacro(const Definition& definition, cotyl::vector<cotyl::CString>&& args, cotyl::CString&& va_args);
+  cotyl::vector<MacroStream::Segment> ExpandMacro(const Definition& definition, cotyl::vector<cotyl::CString>&& args, cotyl::CString&& va_args);
 
   /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
    * GENERAL STATE MANAGEMENT
@@ -259,6 +285,15 @@ private:
 
     // stack of macros and arguments to be processed before anything else
     std::deque<Preprocessor::MacroStream> macro_stack{};
+    
+    // we will block macro expansion when parsing 
+    // constant expressions, in order to prevent
+    // a macro from being expanded
+    bool expand_any_macros = true;
+
+    // we will block callable macros when expanding
+    // macro arguments
+    bool expand_callable_macros = true;
   };
 
   mutable State state{};

@@ -23,7 +23,7 @@ ast::pExpr Preprocessor::ResolveIdentifier(cotyl::CString&& name) const {
   // for example, the "defined" preprocessing directive
   if (name.streq("defined")) {
     int parens;
-    block_macro_expansion = true;
+    state.expand_any_macros = false;
     for (parens = 0; this_tokenizer.EatIf(TokenType::LParen); parens++);
     auto ident = this_tokenizer.Expect(TokenType::Identifier);
     auto macro = std::move(ident.get<IdentifierToken>().name);
@@ -32,7 +32,7 @@ ast::pExpr Preprocessor::ResolveIdentifier(cotyl::CString&& name) const {
     for (; parens > 0; parens--) {
       this_tokenizer.Eat(TokenType::RParen);
     }
-    block_macro_expansion = false;
+    state.expand_any_macros = false;
     return std::move(expr);
   }
   // unresolved identifier, i.e. unexpanded macro evaluates to false
@@ -243,7 +243,8 @@ void Preprocessor::PreprocessorDirective() {
 
       // only save definitions if current group is enabled
       if (enabled) {
-        definitions.emplace(name, Definition(std::move(arguments), variadic, std::move(value)));
+        auto def = Definition(cotyl::CString{name}, std::move(arguments), variadic, std::move(value));
+        definitions.insert_or_assign(std::move(name), std::move(def));
       }
     }
     else {
@@ -251,7 +252,8 @@ void Preprocessor::PreprocessorDirective() {
 
       // only save definitions if current group is enabled
       if (enabled) {
-        definitions.emplace(name, Definition(std::move(value)));
+        auto def = Definition(cotyl::CString{name}, std::move(value));
+        definitions.insert_or_assign(std::move(name), std::move(def));
       }
     }
     // newline eaten in FetchLine()
