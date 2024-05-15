@@ -2,6 +2,7 @@
 #include "Identifier.h"
 #include "CustomAssert.h"
 
+#include <cctype>
 
 namespace epi {
 
@@ -52,7 +53,8 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
       current_val << '\"';
     }
     else if (std::isspace(c)) {
-      valstream.SkipWhile(std::isspace);
+      end_segment();
+      valstream.SkipWhile(isspace);
     }
     else if (c == '#') {
       end_segment();
@@ -71,7 +73,7 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
       }
       else {
         // get consequent macro argument value
-        valstream.SkipWhile(std::isspace);
+        valstream.SkipWhile(isspace);
         auto ident = detail::get_identifier(valstream);
         auto arg = get_argument(ident);
         if (!arg.has_value()) {

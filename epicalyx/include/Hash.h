@@ -10,7 +10,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace epi {
+namespace epi::cotyl {
 
 template <typename T>
 concept std_hashable = requires(T a) {
@@ -28,13 +28,11 @@ constexpr bool std_hashable_v = std_hashable<T>;
 template <typename T>
 constexpr bool boost_hashable_v = boost_hashable<T>;
 
-template <typename T>
-requires (std_hashable<T> && !boost_hashable<T>)
-std::size_t hash_value(const T& arg) {
-    return std::hash<T>{}(arg);
+template<typename T>
+requires(std_hashable<T> && !boost_hashable<T>)
+inline std::size_t hash_value(const T& arg) {
+  return std::hash<T>{}(arg);
 }
-
-namespace calyx {
 
 template <class T>
 inline void hash_combine(std::size_t& seed, T const& v) {
@@ -43,7 +41,8 @@ inline void hash_combine(std::size_t& seed, T const& v) {
 
 }
 
-}
+// fixes namespace lookup
+namespace epi { using cotyl::hash_value; }
 
 #else
 

@@ -6,6 +6,8 @@
 #include "Containers.h"
 #include "Escape.h"
 
+#include <cctype>
+
 
 namespace epi {
 
@@ -24,7 +26,7 @@ AnyToken Tokenizer::Make(Args&&... args) {
 }
 
 void Tokenizer::SkipBlanks() {
-  in_stream.SkipWhile(std::isspace);
+  in_stream.SkipWhile(isspace);
 }
 
 bool Tokenizer::IsEOS() {
@@ -79,7 +81,7 @@ AnyToken Tokenizer::GetNew() {
       return Make<IdentifierToken>(cotyl::CString{std::move(identifier)});
     }
   }
-  else if (std::isdigit(c) || (c == '.' && in_stream.PredicateAfter(1, std::isdigit))) {
+  else if (std::isdigit(c) || (c == '.' && in_stream.PredicateAfter(1, isdigit))) {
     // numerical constant
     return ReadNumericalConstant();
   }
@@ -181,7 +183,7 @@ AnyToken Tokenizer::ReadNumericalConstant() {
   }
 
   while (true) {
-    while ((hex && in_stream.PredicateAfter(0, std::isxdigit)) || (!hex && in_stream.PredicateAfter(0, std::isdigit))) {
+    while ((hex && in_stream.PredicateAfter(0, isxdigit)) || (!hex && in_stream.PredicateAfter(0, isdigit))) {
       value << in_stream.Get();
     }
 

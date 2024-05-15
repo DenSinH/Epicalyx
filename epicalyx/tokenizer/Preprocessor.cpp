@@ -4,6 +4,8 @@
 #include "SStream.h"
 #include "CustomAssert.h"
 
+#include <cctype>
+
 
 namespace epi {
 
@@ -145,7 +147,7 @@ void Preprocessor::SkipEscapedNewline() {
   // a \ at the end of a file is invalid regardless, in which case we will not
   // be skipping any blanks either
   EatNextCharacter('\\');
-  cotyl::Assert(CurrentStream().PredicateAfter(0, std::isspace));
+  cotyl::Assert(CurrentStream().PredicateAfter(0, isspace));
 
   bool first_newline = true;
   CurrentStream().SkipWhile([&](char c) -> bool {
@@ -169,7 +171,7 @@ bool Preprocessor::SkipBlanks(bool skip_newlines) {
   while (!InternalIsEOS()) {
     char c = NextCharacter();
     if (c == '\\') {
-      if (CurrentStream().PredicateAfter(1, std::isspace)) {
+      if (CurrentStream().PredicateAfter(1, isspace)) {
         SkipEscapedNewline();
       }
     }
@@ -200,7 +202,7 @@ void Preprocessor::SkipLineComment() {
   EatNextCharacter('/');
   
   while (!InternalIsEOS() && !is_newline) {
-    if (NextCharacter() =='\\' && CurrentStream().PredicateAfter(1, std::isspace)) {
+    if (NextCharacter() =='\\' && CurrentStream().PredicateAfter(1, isspace)) {
       SkipEscapedNewline();
     }
     else {
@@ -271,7 +273,7 @@ bool Preprocessor::InternalIsEOS() const {
 
 void Preprocessor::EatNewline() {
   auto line = FetchLine();
-  if (!std::all_of(line.begin(), line.end(), std::isspace)) {
+  if (!std::all_of(line.begin(), line.end(), isspace)) {
     throw PreprocessorError("Expected newline");
   }
 }

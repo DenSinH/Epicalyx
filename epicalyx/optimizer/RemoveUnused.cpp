@@ -20,7 +20,7 @@ static std::size_t NullifyUnusedLocals(calyx::Function& func, FunctionDependenci
       for (const auto& pos : local.writes) {
         func.blocks.at(pos.first).at(pos.second).template emplace<calyx::NoOp>();
       }
-      if (!func.locals.at(loc_idx).arg_idx.has_value()) {
+      if (!func.locals.at(loc_idx).non_aggregate.arg_idx.has_value()) {
         func.locals.erase(loc_idx);
         removed++;
       }

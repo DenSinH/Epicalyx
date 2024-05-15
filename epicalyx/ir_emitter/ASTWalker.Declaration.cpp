@@ -74,7 +74,7 @@ var_index_t ASTWalker::AddLocal(cotyl::CString&& name, const type::AnyType& type
     if (local.type == calyx::Local::Type::Aggregate) {
       throw cotyl::UnimplementedException("Aggregate argument types");
     }
-    local.arg_idx = std::move(arg_index.value());
+    local.non_aggregate.arg_idx = std::move(arg_index.value());
   }
   auto& loc = emitter.current_function->locals.emplace(c_idx, std::move(local)).first->second;
   locals.Set(std::move(name), LocalData{ &loc, type });

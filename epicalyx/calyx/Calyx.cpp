@@ -45,9 +45,9 @@ size_t Function::Hash() const {
   size_t seed = blocks.size();
   cotyl::map<block_label_t, const BasicBlock&> sorted{blocks.begin(), blocks.end()};
   for (const auto& [block_idx, block] : sorted) {
-    calyx::hash_combine(seed, block_idx);
+    cotyl::hash_combine(seed, block_idx);
     for (const auto& directive : block) {
-      calyx::hash_combine(seed, directive.index());
+      cotyl::hash_combine(seed, directive.index());
     }
   }
   return seed;
@@ -63,7 +63,7 @@ size_t Program::Hash() const {
   }
 
   for (const auto& [sym, func] : sorted) {
-    calyx::hash_combine(seed, func.Hash());
+    cotyl::hash_combine(seed, func.Hash());
   }
   return seed;
 }
@@ -130,8 +130,8 @@ static void VisualizeFunctionHelper(epi::cycle::VisualGraph& graph, const Functi
   fnode->n(GetNodeID(func, Function::Entry));
   for (const auto& [loc_idx, local] : func.locals) {
     std::string label;
-    if (local.arg_idx.has_value()) {
-      label = cotyl::Format("%s c%d <- a%d", detail::TypeString(local.type).c_str(), loc_idx, local.arg_idx.value());
+    if (local.non_aggregate.arg_idx.has_value()) {
+      label = cotyl::Format("%s c%d <- a%d", detail::TypeString(local.type).c_str(), loc_idx, local.non_aggregate.arg_idx.value());
     }
     else {
       label = cotyl::Format("%s c%d", detail::TypeString(local.type).c_str(), loc_idx);

@@ -131,6 +131,8 @@
         "spanstream": "cpp",
         "stacktrace": "cpp",
         "stdfloat": "cpp",
-        "xtwo_byte": "cpp"
+        "xtwo_byte": "cpp",
+        "*.tcc": "cpp",
+        "string_view": "cpp"
     }
 }

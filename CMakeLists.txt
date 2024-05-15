@@ -15,7 +15,7 @@ if(CCACHE_FOUND)
 endif()
 
 # find boost
-find_package(Boost 1.75.0)
+find_package(Boost 1.74.0)
 
 # it is possible to build without boost
 if(${Boost_FOUND})
@@ -94,11 +94,14 @@ add_executable(
         ${INCLUDE_HEADERS}
 )
 
+if (UNIX)
+  # because the source folder name is the same as the target
+  set_target_properties(epicalyx PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+endif()
+
 target_link_libraries(epicalyx epicalyx-config)
 
 # link subdirectories
-
-# add_compile_options(-fstack-protector)
 add_subdirectory(epicalyx/file)
 add_subdirectory(epicalyx/tokenizer)
 add_subdirectory(epicalyx/types)
@@ -114,14 +117,22 @@ target_link_libraries(epicalyx Parser)
 target_link_libraries(epicalyx Cycle)
 
 
-# uses Calyx I
+# uses Calyx IR
 add_subdirectory(epicalyx/calyx)
 add_subdirectory(epicalyx/ir_emitter)
 add_subdirectory(epicalyx/optimizer)
 add_subdirectory(epicalyx/regalloc)
 
 target_link_libraries(epicalyx Calyx)
+
+# needed for InterpretGlobalInitializer
+target_link_libraries(IREmitter Calyx)
 target_link_libraries(epicalyx IREmitter)
+
+# needed for visualizations
+target_link_libraries(Optimizer Cycle)
+target_link_libraries(RegAlloc Cycle)
+
 target_link_libraries(epicalyx Optimizer)
 target_link_libraries(epicalyx RegAlloc)
 
@@ -133,11 +144,17 @@ add_custom_target(graphviz ALL
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_graphviz"
 )
 
+if (WIN32)
+  set(PYTHON_COMMAND "python")
+else()
+  set(PYTHON_COMMAND "python3")
+endif()
+
 include(CTest)
 add_test(
     NAME scctests
     COMMAND 
-    python "run_suite.py" 
+    ${PYTHON_COMMAND} "run_suite.py" 
           "$<TARGET_FILE:epicalyx>"
           "${PROJECT_SOURCE_DIR}/epicalyx/stl"
           "./scctests/cc/execute"
