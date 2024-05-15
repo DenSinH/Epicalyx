@@ -339,9 +339,6 @@ cotyl::CString Preprocessor::GetNextChunk(bool do_preprocessing) {
 
         const auto& def = definitions.at(identifier);
         if (def.arguments.has_value()) {
-          if (!state.expand_callable_macros) {
-            return std::move(identifier);
-          }
           SkipBlanks();
           if (!CurrentStream().IsAfter(0, '(')) {
             // callable macro that was not called

@@ -290,10 +290,6 @@ private:
     // constant expressions, in order to prevent
     // a macro from being expanded
     bool expand_any_macros = true;
-
-    // we will block callable macros when expanding
-    // macro arguments
-    bool expand_callable_macros = true;
   };
 
   mutable State state{};
