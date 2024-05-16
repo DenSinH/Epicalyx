@@ -137,7 +137,7 @@ void Parser::RecordDeclaration(const cotyl::CString& name, type::AnyType& type) 
     return;
   }
 
-  if (typedefs.HasTop(name) || structdefs.HasTop(name) || uniondefs.HasTop(name) || enums.HasTop(name)) {
+  if (typedefs.HasTop(name)) {
     throw cotyl::FormatExcept<ParserError>("Redefinition of symbol %s", name.c_str());
   }
   else if (variables.HasTop(name)) {
