@@ -136,7 +136,7 @@ void Parser::RecordDeclaration(const cotyl::CString& name, type::AnyType& type) 
   if (name.empty()) {
     return;
   }
-  
+
   if (typedefs.HasTop(name) || structdefs.HasTop(name) || uniondefs.HasTop(name) || enums.HasTop(name)) {
     throw cotyl::FormatExcept<ParserError>("Redefinition of symbol %s", name.c_str());
   }
@@ -783,6 +783,11 @@ void Parser::StoreDeclaration(DeclarationNode&& decl, cotyl::vector<ast::Declara
     }
   }
   else {
+    if (!decl.name.empty() && decl.storage != StorageClass::Extern) {
+      // complete possible forward declarations on declaration type
+      CompleteForwardDecl(decl.type);
+    }
+
     RecordDeclaration(decl.name, decl.type);
     if (in_stream.EatIf(TokenType::Assign)) {
       // type var = <expression> or {initializer list}
