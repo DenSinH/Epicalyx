@@ -164,7 +164,7 @@ void ASTWalker::EmitPointerExpr(Emitter::Var::Type type, u64 stride, Args... arg
     case Emitter::Var::Type::Double: current = emitter.EmitExpr<Op<double>>({ type, stride }, args...); break;
     case Emitter::Var::Type::Pointer: current = emitter.EmitExpr<Op<calyx::Pointer>>({ type, stride }, args...); break;
     default:
-      throw EmitterError("Bad type for arithmetic expression");
+      throw EmitterError("Bad type for pointer expression");
   }
 }
 

@@ -27,7 +27,12 @@ void ASTWalker::EmitConditionalBranchForCurrent() {
   auto tblock = state.top().second.true_block;
   auto left = current;
   auto type = emitter.vars[left].type;
-  EmitArithExpr<calyx::Imm>(type, 0);
+  if (type == Emitter::Var::Type::Pointer) {
+    current = emitter.EmitExpr<calyx::Imm<calyx::Pointer>>({ type, emitter.vars[left].stride }, 0);
+  }
+  else {
+    EmitArithExpr<calyx::Imm>(type, 0);
+  }
   auto imm = current;
   EmitBranch<calyx::BranchCompare>(type, tblock, fblock, left, calyx::CmpType::Ne, imm);
 }
