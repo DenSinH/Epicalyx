@@ -52,6 +52,7 @@ private:
   type::AnyType DStruct();
   cotyl::CString DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest);
   ast::DeclarationNode DDeclarator(type::AnyType ctype, ast::StorageClass storage);
+  void CompleteForwardDecl(type::AnyType& fwd_decl) const;
   void DInitDeclaratorList(cotyl::vector<ast::DeclarationNode>& dest);
   void StoreDeclaration(ast::DeclarationNode&& decl, cotyl::vector<ast::DeclarationNode>& dest);
   bool IsDeclarationSpecifier(int after = 0);

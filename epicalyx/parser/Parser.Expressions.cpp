@@ -57,6 +57,9 @@ pExpr Parser::EPostfix() {
         auto right = EExpressionList();
         in_stream.Eat(TokenType::RBracket);
         node = std::make_unique<ArrayAccessNode>(std::move(node), std::move(right));
+
+        // try to complete possible struct forward declarations
+        CompleteForwardDecl(node->type);
         break;
       }
       case TokenType::LParen: {
@@ -75,16 +78,19 @@ pExpr Parser::EPostfix() {
       }
       case TokenType::Arrow: {
         // indirect member access
-        in_stream.Skip();
-        auto member = in_stream.Eat(TokenType::Identifier);
-        node = std::make_unique<MemberAccessNode>(std::move(node), false, std::move(member.get<IdentifierToken>().name));
-        break;
-      }
+        node = std::make_unique<UnopNode>(TokenType::Asterisk, std::move(node));
+
+        // try to complete possible struct forward declarations
+        CompleteForwardDecl(node->type);
+      } [[fallthrough]];
       case TokenType::Dot: {
         // direct member access
         in_stream.Skip();
         auto member = in_stream.Eat(TokenType::Identifier);
-        node = std::make_unique<MemberAccessNode>(std::move(node), true, std::move(member.get<IdentifierToken>().name));
+        node = std::make_unique<MemberAccessNode>(std::move(node), std::move(member.get<IdentifierToken>().name));
+        
+        // try to complete possible struct forward declarations
+        CompleteForwardDecl(node->type);
         break;
       }
       case TokenType::Incr: {
@@ -121,6 +127,12 @@ pExpr Parser::EUnary() {
       in_stream.Skip();
       auto right = ECast();
       auto expr = std::make_unique<UnopNode>(type, std::move(right));
+      
+      if (type == TokenType::Asterisk) {
+        // try to complete possible struct forward declarations
+        CompleteForwardDecl(expr->type);
+      }
+      
       return ExprOrReduced(std::move(expr));
     }
     case TokenType::Sizeof: {

@@ -92,19 +92,15 @@ std::string FunctionCallNode::ToString() const {
 }
 
 
-MemberAccessNode::MemberAccessNode(pExpr&& left, bool direct, cotyl::CString&& member) :
-    ExprNode{direct ? left->type->MemberAccess(member) : left->type->Deref()->MemberAccess(member)},
+MemberAccessNode::MemberAccessNode(pExpr&& left, cotyl::CString&& member) :
+    ExprNode{left->type->MemberAccess(member)},
     left(std::move(left)),
-    direct(direct),
     member(std::move(member)) {
 
 }
 
 std::string MemberAccessNode::ToString() const {
-  if (direct) {
-    return cotyl::FormatStr("(%s).%s", left, member);
-  }
-  return cotyl::FormatStr("(%s)->%s", left, member);
+  return cotyl::FormatStr("(%s).%s", left, member);
 }
 
 

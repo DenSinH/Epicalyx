@@ -98,8 +98,37 @@ static void MergeTypes(type::AnyType& existing, type::AnyType& found) {
   if (existing.holds_alternative<type::StructType>() && existing.get<type::StructType>().fields.empty()) {
     MergeStructUnionDefs(existing.get<type::StructType>(), found.get<type::StructType>());
   }
-  if (existing.holds_alternative<type::UnionType>() && existing.get<type::UnionType>().fields.empty()) {
+  else if (existing.holds_alternative<type::UnionType>() && existing.get<type::UnionType>().fields.empty()) {
     MergeStructUnionDefs(existing.get<type::UnionType>(), found.get<type::UnionType>());
+  }
+}
+
+void Parser::CompleteForwardDecl(type::AnyType& fwd_decl) const {
+  if (fwd_decl.holds_alternative<type::StructType>()) {
+    auto& fwd_decl_str = fwd_decl.get<type::StructType>();
+    if (fwd_decl_str.fields.empty()) {
+      if (!structdefs.Has(fwd_decl_str.name)) {
+        throw ParserError("Incomplete struct type");
+      }
+      auto& existing = structdefs.Get(fwd_decl_str.name);
+      if (existing.fields.empty()) {
+        throw ParserError("Incomplete struct type");
+      }
+      std::copy(existing.fields.begin(), existing.fields.end(), std::back_inserter(fwd_decl_str.fields));
+    }
+  }
+  else if (fwd_decl.holds_alternative<type::UnionType>()) {
+    auto& fwd_decl_str = fwd_decl.get<type::UnionType>();
+    if (fwd_decl_str.fields.empty()) {
+      if (!uniondefs.Has(fwd_decl_str.name)) {
+        throw ParserError("Incomplete union type");
+      }
+      auto& existing = uniondefs.Get(fwd_decl_str.name);
+      if (existing.fields.empty()) {
+        throw ParserError("Incomplete union type");
+      }
+      std::copy(existing.fields.begin(), existing.fields.end(), std::back_inserter(fwd_decl_str.fields));
+    }
   }
 }
 

@@ -86,10 +86,9 @@ struct FunctionCallNode final : ExprNode {
 struct MemberAccessNode final : ExprNode {
   ~MemberAccessNode() final = default;
 
-  MemberAccessNode(pExpr&& left, bool direct, cotyl::CString&& member);
+  MemberAccessNode(pExpr&& left, cotyl::CString&& member);
 
   pExpr left;
-  bool direct;
   cotyl::CString member;
 
   std::string ToString() const final;
