@@ -519,7 +519,9 @@ std::pair<type::AnyType, StorageClass> Parser::DSpecifier() {
 
       case TokenType::Identifier: {
         const auto& ident_name = static_cast<const IdentifierToken*>(current)->name;
-        if (typedefs.Has(ident_name)) {
+        
+        // only count name as typedef if no other type has been specified
+        if (typedefs.Has(ident_name) && !type) {
           if (ctype) {
             // repeat typedef declaration
             was_specifier = false;

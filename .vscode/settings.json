@@ -7,9 +7,9 @@
         "cwd": "${workspaceRoot}",
         "args": [
           "-rigfunc", "main",
-          "-catch-errors",
+          // "-catch-errors",
           "-stl", "${workspaceRoot}/epicalyx/stl",
-          "${workspaceRoot}/tests/suites/scctests/cc/execute/0218-initialize.c"
+          "${workspaceRoot}/tests/suites/scctests/cc/execute/0138-namespace.c"
         ]
     },
     "editor.indentSize": 2,

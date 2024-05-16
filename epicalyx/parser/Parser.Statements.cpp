@@ -217,6 +217,12 @@ pNode<CompoundNode> Parser::SCompound() {
     if (in_stream.IsAfter(0, TokenType::StaticAssert)) {
       DStaticAssert();
     }
+    // special case labels, since identifiers may also be used
+    // as typedef names, confusing IsDeclarationSpecifier()
+    // see 0138-namespace.c from the scc tests
+    else if (in_stream.SequenceAfter(0, TokenType::Identifier, TokenType::Colon)) {
+      compound->AddNode(SStatement());
+    }
     else if (IsDeclarationSpecifier()) {
       cotyl::vector<DeclarationNode> decl_list{};
       // stores and records declarations
