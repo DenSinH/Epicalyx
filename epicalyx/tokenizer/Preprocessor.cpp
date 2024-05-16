@@ -302,11 +302,9 @@ cotyl::CString Preprocessor::GetNextChunk(bool do_preprocessing) {
       }
       PreprocessorDirective();
 
-      // newline state is asserted after the preprocessing directive
-      // don't return newline, as there SHOULD be a newline BEFORE
-      // the directive as well
-      // return cotyl::CString{'\n'};
-      continue;
+      // return newline, otherwise it might break when files end in
+      // preprocessing directives
+      return cotyl::CString{'\n'};
     }
 
     if (do_preprocessing && !Enabled()) {

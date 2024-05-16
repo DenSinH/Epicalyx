@@ -37,11 +37,12 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
   };
 
   while (valstream.Peek(c, 0)) {
-    if (c == '\"') {
+    if (c == '\"' || c == '\'') {
       // strings in macro values must be taken literally, as to 
       // not expand macro arguments or #/## operators within them
-      current_val << valstream.Expect(c);
-      for (char k = valstream.Get(); k != '\"'; k = valstream.Get()) {
+      const char quote = c;
+      current_val << valstream.Expect(quote);
+      for (char k = valstream.Get(); k != quote; k = valstream.Get()) {
         current_val << k;
         if (k == '\\') {
           // escape sequence
@@ -50,7 +51,7 @@ Preprocessor::Definition::value_t Preprocessor::Definition::Parse(
       }
 
       // end quote (this was already taken from the stream)
-      current_val << '\"';
+      current_val << quote;
     }
     else if (std::isspace(c)) {
       end_segment();
@@ -272,8 +273,8 @@ cotyl::vector<Preprocessor::MacroStream::Segment> Preprocessor::ExpandMacro(cons
             auto argvalue = SString{arg_value(hash.arg_index).view()};
             while (!argvalue.EOS()) {
               char c = argvalue.Get();
-              if (c == '\\') value << '\\' << c << argvalue.Get();
-              else if (c == '\"') value << '\\' << c;
+              if (c == '\\') value << c << argvalue.Get();
+              else if (c == '\"' || c == '\'') value << '\\' << c;
               else if (std::isspace(c)) {
                 // todo: resolve this in arg_value?
                 argvalue.SkipWhile(isspace);
