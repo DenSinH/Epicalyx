@@ -666,6 +666,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
                 throw ParserError("Double name in declaration");
               }
               name = std::move(ident_name);
+              in_stream.Eat(TokenType::RParen);
               break;
             }
             // else: (function argument type)
