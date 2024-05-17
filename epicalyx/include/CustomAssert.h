@@ -11,7 +11,7 @@ struct AssertionError : Exception {
 };
 
 #ifndef NDEBUG
-static void Assert(bool cond, std::string&& message = "") {
+inline void Assert(bool cond, std::string&& message = "") {
   if (!cond) [[unlikely]] {
     throw AssertionError(std::move(message));
   }
@@ -19,7 +19,7 @@ static void Assert(bool cond, std::string&& message = "") {
 #else
 // make sure namespace in epi::cotyl::Assert is handled properly
 #define Assert(cond, ...) _none_call()
-static void _none_call() {  }
+inline void _none_call() {  }
 #endif
 
 }

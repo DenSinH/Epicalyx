@@ -11,23 +11,23 @@
 namespace epi {
 
 template<typename T> 
-static STRINGIFY_METHOD(std::unique_ptr<T>) { 
+inline STRINGIFY_METHOD(std::unique_ptr<T>) { 
   return stringify(*value); 
 }
 
 template<typename T>
-static STRINGIFY_METHOD(std::shared_ptr<T>) {
+inline STRINGIFY_METHOD(std::shared_ptr<T>) {
   return stringify(*value); 
 }
 
 template<typename T, typename... Ts> 
-static STRINGIFY_METHOD(cotyl::Variant<T, Ts...>) { 
+inline STRINGIFY_METHOD(cotyl::Variant<T, Ts...>) { 
   return value.template visit<std::string>(
     [](const auto& value) -> std::string { return stringify(value); }
   ); 
 }
 
-static STRINGIFY_METHOD(std::string) { 
+inline STRINGIFY_METHOD(std::string) { 
   return value; 
 }
 
@@ -46,12 +46,12 @@ concept HasToString = requires(T a) {
 }
 
 template<detail::HasStdToString T>
-static STRINGIFY_METHOD(T) {
+inline STRINGIFY_METHOD(T) {
   return std::to_string(value);
 }
 
 template<detail::HasToString T>
-static STRINGIFY_METHOD(T) {
+inline STRINGIFY_METHOD(T) {
   return value.ToString();
 }
 

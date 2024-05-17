@@ -677,6 +677,11 @@ constexpr R visit(Fn&& fn, Vs&&... vars){
 template<class... Args>
 struct overloaded : Args... { using Args::operator()...; };
 
+// simple exhaustive visitor pattern
+static constexpr auto exhaustive = [](const auto& val) { 
+  static_assert(!sizeof(val)); 
+};
+
 // ============================== relational operators (20.7.6)
 
 template <class... Ts>

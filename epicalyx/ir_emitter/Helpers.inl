@@ -68,8 +68,7 @@ struct EmitterTypeVisitor {
       [&]<typename T>(const type::ValueType<T>& value) {
         VisitValueImpl<T>();
       },
-      // exhaustive variant access
-      [](const auto& invalid) { static_assert(!sizeof(invalid)); }
+      swl::exhaustive
     );
   }
 

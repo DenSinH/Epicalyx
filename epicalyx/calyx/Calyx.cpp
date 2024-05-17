@@ -185,8 +185,7 @@ STRINGIFY_METHOD(Global) {
       []<typename T>(const epi::calyx::Scalar<T>& glob) {
         return std::to_string(+glob.value);
       },
-      // exhaustive variant access
-      [](const auto& invalid) { static_assert(!sizeof(invalid)); }
+      swl::exhaustive
     }, 
     value
   );

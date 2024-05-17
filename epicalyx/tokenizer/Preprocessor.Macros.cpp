@@ -239,8 +239,7 @@ cotyl::vector<Preprocessor::MacroStream::Segment> Preprocessor::ExpandMacro(cons
             [](const Definition::Hash&) {
               throw cotyl::UnreachableException();
             },
-            // exhaustive variant access
-            [](const auto& invalid) { static_assert(!sizeof(invalid)); }
+            swl::exhaustive
           },
           def.value[i].seg
         );
@@ -285,8 +284,7 @@ cotyl::vector<Preprocessor::MacroStream::Segment> Preprocessor::ExpandMacro(cons
             value << '\"';
             result.emplace_back(value.cfinalize(), true);
           },
-          // exhaustive variant access
-          [](const auto& invalid) { static_assert(!sizeof(invalid)); }
+          swl::exhaustive
         },
         seg.seg
       );

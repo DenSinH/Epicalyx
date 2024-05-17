@@ -42,8 +42,7 @@ static STRINGIFY_METHOD(Interpreter::var_real_t) {
       []<typename T>(const epi::calyx::Scalar<T>& var) {
         return cotyl::Format("%d (%d)", var.value, 8 * sizeof(T));
       },
-      // exhaustive variant access
-      [](const auto& invalid) { static_assert(!sizeof(invalid)); }
+      swl::exhaustive
     }, 
     value
   );

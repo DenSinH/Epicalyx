@@ -75,8 +75,7 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
           value = std::move(list.list[0].second.value);
         }
       },
-      // exhaustive variant access
-      [](const auto& invalid) { static_assert(!sizeof(invalid)); }
+      swl::exhaustive
     );
   }
   else {
@@ -111,8 +110,7 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
           throw cotyl::FormatExceptStr<type::TypeError>("Cannot cast type %s to %s in initializer", has, type);
         }
       },
-      // exhaustive variant access
-      [](const auto& invalid) { static_assert(!sizeof(invalid)); }
+      swl::exhaustive
     );
   }
 }
@@ -160,8 +158,7 @@ void InitializerList::ValidateAndReduce(const type::AnyType& type) {
     [&](const type::FunctionType& val) {
       ValidateAndReduceScalarType(type);
     },
-    // exhaustive variant access
-    [](const auto& invalid) { static_assert(!sizeof(invalid)); }
+    swl::exhaustive
   );
 }
 

@@ -61,8 +61,7 @@ pExpr ExpressionParser::EPrimary() {
     []<typename T>(const NumericalConstantToken<T>& num) -> pExpr {
       return std::make_unique<NumericalConstantNode<T>>(num.value);
     },
-    // exhaustive variant access
-    [](const auto& invalid) { static_assert(!sizeof(invalid)); }
+    swl::exhaustive
   );
 }
 

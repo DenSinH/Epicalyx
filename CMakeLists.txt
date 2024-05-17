@@ -47,6 +47,7 @@ add_compile_options(-Wno-format-security)
 
 # project common include headers
 set(INCLUDE_HEADERS 
+  ${PROJECT_SOURCE_DIR}/epicalyx/include/Aligned.h
   ${PROJECT_SOURCE_DIR}/epicalyx/include/Locatable.h
   ${PROJECT_SOURCE_DIR}/epicalyx/include/CString.h
   ${PROJECT_SOURCE_DIR}/epicalyx/include/Decltype.h

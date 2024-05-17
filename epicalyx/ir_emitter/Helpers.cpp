@@ -32,8 +32,7 @@ calyx::Global GetGlobalValue(const AnyType& type) {
     []<typename T>(const ValueType<T>& value) -> calyx::Global {
       return calyx::Scalar<T>{0};
     },
-    // exhaustive variant access
-    [](const auto& invalid) { static_assert(!sizeof(invalid)); }
+    swl::exhaustive
   );
 }
 
@@ -80,8 +79,7 @@ calyx::Local MakeLocal(loc_index_t loc_idx, const type::AnyType& type) {
     [&]<typename T>(const ValueType<T>& value) -> calyx::Local {
       return {calyx_loc_type_v<T>, loc_idx};
     },
-    // exhaustive variant access
-    [](const auto& invalid) { static_assert(!sizeof(invalid)); }
+    swl::exhaustive
   );
 }
 
