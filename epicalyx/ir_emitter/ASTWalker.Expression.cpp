@@ -164,8 +164,30 @@ template void ASTWalker::ConstVisitImpl(const NumericalConstantNode<float>&);
 template void ASTWalker::ConstVisitImpl(const NumericalConstantNode<double>&);
 
 void ASTWalker::Visit(const StringConstantNode& expr) {
-  // load from rodata
-  throw cotyl::UnimplementedException("string constant");
+  switch (state.top().first) {
+    case State::Empty: return;  // has no effect
+    case State::ConditionalBranch: {
+      // always branch, pointer is not null
+      emitter.Emit<calyx::UnconditionalBranch>(state.top().second.true_block);
+      return;
+    }
+    case State::Read:
+    case State::Address: {
+      // both give the address of the local
+      cotyl::CString global_name{".str" + std::to_string(emitter.program.globals.size())};
+      
+      // null terminator
+      calyx::AggregateData data{expr.value.size() + 1, 1};
+      std::memcpy(data.data.get(), expr.value.c_str(), expr.value.size());
+
+      emitter.program.globals.emplace(global_name, std::move(data));
+      current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, 1 }, std::move(global_name));
+      return;
+    }
+    default: 
+      // String constant cannot be assigned
+      throw cotyl::UnreachableException();
+  }
 }
 
 void ASTWalker::Visit(const ArrayAccessNode& expr) {

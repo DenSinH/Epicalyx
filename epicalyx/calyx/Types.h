@@ -7,6 +7,7 @@
 #include "CustomAssert.h"
 #include "Decltype.h"
 #include "swl/variant.hpp"
+#include "Aligned.h"
 #include "CalyxFwd.h"
 
 
@@ -157,6 +158,16 @@ struct LabelOffset {
   i64 offset;
 };
 
+
+struct AggregateData {
+  AggregateData(Aggregate&& agg) : 
+      agg{std::move(agg)}, data{cotyl::make_ualigned<u8>(agg.align, agg.size)} { }
+  AggregateData(u64 size, u32 align) : AggregateData(Aggregate{size, align}) { };
+
+  Aggregate agg;
+  cotyl::aligned_uptr<u8> data;
+};
+
 namespace detail {
 
 using global_t = swl::variant<
@@ -165,7 +176,8 @@ using global_t = swl::variant<
    Scalar<i32>, Scalar<u32>, 
    Scalar<i64>, Scalar<u64>, 
    Scalar<float>, Scalar<double>, 
-   Pointer, LabelOffset
+   Pointer, LabelOffset,
+   AggregateData
 >;
 
 }

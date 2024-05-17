@@ -201,7 +201,7 @@ void Preprocessor::PreprocessorDirective() {
     auto name = detail::get_identifier(CurrentStream());
 
     // erase any exising definition
-    if (enabled) definitions.erase(name);
+    definitions.erase(name);
 
     if (!InternalIsEOS() && NextCharacter() == '(') {
       // functional macro
@@ -243,8 +243,9 @@ void Preprocessor::PreprocessorDirective() {
 
       // only save definitions if current group is enabled
       if (enabled) {
+        // can use emplace, definition was erased before
         auto def = Definition(cotyl::CString{name}, std::move(arguments), variadic, std::move(value));
-        definitions.insert_or_assign(std::move(name), std::move(def));
+        definitions.emplace(std::move(name), std::move(def));
       }
     }
     else {
@@ -252,8 +253,9 @@ void Preprocessor::PreprocessorDirective() {
 
       // only save definitions if current group is enabled
       if (enabled) {
+        // can use emplace, definition was erased before
         auto def = Definition(cotyl::CString{name}, std::move(value));
-        definitions.insert_or_assign(std::move(name), std::move(def));
+        definitions.emplace(std::move(name), std::move(def));
       }
     }
     // newline eaten in FetchLine()

@@ -17,12 +17,12 @@ struct AlignedDeleter {
 }
 
 template<typename T>
-using unique_ptr_aligned = std::unique_ptr<T, detail::AlignedDeleter<T>>;
+using aligned_uptr = std::unique_ptr<T, detail::AlignedDeleter<T>>;
 
 template<typename T>
-inline unique_ptr_aligned<T> aligned_uptr(std::size_t align, std::size_t size) {
-  return unique_ptr_aligned<T>(
-    static_cast<T*>(std::aligned_alloc(align, sizeof(T) * size)), {}
+inline aligned_uptr<T> make_ualigned(std::size_t align, std::size_t size) {
+  return aligned_uptr<T>(
+    static_cast<T*>(std::calloc(size, sizeof(T))), {}
   );
 }
 

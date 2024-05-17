@@ -182,6 +182,9 @@ STRINGIFY_METHOD(Global) {
           return cotyl::Format("&%s", glob.label.c_str());
         }
       },
+      [](const epi::calyx::AggregateData& glob) {
+        return cotyl::Format("agg<%d>", glob.agg.size);
+      },
       []<typename T>(const epi::calyx::Scalar<T>& glob) {
         return std::to_string(+glob.value);
       },

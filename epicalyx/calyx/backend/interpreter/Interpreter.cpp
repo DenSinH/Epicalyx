@@ -109,24 +109,28 @@ void Interpreter::Emit(const AnyDirective& dir) {
   });
 }
 
-i32 Interpreter::Interpret(const Program& program) {
-  for (const auto& [symbol, global] : program.globals) {
+i32 Interpreter::Interpret(Program&& program) {
+  for (auto& [symbol, global] : program.globals) {
     swl::visit(
       swl::overloaded{
         // we have to handle label offsets differently, since
         // instructions do not care about LabelOffset types, only 
         // Pointer types
-        [&](const LabelOffset& glob) {
-          Pointer ptr = MakePointer(glob);
-          globals.emplace(symbol, std::move(ptr));
+        [&](LabelOffset&& glob) {
+          Pointer ptr = MakePointer(std::move(glob));
+          globals.emplace(std::move(symbol), std::move(ptr));
         },
-        [&](const Pointer& glob) {
-          Pointer ptr = MakePointer(glob.value);
-          globals.emplace(symbol, std::move(ptr));
+        [&](Pointer&& glob) {
+          Pointer ptr = MakePointer(std::move(glob.value));
+          globals.emplace(std::move(symbol), std::move(ptr));
+        },
+        // move aggregates
+        [&](AggregateData&& glob) {
+          globals.emplace(std::move(symbol), std::move(glob));
         },
         // any other type can just be passed straight off
-        [&](const auto& glob) {
-          globals.emplace(symbol, glob);
+        [&](auto& glob) {
+          globals.emplace(std::move(symbol), std::move(glob));
         }
       },
       global
@@ -153,7 +157,10 @@ i32 Interpreter::Interpret(const Program& program) {
     const auto& directive = pos.func->blocks.at(pos.pos.first).at(pos.pos.second);
     pos.pos.second++;
     Emit(directive);
-    if (called.has_value()) {  
+    if (called.has_value()) {
+      if (!program.functions.contains(called.value())) {
+        throw cotyl::FormatExcept<InterpreterError>("Undefined function: %s", called.value().c_str());
+      }
       EnterFunction(&program.functions.at(std::move(called.value())));
       called.reset();
     } 
@@ -277,6 +284,9 @@ void Interpreter::Emit(const Cast<To, From>& op) {
     if (swl::holds_alternative<i64>(pval)) {
       value = swl::get<i64>(pval);
     }
+    else {
+      throw InterpreterError("Cast from non-direct pointer value");
+    }
     vars.Set(op.idx, Scalar<result_t>{value});
   }
   else {
@@ -341,6 +351,12 @@ void Interpreter::Emit(const LoadGlobal<T>& op) {
 }
 
 void Interpreter::Emit(const LoadGlobalAddr& op) {
+  if (globals.contains(op.symbol)) {
+    const auto& glob = globals.at(op.symbol);
+    if (swl::holds_alternative<AggregateData>(glob)) {
+      vars.Set(op.idx, MakePointer(swl::get<AggregateData>(glob).data.get()));
+    }
+  }
   vars.Set(op.idx, MakePointer(LabelOffset{cotyl::CString(op.symbol), 0}));
 }
 
@@ -362,26 +378,33 @@ template<typename T>
 void Interpreter::Emit(const LoadFromPointer<T>& op) {
   auto pointer = ReadPointer(swl::get<Pointer>(vars.Get(op.ptr_idx)).value);
   T value;
-  if (swl::holds_alternative<i64>(pointer)) {
-    const auto pval = swl::get<i64>(pointer);
-    cotyl::Assert(pval >= 0);
-    memcpy(&value, &stack[pval] + op.offset, sizeof(T));
-  }
-  else {
-    const auto pval = swl::get<LabelOffset>(pointer);
-    if (pval.offset != 0) {
-      throw InterpreterError("Partial global data load");
-    }
+  swl::visit(
+    swl::overloaded{
+      [&](const i64& pval) {
+        cotyl::Assert(pval >= 0);
+        memcpy(&value, &stack[pval] + op.offset, sizeof(T));
+      },
+      [&](const LabelOffset& pval) {
+        if (pval.offset != 0) {
+          throw InterpreterError("Partial global data load");
+        }
 
-    if (!globals.contains(pval.label)) {
-      throw InterpreterError("Invalid symbol load");
-    }
-    const auto& glob = globals.at(pval.label);
-    if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
-      throw InterpreterError("Invalid aliased global data load");
-    }
-    value = swl::get<scalar_or_pointer_t<T>>(glob).value;
-  }
+        if (!globals.contains(pval.label)) {
+          throw InterpreterError("Invalid symbol load");
+        }
+        const auto& glob = globals.at(pval.label);
+        if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
+          throw InterpreterError("Invalid aliased global data load");
+        }
+        value = swl::get<scalar_or_pointer_t<T>>(glob).value;
+      },
+      [&](u8* const& agg) {
+        memcpy(&value, agg + op.offset, sizeof(T));
+      },
+      swl::exhaustive
+    },
+    pointer
+  );
   using result_t = calyx_op_type(op)::result_t;
   vars.Set(op.idx, scalar_or_pointer_t<result_t>{(result_t)value});
 }
@@ -398,26 +421,33 @@ void Interpreter::Emit(const StoreToPointer<T>& op) {
     value = (T)op.src.GetScalar();
   }
 
-  if (swl::holds_alternative<i64>(pointer)) {
-    const auto pval = swl::get<i64>(pointer);
-    cotyl::Assert(pval >= 0);
-    memcpy(&stack[pval + op.offset], &value, sizeof(T));
-  }
-  else {
-    const auto pval = swl::get<LabelOffset>(pointer);
-    if (pval.offset != 0) {
-      throw InterpreterError("Partial global data store");
-    }
+  swl::visit(
+    swl::overloaded{
+      [&](const i64& pval) {
+        cotyl::Assert(pval >= 0);
+        memcpy(&stack[pval + op.offset], &value, sizeof(T));
+      },
+      [&](const LabelOffset& pval) {
+        if (pval.offset != 0) {
+          throw InterpreterError("Partial global data store");
+        }
 
-    if (!globals.contains(pval.label)) {
-      throw InterpreterError("Invalid symbol store");
-    }
-    auto& glob = globals.at(pval.label);
-    if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
-      throw InterpreterError("Invalid aliased global data store");
-    }
-    glob.template emplace<scalar_or_pointer_t<T>>(std::move(value));
-  }
+        if (!globals.contains(pval.label)) {
+          throw InterpreterError("Invalid symbol store");
+        }
+        auto& glob = globals.at(pval.label);
+        if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
+          throw InterpreterError("Invalid aliased global data store");
+        }
+        glob.template emplace<scalar_or_pointer_t<T>>(std::move(value));
+      },
+      [&](u8* const& agg) {
+        memcpy(agg + op.offset, &value, sizeof(T));
+      },
+      swl::exhaustive
+    },
+    pointer
+  );
 }
 
 template<typename T>
@@ -425,7 +455,7 @@ void Interpreter::Emit(const Call<T>& op) {
   call_stack.emplace(pos, op.idx, op.args.get());
   auto pointer = ReadPointer(swl::get<Pointer>(vars.Get(op.fn_idx)).value);
   const Function* func;
-  if (swl::holds_alternative<i64>(pointer)) {
+  if (swl::holds_alternative<i64>(pointer) || swl::holds_alternative<u8*>(pointer)) {
     // pos.pos.first = swl::get<i64>(pointer);
     throw cotyl::UnimplementedException("Interpreter call pointer value");
   }
@@ -606,6 +636,10 @@ void Interpreter::Emit(const Compare<T>& op) {
     auto lptr = ReadPointer(left.value);
     auto rptr = ReadPointer(right.value);
 
+    if (swl::holds_alternative<u8*>(lptr) || swl::holds_alternative<u8*>(rptr)) {
+      throw cotyl::UnimplementedException("Comparing u8* pointers");
+    }
+
     if (swl::holds_alternative<LabelOffset>(lptr) && swl::holds_alternative<LabelOffset>(rptr)) {
       LabelOffset llab = swl::get<LabelOffset>(lptr);
       LabelOffset rlab = swl::get<LabelOffset>(rptr);
@@ -685,6 +719,11 @@ void Interpreter::Emit(const BranchCompare<T>& op) {
   if constexpr(std::is_same_v<T, Pointer>) {
     auto lptr = ReadPointer(left.value);
     auto rptr = ReadPointer(right.value);
+
+    if (swl::holds_alternative<u8*>(lptr) || swl::holds_alternative<u8*>(rptr)) {
+      throw cotyl::UnimplementedException("Comparing u8* pointers");
+    }
+
     if (swl::holds_alternative<i64>(lptr) && swl::holds_alternative<i64>(rptr)) {
       auto lval = swl::get<i64>(lptr);
       auto rval = swl::get<i64>(rptr);
@@ -748,13 +787,21 @@ void Interpreter::Emit(const AddToPointer<T>& op) {
   }
   calyx::Pointer result;
 
-  if (swl::holds_alternative<i64>(lptr)) {
-    result = MakePointer(swl::get<i64>(lptr) + (i64)op.stride * (i64)right);
-  }
-  else {
-    auto pval = swl::get<LabelOffset>(lptr);
-    result = MakePointer(LabelOffset{cotyl::CString(pval.label), pval.offset + (i64) op.stride * (i64) right});
-  }
+  swl::visit(
+    swl::overloaded{
+      [&](const i64& pval) {
+        result = MakePointer(pval + (i64)op.stride * (i64)right);
+      },
+      [&](const LabelOffset& pval) {
+        result = MakePointer(LabelOffset{cotyl::CString(pval.label), pval.offset + (i64) op.stride * (i64) right});
+      },
+      [&](u8* const& pval) {
+        result = MakePointer(pval + (i64)op.stride * (i64)right);
+      },
+      swl::exhaustive
+    },
+    lptr
+  );
   vars.Set(op.idx, result);
 }
 

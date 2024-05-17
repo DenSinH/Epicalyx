@@ -94,13 +94,13 @@ void ASTWalker::Visit(const epi::DeclarationNode& decl) {
     // global symbols
     AddGlobal(decl.name, decl.type);
 
-    auto global_type = detail::GetGlobalValue(decl.type);
+    auto global_value = detail::GetGlobalValue(decl.type);
     // todo: return since previously initialized?
     // see 0098-tentative.c
     // if (emitter.program.globals.contains(decl.name)) {
     //   throw cotyl::FormatExcept("Duplicate global symbol: %s", decl.name.c_str());
     // }
-    auto it = emitter.program.globals.emplace(decl.name, std::move(global_type));
+    auto it = emitter.program.globals.emplace(decl.name, std::move(global_value));
     calyx::Global& global = it.first->second;
 
     if (decl.value.has_value()) {

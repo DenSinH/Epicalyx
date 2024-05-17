@@ -16,12 +16,12 @@ struct Interpreter {
   using program_counter_t = program_pos_t;
 
   void InterpretGlobalInitializer(Global& dest, Function&& func);
-  i32 Interpret(const calyx::Program& program);
+  i32 Interpret(calyx::Program&& program);
 
   // globals as raw data
   cotyl::unordered_map<cotyl::CString, calyx::Global> globals{};
 
-  using pointer_real_t = swl::variant<i64, LabelOffset>;
+  using pointer_real_t = swl::variant<i64, LabelOffset, u8*>;
   using var_real_t = swl::variant<
     Scalar<i32>, Scalar<u32>, 
     Scalar<i64>, Scalar<u64>, 
@@ -33,9 +33,9 @@ private:
   cotyl::vector<u8> stack{};
   cotyl::vector<pointer_real_t> pointer_values{};
 
-  calyx::Pointer MakePointer(pointer_real_t value) {
+  calyx::Pointer MakePointer(pointer_real_t&& value) {
     const auto idx = pointer_values.size();
-    pointer_values.emplace_back(value);
+    pointer_values.emplace_back(std::move(value));
     return calyx::Pointer{(i64)idx};
   }
 

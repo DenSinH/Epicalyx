@@ -121,26 +121,6 @@ int main(int argc, char** argv) {
     epi::calyx::VisualizeProgram(program, "output/program.pdf");
   }
 
-  int returned = -1;
-  SafeRun(ce) << [&]{
-    epi::calyx::Interpreter interpreter{};
-    std::cout << std::endl << std::endl;
-    std::cout << "-- interpreted" << std::endl;
-    returned = interpreter.Interpret(program);
-    std::cout << "return " << returned << std::endl;
-
-    // extract globals from interpreter
-    std::cout << "  -- globals" << std::endl;
-    for (const auto& [symbol, global] : interpreter.globals) {
-      std::cout << "  " << symbol.c_str() << " " << stringify(global) << std::endl;
-    }
-
-    if (!settings.novisualize) {
-      auto dependencies = epi::ProgramDependencies::GetDependencies(program);
-      dependencies.VisualizeVars("output/vars.pdf");
-    }
-  };
-
   if (!program.functions.contains(rig_func_sym)) {
     std::cout << "No function " << rig_func_sym.view()
               << " exists, defaulting to 'main'..." << std::endl;
@@ -171,5 +151,25 @@ int main(int argc, char** argv) {
     };
   }
 
+  int returned = -1;
+  SafeRun(ce) << [&]{
+    epi::calyx::Interpreter interpreter{};
+    std::cout << std::endl << std::endl;
+    std::cout << "-- interpreted" << std::endl;
+    returned = interpreter.Interpret(std::move(program));
+    std::cout << "return " << returned << std::endl;
+
+    // extract globals from interpreter
+    std::cout << "  -- globals" << std::endl;
+    for (const auto& [symbol, global] : interpreter.globals) {
+      std::cout << "  " << symbol.c_str() << " " << stringify(global) << std::endl;
+    }
+
+    if (!settings.novisualize) {
+      auto dependencies = epi::ProgramDependencies::GetDependencies(program);
+      dependencies.VisualizeVars("output/vars.pdf");
+    }
+  };
+  
   return returned;
 }
