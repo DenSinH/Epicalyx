@@ -393,10 +393,15 @@ void Interpreter::Emit(const LoadFromPointer<T>& op) {
           throw InterpreterError("Invalid symbol load");
         }
         const auto& glob = globals.at(pval.label);
-        if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
+        if (swl::holds_alternative<AggregateData>(glob)) {
+          std::memcpy(&value, swl::get<AggregateData>(glob).data.get(), sizeof(T));
+        }
+        else if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
           throw InterpreterError("Invalid aliased global data load");
         }
-        value = swl::get<scalar_or_pointer_t<T>>(glob).value;
+        else {
+          value = swl::get<scalar_or_pointer_t<T>>(glob).value;
+        }
       },
       [&](u8* const& agg) {
         memcpy(&value, agg + op.offset, sizeof(T));
