@@ -9,7 +9,7 @@
           "-rigfunc", "main",
           "-catch-errors",
           "-stl", "${workspaceRoot}/epicalyx/stl",
-          "${workspaceRoot}/tests/suites/scctests/cc/execute/0027-charval.c"
+          "${workspaceRoot}/tests/suites/scctests/cc/execute/0181-stringize.c"
         ]
     },
     "editor.indentSize": 2,

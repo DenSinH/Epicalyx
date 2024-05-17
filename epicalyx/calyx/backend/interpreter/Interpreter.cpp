@@ -385,16 +385,20 @@ void Interpreter::Emit(const LoadFromPointer<T>& op) {
         memcpy(&value, &stack[pval] + op.offset, sizeof(T));
       },
       [&](const LabelOffset& pval) {
-        if (pval.offset != 0) {
-          throw InterpreterError("Partial global data load");
-        }
-
         if (!globals.contains(pval.label)) {
           throw InterpreterError("Invalid symbol load");
         }
+
         const auto& glob = globals.at(pval.label);
         if (swl::holds_alternative<AggregateData>(glob)) {
-          std::memcpy(&value, swl::get<AggregateData>(glob).data.get(), sizeof(T));
+          const auto& agg = swl::get<AggregateData>(glob);
+          if (op.offset + sizeof(T) >= agg.agg.size) {
+            throw InterpreterError("Out of bounds global aggregate load");
+          }
+          std::memcpy(&value, swl::get<AggregateData>(glob).data.get() + pval.offset + op.offset, sizeof(T));
+        }
+        else if (pval.offset != 0) {
+          throw InterpreterError("Partial global data load");
         }
         else if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
           throw InterpreterError("Invalid aliased global data load");
