@@ -654,7 +654,12 @@ void BasicOptimizer::Emit(LoadLocal<T>&& op) {
 }
 
 void BasicOptimizer::Emit(LoadLocalAddr&& op) {
-  OutputExpr(std::move(op));
+  auto replaced = FindExprResultReplacement(op, [](auto& op, auto& candidate) {
+    return candidate.loc_idx == op.loc_idx;
+  });
+  if (!replaced) {
+    OutputExpr(std::move(op));
+  }
 }
 
 template<typename T>
@@ -1223,6 +1228,11 @@ template<typename T>
 void BasicOptimizer::Emit(AddToPointer<T>&& op) {
   TryReplaceOperand(op.ptr);
   TryReplaceOperand(op.right);
+
+  auto replaced = FindExprResultReplacement(op, [](auto& op, auto& candidate) {
+    return candidate.ptr == op.ptr && candidate.right == op.right && candidate.stride == op.stride;
+  });
+  if (replaced) return;
 
   if (op.right.IsScalar()) {
     // todo: if (op.left.IsScalar())

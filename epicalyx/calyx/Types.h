@@ -43,6 +43,8 @@ template<typename T>
 struct Scalar {
   using type_t = T;
   T value;
+
+  bool operator==(const Scalar<T>& other) const = default;
 };
 
 template<typename T>
@@ -82,6 +84,10 @@ struct Operand {
   var_index_t& GetVar() { 
     cotyl::Assert(IsVar(), "Invalid operand access");
     return var.var_idx;
+  }
+
+  bool operator==(const Operand<T>& other) const {
+    return std::memcmp(this, &other, sizeof(*this)) == 0;
   }
 
 private:
