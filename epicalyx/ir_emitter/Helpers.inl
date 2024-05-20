@@ -59,11 +59,12 @@ struct EmitterTypeVisitor {
       [&](const type::FunctionType& ptr) {
         VisitPointerImpl(0);
       },
-      [](const type::StructType&) {
-        throw cotyl::UnimplementedException();
+      [&](const type::StructType& strct) {
+        // handle aggregate as pointer with struct size stride
+        VisitPointerImpl(strct.Sizeof());
       },
-      [](const type::UnionType&) {
-        throw cotyl::UnimplementedException();
+      [&](const type::UnionType& strct) {
+        VisitPointerImpl(strct.Sizeof());
       },
       [&]<typename T>(const type::ValueType<T>& value) {
         VisitValueImpl<T>();

@@ -65,8 +65,8 @@ bool Parser::IsDeclarationSpecifier(int after) {
 }
 
 static void MergeStructUnionDef(type::StructUnionType& dest, type::StructUnionType&& src) {
-  if (dest.fields.empty()) {
-    dest.fields = std::move(src.fields);
+  if (!dest.Complete()) {
+    dest.MergeFields(std::move(src));
   }
   else {
     if (!dest.TypeEqualImpl(src)) {
@@ -76,11 +76,11 @@ static void MergeStructUnionDef(type::StructUnionType& dest, type::StructUnionTy
 }
 
 static void MergeStructUnionDefs(type::StructUnionType& dest, type::StructUnionType& src) {
-  if (dest.fields.empty()) {
-    std::copy(src.fields.begin(), src.fields.end(), std::back_inserter(dest.fields));
+  if (!dest.Complete()) {
+    if (src.Complete()) dest.MergeFields(src);
   }
-  else if (src.fields.empty()) {
-    std::copy(dest.fields.begin(), dest.fields.end(), std::back_inserter(src.fields));
+  else if (!src.Complete()) {
+    src.MergeFields(dest);
   }
   else {
     if (!dest.TypeEqualImpl(src)) {
@@ -95,10 +95,10 @@ static void MergeTypes(type::AnyType& existing, type::AnyType& found) {
   }
   
   // override incomplete struct definition
-  if (existing.holds_alternative<type::StructType>() && existing.get<type::StructType>().fields.empty()) {
+  if (existing.holds_alternative<type::StructType>() && !existing.get<type::StructType>().Complete()) {
     MergeStructUnionDefs(existing.get<type::StructType>(), found.get<type::StructType>());
   }
-  else if (existing.holds_alternative<type::UnionType>() && existing.get<type::UnionType>().fields.empty()) {
+  else if (existing.holds_alternative<type::UnionType>() && !existing.get<type::UnionType>().Complete()) {
     MergeStructUnionDefs(existing.get<type::UnionType>(), found.get<type::UnionType>());
   }
 }
@@ -106,28 +106,28 @@ static void MergeTypes(type::AnyType& existing, type::AnyType& found) {
 void Parser::CompleteForwardDecl(type::AnyType& fwd_decl) const {
   if (fwd_decl.holds_alternative<type::StructType>()) {
     auto& fwd_decl_str = fwd_decl.get<type::StructType>();
-    if (fwd_decl_str.fields.empty()) {
+    if (!fwd_decl_str.Complete()) {
       if (!structdefs.Has(fwd_decl_str.name)) {
         throw ParserError("Incomplete struct type");
       }
       auto& existing = structdefs.Get(fwd_decl_str.name);
-      if (existing.fields.empty()) {
+      if (!existing.Complete()) {
         throw ParserError("Incomplete struct type");
       }
-      std::copy(existing.fields.begin(), existing.fields.end(), std::back_inserter(fwd_decl_str.fields));
+      fwd_decl_str.MergeFields(existing);
     }
   }
   else if (fwd_decl.holds_alternative<type::UnionType>()) {
     auto& fwd_decl_str = fwd_decl.get<type::UnionType>();
-    if (fwd_decl_str.fields.empty()) {
+    if (!fwd_decl_str.Complete()) {
       if (!uniondefs.Has(fwd_decl_str.name)) {
         throw ParserError("Incomplete union type");
       }
       auto& existing = uniondefs.Get(fwd_decl_str.name);
-      if (existing.fields.empty()) {
+      if (!existing.Complete()) {
         throw ParserError("Incomplete union type");
       }
-      std::copy(existing.fields.begin(), existing.fields.end(), std::back_inserter(fwd_decl_str.fields));
+      fwd_decl_str.MergeFields(existing);
     }
   }
 }

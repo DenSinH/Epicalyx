@@ -7,6 +7,7 @@
 #include "SStream.h"
 #include "Decltype.h"
 #include "Exceptions.h"
+#include "CustomAssert.h"
 
 #include <functional>
 #include <utility>
@@ -450,11 +451,11 @@ u64 DataPointerType::Stride() const {
   return contained->visit<u64>(
     [](const VoidType&) -> u64 { return 0; },
     [](const StructType& strct) -> u64 {
-      if (strct.fields.empty()) return 0;
+      if (!strct.Complete()) return 0;
       return strct.Sizeof();
     },
     [](const UnionType& strct) -> u64 {
-      if (strct.fields.empty()) return 0;
+      if (!strct.Complete()) return 0;
       return strct.Sizeof();
     },
     [](const auto& type) -> u64 { return type.Sizeof(); }
@@ -565,14 +566,59 @@ AnyType FunctionType::CommonTypeImpl(const AnyType& other) const {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 StructField::StructField(cotyl::CString&& name, size_t size, nested_type_t&& contained) :
-    name{std::move(name)}, size{size}, type{std::move(contained)} { }
+    name{std::move(name)}, data{std::move(contained), size} { }
 
 StructField::StructField(cotyl::CString&& name, nested_type_t&& contained) :
     StructField{std::move(name), 0, std::move(contained)} { }
 
+StructUnionType::StructUnionType(
+    cotyl::CString&& name,
+    cotyl::vector<StructField>&& fields,
+    LValue lvalue, 
+    u8 flags
+  ) : BaseType{lvalue, flags}, 
+      name{std::move(name)}, 
+      fields{std::move(fields)} {
+  ComputeAlign();
+}
+
+void StructUnionType::ComputeAlign() {
+  for (const auto& field : this->fields) {
+    align = std::max(align, (*field.data.type)->Alignof());
+  }
+}
+
+void StructUnionType::MergeFields(StructUnionType&& other) {
+  cotyl::Assert(!Complete());
+  // offsets are already computed
+  fields = std::move(other.fields);
+  align = other.align;
+}
+
+void StructUnionType::MergeFields(const StructUnionType& other) {
+  cotyl::Assert(!Complete());
+  // offsets are already computed
+  std::copy(other.fields.begin(), other.fields.end(), std::back_inserter(fields));
+  // use precomputed align
+  align = other.align;
+}
+
 void StructUnionType::ForgetConstInfo() const {
   for (auto& field : fields) {
-    (*field.type)->ForgetConstInfo();
+    (*field.data.type)->ForgetConstInfo();
+  }
+}
+
+void StructType::ComputeOffsets() {
+  u64 offset = 0;
+  for (auto& field : fields) {
+    // field.offset = current offset aligned to alignment
+    const auto align_mask = (*field.data.type)->Alignof() - 1;
+    offset = (offset + align_mask) & ~(align_mask);
+    field.data.offset = offset;
+
+    // add field size to current offset
+    offset += (*field.data.type)->Sizeof();
   }
 }
 
@@ -584,9 +630,9 @@ std::string StructUnionType::BodyString() const {
   repr << "{";
 
   for (const auto& field : fields) {
-    repr << "\n  " << stringify(field.type) << ' ' << field.name;
-    if (field.size) {
-      repr << " : " << field.size;
+    repr << "\n  " << stringify(field.data.type) << ' ' << field.name;
+    if (field.data.size) {
+      repr << " : " << field.data.size;
     }
     repr << ';';
   }
@@ -603,57 +649,63 @@ std::string UnionType::ToString() const {
 }
 
 u64 StructType::Sizeof() const {
-  // todo: different for union
   if (fields.empty()) {
     throw TypeError("Cannot get size of incomplete struct definition");
   }
-
-  u64 value = 0;
-  for (const auto& field : fields) {
-    u64 align = (*field.type)->Alignof();
-
-    // padding
-    if (value & (align - 1)) {
-      value += align - (value & (align - 1));
-    }
-    value += (*field.type)->Sizeof();
-  }
-  return value;
+  
+  const auto raw_size = fields.back().data.offset + (*fields.back().data.type)->Sizeof();
+  // round up by alignment
+  const auto align_mask = align - 1;
+  return (raw_size + align_mask) - ~align_mask;
 }
 
 u64 UnionType::Sizeof() const {
   throw cotyl::UnimplementedException();
 }
 
-const AnyType* StructUnionType::HasMember(const cotyl::CString& member) const {
+StructFieldData StructUnionType::HasMember(const cotyl::CString& member) const {
   for (const auto& field : fields) {
     if (field.name == member) {
-      return field.type.get();
+      // direct member
+      return field.data;
     }
   }
   for (const auto& field : fields) {
     if (field.name.empty()) {
-      auto nested = field.type->visit<const AnyType*>(
+      return field.data.type->visit<StructFieldData>(
         [&](const StructType& strct) {
-          return strct.HasMember(member);
+          auto nested = strct.HasMember(member);
+          nested.offset += field.data.offset;
+          return nested;
         },
         [&](const UnionType& strct) {
-          return strct.HasMember(member);
+          auto nested = strct.HasMember(member);
+          nested.offset += field.data.offset;
+          return nested;
         },
-        [](const auto&) -> const AnyType* { return nullptr; }
+        [](const auto&) -> StructFieldData { 
+          return {nullptr}; 
+        }
       );
-      if (nested) return nested;
     }
   }
-  return nullptr;
+  return {nullptr};
 }
 
 AnyType StructUnionType::MemberAccess(const cotyl::CString& member) const {
   auto mem = HasMember(member);
-  if (!mem) {
+  if (!mem.type) {
     throw cotyl::FormatExceptStr<TypeError>("No field named %s in %s", member.c_str(), *this);
   }
-  return *mem;
+  return *mem.type;
+}
+
+u64 StructUnionType::MemberOffset(const cotyl::CString& member) const {
+  auto mem = HasMember(member);
+  if (!mem.type) {
+    throw cotyl::FormatExceptStr<TypeError>("No field named %s in %s", member.c_str(), *this);
+  }
+  return mem.offset;
 }
 
 AnyType StructUnionType::CommonTypeImpl(const AnyType& other) const {
@@ -682,13 +734,13 @@ bool StructUnionType::TypeEqualImpl(const StructUnionType& other) const {
     if (this_field.name != other_field.name) {
       return false;
     }
-    if (this_field.size != other_field.size) {
+    if (this_field.data.size != other_field.data.size) {
       return false;
     }
-    if (!(*this_field.type).TypeEquals(*other_field.type)) {
+    if ((*this_field.data.type)->qualifiers != (*other_field.data.type)->qualifiers) {
       return false;
     }
-    if ((*this_field.type)->qualifiers != (*other_field.type)->qualifiers) {
+    if (!(*this_field.data.type).TypeEquals(*other_field.data.type)) {
       return false;
     }
   }

@@ -318,7 +318,68 @@ void ASTWalker::Visit(const FunctionCallNode& expr) {
 }
 
 void ASTWalker::Visit(const MemberAccessNode& expr) {
-  throw cotyl::UnimplementedException("member access");
+  if (state.top().first == State::Empty) {
+    // increments might still happen
+    expr.left->Visit(*this);
+    return;
+  }
+
+  state.push({State::Address, {}});
+  expr.left->Visit(*this);
+  state.pop();
+
+  // struct pointer
+  auto strct  = current;
+
+  // field offset
+  auto offset = expr.left->type.visit<u64>(
+    swl::overloaded{
+      [&](const type::StructType& strct) { 
+        return strct.MemberOffset(expr.member); 
+      },
+      [&](const type::UnionType& strct) { 
+        return strct.MemberOffset(expr.member); 
+      },
+      [](const auto&) -> u64 {
+        // already handled in parser
+        throw cotyl::UnreachableException();
+      }
+    }
+  );
+
+  // field address
+  auto imm = emitter.EmitExpr<calyx::Imm<u64>>({ Emitter::Var::Type::I32 }, offset);
+  EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::U64, 1, strct, 1, imm);
+  auto field = current;
+
+  switch (state.top().first) {
+    case State::Address: {
+      // already done, current is now address of field
+      break;
+    }
+    case State::Read:
+    case State::ConditionalBranch: {
+      auto visitor = detail::EmitterTypeVisitor<detail::LoadFromPointerEmitter>(*this, { current });
+      visitor.Visit(expr.type);
+      if (state.top().first == State::ConditionalBranch) {
+        EmitConditionalBranchForCurrent();
+      }
+      break;
+    }
+    case State::Assign: {
+      auto var = state.top().second.var;
+      auto visitor = detail::EmitterTypeVisitor<detail::StoreToPointerEmitter>(*this, { current, var });
+      visitor.Visit(expr.type);
+
+      // stored value is "returned" value
+      current = var;
+      break;
+    }
+    case State::Empty: // already handled above
+    default: {
+      throw cotyl::UnreachableException();
+    }
+  }
 }
 
 void ASTWalker::Visit(const TypeInitializerNode& expr) {

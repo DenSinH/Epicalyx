@@ -168,13 +168,24 @@ struct FunctionType final : AnyPointerType {
 };
 
 
+struct StructFieldData {
+  // field type
+  nested_type_t type;
+  // bit size, 0 means default size
+  u64 size = 0;
+  // offset in parent type
+  u64 offset = 0;
+};
+
+
 struct StructField {
   StructField(cotyl::CString&& name, size_t size, nested_type_t&& contained);
   StructField(cotyl::CString&& name, nested_type_t&& contained);
 
+  // field name
   cotyl::CString name;
-  std::size_t size = 0;  // 0 means default size
-  nested_type_t type;
+
+  StructFieldData data;
 };
 
 
@@ -184,22 +195,30 @@ struct StructUnionType : BaseType {
     cotyl::vector<StructField>&& fields,
     LValue lvalue, 
     u8 flags = 0
-  ) : BaseType{lvalue, flags}, 
-      name{std::move(name)}, 
-      fields{std::move(fields)} { 
-
-  }
+  );
 
   cotyl::CString name;
-  cotyl::vector<StructField> fields{};  // empty if struct was only declared but never defined
-  const AnyType* HasMember(const cotyl::CString& member) const;
   AnyType MemberAccess(const cotyl::CString& member) const final;
+  u64 MemberOffset(const cotyl::CString& member) const;
 
   void ForgetConstInfo() const final; 
   AnyType CommonTypeImpl(const AnyType& other) const final;
   bool TypeEqualImpl(const StructUnionType& other) const;
 
+  u64 Alignof() const final { return align; };
+  bool Complete() const { return !fields.empty(); }
+  void MergeFields(const StructUnionType& other);
+  void MergeFields(StructUnionType&& other);
+
 protected:
+  cotyl::vector<StructField> fields{};  // empty if struct was only declared but never defined
+  u64 align = 0;
+  
+  virtual void ComputeOffsets() = 0;
+  void ComputeAlign();
+
+  // [member, real-offset]
+  StructFieldData HasMember(const cotyl::CString& member) const;
   std::string BodyString() const;
 };
 
@@ -215,10 +234,15 @@ struct StructType final : StructUnionType {
       std::move(fields), 
       lvalue, 
       flags
-  } { }
+  } { 
+    ComputeOffsets();
+  }
 
   u64 Sizeof() const final;
   std::string ToString() const final;
+
+protected:
+  void ComputeOffsets() final;
 };
 
 
@@ -233,10 +257,16 @@ struct UnionType final : StructUnionType {
       std::move(fields), 
       lvalue, 
       flags
-  } { }
+  } { 
+    ComputeOffsets();
+  }
 
   u64 Sizeof() const final;
   std::string ToString() const final;
+
+protected:
+  // offsets within a union are all 0
+  void ComputeOffsets() final { };
 };
 
 }
