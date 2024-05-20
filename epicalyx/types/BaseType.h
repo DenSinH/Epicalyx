@@ -78,7 +78,7 @@ struct BaseType {
   AnyType Decr() const;
 
   virtual u64 Sizeof() const = 0;
-  virtual u64 Alignof() const;
+  virtual u32 Alignof() const;
 
   virtual AnyType CommonTypeImpl(const AnyType& other) const = 0;
 

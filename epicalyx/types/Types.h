@@ -115,6 +115,7 @@ struct ArrayType final : DataPointerType {
   std::string ToString() const final;
 
   u64 Sizeof() const final;
+  u32 Alignof() const final;
   AnyType CommonTypeImpl(const AnyType& other) const final;
 };
 
@@ -205,14 +206,14 @@ struct StructUnionType : BaseType {
   AnyType CommonTypeImpl(const AnyType& other) const final;
   bool TypeEqualImpl(const StructUnionType& other) const;
 
-  u64 Alignof() const final { return align; };
+  u32 Alignof() const final { return align; };
   bool Complete() const { return !fields.empty(); }
   void MergeFields(const StructUnionType& other);
   void MergeFields(StructUnionType&& other);
 
 protected:
   cotyl::vector<StructField> fields{};  // empty if struct was only declared but never defined
-  u64 align = 0;
+  u32 align = 0;
   
   virtual void ComputeOffsets() = 0;
   void ComputeAlign();

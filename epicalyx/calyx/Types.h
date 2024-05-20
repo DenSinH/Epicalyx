@@ -166,8 +166,8 @@ struct LabelOffset {
 
 
 struct AggregateData {
-  AggregateData(Aggregate&& agg) : 
-      agg{std::move(agg)}, data{cotyl::make_ualigned<u8>(agg.align, agg.size)} { }
+  AggregateData(Aggregate&& agg_) : 
+      agg{std::move(agg_)}, data{cotyl::make_ualigned<u8>(agg.align, agg.size)} { }
   AggregateData(u64 size, u32 align) : AggregateData(Aggregate{size, align}) { };
 
   Aggregate agg;

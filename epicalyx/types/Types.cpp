@@ -446,6 +446,10 @@ u64 ArrayType::Sizeof() const {
   return size * (*contained)->Sizeof();
 }
 
+u32 ArrayType::Alignof() const {
+  return (*contained)->Alignof();
+}
+
 u64 DataPointerType::Stride() const {
   // stride may be 0 for incomplete types
   return contained->visit<u64>(
@@ -656,7 +660,7 @@ u64 StructType::Sizeof() const {
   const auto raw_size = fields.back().data.offset + (*fields.back().data.type)->Sizeof();
   // round up by alignment
   const auto align_mask = align - 1;
-  return (raw_size + align_mask) - ~align_mask;
+  return (raw_size + align_mask) & ~align_mask;
 }
 
 u64 UnionType::Sizeof() const {

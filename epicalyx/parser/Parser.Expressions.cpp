@@ -151,7 +151,7 @@ pExpr Parser::EUnary() {
       in_stream.EatSequence(TokenType::Alignof, TokenType::LParen);
       auto type_name = ETypeName();
       in_stream.Eat(TokenType::RParen);
-      return std::make_unique<NumericalConstantNode<u64>>(type_name->Alignof());
+      return std::make_unique<NumericalConstantNode<u64>>((u64)type_name->Alignof());
     }
     default: {
       return EPostfix();

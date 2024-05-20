@@ -140,7 +140,7 @@ AnyType BaseType::Decr() const {
   return Sub(ValueType<i32>(1, LValue::None));
 }
 
-u64 BaseType::Alignof() const {
+u32 BaseType::Alignof() const {
   u64 size = Sizeof();
   return size < 3 ? size : 4;
 }

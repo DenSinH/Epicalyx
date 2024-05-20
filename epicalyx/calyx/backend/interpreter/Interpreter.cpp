@@ -129,11 +129,12 @@ i32 Interpreter::Interpret(Program&& program) {
           globals.emplace(std::move(symbol), std::move(glob));
         },
         // any other type can just be passed straight off
-        [&](auto& glob) {
+        [&](auto&& glob) {
           globals.emplace(std::move(symbol), std::move(glob));
-        }
+        },
+        swl::exhaustive
       },
-      global
+      std::move(global)
     );
   }
 
@@ -395,7 +396,7 @@ void Interpreter::Emit(const LoadFromPointer<T>& op) {
           if (op.offset + sizeof(T) >= agg.agg.size) {
             throw InterpreterError("Out of bounds global aggregate load");
           }
-          std::memcpy(&value, swl::get<AggregateData>(glob).data.get() + pval.offset + op.offset, sizeof(T));
+          std::memcpy(&value, agg.data.get() + pval.offset + op.offset, sizeof(T));
         }
         else if (pval.offset != 0) {
           throw InterpreterError("Partial global data load");
@@ -437,18 +438,27 @@ void Interpreter::Emit(const StoreToPointer<T>& op) {
         memcpy(&stack[pval + op.offset], &value, sizeof(T));
       },
       [&](const LabelOffset& pval) {
-        if (pval.offset != 0) {
-          throw InterpreterError("Partial global data store");
-        }
-
         if (!globals.contains(pval.label)) {
           throw InterpreterError("Invalid symbol store");
         }
+
         auto& glob = globals.at(pval.label);
-        if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
+        if (swl::holds_alternative<AggregateData>(glob)) {
+          auto& agg = swl::get<AggregateData>(glob);
+          if (op.offset + sizeof(T) >= agg.agg.size) {
+            throw InterpreterError("Out of bounds global aggregate store");
+          }
+          std::memcpy(agg.data.get() + pval.offset + op.offset, &value, sizeof(T));
+        }
+        else if (pval.offset != 0) {
+          throw InterpreterError("Partial global data store");
+        }
+        else if (!swl::holds_alternative<scalar_or_pointer_t<T>>(glob)) {
           throw InterpreterError("Invalid aliased global data store");
         }
-        glob.template emplace<scalar_or_pointer_t<T>>(std::move(value));
+        else {
+          glob.template emplace<scalar_or_pointer_t<T>>(std::move(value));
+        }
       },
       [&](u8* const& agg) {
         memcpy(agg + op.offset, &value, sizeof(T));

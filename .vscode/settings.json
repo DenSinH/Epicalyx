@@ -9,7 +9,7 @@
           "-rigfunc", "main",
           // "-catch-errors",
           "-stl", "${workspaceRoot}/epicalyx/stl",
-          "${workspaceRoot}/tests/suites/scctests/cc/execute/0017-struct.c"
+          "${workspaceRoot}/tests/suites/scctests/cc/execute/0024-typedefstruct.c"
         ]
     },
     "editor.indentSize": 2,
