@@ -28,14 +28,20 @@ struct ASTWalker : public ast::NodeVisitor {
 
 private:
   enum class State {
-    Empty, Assign, Address, Read, ConditionalBranch,
+    Empty,  // top level statement
+    Assign,
+    Address, 
+    Read,
+    ConditionalBranch,
   };
 
   union StateData {
+    // assign
     struct {
       var_index_t var;
     };
 
+    // conditional branch
     struct {
       var_index_t true_block;
       var_index_t false_block;
