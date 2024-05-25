@@ -52,8 +52,11 @@ void Initializer::ValidateAndReduce(type::AnyType& type) {
         cotyl::Assert(list.list.size() == 1);
         value = std::move(list.list[0].second.value);
       },
-      [](const type::ArrayType& strct) {
-        throw cotyl::UnimplementedException();
+      [&](type::ArrayType& arr) {
+        auto& nested = *arr.contained;
+        for (auto& value : list.list) {
+          value.second.ValidateAndReduce(nested);
+        }
       },
       [&]<typename T>(const type::ValueType<T>& val) { 
         if (list.list.empty()) {

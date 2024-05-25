@@ -94,6 +94,14 @@ static void MergeTypes(type::AnyType& existing, type::AnyType& found) {
     throw cotyl::FormatExceptStr<ParserError>("Type mismatch: %s vs %s", existing, found);
   }
   
+  // update array size
+  if (existing.holds_alternative<type::ArrayType>()) {
+    auto& existing_arr = existing.get<type::ArrayType>();
+    if (!existing_arr.size) {
+      existing_arr.size = found.get<type::ArrayType>().size;
+    }
+  }
+
   // override incomplete struct definition
   if (existing.holds_alternative<type::StructType>() && !existing.get<type::StructType>().Complete()) {
     MergeStructUnionDefs(existing.get<type::StructType>(), found.get<type::StructType>());
@@ -132,9 +140,9 @@ void Parser::CompleteForwardDecl(type::AnyType& fwd_decl) const {
   }
 }
 
-void Parser::RecordDeclaration(const cotyl::CString& name, type::AnyType& type) {
+type::AnyType& Parser::RecordDeclaration(const cotyl::CString& name, type::AnyType& type) {
   if (name.empty()) {
-    return;
+    return type;
   }
 
   if (typedefs.HasTop(name)) {
@@ -144,9 +152,10 @@ void Parser::RecordDeclaration(const cotyl::CString& name, type::AnyType& type) 
     // gets the first scoped value (which will be the top one)
     auto& existing = variables.Get(name);
     MergeTypes(existing, type);
+    return existing;
   }
   else {
-    variables.Set(name, type);
+    return variables.Set(name, type);
   }
 }
 
@@ -791,20 +800,27 @@ void Parser::StoreDeclaration(DeclarationNode&& decl, cotyl::vector<ast::Declara
       CompleteForwardDecl(decl.type);
     }
 
+    // record declaration BEFORE verifying initializer,
+    // as it may be needed in the initializer
+    // see 0218-initialize.c
+    auto& recorded = RecordDeclaration(decl.name, decl.type);
     if (in_stream.EatIf(TokenType::Assign)) {
       // type var = <expression> or {initializer list}
       if (decl.name.empty()) {
         throw ParserError("Cannot assign to nameless variable");
       }
       auto value = EInitializer();
-      value.ValidateAndReduce(decl.type);
 
+      // validate and reduce initializer with recorded type,
+      // to update any array size accordingly
+      // see 0208-sizeof.c
+      value.ValidateAndReduce(recorded);
+
+      // merge any updates
+      MergeTypes(decl.type, recorded);
       decl.value = std::move(value);
     }
 
-    // record declaration AFTER verifying initializer,
-    // since the initializer may update array size
-    RecordDeclaration(decl.name, decl.type);
     if (!decl.name.empty()) {
       dest.emplace_back(std::move(decl));
     }
