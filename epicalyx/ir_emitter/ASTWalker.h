@@ -54,9 +54,29 @@ private:
   };
 
   std::stack<std::pair<State, StateData>> state{};
+
+  // block updates within expressions, to prevent handling them twice
+  // for example in 0186-dec_ary.c:L13:
+  //  c = nodes[--d].index++;
+  // we must prevent --d from happening twice, when reading and when 
+  // writing back the value for nodes[d - 1].index
+  //
+  // The idea is that, whenever we encounter an update (pre OR post), we
+  // block post-updates, read the expression, compute the new value
+  // block pre-updates and write back the expression
+  // this way, every update is handled exactly once.
+  // In the example: --d is handled when nodes[--d].index is read,
+  // and ....index++ is handled on writeback, where --d is skipped
+  u32 block_pre_update = 0;
+  u32 block_post_update = 0;
+
+  // destinations on break / continue
   std::stack<block_label_t> break_stack{};
   std::stack<block_label_t> continue_stack{};
+
+  // select statement to add case nodes to
   std::stack<calyx::Select*> select_stack{};
+
   // goto labels
   cotyl::unordered_map<cotyl::CString, block_label_t> local_labels{};
 

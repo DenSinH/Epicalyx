@@ -389,30 +389,37 @@ void ASTWalker::Visit(const TypeInitializerNode& expr) {
 void ASTWalker::Visit(const PostFixNode& expr) {
   cotyl::Assert(state.top().first == State::Empty || state.top().first == State::Read || state.top().first == State::ConditionalBranch);
   
-  state.push({State::Read, {}});
+  // block post updates on read, as they will be
+  // handled on writeback
+  state.push({State::Read, {}}); block_post_update++;
   expr.left->Visit(*this);
-  state.pop();
-  auto read = current;
-  auto type = emitter.vars[current].type;
-  if (type == Emitter::Var::Type::Pointer) {
-    auto var = emitter.vars[read];
-    auto value = expr.op == TokenType::Incr ? 1 : -1;
-    auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, value);
-    EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, read, var.stride, imm);
-  }
-  else {
-    EmitArithExpr<calyx::Imm>(type, 1);
-    auto imm = current;
-    auto op = expr.op == TokenType::Incr ? calyx::BinopType::Add : calyx::BinopType::Sub;
-    EmitArithExpr<calyx::Binop>(type, read, op, imm);
-  }
+  state.pop(); block_post_update--;
 
-  // write back
-  state.push({State::Assign, {.var = current}});
-  expr.left->Visit(*this);
-  state.pop();
-  // restore read value for next expression
-  current = read;
+  // don't increment if we don't handle post updates
+  if (!block_post_update) {
+    auto read = current;
+    auto type = emitter.vars[current].type;
+    if (type == Emitter::Var::Type::Pointer) {
+      auto var = emitter.vars[read];
+      auto value = expr.op == TokenType::Incr ? 1 : -1;
+      auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, value);
+      EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, read, var.stride, imm);
+    }
+    else {
+      EmitArithExpr<calyx::Imm>(type, 1);
+      auto imm = current;
+      auto op = expr.op == TokenType::Incr ? calyx::BinopType::Add : calyx::BinopType::Sub;
+      EmitArithExpr<calyx::Binop>(type, read, op, imm);
+    }
+
+    // block pre updates on writeback, as they have been handled on read
+    state.push({State::Assign, {.var = current}}); block_pre_update++;
+    expr.left->Visit(*this);
+    state.pop(); block_pre_update--;
+
+    // restore read value for next expression
+    current = read;
+  }
 
   if (state.top().first == State::ConditionalBranch) {
     EmitConditionalBranchForCurrent();
@@ -490,69 +497,41 @@ void ASTWalker::Visit(const UnopNode& expr) {
       // return, no need to check for conditional branches, already handled
       return;
     }
-    case TokenType::Incr: {
-      state.push({State::Read, {}});
+    case TokenType::Incr:
+    case TokenType::Decr: {
+      // block post-update on read, as explained in ASTWalker class
+      state.push({State::Read, {}}); block_post_update++;
       expr.left->Visit(*this);
-      state.pop();
+      state.pop(); block_post_update--;
+
+      // pre-updates blocked, return read value
+      // break to check for conditional branching
+      if (block_pre_update) break;;
 
       auto type = emitter.vars[current].type;
+      auto value = expr.op == TokenType::Incr ? 1 : -1;
       var_index_t stored;
       if (type == Emitter::Var::Type::Pointer) {
         auto left = current;
         auto var = emitter.vars[left];
-        auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, 1);
+        auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, value);
         EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, left, var.stride, imm);
       }
       else {
         auto left = current;
-        EmitArithExpr<calyx::Imm>(type, 1);
+        EmitArithExpr<calyx::Imm>(type, value);
         auto imm = current;
         EmitArithExpr<calyx::Binop>(type, left, calyx::BinopType::Add, imm);
       }
       stored = current;
 
-      // write back
-      state.push({State::Assign, {.var = current}});
+      // block pre-updates on write back, have already been handled
+      state.push({State::Assign, {.var = current}}); block_pre_update++;
       expr.left->Visit(*this);
-      state.pop();
+      state.pop(); block_pre_update--;
 
       // restore stored value
       current = stored;
-      // break, need to check for conditional branches
-      break;
-    }
-    case TokenType::Decr: {
-      // read value
-      state.push({State::Read, {}});
-      expr.left->Visit(*this);
-      state.pop();
-
-      auto type = emitter.vars[current].type;
-      var_index_t stored;
-
-      // subtract 1
-      if (type == Emitter::Var::Type::Pointer) {
-        auto left = current;
-        auto var = emitter.vars[left];
-        auto imm = emitter.EmitExpr<calyx::Imm<i32>>({ Emitter::Var::Type::I32 }, -1);
-        EmitPointerIntegralExpr<calyx::AddToPointer>(Emitter::Var::Type::I32, var.stride, left, var.stride, imm);
-      }
-      else {
-        auto left = current;
-        EmitArithExpr<calyx::Imm>(type, 1);
-        auto imm = current;
-        EmitArithExpr<calyx::Binop>(type, left, calyx::BinopType::Sub, imm);
-      }
-      stored = current;
-
-      // write back
-      state.push({State::Assign, {.var = current}});
-      expr.left->Visit(*this);
-      state.pop();
-
-      // restore stored value
-      current = stored;
-
       // break, need to check for conditional branches
       break;
     }
@@ -942,6 +921,20 @@ void ASTWalker::Visit(const TernaryNode& expr) {
 
 void ASTWalker::Visit(const AssignmentNode& expr) {
   cotyl::Assert(state.top().first == State::Empty || state.top().first == State::Read);
+  bool conditional_branch = state.top().first == State::ConditionalBranch;
+
+  if (block_pre_update) {
+    // in-place assignments count as pre-updates
+    // (e.g. int x = 0; int y = x += 1; assigns 2 to y)
+    // if pre-updates are blocked, it means they have already happened
+    // so we read the value of the assigned expression instead
+    state.push({State::Read, {}});
+    expr.left->Visit(*this);
+    state.pop();
+
+    if (conditional_branch) EmitConditionalBranchForCurrent();
+    return;
+  }
   
   state.push({State::Read, {}});
   expr.right->Visit(*this);
@@ -959,9 +952,12 @@ void ASTWalker::Visit(const AssignmentNode& expr) {
     case TokenType::ILShift:
     case TokenType::IRShift: {
       // same as binop LShift / RShift
-      state.push({State::Read, {}});
+
+      // as explained in the ASTWalker class, we block
+      // post updates when reading the expression to be updated
+      state.push({State::Read, {}}); block_post_update++;
       expr.left->Visit(*this);
-      state.pop();
+      state.pop(); block_post_update--;
 
       auto left = current;
       cotyl::Assert(!cotyl::Is(emitter.vars[left].type).AnyOf<Emitter::Var::Type::Float, Emitter::Var::Type::Double, Emitter::Var::Type::Pointer>());
@@ -991,23 +987,28 @@ void ASTWalker::Visit(const AssignmentNode& expr) {
         EmitIntegralExpr<calyx::Shift>(emitter.vars[left].type, left, calyx::ShiftType::Right, right);
       }
 
-      // do assignment
-      state.push({State::Assign, {.var = current}});
+      // do assignment, block pre-updates as explained
+      auto assigned = current;
+      state.push({State::Assign, {.var = assigned}}); block_pre_update++;
       expr.left->Visit(*this);
-      state.pop();
+      state.pop(); block_pre_update--;
+      current = assigned;
 
-      // todo: conditional branch
+      if (conditional_branch) EmitConditionalBranchForCurrent();
       return;
     }
     case TokenType::IAnd: op = calyx::BinopType::BinAnd; break;
     case TokenType::IOr: op = calyx::BinopType::BinOr; break;
     case TokenType::IXor: op = calyx::BinopType::BinXor; break;
     case TokenType::Assign: {
+      // don't block updates on a direct assignment
+      // left-side expression is visited only once
       state.push({State::Assign, {.var = right}});
       expr.left->Visit(*this);
       state.pop();
 
-      // todo: conditional branch
+      current = right;
+      if (conditional_branch) EmitConditionalBranchForCurrent();
       return;
     }
     default: {
@@ -1016,9 +1017,9 @@ void ASTWalker::Visit(const AssignmentNode& expr) {
   }
 
   // visit left for binop assignment
-  state.push({State::Read, {}});
+  state.push({State::Read, {}}); block_post_update++;
   expr.left->Visit(*this);
-  state.pop();
+  state.pop(); block_post_update--;
 
   auto left = current;
 
@@ -1045,13 +1046,13 @@ void ASTWalker::Visit(const AssignmentNode& expr) {
   auto result = current;
 
   // do assignment
-  state.push({State::Assign, {.var = current}});
+  state.push({State::Assign, {.var = current}}); block_pre_update++;
   expr.left->Visit(*this);
-  state.pop();
+  state.pop(); block_pre_update--;
 
   // set current to the result variable
   current = result;
-  // todo: conditional branch
+  if (conditional_branch) EmitConditionalBranchForCurrent();
 }
 
 void ASTWalker::Visit(const ExpressionListNode& expr) {
