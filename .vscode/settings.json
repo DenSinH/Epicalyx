@@ -9,7 +9,7 @@
           "-rigfunc", "main",
           // "-catch-errors",
           "-stl", "${workspaceRoot}/epicalyx/stl",
-          "${workspaceRoot}/tests/suites/scctests/cc/execute/0186-dec_ary.c"
+          "${workspaceRoot}/tests/suites/scctests/cc/execute/0208-sizeof.c"
         ]
     },
     "editor.indentSize": 2,

@@ -20,13 +20,14 @@ struct InitializerList {
 
   void Push(DesignatorList&& member, Initializer&& value);
 
-  void ValidateAndReduce(const type::AnyType& type);
+  // might update array size
+  void ValidateAndReduce(type::AnyType& type);
 
   cotyl::vector<std::pair<DesignatorList, Initializer>> list{};
 
   std::string ToString() const;
 private:
-  void ValidateAndReduceScalarType(const type::AnyType& type);
+  void ValidateAndReduceScalarType(type::AnyType& type);
 };
 
 struct Initializer {
@@ -35,7 +36,7 @@ struct Initializer {
   Initializer(pExpr&& expr);
   Initializer(InitializerList&& init);
 
-  void ValidateAndReduce(const type::AnyType& type);
+  void ValidateAndReduce(type::AnyType& type);
 
   std::string ToString() const;
   

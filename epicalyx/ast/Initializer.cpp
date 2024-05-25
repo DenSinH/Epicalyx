@@ -27,7 +27,7 @@ Initializer::Initializer(InitializerList&& init) :
 
 }
 
-void Initializer::ValidateAndReduce(const type::AnyType& type) {
+void Initializer::ValidateAndReduce(type::AnyType& type) {
   if (swl::holds_alternative<InitializerList>(value)) {
     auto& list = swl::get<InitializerList>(value);
     list.ValidateAndReduce(type);
@@ -95,8 +95,16 @@ void Initializer::ValidateAndReduce(const type::AnyType& type) {
         // try to cast
         type.Cast(has, false);
       },
-      [](const type::ArrayType& strct) {
-        throw cotyl::UnimplementedException();
+      [&](type::ArrayType& arr) {
+        if (!has.holds_alternative<type::ArrayType>()) {
+          throw type::TypeError("Invalid type for array initializer");
+        }
+        if (!arr.size) {
+          arr.size = has.get<type::ArrayType>().size;
+        }
+        if (!type.TypeEquals(has)) {
+          throw cotyl::FormatExceptStr<type::TypeError>("Cannot cast type %s to %s in initializer", has, type);
+        }
       },
       [&]<typename T>(const type::ValueType<T>& val) {
         // function type, value type
@@ -123,7 +131,7 @@ std::string Initializer::ToString() const {
 }
 
 
-void InitializerList::ValidateAndReduceScalarType(const type::AnyType& type) {
+void InitializerList::ValidateAndReduceScalarType(type::AnyType& type) {
   if (list.empty()) return;  // always valid
   if (list.size() > 1) {
     Log::Warn("Excess elements in initializer list");
@@ -135,7 +143,7 @@ void InitializerList::ValidateAndReduceScalarType(const type::AnyType& type) {
   list[0].second.ValidateAndReduce(type);
 }
 
-void InitializerList::ValidateAndReduce(const type::AnyType& type) {
+void InitializerList::ValidateAndReduce(type::AnyType& type) {
   type.visit<void>(
     [](const type::StructType& strct) {
       throw cotyl::UnimplementedException();
@@ -149,8 +157,14 @@ void InitializerList::ValidateAndReduce(const type::AnyType& type) {
     [&](const type::PointerType& ptr) { 
       ValidateAndReduceScalarType(type);
     },
-    [](const type::ArrayType& strct) {
-      throw cotyl::UnimplementedException();
+    [&](type::ArrayType& arr) {
+      if (!arr.size) {
+        arr.size = list.size();
+      }
+      auto& contained = *arr.contained;
+      for (auto& value : list) {
+        value.second.ValidateAndReduce(contained);
+      }
     },
     [&]<typename T>(const type::ValueType<T>& val) {
       ValidateAndReduceScalarType(type);

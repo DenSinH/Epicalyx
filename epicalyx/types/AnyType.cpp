@@ -84,6 +84,13 @@ bool AnyType::TypeEquals(const AnyType& other) const {
     [&](const FunctionType& func) -> bool {
       return func.TypeEqualImpl(other.get<FunctionType>());
     },
+    [&](const ArrayType& arr) -> bool {
+      const auto& other_arr = other.get<ArrayType>();
+      if (arr.size && other_arr.size && arr.size != other_arr.size) {
+        return false;
+      }
+      return arr.contained->TypeEquals(*other_arr.contained);
+    },
     [&](const PointerType& ptr) -> bool {
       return ptr.contained->TypeEquals(*other.get<PointerType>().contained);
     },

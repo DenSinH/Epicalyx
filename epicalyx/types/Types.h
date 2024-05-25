@@ -10,7 +10,7 @@
 
 namespace epi::type {
 
-using nested_type_t = std::shared_ptr<const AnyType>;
+using nested_type_t = std::shared_ptr<AnyType>;
 
 
 struct VoidType final : BaseType {

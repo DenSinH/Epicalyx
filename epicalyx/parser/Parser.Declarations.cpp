@@ -791,23 +791,22 @@ void Parser::StoreDeclaration(DeclarationNode&& decl, cotyl::vector<ast::Declara
       CompleteForwardDecl(decl.type);
     }
 
-    RecordDeclaration(decl.name, decl.type);
     if (in_stream.EatIf(TokenType::Assign)) {
       // type var = <expression> or {initializer list}
       if (decl.name.empty()) {
         throw ParserError("Cannot assign to nameless variable");
       }
-      decl.value = EInitializer();
-      dest.emplace_back(std::move(decl));
+      auto value = EInitializer();
+      value.ValidateAndReduce(decl.type);
+
+      decl.value = std::move(value);
     }
-    else {
-      // type var, var2, var3
-      if (!decl.name.empty()) {
-        dest.emplace_back(std::move(decl));
-      }
-      else {
-        // warn: statement has no effect
-      }
+
+    // record declaration AFTER verifying initializer,
+    // since the initializer may update array size
+    RecordDeclaration(decl.name, decl.type);
+    if (!decl.name.empty()) {
+      dest.emplace_back(std::move(decl));
     }
   }
 }

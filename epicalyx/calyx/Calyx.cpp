@@ -183,6 +183,18 @@ STRINGIFY_METHOD(Global) {
         }
       },
       [](const epi::calyx::AggregateData& glob) {
+        // check whether global holds ascii data
+        if (glob.data.get()[glob.agg.size - 1] == 0) {
+          bool printable = std::all_of(
+            glob.data.get(), glob.data.get() + glob.agg.size - 1, 
+            [](auto c) {
+              return std::isprint(c) || std::isspace(c);
+            }
+          );
+          if (printable) {
+            return cotyl::Format("string<%d, %s>", glob.agg.size, glob.data.get());
+          }
+        }
         return cotyl::Format("agg<%d>", glob.agg.size);
       },
       []<typename T>(const epi::calyx::Scalar<T>& glob) {

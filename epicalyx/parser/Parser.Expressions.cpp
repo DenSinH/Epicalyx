@@ -144,7 +144,9 @@ pExpr Parser::EUnary() {
         in_stream.Eat(TokenType::RParen);
         return std::make_unique<NumericalConstantNode<u64>>(type_name->Sizeof());
       }
-      return std::make_unique<NumericalConstantNode<u64>>(EUnary()->type->Sizeof());
+      auto expr = EUnary();
+      auto size = expr->type->Sizeof();
+      return std::make_unique<NumericalConstantNode<u64>>(size);
     }
     case TokenType::Alignof: {
       // _Alignof(type-name)
