@@ -1,14 +1,15 @@
 #pragma once
 
-#include "Node.h"
-#include "NodeVisitor.h"
-#include "Initializer.h"
-#include "tokenizer/TokenType.h"
-#include "CString.h"
-#include "Vector.h"
+#include <string>         // for string
+#include "CString.h"      // for CString
+#include "Initializer.h"  // for InitializerList
+#include "Node.h"         // for ExprNode
+#include "NodeVisitor.h"  // for VISIT_IMPL
+#include "Vector.h"       // for vector
+#include "ast/NodeFwd.h"  // for pExpr
 
-#include <string>
-#include <utility>
+namespace epi { enum class TokenType : u32; }
+namespace epi { namespace type { struct AnyType; } }
 
 
 namespace epi::ast {

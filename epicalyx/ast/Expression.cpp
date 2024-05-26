@@ -1,8 +1,19 @@
 #include "Expression.h"
-#include "Initializer.h"
-#include "types/Types.h"
-#include "SStream.h"
-#include "Escape.h"
+#include "Vector.h"                    // for vec_iterator
+#include <memory>                      // for unique_ptr, make_shared, swap
+#include <utility>                     // for move
+#include "Default.h"                   // for i8, i16, i32, i64, u16, u32, u64
+#include "Escape.h"                    // for QuotedEscape
+#include "Format.h"                    // for FormatStr, FormatExceptStr, Join
+#include "Initializer.h"               // for InitializerList
+#include "SStream.h"                   // for StringStream
+#include "Stringify.h"                 // for stringify
+#include "Variant.h"                   // for Variant
+#include "ast/Node.h"                  // for ExprNode, ASTError, stringify
+#include "tokenizer/TokenType.h"       // for TokenType
+#include "types/AnyType.h"             // for AnyType
+#include "types/BaseType.h"            // for BaseType, LValue, Qualifier
+#include "types/Types.h"               // for ValueType, ArrayType, PointerT...
 
 
 namespace epi::ast {

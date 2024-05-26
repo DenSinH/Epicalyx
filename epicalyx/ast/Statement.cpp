@@ -1,12 +1,15 @@
 #include "Statement.h"
-#include "Node.h"
-#include "Format.h"
-#include "Declaration.h"
-#include "Cast.h"
 
-#include "SStream.h"
+#include <regex>                       // for regex_replace, regex
+#include <utility>                     // for move
 
-#include <regex>
+#include "Vector.h"                    // for vec_iterator
+#include "Declaration.h"               // for DeclarationNode
+#include "Format.h"                    // for FormatStr, Format, Join
+#include "Node.h"                      // for ExprNode, Node, StatNode, stri...
+#include "SStream.h"                   // for StringStream
+#include "Stringify.h"                 // for stringify
+
 
 namespace epi::ast {
 

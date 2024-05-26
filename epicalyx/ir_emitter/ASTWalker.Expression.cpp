@@ -2,6 +2,7 @@
 #include "Emitter.h"
 #include "Helpers.h"
 
+#include "tokenizer/TokenType.h"
 #include "types/Types.h"
 #include "calyx/Directive.h"
 #include "ast/Expression.h"

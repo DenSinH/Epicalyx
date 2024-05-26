@@ -1,13 +1,15 @@
 #pragma once
 
-#include "Node.h"
-#include "types/AnyType.h"
-#include "CString.h"
-#include "Initializer.h"
-#include "NodeVisitor.h"
+#include <optional>         // for optional
+#include <string>           // for string
 
-#include <utility>
-#include <optional>
+#include "Node.h"           // for DeclNode
+#include "CString.h"        // for CString
+#include "Initializer.h"    // for Initializer
+#include "NodeVisitor.h"    // for VISIT_IMPL
+#include "ast/NodeFwd.h"    // for pNode
+#include "types/AnyType.h"  // for AnyType
+#include "types/Types.h"    // for FunctionType
 
 
 namespace epi::ast {

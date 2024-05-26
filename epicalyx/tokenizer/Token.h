@@ -1,13 +1,11 @@
 #pragma once
 
-#include "Default.h"
-#include "Stringify.h"
-#include "Variant.h"
-#include "TokenType.h"
-#include "CString.h"
-
-#include <string>
-#include <utility>
+#include <utility>      // for move
+#include "CString.h"    // for CString
+#include "Default.h"    // for i32, i64, u32, u64
+#include "Stringify.h"  // for STRINGIFY_METHOD
+#include "TokenType.h"  // for TokenType
+#include "Variant.h"    // for Variant
 
 
 namespace epi {

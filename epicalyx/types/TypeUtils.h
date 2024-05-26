@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "Default.h"
 
 namespace epi {

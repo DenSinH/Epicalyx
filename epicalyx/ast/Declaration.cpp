@@ -1,7 +1,9 @@
 #include "Declaration.h"
-#include "Statement.h"
-
-#include "types/Types.h"
+#include <utility>            // for move
+#include "Format.h"           // for FormatStr
+#include "Statement.h"        // for CompoundNode
+#include "ast/Initializer.h"  // for Initializer
+#include "types/Types.h"      // for FunctionType
 
 
 namespace epi::ast {

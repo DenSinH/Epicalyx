@@ -1,13 +1,14 @@
 #pragma once
 
-#include "Default.h"
-#include "NodeFwd.h"
-#include "CustomAssert.h"
-#include "types/AnyType.h"
+#include <string>           // for string
+#include <utility>          // for move
+#include "CString.h"        // for stringify
+#include "Default.h"        // for i64
+#include "Exceptions.h"     // for Exception
+#include "NodeFwd.h"        // for pStat
+#include "types/AnyType.h"  // for AnyType
 
-#include <memory>
-#include <string>
-#include <type_traits>
+namespace epi { namespace ast { struct NodeVisitor; } }
 
 namespace epi::ast {
 using ::epi::stringify;

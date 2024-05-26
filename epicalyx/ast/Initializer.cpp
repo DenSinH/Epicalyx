@@ -1,14 +1,21 @@
 #include "Initializer.h"
-#include "Node.h"
-#include "Expression.h"
-#include "types/AnyType.h"
 
-#include "Log.h"
-#include "Exceptions.h"
-#include "SStream.h"
-#include "Decltype.h"
+#include <algorithm>         // for max
+#include <memory>            // for __shared_ptr_access, unique_ptr, make_un...
+#include <regex>             // for regex_replace, regex
 
-#include <regex>
+#include "CustomAssert.h"    // for Assert
+#include "Exceptions.h"      // for UnimplementedException
+#include "Format.h"          // for FormatExceptStr
+#include "Log.h"             // for Warn
+#include "Node.h"            // for ExprNode, stringify
+#include "SStream.h"         // for StringStream
+#include "Stringify.h"       // for stringify
+#include "ast/NodeFwd.h"     // for pExpr
+#include "ast/Expression.h"  // for NumericalConstantNode inheritance
+#include "types/AnyType.h"   // for AnyType
+#include "types/BaseType.h"  // for TypeError
+#include "types/Types.h"     // for ArrayType, StructType (ptr only), UnionT...
 
 namespace epi::ast {
 
@@ -57,7 +64,8 @@ void Initializer::ValidateAndReduce(type::AnyType& type) {
       },
       [&]<typename T>(const type::ValueType<T>& val) { 
         if (list.list.empty()) {
-          value = std::make_unique<NumericalConstantNode<T>>(0);
+          pExpr reduced = std::make_unique<NumericalConstantNode<T>>(0);
+          value = std::move(reduced);
         }
         else {
           // list wil have size one by recursion above

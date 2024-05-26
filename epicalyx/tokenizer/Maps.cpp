@@ -1,7 +1,7 @@
-#include "Token.h"
-#include "Containers.h"
-
-#include <string>
+#include <string>        // for basic_string, string
+#include <utility>       // for pair
+#include "Containers.h"  // for unordered_map
+#include "TokenType.h"   // for TokenType
 
 
 namespace epi {

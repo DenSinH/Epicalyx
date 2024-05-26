@@ -1,12 +1,18 @@
 #pragma once
 
-#include "BaseType.h"
-#include "TypeFwd.h"
-#include "Variant.h"
-#include "Packs.h"
+#include <cstddef>     // for size_t
+#include <memory>      // for shared_ptr
+#include <optional>    // for optional
+#include <string>      // for string
+#include <utility>     // for move
 
-#include <type_traits>
-#include <optional>
+#include "BaseType.h"  // for BaseType, LValue, Qualifier
+#include "CString.h"   // for CString
+#include "Default.h"   // for u64, u8, u32
+#include "TypeFwd.h"   // for BoolType, value_type_pack
+#include "Vector.h"    // for vector
+
+namespace epi { namespace type { struct AnyType; } }
 
 namespace epi::type {
 

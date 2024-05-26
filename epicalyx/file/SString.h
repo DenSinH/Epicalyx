@@ -1,7 +1,10 @@
 #pragma once
 
-#include "Stream.h"
-#include "CString.h"
+#include <algorithm>    // for max, min
+#include <cstddef>      // for size_t
+#include <ostream>      // for basic_ostream, char_traits, operator<<, basic...
+#include <string_view>  // for operator<<, string_view
+#include "Stream.h"     // for Stream
 
 namespace epi {
 

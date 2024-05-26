@@ -1,17 +1,24 @@
 #include "Types.h"
-#include "AnyType.h"
-#include "TypeTraits.h"
-#include "TypeUtils.h"
-#include "Stringify.h"
-#include "Log.h"
-#include "SStream.h"
-#include "Decltype.h"
-#include "Exceptions.h"
-#include "CustomAssert.h"
 
-#include <functional>
-#include <utility>
-#include <tuple>
+#include <stddef.h>                    // for size_t
+#include <algorithm>                   // for max, copy
+#include <concepts>                    // for integral
+#include <functional>                  // for divides, modulus, bit_and, bit_or
+#include <iterator>                    // for back_insert_iterator, back_ins...
+#include <tuple>                       // for tuple
+#include <type_traits>                 // for remove_reference, common_type_t
+#include <utility>                     // for move
+
+#include "AnyType.h"                   // for AnyType, any_type_t
+#include "CustomAssert.h"              // for Assert
+#include "Decltype.h"                  // for decltype_t
+#include "Format.h"                    // for FormatStr, FormatExceptStr, Join
+#include "Log.h"                       // for Warn
+#include "SStream.h"                   // for StringStream
+#include "Stringify.h"                 // for stringify
+#include "TypeUtils.h"                 // for type_string_v
+#include "Variant.h"                   // for Variant
+#include "Vector.h"                    // for vector, vec_iterator, operator-
 
 
 namespace epi::type {

@@ -1,13 +1,30 @@
-#include "Parser.h"
-#include "Is.h"
-#include "Stream.h"
-#include "tokenizer/Token.h"
-#include "types/AnyType.h"
-#include "ast/Declaration.h"
-#include "ast/Statement.h"
+#include "Parser.h"                                   // for Parser
 
-#include <optional>
-#include <iostream>
+#include <stddef.h>                                   // for size_t
+#include <memory>                                     // for make_shared
+#include <optional>                                   // for optional
+#include <stack>                                      // for stack
+#include <type_traits>                                // for make_unsigned_t
+#include <utility>                                    // for move, pair, mak...
+
+#include "CString.h"                                  // for CString
+#include "CustomAssert.h"                             // for Assert
+#include "Default.h"                                  // for i32, u32, i16, i64
+#include "Exceptions.h"                               // for UnimplementedEx...
+#include "ExpressionParser.h"                         // for ParserError
+#include "Format.h"                                   // for FormatExcept
+#include "Is.h"                                       // for Is
+#include "Scope.h"                                    // for MapScope, SetScope
+#include "Stream.h"                                   // for Stream
+#include "Variant.h"                                  // for Variant
+#include "Vector.h"                                   // for vector
+#include "ast/Declaration.h"                          // for DeclarationNode
+#include "ast/Initializer.h"                          // for Initializer
+#include "tokenizer/Token.h"                          // for AnyToken, Ident...
+#include "tokenizer/TokenType.h"                      // for TokenType
+#include "types/AnyType.h"                            // for AnyType
+#include "types/BaseType.h"                           // for LValue, Qualifier
+#include "types/Types.h"                              // for StructType, Uni...
 
 
 namespace epi {

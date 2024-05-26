@@ -1,7 +1,16 @@
 #pragma once
 
-#include "Node.h"
-#include "NodeVisitor.h"
+#include <memory>             // for unique_ptr
+#include <string>             // for string
+
+#include "Node.h"             // for StatNode, Node
+#include "NodeVisitor.h"      // for VISIT_IMPL
+#include "CString.h"          // for CString
+#include "Default.h"          // for i64
+#include "Vector.h"           // for vector
+#include "ast/NodeFwd.h"      // for pStat, pExpr, pNode
+
+namespace epi { namespace ast { struct DeclarationNode; } }
 
 
 namespace epi::ast {

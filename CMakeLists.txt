@@ -26,6 +26,16 @@ else()
   message(STATUS "Boost not found, using stl. Please set BOOST_ROOT (or BOOSTROOT) environment variables.")
 endif()
 
+# find iwyu (include-what-you-use) for reducing includes
+# works easiest on linux, find installation instructions here:
+# https://wiki.documentfoundation.org/Development/IWYU-Howto
+find_program(IWYU_PATH NAMES include-what-you-use iwyu)
+if (IWYU_PATH)
+  message(STATUS "Found IWYU at ${IWYU_PATH}")
+  # disabled because it takes up compile time
+  # set(CMAKE_CXX_INCLUDE_WHAT_YOU_USE ${IWYU_PATH})
+endif()
+
 # set up include directories
 include_directories(
   ${PROJECT_SOURCE_DIR}/epicalyx 
@@ -113,7 +123,9 @@ add_subdirectory(epicalyx/cycle)
 target_link_libraries(epicalyx File)
 target_link_libraries(epicalyx Tokenizer)
 target_link_libraries(epicalyx Types)
-target_link_libraries(epicalyx AST)
+
+# linking to Parser instead of epicalyx fixes linker errors on Ubuntu with clang
+target_link_libraries(Parser AST)
 target_link_libraries(epicalyx Parser)
 target_link_libraries(epicalyx Cycle)
 

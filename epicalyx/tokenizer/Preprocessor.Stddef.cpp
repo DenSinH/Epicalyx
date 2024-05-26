@@ -1,10 +1,15 @@
 #include "Preprocessor.h"
-#include "Escape.h"
-#include "SStream.h"
 
-#include <filesystem>
-#include <ctime>
-#include <cctype>
+#include <ctime>           // for localtime, strftime, time
+#include <deque>           // for deque
+#include <filesystem>      // for canonical, path
+#include <string>          // for to_string
+#include <utility>         // for pair, move
+
+#include "CString.h"       // for CString
+#include "Containers.h"    // for unordered_map
+#include "Escape.h"        // for QuotedEscape
+#include "SStream.h"       // for StringStream
 
 
 namespace epi {

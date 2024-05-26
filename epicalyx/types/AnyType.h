@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Types.h"
-#include "Stringify.h"
-#include "Vector.h"
-
-#include <memory>
+#include "Types.h"      // for ValueType, PointerType, ArrayType, FunctionType
+#include "BaseType.h"   // for BaseType
+#include "Default.h"    // for i16, i32, i64, i8, u16, u32, u64, u8
+#include "Stringify.h"  // for STRINGIFY_METHOD
+#include "Variant.h"    // for Variant
 
 namespace epi::type {
 

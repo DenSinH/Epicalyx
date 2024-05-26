@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Stream.h"
-#include <fstream>
+#include <fstream>   // for streampos, basic_ifstream, ifstream, ostream
+#include <string>    // for string
+#include "Stream.h"  // for Stream
 
 namespace epi {
 

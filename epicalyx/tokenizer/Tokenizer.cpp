@@ -1,12 +1,20 @@
 #include "Tokenizer.h"
-#include "Token.h"
-#include "Default.h"
-#include "Identifier.h"
-#include "SStream.h"
-#include "Containers.h"
-#include "Escape.h"
 
-#include <cctype>
+#include <stdint.h>                                   // for INT32_MAX, UINT...
+#include <cctype>                                     // for isdigit, isspace
+#include <string>                                     // for stoull, string
+#include <utility>                                    // for move, forward
+
+#include "CString.h"                                  // for CString
+#include "Containers.h"                               // for unordered_map, operator!=
+#include "Default.h"                                  // for i32, u32, i64, u64
+#include "Escape.h"                                   // for Unescape
+#include "Exceptions.h"                               // for Exception
+#include "Format.h"                                   // for FormatExcept
+#include "Identifier.h"                               // for get_identifier
+#include "SStream.h"                                  // for StringStream
+#include "Token.h"                                    // for NumericalConsta...
+#include "TokenType.h"                                // for TokenType
 
 
 namespace epi {

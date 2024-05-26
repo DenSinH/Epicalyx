@@ -1,7 +1,8 @@
 #include "Token.h"
-#include "Format.h"
-#include "Escape.h"
-#include "Containers.h"
+#include <string>        // for string
+#include "Containers.h"  // for unordered_map
+#include "Escape.h"      // for QuotedEscape
+#include "SStream.h"     // for StringStream
 
 
 namespace epi {

@@ -1,20 +1,26 @@
 #pragma once
 
-#include "file/File.h"
-#include "file/SString.h"
+#include <cstddef>                    // for size_t
+#include <deque>                      // for deque
+#include <iosfwd>                     // for ostream
+#include <optional>                   // for optional
+#include <queue>                      // for queue
+#include <string>                     // for string
+#include <string_view>                // for string_view
+#include <utility>                    // for move, pair
 
-#include "Tokenizer.h"
-#include "parser/ExpressionParser.h"
-
-#include "Default.h"
-#include "Containers.h"
-#include "CString.h"
-#include "Exceptions.h"
-#include "swl/variant.hpp"
-
-#include <stack>
-#include <queue>
-#include <utility>
+#include "CString.h"                  // for CString
+#include "Containers.h"               // for unordered_map, unordered_set
+#include "Default.h"                  // for i32, u64, i64
+#include "Exceptions.h"               // for Exception
+#include "Stream.h"                   // for Stream
+#include "Tokenizer.h"                // for Tokenizer
+#include "Vector.h"                   // for vector
+#include "ast/NodeFwd.h"              // for pExpr
+#include "file/File.h"                // for File
+#include "file/SString.h"             // for SString
+#include "parser/ExpressionParser.h"  // for ExpressionParser
+#include "swl/variant.hpp"            // for variant
 
 
 namespace epi {

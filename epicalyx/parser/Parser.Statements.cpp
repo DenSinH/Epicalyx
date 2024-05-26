@@ -1,9 +1,24 @@
 #include "Parser.h"
 
-#include "Stream.h"
-#include "tokenizer/Token.h"
-#include "ast/Statement.h"
-#include "ast/Declaration.h"
+#include <deque>                                      // for deque
+#include <memory>                                     // for make_unique
+#include <utility>                                    // for move
+
+#include "CString.h"                                  // for CString
+#include "Containers.h"                               // for unordered_set, operator!=, move
+#include "ExpressionParser.h"                         // for ParserError
+#include "Format.h"                                   // for FormatExcept
+#include "Parser.h"                                   // for Parser
+#include "Scope.h"                                    // for SetScope
+#include "Stream.h"                                   // for Stream
+#include "Vector.h"                                   // for vector, vec_iterator
+#include "ast/Declaration.h"                          // for DeclarationNode
+#include "ast/Node.h"                                 // for StatNode, Node
+#include "ast/NodeFwd.h"                              // for pExpr, pNode
+#include "ast/Statement.h"                            // for CompoundNode
+#include "tokenizer/Token.h"                          // for AnyToken, Ident...
+#include "tokenizer/TokenType.h"                      // for TokenType
+#include "types/AnyType.h"                            // for AnyType
 
 namespace epi {
   

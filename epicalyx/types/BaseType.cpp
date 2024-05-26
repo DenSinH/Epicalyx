@@ -1,7 +1,11 @@
 #include "BaseType.h"
-#include "Format.h"
-#include "Exceptions.h"
-#include "AnyType.h"
+#include <optional>   // for optional
+#include "AnyType.h"  // for AnyType
+#include "Format.h"   // for FormatExceptStr
+#include "Types.h"    // for ValueType
+#include "Variant.h"  // for Variant
+
+namespace epi { namespace cotyl { struct CString; } }
 
 
 namespace epi::type {

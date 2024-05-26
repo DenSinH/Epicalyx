@@ -8,29 +8,29 @@
  * constant expression
  * */
 
-#include "Locatable.h"
-#include "Exceptions.h"
-#include "ast/NodeFwd.h"
+#include <iosfwd>         // for ostream
+#include <string>         // for string
+#include <utility>        // for move
+
+#include "Default.h"      // for i64, u32
+#include "Exceptions.h"   // for Exception
+#include "Locatable.h"    // for Locatable
+#include "ast/NodeFwd.h"  // for pExpr
+
+namespace epi { namespace cotyl { struct CString; } }
+namespace epi { namespace cotyl { template <typename T> struct Stream; } }
 
 namespace epi {
 
-namespace cotyl {
+struct AnyToken;
+enum class TokenType : u32;
 
-template<typename T>
-struct Stream;
-
-struct CString;
-
-}
 
 struct ParserError : cotyl::Exception {
   ParserError(std::string&& message) : 
       Exception("Parser Error", std::move(message)) { }
 };
 
-
-struct AnyToken;
-enum class TokenType : u32;
 
 struct ExpressionParser : public cotyl::Locatable {
 
@@ -41,7 +41,7 @@ struct ExpressionParser : public cotyl::Locatable {
 
   // needs public access for shorthand parsing Binop Expressions
   ast::pExpr EBinopBaseVCall();
-  template<ast::pExpr (ExpressionParser::*SubNode)(), enum TokenType... types>
+  template<ast::pExpr (ExpressionParser::*SubNode)(), TokenType... types>
   ast::pExpr EBinopImpl();
 
 protected:

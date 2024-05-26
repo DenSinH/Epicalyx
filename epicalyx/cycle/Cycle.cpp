@@ -1,8 +1,6 @@
 #include "Cycle.h"
-
-#include "Format.h"
-#include "Containers.h"
-#include "SStream.h"
+#include "Exceptions.h"  // for Exception
+#include "Format.h"      // for Format
 
 #ifndef NO_GRAPHVIZ
 #include <graphviz/cgraph.h>

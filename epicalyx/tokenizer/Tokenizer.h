@@ -1,17 +1,12 @@
 #pragma once
 
-#include "Stream.h"
-#include "Token.h"
+#include <iosfwd>    // for ostream
+#include "Stream.h"  // for Stream
+#include "Token.h"   // for AnyToken
+
+namespace epi { namespace cotyl { struct CString; } }  // lines 12-12
 
 namespace epi {
-
-struct AnyToken;
-
-namespace cotyl {
-
-struct CString;
-
-}
 
 class Tokenizer : public cotyl::Stream<AnyToken> {
 public:

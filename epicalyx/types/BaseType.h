@@ -1,11 +1,14 @@
 #pragma once
 
-#include <string>
+#include <string>        // for string
+#include <utility>       // for move
+#include "Default.h"     // for u8, u32, u64
+#include "Exceptions.h"  // for Exception
+#include "TypeFwd.h"     // for BoolType
+#include "Vector.h"      // for vector
 
-#include "Default.h"
-#include "TypeFwd.h"
-#include "Exceptions.h"
-
+namespace epi { namespace cotyl { struct CString; } }
+namespace epi { namespace type { struct AnyType; } }
 
 namespace epi::type {
 

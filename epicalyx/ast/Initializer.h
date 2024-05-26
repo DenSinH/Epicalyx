@@ -1,16 +1,18 @@
 #pragma once
 
-#include "Default.h"
-#include "NodeFwd.h"
-#include "types/TypeFwd.h"
-#include "Vector.h"
+#include <string>                      // for string
+#include <utility>                     // for pair
 
-#include "swl/variant.hpp"
-#include <string>
+#include "CString.h"                   // for CString
+#include "Default.h"                   // for i64
+#include "NodeFwd.h"                   // for pExpr
+#include "Vector.h"                    // for vector
+#include "swl/variant.hpp"             // for variant
+
+namespace epi { namespace type { struct AnyType; } }
 
 namespace epi::ast {
 
-struct InitializerList;
 struct Initializer;
 
 using Designator = swl::variant<cotyl::CString, i64>;

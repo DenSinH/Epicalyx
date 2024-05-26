@@ -1,8 +1,7 @@
 #include "File.h"
+#include "Exceptions.h"  // for Exception
 
-#include "Exceptions.h"
-
-#include <iostream>
+#include <utility>       // for move
 
 namespace epi {
 

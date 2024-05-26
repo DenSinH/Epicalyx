@@ -1,10 +1,30 @@
-#include "Preprocessor.h"
-#include "CustomAssert.h"
-#include "Identifier.h"
+#include "Preprocessor.h"                             // for Preprocessor
 
-#include "ast/Expression.h"
+#include <algorithm>                                  // for any_of
+#include <deque>                                      // for deque, operator-
+#include <filesystem>                                 // for path, canonical
+#include <iterator>                                   // for prev
+#include <memory>                                     // for make_unique
+#include <optional>                                   // for optional
+#include <string>                                     // for operator+, string
+#include <utility>                                    // for move
 
-#include <filesystem>
+#include "CString.h"                                  // for CString
+#include "Containers.h"                               // for unordered_map
+#include "CustomAssert.h"                             // for Assert
+#include "Default.h"                                  // for i32, i64
+#include "Exceptions.h"                               // for UnimplementedEx...
+#include "Format.h"                                   // for FormatExcept
+#include "Hash.h"                                     // for hash_value
+#include "Identifier.h"                               // for get_identifier
+#include "Stream.h"                                   // for Stream
+#include "Token.h"                                    // for AnyToken, Ident...
+#include "TokenType.h"                                // for TokenType
+#include "Tokenizer.h"                                // for Tokenizer
+#include "Vector.h"                                   // for vector
+#include "ast/Expression.h"                           // for NumericalConsta...
+#include "ast/NodeFwd.h"                              // for pExpr
+#include "file/SString.h"                             // for SString
 
 
 namespace epi {

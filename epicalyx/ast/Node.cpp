@@ -1,5 +1,8 @@
 #include "Node.h"
-#include "Decltype.h"
+#include <optional>          // for optional
+#include "Variant.h"         // for Variant
+#include "types/BaseType.h"  // for BaseType, 
+#include "types/Types.h"     // for ValueType
 
 
 namespace epi::ast {

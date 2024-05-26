@@ -1,10 +1,14 @@
 #include "Preprocessor.h"
 
-#include "Identifier.h"
-#include "SStream.h"
-#include "CustomAssert.h"
+#include <algorithm>                                  // for all_of
+#include <cctype>                                     // for isspace
+#include <ostream>                                    // for basic_ostream
 
-#include <cctype>
+#include "Containers.h"                               // for operator!=
+#include "CustomAssert.h"                             // for Assert
+#include "Format.h"                                   // for FormatExcept
+#include "Identifier.h"                               // for is_valid_ident_...
+#include "SStream.h"                                  // for StringStream
 
 
 namespace epi {

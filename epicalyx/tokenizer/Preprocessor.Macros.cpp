@@ -1,8 +1,23 @@
-#include "Preprocessor.h"
-#include "Identifier.h"
-#include "CustomAssert.h"
+#include "Preprocessor.h"              // for Preprocessor, PreprocessorError
 
-#include <cctype>
+#include <algorithm>                   // for any_of, find
+#include <cctype>                      // for isspace
+#include <deque>                       // for deque, operator-, operator==
+#include <optional>                    // for optional
+#include <ostream>                     // for char_traits, basic_ostream
+#include <tuple>                       // for tie, tuple
+#include <utility>                     // for move, pair
+
+#include "CString.h"                   // for CString
+#include "CustomAssert.h"              // for Assert
+#include "Default.h"                   // for i32
+#include "Exceptions.h"                // for UnreachableException
+#include "Identifier.h"                // for get_identifier, is_valid_ident...
+#include "SStream.h"                   // for StringStream
+#include "Stream.h"                    // for EOSError
+#include "Vector.h"                    // for vector
+#include "file/SString.h"              // for SString
+#include "swl/variant.hpp"             // for exhaustive, visit, (anonymous)
 
 namespace epi {
 

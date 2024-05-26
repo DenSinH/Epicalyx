@@ -1,6 +1,9 @@
 #include "AnyType.h"
-#include "Decltype.h"
-#include "Log.h"
+
+#include <memory>  // for __shared_ptr_access, make_shared
+#include <string>  // for string
+
+#include "Log.h"   // for Warn
 
 
 namespace epi::cotyl {

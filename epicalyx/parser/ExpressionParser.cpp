@@ -1,7 +1,19 @@
 #include "ExpressionParser.h"
-#include "tokenizer/Token.h"
-#include "Stream.h"
-#include "ast/Expression.h"
+
+#include <memory>                 // for make_unique, unique_ptr
+
+#include "Format.h"               // for FormatExceptStr
+#include "SStream.h"              // for StringStream
+#include "Stream.h"               // for Stream
+#include "Variant.h"              // for Variant
+#include "Vector.h"               // for vector
+#include "ast/Expression.h"       // for CastNode, BinopNode, ExpressionList...
+#include "ast/Node.h"             // for ExprNode
+#include "swl/variant.hpp"        // for exhaustive
+#include "tokenizer/Token.h"      // for AnyToken, KeywordToken (ptr only)
+#include "tokenizer/TokenType.h"  // for TokenType
+#include "types/AnyType.h"        // for AnyType, ValueType
+#include "types/BaseType.h"       // for BaseType
 
 
 namespace epi {

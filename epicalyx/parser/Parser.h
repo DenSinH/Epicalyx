@@ -1,16 +1,23 @@
 #pragma once
 
-#include "ExpressionParser.h"
-#include "Exceptions.h"
-#include "Scope.h"
-#include "Containers.h"
-#include "types/AnyType.h"
-#include "ast/Initializer.h"
-#include "ast/Declaration.h"  // FunctionDef for vector destructor
-#include "ast/Statement.h"  // compoundnode for FunctionDef
-#include "Variant.h"
+#include <deque>                                      // for deque
+#include <stack>                                      // for stack
+#include <utility>                                    // for pair
 
-#include <stack>
+#include "CString.h"                                  // for CString
+#include "Containers.h"                               // for unordered_map
+#include "Default.h"                                  // for i32, i64
+#include "ExpressionParser.h"                         // for ExpressionParser
+#include "Scope.h"                                    // for Scope, MapScope
+#include "Variant.h"                                  // for Variant
+#include "Vector.h"                                   // for vector
+#include "ast/Declaration.h"                          // for DeclarationNode
+#include "ast/Initializer.h"                          // for Initializer
+#include "ast/Node.h"                                 // for StatNode
+#include "ast/NodeFwd.h"                              // for pExpr, pNode
+#include "ast/Statement.h"                            // for CompoundNode
+#include "types/AnyType.h"                            // for AnyType
+#include "types/Types.h"                              // for StructType, Uni...
 
 namespace epi {
 
