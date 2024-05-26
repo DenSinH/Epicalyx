@@ -657,14 +657,23 @@ u64 StructType::Sizeof() const {
     throw TypeError("Cannot get size of incomplete struct definition");
   }
   
+  // compute size by adding last field's size to it's offset
+  // then round up to alignment
   const auto raw_size = fields.back().data.offset + (*fields.back().data.type)->Sizeof();
-  // round up by alignment
   const auto align_mask = align - 1;
   return (raw_size + align_mask) & ~align_mask;
 }
 
 u64 UnionType::Sizeof() const {
-  throw cotyl::UnimplementedException();
+  // union size is max size of fields
+  if (fields.empty()) {
+    throw TypeError("Cannot get size of incomplete union definition");
+  }
+  u64 size = 0;
+  for (const auto& field : fields) {
+    size = std::max(size, (*field.data.type)->Sizeof());
+  }
+  return size;
 }
 
 StructFieldData StructUnionType::HasMember(const cotyl::CString& member) const {
