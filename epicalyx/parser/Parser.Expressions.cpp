@@ -115,10 +115,10 @@ pExpr Parser::EPostfix() {
 pExpr Parser::EUnary() {
   auto type = in_stream.ForcePeek()->type;
   switch (type) {
+    case TokenType::Asterisk:    // *expr
     case TokenType::Incr:        // ++expr
     case TokenType::Decr:        // --expr
     case TokenType::Ampersand:   // &expr
-    case TokenType::Asterisk:    // *expr
     case TokenType::Plus:        // +expr
     case TokenType::Minus:       // -expr
     case TokenType::Tilde:       // ~expr

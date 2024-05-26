@@ -35,6 +35,9 @@ void ExampleRegSpace::OutputGVar(const GeneralizedVar& gvar) {
   else if constexpr(std::is_same_v<T, calyx::Pointer>) {
     type = RegType::GPR;
   }
+  else if constexpr(std::is_same_v<T, calyx::AggregateData>) {
+    type = RegType::Stack;
+  }
   else {
     type = RegType::FPR;
   }

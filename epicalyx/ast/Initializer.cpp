@@ -38,10 +38,10 @@ void Initializer::ValidateAndReduce(type::AnyType& type) {
     // (for obtaining constant values / type values from initializer lists)
     type.visit<void>(
       [](const type::StructType& strct) {
-        throw cotyl::UnimplementedException();
+        // all reductions are done in the recursion above
       },
       [](const type::UnionType& strct) {
-        throw cotyl::UnimplementedException();
+        // all reductions are done in the recursion above
       },
       [](const type::ArrayType& arr) {
         // all reductions are done in the recursion above
@@ -83,10 +83,14 @@ void Initializer::ValidateAndReduce(type::AnyType& type) {
     
     type.visit<void>(
       [&](const type::StructType& strct) {
-        throw cotyl::UnimplementedException();
+        if (!type.TypeEquals(has)) {
+          throw cotyl::FormatExceptStr<type::TypeError>("Cannot cast type %s to %s in initializer", has, type);
+        }
       },
       [&](const type::UnionType& strct) {
-        throw cotyl::UnimplementedException();
+        if (!type.TypeEquals(has)) {
+          throw cotyl::FormatExceptStr<type::TypeError>("Cannot cast type %s to %s in initializer", has, type);
+        }
       },
       [&](const type::VoidType&) {
         throw type::TypeError("Initializer for incomplete type");
@@ -109,6 +113,7 @@ void Initializer::ValidateAndReduce(type::AnyType& type) {
       },
       [&]<typename T>(const type::ValueType<T>& val) {
         // function type, value type
+        // value types are valid as long as they can be casted
         type.Cast(has);
       },
       [&](const type::FunctionType& val) {
@@ -145,10 +150,10 @@ void InitializerList::ValidateAndReduceScalarType(type::AnyType& type) {
 void InitializerList::ValidateAndReduce(type::AnyType& type) {
   type.visit<void>(
     [](const type::StructType& strct) {
-      throw cotyl::UnimplementedException();
+      throw cotyl::UnimplementedException("Struct initializer list ValidateAndReduce");
     },
     [](const type::UnionType& strct) {
-      throw cotyl::UnimplementedException();
+      throw cotyl::UnimplementedException("Union initializer list ValidateAndReduce");
     },
     [](const type::VoidType&) {
       throw type::TypeError("Initializer list for incomplete type");

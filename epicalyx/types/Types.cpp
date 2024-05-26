@@ -413,16 +413,26 @@ BoolType DataPointerType::Truthiness() const {
 }
 
 AnyType PointerType::CommonTypeImpl(const AnyType& other) const {
-  return other.visit<AnyType>(
+  auto result = other.visit<AnyType>(
     [&]<std::integral T>(const ValueType<T>& other) {
-      PointerType result = *this;
-      result.ForgetConstInfo();
-      return std::move(result);
+      return *this;
+    },
+    [&](const PointerType& other) {
+      // common type of void* and other pointer is other pointer
+      if (contained->holds_alternative<VoidType>()) {
+        return other;
+      }
+      if (other.contained->holds_alternative<VoidType>()) {
+        return *this;
+      }
+      InvalidOperands(this, "operation", other);
     },
     [&](const auto& other) -> AnyType {
       InvalidOperands(this, "operation", other);
     }
   );
+  result->ForgetConstInfo();
+  return std::move(result);
 }
 
 AnyType ArrayType::CommonTypeImpl(const AnyType& other) const {

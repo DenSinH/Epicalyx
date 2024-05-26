@@ -69,6 +69,9 @@ void ASTWalker::Visit(const IdentifierNode& decl) {
         if (type.holds_alternative<type::ArrayType>() && type.get<type::ArrayType>().size) {
           current = emitter.EmitExpr<calyx::LoadLocalAddr>({Emitter::Var::Type::Pointer, type.get<type::ArrayType>().Stride() }, cvar.idx);
         }
+        else if (type.holds_alternative<type::StructType>() || type.holds_alternative<type::UnionType>()) {
+          current = emitter.EmitExpr<calyx::LoadLocalAddr>({Emitter::Var::Type::Pointer, 0 }, cvar.idx);
+        }
         else {
           auto visitor = detail::EmitterTypeVisitor<detail::LoadLocalEmitter>(
                   *this, {cvar.idx}
@@ -104,6 +107,9 @@ void ASTWalker::Visit(const IdentifierNode& decl) {
       case State::Read: {
         if (type.holds_alternative<type::ArrayType>()) {
           current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, type->Deref()->Sizeof() }, cotyl::CString{decl.name});
+        }
+        else if (type.holds_alternative<type::StructType>() || type.holds_alternative<type::UnionType>()) {
+          current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, 0 }, cotyl::CString{decl.name});
         }
         else if (type.holds_alternative<type::FunctionType>()) {
           auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {cotyl::CString{decl.name}});
@@ -556,9 +562,12 @@ void ASTWalker::Visit(const UnopNode& expr) {
         expr.left->Visit(*this);
         state.pop();
 
+        if (expr.type.holds_alternative<type::StructType>() || expr.type.holds_alternative<type::UnionType>()) {
+          throw cotyl::UnimplementedException("Struct memcpy on assign");
+        }
         auto var = state.top().second.var;
         auto visitor = detail::EmitterTypeVisitor<detail::StoreToPointerEmitter>(*this, { current, var });
-        visitor.Visit(expr.left->type->Deref());
+        visitor.Visit(expr.type);
 
         // stored value is "returned" value
         current = var;
