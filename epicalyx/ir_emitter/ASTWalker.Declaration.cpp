@@ -72,10 +72,9 @@ static void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const
         );
       },
       [&](const pExpr& expr) {
-        if (!type.TypeEquals(expr->type)) {
-          throw EmitterError("Invalid initializer value in initializer list");
-        }
-        expr->type.visit<void>(
+        // cast expression to type
+        auto casted = type.Cast(expr->type);
+        casted.visit<void>(
           [](const type::PointerType&) {
             throw cotyl::UnimplementedException("Pointer in global initializer list");
           },
@@ -88,9 +87,12 @@ static void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const
             }
             std::memcpy(data, &val.value.value(), sizeof(T));
           },
+          [](const type::ArrayType&) {
+            throw cotyl::UnimplementedException("Direct array (string constant) in global initializer list");
+          },
           [](const auto&) {
-            // cannot be an Expr (unless it is an array)
-            throw cotyl::UnreachableException();
+            // cannot be an Expr
+            throw cotyl::UnimplementedException("Direct struct value (memcpy) in global initializer");
           }
         );
       },

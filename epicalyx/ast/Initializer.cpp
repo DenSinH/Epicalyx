@@ -109,9 +109,7 @@ void Initializer::ValidateAndReduce(type::AnyType& type) {
       },
       [&]<typename T>(const type::ValueType<T>& val) {
         // function type, value type
-        if (!type.TypeEquals(has)) {
-          throw cotyl::FormatExceptStr<type::TypeError>("Cannot cast type %s to %s in initializer", has, type);
-        }
+        type.Cast(has);
       },
       [&](const type::FunctionType& val) {
         // function type, value type

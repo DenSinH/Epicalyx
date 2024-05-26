@@ -9,7 +9,7 @@
           "-rigfunc", "main",
           // "-catch-errors",
           "-stl", "${workspaceRoot}/epicalyx/stl",
-          "${workspaceRoot}/tests/suites/scctests/cc/execute/0052-switch.c"
+          "${workspaceRoot}/tests/suites/scctests/cc/execute/0127-doublecte.c"
         ]
     },
     "editor.indentSize": 2,
