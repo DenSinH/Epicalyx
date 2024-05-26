@@ -269,11 +269,32 @@ cotyl::vector<Preprocessor::MacroStream::Segment> Preprocessor::ExpandMacro(cons
             // stringify UNEXPANDED argument value
             cotyl::StringStream value{};
             value << '\"';
+
+            // we may have nested strings, in which case we need to double-escape
+            // escape sequences
+            char nested_string = 0;
             auto argvalue = SString{arg_value(hash.arg_index).view()};
             while (!argvalue.EOS()) {
               char c = argvalue.Get();
-              if (c == '\\') value << c << argvalue.Get();
-              else if (c == '\"' || c == '\'') value << '\\' << c;
+              if (c == '\\') {
+                // escape the escape sequence in nested strings
+                if (nested_string) value << '\\';
+                
+                // otherwise, just use the regular escape sequence
+                value << c << argvalue.Get();
+              }
+              else if (c == '\"' || c == '\'') {
+                // start or end nested string
+                if (nested_string == c) {
+                  nested_string = 0;
+                }
+                else {
+                  nested_string = c;
+                }
+
+                // escape delimiter
+                value << '\\' << c;
+              }
               else if (std::isspace(c)) {
                 // todo: resolve this in arg_value?
                 argvalue.SkipWhile(isspace);

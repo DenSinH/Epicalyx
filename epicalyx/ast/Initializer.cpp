@@ -107,7 +107,7 @@ void Initializer::ValidateAndReduce(type::AnyType& type) {
         if (!arr.size) {
           arr.size = has.get<type::ArrayType>().size;
         }
-        if (!type.TypeEquals(has)) {
+        if (!arr.contained->TypeEquals(*has.get<type::ArrayType>().contained)) {
           throw cotyl::FormatExceptStr<type::TypeError>("Cannot cast type %s to %s in initializer", has, type);
         }
       },

@@ -824,7 +824,10 @@ void Parser::StoreDeclaration(DeclarationNode&& decl, cotyl::vector<ast::Declara
     // don't emit external declarations if not initialized,
     // this may cause issues with incomplete types
     // needed to pass 0155-struct_compl.c
-    bool valueless_extern = decl.storage == StorageClass::Extern && !decl.value.has_value();
+    // not set for function types, needed to pass 0176-macro.c
+    // after all, these are always valueless, and handled differently anyway
+    bool valueless_extern = decl.storage == StorageClass::Extern 
+                    && !(decl.type.holds_alternative<type::FunctionType>() || decl.value.has_value());
     if (!decl.name.empty() && !valueless_extern) {
       dest.emplace_back(std::move(decl));
     }

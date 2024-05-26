@@ -135,7 +135,7 @@ void ASTWalker::EndFunction() {
   AssertClearState();
 }
 
-var_index_t ASTWalker::AddLocal(cotyl::CString&& name, const type::AnyType& type, std::optional<var_index_t> arg_index) {
+std::pair<var_index_t, ASTWalker::LocalData> ASTWalker::AddLocal(cotyl::CString&& name, const type::AnyType& type, std::optional<var_index_t> arg_index) {
   auto c_idx = emitter.c_counter++;
   auto local = detail::MakeLocal(c_idx, type);
   if (arg_index.has_value()) {
@@ -145,8 +145,8 @@ var_index_t ASTWalker::AddLocal(cotyl::CString&& name, const type::AnyType& type
     local.non_aggregate.arg_idx = std::move(arg_index.value());
   }
   auto& loc = emitter.current_function->locals.emplace(c_idx, std::move(local)).first->second;
-  locals.Set(std::move(name), LocalData{ &loc, type });
-  return c_idx;
+  const auto& emplaced = locals.Set(std::move(name), LocalData{ &loc, type });
+  return {c_idx, emplaced};
 }
 
 const type::AnyType& ASTWalker::GetSymbolType(const cotyl::CString& symbol) const {
@@ -201,10 +201,17 @@ void ASTWalker::Visit(const epi::DeclarationNode& decl) {
     }
   }
   else {
-    auto c_idx = AddLocal(cotyl::CString{decl.name}, decl.type);
+    auto [c_idx, local] = AddLocal(cotyl::CString{decl.name}, decl.type);
 
     if (decl.value.has_value()) {
-      if (swl::holds_alternative<pExpr>(decl.value.value().value)) {
+      if (local.loc->type == calyx::Local::Type::Aggregate) {
+        throw cotyl::UnimplementedException("Local aggregate initializer");
+      }
+      else if (swl::holds_alternative<InitializerList>(decl.value.value().value)) {
+        // initializer list expected to be reduced to pExpr in Parser
+        throw cotyl::UnreachableException();
+      }
+      else {
         state.push({State::Read, {}});
         swl::get<pExpr>(decl.value.value().value)->Visit(*this);
         state.pop();
@@ -212,10 +219,6 @@ void ASTWalker::Visit(const epi::DeclarationNode& decl) {
         state.push({State::Assign, {.var = current}});
         Visit(IdentifierNode(cotyl::CString{decl.name}, type::AnyType{decl.type}));
         state.pop();
-      }
-      else {
-        // todo: handle initializer list
-        throw cotyl::UnimplementedException("initializer list declaration");
       }
     }
   }

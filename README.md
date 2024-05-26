@@ -13,19 +13,26 @@ void func(int) {
   return;
 }
 ```
- - Array size `static` and `type-specifier` declarations
+ - Array size `static` and `type-specifier` declarations (parsed, but not dealt with)
 ```C
 int test[static 12];
 ```
  - Identifier lists in K&R style functions
 ```C
-void func(identifier-list)
-declaration-list
-{
-    body
+void func(identifier-list) declaration-list {
+  // body
 }
 ```
 e.g:
 ```C
 void func(x) int x;
+```
+ - Anonymous struct definitions (parsed, but seen as incomplete)
+```C
+typedef struct {} s;
+
+int main() {
+  // should return 0  
+  return sizeof(s);
+}
 ```

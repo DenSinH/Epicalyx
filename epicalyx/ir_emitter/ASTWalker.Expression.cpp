@@ -772,7 +772,7 @@ void ASTWalker::Visit(const BinopNode& expr) {
       if (state.top().first == State::Read) {
         // we create a "fake local" in order to do this
         auto name = cotyl::CString("$logop" + std::to_string(emitter.c_counter));
-        auto c_idx = AddLocal(std::move(name), type::BoolType(type::LValue::Assignable));
+        auto [c_idx, _] = AddLocal(std::move(name), type::BoolType(type::LValue::Assignable));
         
         // now basically add an if statement
         auto rhs_block = emitter.MakeBlock();
@@ -866,7 +866,7 @@ void ASTWalker::Visit(const TernaryNode& expr) {
     // we create a "fake local" in order to do this
     auto name = cotyl::CString("$tern" + std::to_string(emitter.c_counter));
     auto type = expr.type;
-    auto c_idx = AddLocal(std::move(name), type);
+    auto [c_idx, _] = AddLocal(std::move(name), type);
 
     // now basically add an if statement
     auto true_block = emitter.MakeBlock();
