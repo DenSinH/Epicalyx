@@ -44,7 +44,7 @@ void ASTWalker::BinopHelper(var_index_t left, calyx::BinopType op, var_index_t r
 }
 
 void ASTWalker::VisitGlobalSymbol(const cotyl::CString& symbol) {
-  const auto& type = GetSymbolType(symbol);
+  const auto& type = symbol_types.at(symbol);
   switch (state.top().first) {
     case State::Read: {
       if (type.holds_alternative<type::ArrayType>()) {

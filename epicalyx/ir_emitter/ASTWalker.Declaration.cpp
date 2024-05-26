@@ -155,13 +155,6 @@ std::pair<var_index_t, ASTWalker::LocalData> ASTWalker::AddLocal(cotyl::CString&
   return {c_idx, emplaced};
 }
 
-const type::AnyType& ASTWalker::GetSymbolType(const cotyl::CString& symbol) const {
-  if (locals.Has(symbol)) {
-    return locals.Get(symbol).type;
-  }
-  return symbol_types.at(symbol);
-}
-
 void ASTWalker::Visit(const epi::DeclarationNode& decl) {
   // function types forward declare global symbols within scopes
   if (locals.Depth() == 1 || decl.type.holds_alternative<type::FunctionType>()) {
