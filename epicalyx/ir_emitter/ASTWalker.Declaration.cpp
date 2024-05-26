@@ -34,42 +34,48 @@ void VisualizeFunction(const Function& func, const std::string& filename);
 #endif
 
 
-static void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const Initializer& init) {
+void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const Initializer& init);
+
+void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const InitializerList& list) {
+  type.visit<void>(
+    [&](const type::StructType& strct) {
+      throw cotyl::UnimplementedException("Global struct aggregate initializer list");
+    },
+    [&](const type::UnionType& strct) {
+      throw cotyl::UnimplementedException("Global union aggregate initializer list");
+    },
+    [&](const type::ArrayType& arr) {
+      const auto stride = arr.Stride();
+      cotyl::Assert(stride, "Initializing array without stride");
+
+      // go through fields in incrementing order
+      auto index = 0;
+      const auto& contained = *arr.contained;
+      for (const auto& designator : list.list) {
+        // handle designators
+        if (designator.first.size() > 1) {
+          throw cotyl::UnimplementedException("Nested designators");
+        }
+        if (designator.first.size() == 1) {
+          // designator was validated in initializer
+          index = swl::get<i64>(designator.first[0]);
+        }
+        InitializeGlobalAggregate(data + stride * index, contained, designator.second);
+        index++;
+      }
+    },
+    [](const auto&) {
+      // expected to be reduced to pExpr before
+      throw cotyl::UnreachableException();
+    }
+  );
+}
+
+void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const Initializer& init) {
   swl::visit(
     swl::overloaded{
       [&](const InitializerList& list) {
-        type.visit<void>(
-          [&](const type::StructType& strct) {
-            throw cotyl::UnimplementedException("Global struct aggregate initializer list");
-          },
-          [&](const type::UnionType& strct) {
-            throw cotyl::UnimplementedException("Global union aggregate initializer list");
-          },
-          [&](const type::ArrayType& arr) {
-            const auto stride = arr.Stride();
-            cotyl::Assert(stride, "Initializing array without stride");
-
-            // go through fields in incrementing order
-            auto index = 0;
-            const auto& contained = *arr.contained;
-            for (const auto& designator : list.list) {
-              // handle designators
-              if (designator.first.size() > 1) {
-                throw cotyl::UnimplementedException("Nested designators");
-              }
-              if (designator.first.size() == 1) {
-                // designator was validated in initializer
-                index = swl::get<i64>(designator.first[0]);
-              }
-              InitializeGlobalAggregate(data + stride * index, contained, designator.second);
-              index++;
-            }
-          },
-          [](const auto&) {
-            // expected to be reduced to pExpr before
-            throw cotyl::UnreachableException();
-          }
-        );
+        InitializeGlobalAggregate(data, type, list);
       },
       [&](const pExpr& expr) {
         // cast expression to type
@@ -161,8 +167,8 @@ void ASTWalker::Visit(const epi::DeclarationNode& decl) {
   if (locals.Depth() == 1 || decl.type.holds_alternative<type::FunctionType>()) {
     // global symbols
     AddGlobal(decl.name, decl.type);
-
     auto global_value = detail::GetGlobalValue(decl.type);
+
     // todo: return since previously initialized?
     // see 0098-tentative.c
     // if (emitter.program.globals.contains(decl.name)) {

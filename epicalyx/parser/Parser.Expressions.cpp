@@ -200,10 +200,27 @@ pExpr Parser::ECast() {
       in_stream.Eat(TokenType::RParen);
 
       if (in_stream.IsAfter(0, TokenType::LBrace)) {
-        // type initializer
-        InitializerList list = EInitializerList();
-        // this can never be reduced
-        return std::make_unique<TypeInitializerNode>(std::move(type_name), std::move(list));
+        // type initializer, assign to initializer
+        // we validate and reduce it, to potentially simplify this expression
+        // to a mere cast expression
+        Initializer init = EInitializerList();
+        init.ValidateAndReduce(type_name);
+
+        return swl::visit<pExpr>(
+          swl::overloaded{
+            [&type_name](pExpr&& expr) -> pExpr {
+              // simplified to cast expression
+              auto e = std::make_unique<CastNode>(std::move(type_name), std::move(expr));
+              return ExprOrReduced(std::move(e));
+            },
+            [&type_name](InitializerList&& list) -> pExpr {
+              // still type initializer
+              return std::make_unique<TypeInitializerNode>(std::move(type_name), std::move(list));
+            },
+            swl::exhaustive
+          },
+          std::move(init.value)
+        );
       }
       else {
         // regular cast expression

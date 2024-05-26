@@ -43,6 +43,46 @@ void ASTWalker::BinopHelper(var_index_t left, calyx::BinopType op, var_index_t r
   EmitArithExpr<calyx::Binop>(casted.var.type, casted.left, op, casted.right);
 }
 
+void ASTWalker::VisitGlobalSymbol(const cotyl::CString& symbol) {
+  const auto& type = GetSymbolType(symbol);
+  switch (state.top().first) {
+    case State::Read: {
+      if (type.holds_alternative<type::ArrayType>()) {
+        current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, type->Deref()->Sizeof() }, cotyl::CString{symbol});
+      }
+      else if (type.holds_alternative<type::StructType>() || type.holds_alternative<type::UnionType>()) {
+        current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, 0 }, cotyl::CString{symbol});
+      }
+      else if (type.holds_alternative<type::FunctionType>()) {
+        auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {cotyl::CString{symbol}});
+        visitor.Visit(type);
+      }
+      else {
+        auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalEmitter>(*this, {cotyl::CString{symbol}});
+        visitor.Visit(type);
+      }
+      break;
+    }
+    case State::Assign: {
+      const auto stored = state.top().second.var;
+      auto visitor = detail::EmitterTypeVisitor<detail::StoreGlobalEmitter>(
+              *this, { cotyl::CString{symbol}, stored }
+      );
+      visitor.Visit(type);
+      current = stored;
+      break;
+    }
+    case State::Address: {
+      auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {cotyl::CString{symbol}});
+      visitor.Visit(type);
+      break;
+    }
+    default: {
+      throw EmitterError("Bad declaration state");
+    }
+  }
+}
+
 void ASTWalker::Visit(const IdentifierNode& decl) {
   // after the AST, the only identifiers left are C locals
   if (state.top().first == State::Empty) {
@@ -61,9 +101,9 @@ void ASTWalker::Visit(const IdentifierNode& decl) {
     return;
   }
 
-  auto type = GetSymbolType(decl.name);
   if (locals.Has(decl.name)) {
     // local variable
+    const auto& type = locals.Get(decl.name).type;
     const auto& cvar = *locals.Get(decl.name).loc;
     switch (state.top().first) {
       case State::Read: {
@@ -104,42 +144,7 @@ void ASTWalker::Visit(const IdentifierNode& decl) {
   }
   else {
     // global symbol
-    switch (state.top().first) {
-      case State::Read: {
-        if (type.holds_alternative<type::ArrayType>()) {
-          current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, type->Deref()->Sizeof() }, cotyl::CString{decl.name});
-        }
-        else if (type.holds_alternative<type::StructType>() || type.holds_alternative<type::UnionType>()) {
-          current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, 0 }, cotyl::CString{decl.name});
-        }
-        else if (type.holds_alternative<type::FunctionType>()) {
-          auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {cotyl::CString{decl.name}});
-          visitor.Visit(type);
-        }
-        else {
-          auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalEmitter>(*this, {cotyl::CString{decl.name}});
-          visitor.Visit(type);
-        }
-        break;
-      }
-      case State::Assign: {
-        const auto stored = state.top().second.var;
-        auto visitor = detail::EmitterTypeVisitor<detail::StoreGlobalEmitter>(
-                *this, { cotyl::CString{decl.name}, stored }
-        );
-        visitor.Visit(type);
-        current = stored;
-        break;
-      }
-      case State::Address: {
-        auto visitor = detail::EmitterTypeVisitor<detail::LoadGlobalAddrEmitter>(*this, {cotyl::CString{decl.name}});
-        visitor.Visit(type);
-        break;
-      }
-      default: {
-        throw EmitterError("Bad declaration state");
-      }
-    }
+    VisitGlobalSymbol(decl.name);
   }
 }
 
@@ -187,7 +192,8 @@ void ASTWalker::Visit(const StringConstantNode& expr) {
       calyx::AggregateData data{expr.value.size() + 1, 1};
       std::memcpy(data.data.get(), expr.value.c_str(), expr.value.size());
 
-      emitter.program.globals.emplace(global_name, std::move(data));
+      AddGlobal(global_name, expr.type);
+      auto it = emitter.program.globals.emplace(global_name, std::move(data));
       current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, 1 }, std::move(global_name));
       return;
     }
@@ -390,7 +396,27 @@ void ASTWalker::Visit(const MemberAccessNode& expr) {
 }
 
 void ASTWalker::Visit(const TypeInitializerNode& expr) {
-  throw cotyl::UnimplementedException("type initializer");
+  // handle type initializer as a global
+  // we already know the global must be an aggregate type,
+  // since the expression would otherwise have been reduced
+  // down to a cast in the Parser
+  cotyl::CString global_name{".init" + std::to_string(emitter.program.globals.size())};
+  
+  // todo: wrap this in a function:
+  AddGlobal(global_name, expr.type);
+
+  auto global_value = detail::GetGlobalValue(expr.type);
+  auto it = emitter.program.globals.emplace(std::move(global_name), std::move(global_value));
+  calyx::Global& global = it.first->second;
+
+  cotyl::Assert(swl::holds_alternative<calyx::AggregateData>(global));
+  auto& agg = swl::get<calyx::AggregateData>(global);
+
+  extern void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const InitializerList& init);
+  InitializeGlobalAggregate(agg.data.get(), expr.type, expr.list);
+
+  // visit global symbol as usual
+  VisitGlobalSymbol(it.first->first);
 }
 
 void ASTWalker::Visit(const PostFixNode& expr) {

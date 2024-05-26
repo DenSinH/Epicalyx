@@ -97,6 +97,9 @@ private:
 
   // add global variable
   void AddGlobal(const cotyl::CString& symbol, const type::AnyType& type);
+
+  void VisitGlobalSymbol(const cotyl::CString& symbol);
+
   // add local variable
   std::pair<var_index_t, LocalData> AddLocal(cotyl::CString&& name, const type::AnyType& type, std::optional<var_index_t> arg_index = {});
 
