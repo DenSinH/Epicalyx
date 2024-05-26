@@ -34,6 +34,72 @@ void VisualizeFunction(const Function& func, const std::string& filename);
 #endif
 
 
+static void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const Initializer& init) {
+  swl::visit(
+    swl::overloaded{
+      [&](const InitializerList& list) {
+        type.visit<void>(
+          [&](const type::StructType& strct) {
+            throw cotyl::UnimplementedException("Global struct aggregate initializer list");
+          },
+          [&](const type::UnionType& strct) {
+            throw cotyl::UnimplementedException("Global union aggregate initializer list");
+          },
+          [&](const type::ArrayType& arr) {
+            const auto stride = arr.Stride();
+            cotyl::Assert(stride, "Initializing array without stride");
+
+            // go through fields in incrementing order
+            auto index = 0;
+            const auto& contained = *arr.contained;
+            for (const auto& designator : list.list) {
+              // handle designators
+              if (designator.first.size() > 1) {
+                throw cotyl::UnimplementedException("Nested designators");
+              }
+              if (designator.first.size() == 1) {
+                // designator was validated in initializer
+                index = swl::get<i64>(designator.first[0]);
+              }
+              InitializeGlobalAggregate(data + stride * index, contained, designator.second);
+              index++;
+            }
+          },
+          [](const auto&) {
+            // expected to be reduced to pExpr before
+            throw cotyl::UnreachableException();
+          }
+        );
+      },
+      [&](const pExpr& expr) {
+        if (!type.TypeEquals(expr->type)) {
+          throw EmitterError("Invalid initializer value in initializer list");
+        }
+        expr->type.visit<void>(
+          [](const type::PointerType&) {
+            throw cotyl::UnimplementedException("Pointer in global initializer list");
+          },
+          [](const type::FunctionType&) {
+            throw cotyl::UnimplementedException("Function pointer in global initializer list");
+          },
+          [&]<typename T>(const type::ValueType<T>& val) {
+            if (!val.value.has_value()) {
+              throw EmitterError("Expected constant value in global initializer list");
+            }
+            std::memcpy(data, &val.value.value(), sizeof(T));
+          },
+          [](const auto&) {
+            // cannot be an Expr (unless it is an array)
+            throw cotyl::UnreachableException();
+          }
+        );
+      },
+      swl::exhaustive
+    },
+    init.value
+  );
+}
+
 
 void ASTWalker::AddGlobal(const cotyl::CString& symbol, const type::AnyType& type) {
   if (symbol_types.contains(symbol)) {
@@ -104,7 +170,15 @@ void ASTWalker::Visit(const epi::DeclarationNode& decl) {
     calyx::Global& global = it.first->second;
 
     if (decl.value.has_value()) {
-      if (swl::holds_alternative<pExpr>(decl.value.value().value)) {
+      if (swl::holds_alternative<calyx::AggregateData>(global)) {
+        auto& agg = swl::get<calyx::AggregateData>(global);
+        InitializeGlobalAggregate(agg.data.get(), decl.type, decl.value.value());
+      }
+      else if (!swl::holds_alternative<pExpr>(decl.value.value().value)) {
+        // initializer list expected to be reduced to pExpr in Parser
+        throw cotyl::UnreachableException();
+      }
+      else {
         auto& expr = swl::get<pExpr>(decl.value.value().value);
 
         calyx::Function initializer{cotyl::CString("$init" + decl.name.str())};
@@ -121,10 +195,6 @@ void ASTWalker::Visit(const epi::DeclarationNode& decl) {
         VisualizeFunction(initializer, "output/init" + decl.name.str() + ".pdf");
 #endif
         calyx::InterpretGlobalInitializer(global, std::move(initializer));
-      }
-      else {
-        // todo: handle initializer list
-        throw cotyl::UnimplementedException("global initializer list declaration");
       }
     }
   }

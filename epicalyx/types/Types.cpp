@@ -324,13 +324,13 @@ AnyType DataPointerType::Sub(const AnyType& other) const {
   return other.visit<AnyType>(
     [&](const PointerType& other) -> AnyType {
       if (contained->TypeEquals(*other.contained)) {
-        return ValueType<u64>{LValue::None, 0};
+        return ValueType<i64>{LValue::None, 0};
       }
       InvalidOperands(this, "-", other);
     },
     [&](const ArrayType& other) -> AnyType {
       if (contained->TypeEquals(*other.contained)) {
-        return ValueType<u64>{LValue::None, 0};
+        return ValueType<i64>{LValue::None, 0};
       }
       InvalidOperands(this, "-", other);
     },

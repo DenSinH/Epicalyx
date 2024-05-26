@@ -43,6 +43,9 @@ void Initializer::ValidateAndReduce(type::AnyType& type) {
       [](const type::UnionType& strct) {
         throw cotyl::UnimplementedException();
       },
+      [](const type::ArrayType& arr) {
+        // all reductions are done in the recursion above
+      },
       [](const type::VoidType&) {
         throw type::TypeError("Initializer list for incomplete type");
       },
@@ -51,12 +54,6 @@ void Initializer::ValidateAndReduce(type::AnyType& type) {
         // list wil have size one by recursion above
         cotyl::Assert(list.list.size() == 1);
         value = std::move(list.list[0].second.value);
-      },
-      [&](type::ArrayType& arr) {
-        auto& nested = *arr.contained;
-        for (auto& value : list.list) {
-          value.second.ValidateAndReduce(nested);
-        }
       },
       [&]<typename T>(const type::ValueType<T>& val) { 
         if (list.list.empty()) {
@@ -99,6 +96,7 @@ void Initializer::ValidateAndReduce(type::AnyType& type) {
         type.Cast(has, false);
       },
       [&](type::ArrayType& arr) {
+        // for string constants, which have array type
         if (!has.holds_alternative<type::ArrayType>()) {
           throw type::TypeError("Invalid type for array initializer");
         }
@@ -161,12 +159,42 @@ void InitializerList::ValidateAndReduce(type::AnyType& type) {
       ValidateAndReduceScalarType(type);
     },
     [&](type::ArrayType& arr) {
-      if (!arr.size) {
-        arr.size = list.size();
+      auto& nested = *arr.contained;
+      i64 index = 0;
+      i64 size = 0;
+
+      // validate and reduce all designators
+      // compute array size from designators
+      for (auto& designator : list) {
+        
+        // designator overrides current index
+        if (!designator.first.empty()) {
+          // array, so expect array index designators ([0] = 1), etc.
+          if (!swl::holds_alternative<i64>(designator.first[0])) {
+            throw cotyl::UnimplementedException("Expected array index designator in array initializer list");
+          }
+          if (designator.first.size() > 1) {
+            throw cotyl::UnimplementedException("Nested designators");
+          }
+
+          // get new index
+          index = swl::get<i64>(designator.first[0]);
+        }
+        designator.second.ValidateAndReduce(nested);
+        index++;
+
+        if (arr.size && index > arr.size) {
+          throw type::TypeError("Initializer list index out of bounds for array");
+        }
+        
+        // track initializer list array size
+        // use incremented index
+        size = std::max(size, index);
       }
-      auto& contained = *arr.contained;
-      for (auto& value : list) {
-        value.second.ValidateAndReduce(contained);
+
+      // computed size from initializer list
+      if (arr.size == 0) {
+        arr.size = size;
       }
     },
     [&]<typename T>(const type::ValueType<T>& val) {

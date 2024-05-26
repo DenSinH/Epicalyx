@@ -66,7 +66,7 @@ void ASTWalker::Visit(const IdentifierNode& decl) {
     const auto& cvar = *locals.Get(decl.name).loc;
     switch (state.top().first) {
       case State::Read: {
-        if (type.holds_alternative<type::ArrayType>()) {
+        if (type.holds_alternative<type::ArrayType>() && type.get<type::ArrayType>().size) {
           current = emitter.EmitExpr<calyx::LoadLocalAddr>({Emitter::Var::Type::Pointer, type.get<type::ArrayType>().Stride() }, cvar.idx);
         }
         else {
@@ -674,7 +674,17 @@ void ASTWalker::Visit(const BinopNode& expr) {
       if (emitter.vars[left].type == Emitter::Var::Type::Pointer) {
         auto var = emitter.vars[left];
         if (emitter.vars[right].type == Emitter::Var::Type::Pointer) {
-          throw cotyl::UnimplementedException("pointer diff");
+          // cast left and right to i64
+          // static const auto ptrdiff_type = type::ValueType<i64>(type::LValue::None);
+          
+          // detail::EmitterTypeVisitor<detail::CastToEmitter>(*this, { left }).Visit(ptrdiff_type);
+          // auto i64_left = current;
+          // detail::EmitterTypeVisitor<detail::CastToEmitter>(*this, { right }).Visit(ptrdiff_type);
+          // auto i64_right = current;
+
+          // no need to cast at this point
+          // EmitArithExpr<calyx::Binop>(Emitter::Var::Type::I64, i64_left, calyx::BinopType::Sub, i64_right);
+          throw cotyl::UnimplementedException("Pointer diff");
         }
         else {
           EmitIntegralExpr<calyx::Unop>(emitter.vars[right].type, calyx::UnopType::Neg, right);

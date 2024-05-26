@@ -132,6 +132,9 @@ int main(int argc, char** argv) {
       auto rig = epi::RIG::GenerateRIG(rig_func);
 
       auto regspace = epi::RegisterSpace::GetRegSpace<epi::ExampleRegSpace>(rig_func);
+      
+      std::cout << std::endl << std::endl;
+      std::cout << "-- regtypes" << std::endl;
       for (const auto& [gvar, regtype] : regspace->register_type_map) {
         if (gvar.is_local) std::cout << 'c';
         else std::cout << 'v';

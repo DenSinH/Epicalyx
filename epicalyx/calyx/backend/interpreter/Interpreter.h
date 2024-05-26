@@ -29,8 +29,10 @@ struct Interpreter {
     calyx::Pointer
   >;
 private:
-
-  cotyl::vector<u8> stack{};
+  // prevent stack offset valued pointers to be equal to 0
+  // 16 is just to keep some alignment
+  // this is a hack just to pass tests like 0117-pointarith.c
+  cotyl::vector<u8> stack{(std::size_t)16, 0};
   cotyl::vector<pointer_real_t> pointer_values{};
 
   calyx::Pointer MakePointer(pointer_real_t&& value) {

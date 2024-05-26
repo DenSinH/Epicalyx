@@ -130,11 +130,18 @@ static void VisualizeFunctionHelper(epi::cycle::VisualGraph& graph, const Functi
   fnode->n(GetNodeID(func, Function::Entry));
   for (const auto& [loc_idx, local] : func.locals) {
     std::string label;
-    if (local.non_aggregate.arg_idx.has_value()) {
-      label = cotyl::Format("%s c%d <- a%d", detail::TypeString(local.type).c_str(), loc_idx, local.non_aggregate.arg_idx.value());
+    std::string type_string;
+    if (local.type == Local::Type::Aggregate) {
+      type_string = stringify(local.aggregate);
     }
     else {
-      label = cotyl::Format("%s c%d", detail::TypeString(local.type).c_str(), loc_idx);
+      type_string = detail::TypeString(local.type);
+    }
+    if (local.non_aggregate.arg_idx.has_value()) {
+      label = cotyl::Format("%s c%d <- a%d", type_string.c_str(), loc_idx, local.non_aggregate.arg_idx.value());
+    }
+    else {
+      label = cotyl::Format("%s c%d", type_string.c_str(), loc_idx);
     }
     graph.n((std::uintptr_t)&func, label);
   }

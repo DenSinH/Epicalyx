@@ -639,7 +639,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
           }
           case TokenType::RParen: {
             // function()
-            layer.push(type::FunctionType{nullptr, false, type::LValue::Assignable});
+            dest.push(type::FunctionType{nullptr, false, type::LValue::Assignable});
             in_stream.Skip();
             break;
           }
@@ -707,7 +707,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
                 break;
               }
             } while (true);
-            layer.push(std::move(typ));
+            dest.push(std::move(typ));
           }
         }
         break;
@@ -733,7 +733,7 @@ cotyl::CString Parser::DDirectDeclaratorImpl(std::stack<any_pointer_t>& dest) {
           }
         }
         in_stream.Eat(TokenType::RBracket);
-        layer.push(type::ArrayType{nullptr, size});
+        dest.push(type::ArrayType{nullptr, size});
         break;
       }
       default: {
@@ -755,7 +755,7 @@ static type::AnyType UnwindDirectDeclarators(type::AnyType&& ctype, std::stack<P
   }
   auto top = std::move(direct.top());
   direct.pop();
-  top->contained = std::make_unique<type::AnyType>(std::move(ctype));
+  top->contained = std::make_shared<type::AnyType>(std::move(ctype));
   
   return top.visit<type::AnyType>(
     [&](auto&& ptr) {
@@ -816,7 +816,7 @@ void Parser::StoreDeclaration(DeclarationNode&& decl, cotyl::vector<ast::Declara
       // see 0208-sizeof.c
       value.ValidateAndReduce(recorded);
 
-      // merge any updates
+      // merge any
       MergeTypes(decl.type, recorded);
       decl.value = std::move(value);
     }
