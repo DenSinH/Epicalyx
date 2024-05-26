@@ -6,6 +6,8 @@
  - optimize pointer adds / loc addrs in `0139-ptr_ary.c`
  - Readonly globals + string to global ID mapping for preventing duplicates (for example `0200-cpp.c`)
  - Short CString hash (directly loading `direct` field as `size_t` for the hash, useful for Preprocessor.Stddef standard macros, or mapping c stl functions).
+ - Iterator for "current" object, calling next "current" object, and allowing you to find a struct field in a struct definition. This solves the "nested declarator" problem, and allows to easily define Struct / Union initializer lists / nested initializer lists. The end of a (nested) initializer list just skips to the next "parent" field.
+ - Generalize AddGlobal stuff in ASTWalker (as of now, about 3 things need to happen, which is excessive, since it is re-used in 2 places).
    
 ## Unsupported
  - `_Generic` related statements
