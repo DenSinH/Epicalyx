@@ -105,9 +105,8 @@ static void VisualizeFunctionHelper(epi::cycle::VisualGraph& graph, const Functi
           for (auto [val, dest] : *select.table) {
             node->n(GetNodeID(func, dest), std::to_string(val));
           }
-          if (select._default) {
-            node->n(GetNodeID(func, select._default), "default");
-          }
+          // default is ALWAYS specified
+          node->n(GetNodeID(func, select._default), "default");
         },
         [&](const UnconditionalBranch& branch) {
           auto node = graph.n(id, stringify(branch));

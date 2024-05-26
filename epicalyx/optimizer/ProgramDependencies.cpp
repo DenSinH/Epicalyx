@@ -232,9 +232,8 @@ void FunctionDependencies::Emit(const Select& op) {
   for (const auto& [value, block_idx] : *op.table) {
     block_graph.AddEdge(pos.first, block_idx);
   }
-  if (op._default) {
-    block_graph.AddEdge(pos.first, op._default);
-  }
+  // default is ALWAYS specified
+  block_graph.AddEdge(pos.first, op._default);
 }
 
 template<typename T>

@@ -126,9 +126,8 @@ bool BasicOptimizer::NoBadBeforeGoodAllPaths(BadPred bad, GoodPred good, func_po
           for (const auto& [value, block_idx] : *select.table) {
             register_branch(block_idx);
           }
-          if (select._default) {
-            register_branch(select._default);
-          }
+          // default is ALWAYS specified
+          register_branch(select._default);
           _reachable = false;
         },
         [&](const UnconditionalBranch& branch) {
@@ -328,7 +327,8 @@ void BasicOptimizer::DoBranch(T&& branch) {
     for (auto& [value, block_idx] : *branch.table) {
       RegisterBranchDestination(block_idx);
     }
-    if (branch._default) RegisterBranchDestination(branch._default);
+    // default is ALWAYS specified
+    RegisterBranchDestination(branch._default);
   }
   else if constexpr(std::is_same_v<T, UnconditionalBranch>) {
     RegisterBranchDestination(branch.dest);
@@ -1212,12 +1212,10 @@ void BasicOptimizer::Emit(Select&& op) {
       EmitRepl<UnconditionalBranch>(op.table->at(val_imm->value));
       return;
     }
-    else if (op._default) {
+    else {
+      // default is ALWAYS specified
       EmitRepl<UnconditionalBranch>(op._default);
       return;
-    }
-    else {
-      throw OptimizerError("Invalid switch selection with constant expression");
     }
   }
 

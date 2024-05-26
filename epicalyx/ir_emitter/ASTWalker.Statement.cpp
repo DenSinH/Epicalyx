@@ -229,6 +229,13 @@ void ASTWalker::Visit(const SwitchNode& stat) {
     break_stack.pop();
   }
 
+  // set default to post block if no default is specified
+  // I believe this is an extension, but it is needed
+  // to pass 0052-switch.c
+  if (!select->_default) {
+    select->_default = post_block;
+  }
+
   emitter.Emit<calyx::UnconditionalBranch>(post_block);
   emitter.SelectBlock(post_block);
 }
