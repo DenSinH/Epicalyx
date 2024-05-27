@@ -299,6 +299,14 @@ std::string ValueType<T>::ToString() const {
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * POINTER TYPES
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ArrayType::ArrayType(nested_type_t&& contained, std::size_t size) :
+    DataPointerType{std::move(contained), LValue::LValue, Qualifier::Const}, size{size} { 
+  // todo: handle this in Parser, contained may be nullptr!
+  // if (size && !(*this->contained)->Sizeof()) {
+  //   throw TypeError("Incomplete type for array");
+  // }
+}
+
 AnyType PointerType::Add(const AnyType& other) const {
   return other.visit<AnyType>(
     [&](const PointerType& other) -> AnyType { 

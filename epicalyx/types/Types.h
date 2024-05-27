@@ -106,13 +106,7 @@ struct DataPointerType : AnyPointerType {
 
 struct ArrayType final : DataPointerType {
 
-  ArrayType(nested_type_t&& contained, std::size_t size) :
-      DataPointerType{std::move(contained), LValue::LValue, Qualifier::Const}, size{size} { 
-    // todo: typecheck this
-    // if (!(*this->contained)->Sizeof()) {
-    //   throw TypeError("Incomplete type for array");
-    // }
-  }
+  ArrayType(nested_type_t&& contained, std::size_t size);
 
   // size == 0 ==> unspecified size
   std::size_t size;

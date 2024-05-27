@@ -185,10 +185,10 @@ void ASTWalker::Visit(const StringConstantNode& expr) {
     }
     case State::Read:
     case State::Address: {
-      // both give the address of the local
+      // both give the address of the global
       cotyl::CString global_name{".str" + std::to_string(emitter.program.globals.size())};
       
-      // null terminator
+      // +1 for null terminator
       calyx::AggregateData data{expr.value.size() + 1, 1};
       std::memcpy(data.data.get(), expr.value.c_str(), expr.value.size());
 

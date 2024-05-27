@@ -8,7 +8,9 @@
  - Optimize `x ? 1 : 0` / `x ? 0 : 1` ternaries, see `0177-literal.c`. Can be done from ASTWalker.
  - Short CString hash (directly loading `direct` field as `size_t` for the hash, useful for Preprocessor.Stddef standard macros, or mapping c stl functions).
  - Iterator for "current" object, calling next "current" object, and allowing you to find a struct field in a struct definition. This solves the "nested declarator" problem, and allows to easily define Struct / Union initializer lists / nested initializer lists. The end of a (nested) initializer list just skips to the next "parent" field. The "current object" iterator needs to contain a type, an offset and a bitsize (StructFieldData). The iterator needs to store a reference to the parent type, as well as a "stack" of nested iterators.
- - Remove symbol_type map in ASTWalker, instead just use the `calyx::Global` data immediately in ` LoadGlobalSymbol`. The `locals` map is also scarcely used.  
+ - Remove symbol_type map in ASTWalker, instead just use the `calyx::Global` data immediately in ` LoadGlobalSymbol`. The `locals` map is also scarcely used.
+ - Remove the need for interpreting Global initializers. Need to somehow store label offsets in PointerTypes (only for global symbols).
+ - Need to handle label offsets in global initializer lists, figure out how this happens in linkers.  
    
 ## Unsupported
  - `_Generic` related statements
