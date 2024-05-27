@@ -33,9 +33,6 @@ void VisualizeFunction(const Function& func, const std::string& filename);
 }
 #endif
 
-
-void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const Initializer& init);
-
 void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const InitializerList& list) {
   type.visit<void>(
     [&](const type::StructType& strct) {
@@ -109,13 +106,18 @@ void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const Initia
 }
 
 
-void ASTWalker::AddGlobal(const cotyl::CString& symbol, const type::AnyType& type) {
+calyx::Global& ASTWalker::AddGlobal(const cotyl::CString& symbol, const type::AnyType& type) {
   if (symbol_types.contains(symbol)) {
     // this is supposed to be checked in the parser
     cotyl::Assert(type.TypeEquals(symbol_types.at(symbol)));
+    return emitter.program.globals.at(symbol);
   }
   else {
+    cotyl::Assert(!emitter.program.globals.contains(symbol));
     symbol_types.emplace(symbol, type);
+    auto global_value = detail::GetGlobalValue(type);
+    auto it = emitter.program.globals.emplace(symbol, std::move(global_value));
+    return it.first->second;
   }
 }
 
@@ -159,16 +161,13 @@ void ASTWalker::Visit(const epi::DeclarationNode& decl) {
   // function types forward declare global symbols within scopes
   if (locals.Depth() == 1 || decl.type.holds_alternative<type::FunctionType>()) {
     // global symbols
-    AddGlobal(decl.name, decl.type);
-    auto global_value = detail::GetGlobalValue(decl.type);
+    auto& global = AddGlobal(decl.name, decl.type);
 
     // todo: return since previously initialized?
     // see 0098-tentative.c
     // if (emitter.program.globals.contains(decl.name)) {
     //   throw cotyl::FormatExcept("Duplicate global symbol: %s", decl.name.c_str());
     // }
-    auto it = emitter.program.globals.emplace(decl.name, std::move(global_value));
-    calyx::Global& global = it.first->second;
 
     if (decl.value.has_value()) {
       if (swl::holds_alternative<calyx::AggregateData>(global)) {

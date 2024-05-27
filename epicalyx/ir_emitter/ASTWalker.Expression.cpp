@@ -192,8 +192,7 @@ void ASTWalker::Visit(const StringConstantNode& expr) {
       calyx::AggregateData data{expr.value.size() + 1, 1};
       std::memcpy(data.data.get(), expr.value.c_str(), expr.value.size());
 
-      AddGlobal(global_name, expr.type);
-      auto it = emitter.program.globals.emplace(global_name, std::move(data));
+      auto& global = AddGlobal(global_name, expr.type);
       current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, 1 }, std::move(global_name));
       return;
     }
@@ -401,22 +400,16 @@ void ASTWalker::Visit(const TypeInitializerNode& expr) {
   // since the expression would otherwise have been reduced
   // down to a cast in the Parser
   cotyl::CString global_name{".init" + std::to_string(emitter.program.globals.size())};
-  
-  // todo: wrap this in a function:
-  AddGlobal(global_name, expr.type);
+  auto& global = AddGlobal(global_name, expr.type);
 
-  auto global_value = detail::GetGlobalValue(expr.type);
-  auto it = emitter.program.globals.emplace(std::move(global_name), std::move(global_value));
-  calyx::Global& global = it.first->second;
-
+  // this must be an aggregate, as explained above
   cotyl::Assert(swl::holds_alternative<calyx::AggregateData>(global));
   auto& agg = swl::get<calyx::AggregateData>(global);
 
-  extern void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const InitializerList& init);
   InitializeGlobalAggregate(agg.data.get(), expr.type, expr.list);
 
   // visit global symbol as usual
-  VisitGlobalSymbol(it.first->first);
+  VisitGlobalSymbol(global_name);
 }
 
 void ASTWalker::Visit(const PostFixNode& expr) {

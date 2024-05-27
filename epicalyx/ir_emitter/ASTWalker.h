@@ -11,6 +11,10 @@
 
 namespace epi {
 
+namespace ast { struct Initializer; struct InitializerList; }
+
+void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const ast::InitializerList& init);
+void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const ast::Initializer& init);
 
 struct ASTWalker : public ast::NodeVisitor {
   ASTWalker(Emitter& emitter) :
@@ -96,7 +100,7 @@ private:
   void EndFunction();
 
   // add global variable
-  void AddGlobal(const cotyl::CString& symbol, const type::AnyType& type);
+  calyx::Global& AddGlobal(const cotyl::CString& symbol, const type::AnyType& type);
 
   void VisitGlobalSymbol(const cotyl::CString& symbol);
 
