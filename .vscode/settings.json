@@ -9,7 +9,7 @@
           "-rigfunc", "main",
           // "-catch-errors",
           "-stl", "${workspaceRoot}/epicalyx/stl",
-          "${workspaceRoot}/tests/suites/scctests/cc/execute/0015-localarray.c"
+          "${workspaceRoot}/tests/suites/scctests/cc/execute/0081-calls.c"
         ]
     },
     "editor.indentSize": 2,

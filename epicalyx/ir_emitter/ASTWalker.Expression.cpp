@@ -188,11 +188,13 @@ void ASTWalker::Visit(const StringConstantNode& expr) {
       // both give the address of the global
       cotyl::CString global_name{".str" + std::to_string(emitter.program.globals.size())};
       
-      // +1 for null terminator
-      calyx::AggregateData data{expr.value.size() + 1, 1};
+      auto& global = AddGlobal(global_name, expr.type);
+      calyx::AggregateData& data = swl::get<calyx::AggregateData>(global);
+      // + 1 for null terminator
+      cotyl::Assert(data.agg.size == expr.value.size() + 1);
+      // don't need to memcpy null terminator, since aggregate is zeroed out beforehand
       std::memcpy(data.data.get(), expr.value.c_str(), expr.value.size());
 
-      auto& global = AddGlobal(global_name, expr.type);
       current = emitter.EmitExpr<calyx::LoadGlobalAddr>({Emitter::Var::Type::Pointer, 1 }, std::move(global_name));
       return;
     }

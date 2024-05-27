@@ -107,13 +107,12 @@ void InitializeGlobalAggregate(u8* data, const type::AnyType& type, const Initia
 
 
 calyx::Global& ASTWalker::AddGlobal(const cotyl::CString& symbol, const type::AnyType& type) {
-  if (symbol_types.contains(symbol)) {
+  if (emitter.program.globals.contains(symbol)) {
     // this is supposed to be checked in the parser
     cotyl::Assert(type.TypeEquals(symbol_types.at(symbol)));
     return emitter.program.globals.at(symbol);
   }
   else {
-    cotyl::Assert(!emitter.program.globals.contains(symbol));
     symbol_types.emplace(symbol, type);
     auto global_value = detail::GetGlobalValue(type);
     auto it = emitter.program.globals.emplace(symbol, std::move(global_value));
